@@ -33,15 +33,12 @@ export function blockPct(block: Block): number {
   return sum / block.bricks.length;
 }
 
+// Equal-weighted average of blockPct (spec §Scoring: "All equal weight").
+// Previously duration-weighted — fixed per SG-bld-08.
 export function dayPct(blocks: Block[]): number {
-  let totalDur = 0;
-  let weighted = 0;
-  for (const b of blocks) {
-    const d = duration(b);
-    totalDur += d;
-    weighted += blockPct(b) * d;
-  }
-  return totalDur === 0 ? 0 : weighted / totalDur;
+  if (blocks.length === 0) return 0;
+  const sum = blocks.reduce((s, b) => s + blockPct(b), 0);
+  return sum / blocks.length;
 }
 
 export function currentBlockIndex(blocks: Block[], now: string): number {
