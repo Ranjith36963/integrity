@@ -7,30 +7,31 @@
 ## Snapshot
 
 - **Branch:** `claude/build-dharma-pwa-8WVNB`
-- **Last commit:** `a60244b` — `docs(claude): codify permanent orchestration flow`
-- **Production deploy:** none (Vercel not yet wired; Shipper has not run)
-- **Last preview URL:** none
+- **Last commit:** `0403579` — `docs(release): write README and fill CHANGELOG for page 1 ship`
+- **Production deploy:** none (Vercel not yet wired to repo)
+- **Last preview URL:** none — Vercel GitHub integration not yet connected to `Ranjith36963/integrity`
 
 ## Pages
 
-| Page                                    | State             | Notes                                                                                                     |
-| --------------------------------------- | ----------------- | --------------------------------------------------------------------------------------------------------- |
-| **1 — Building view** (today's routine) | **In evaluation** | Builder closed all 61 Page 1 test IDs (one dropped per SG-bld-04). Awaiting Evaluator pass + Shipper run. |
-| 2 — Castle (week view)                  | Not started       | No spec section yet.                                                                                      |
-| 3 — Kingdom (month view)                | Not started       | No spec section yet.                                                                                      |
-| 4 — Empire (year view)                  | Not started       | No spec section yet.                                                                                      |
+| Page                                    | State                             | Notes                                                                                                                      |
+| --------------------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **1 — Building view** (today's routine) | **Shipped — pending Vercel link** | Evaluator PASS on `0924032`. 65/65 Vitest, 26/26 Playwright (mobile-chrome), 0 axe violations. README + CHANGELOG updated. |
+| 2 — Castle (week view)                  | Not started                       | No spec section yet. Awaiting user input before Planner dispatch.                                                          |
+| 3 — Kingdom (month view)                | Not started                       | No spec section yet.                                                                                                       |
+| 4 — Empire (year view)                  | Not started                       | No spec section yet.                                                                                                       |
 
 ## Open loops
 
-- **Page 1 evaluation pending.** All gates already green per builder report (lint, typecheck, vitest 65/65, playwright 26/26 mobile-chrome). Evaluator must independently confirm; on PASS, Shipper runs.
-- **Vercel project not connected.** Shipper will need a Vercel link or fallback. Decide before first ship (see ADR-014 if added).
-- **Mobile-Safari (WebKit) Playwright project disabled** in this sandbox; re-enable when running in an environment with WebKit binaries.
+- **Vercel project not connected.** Wire `Ranjith36963/integrity` to a Vercel project and enable the GitHub integration. Once connected, push to `main` to create a production deploy, or any branch push will generate a preview URL automatically.
+- **`main` not updated.** Feature branch `claude/build-dharma-pwa-8WVNB` is at `0403579`. User must explicitly authorize pushing to `main` before production ship occurs.
+- **Mobile-Safari (WebKit) Playwright project disabled** per ADR-010. Re-enable when running in an environment with WebKit binaries present.
+- **Lighthouse scores not yet measured.** No deploy URL available to run against. Measure after Vercel is wired.
 
 ## Spec gaps resolved
 
 `SG-bld-01..10` — all closed against Page 1; resolutions live in `docs/tests.md` under "Spec gaps — resolved".
 
-## Quality gates (last full run on `0924032`)
+## Quality gates (Evaluator PASS on `0924032`)
 
 | Gate                       | Result                                   |
 | -------------------------- | ---------------------------------------- |
@@ -38,10 +39,10 @@
 | `tsc --noEmit`             | clean                                    |
 | Vitest                     | 65/65 passed (13 files)                  |
 | Playwright (mobile-chrome) | 26/26 passed                             |
-| Playwright (mobile-safari) | not run — WebKit unavailable             |
+| Playwright (mobile-safari) | not run — WebKit unavailable (ADR-010)   |
 | axe-core                   | 0 violations (covered by A-bld-001..005) |
-| Lighthouse                 | not yet measured                         |
+| Lighthouse                 | not measured — no deploy URL             |
 
 ## Next intended action
 
-Dispatch the EVALUATOR on Page 1 against `a60244b`. On PASS, dispatch the SHIPPER. On FAIL, loop back to BUILDER per `CLAUDE.md` § Orchestration Flow.
+Dispatch the **Planner** on Page 2 (Castle / week view) once the user provides or approves the spec section for that page. On Planner output, dispatch Builder, then Evaluator, then Shipper per `CLAUDE.md` § Orchestration Flow.
