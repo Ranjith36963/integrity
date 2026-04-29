@@ -13,12 +13,12 @@
 
 ## Pages
 
-| Page                                    | State                                  | Notes                                                                                                                         |
-| --------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| **1 — Building view** (today's routine) | **Shipped to `main` — pending Vercel** | Evaluator PASS on `0924032`. 65/65 Vitest, 26/26 Playwright (mobile-chrome), 0 axe violations. Merged to `main` at `c3ef9f1`. |
-| 2 — Castle (week view)                  | Not started                            | No spec section yet. Awaiting user input before Planner dispatch.                                                             |
-| 3 — Kingdom (month view)                | Not started                            | No spec section yet.                                                                                                          |
-| 4 — Empire (year view)                  | Not started                            | No spec section yet.                                                                                                          |
+| Page                                    | State                                 | Notes                                                                                                                                                                                                                                                           |
+| --------------------------------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1 — Building view** (today's routine) | **Re-planning — empty-toolkit pivot** | First implementation shipped a hardcoded demo (merged to `main` at `c3ef9f1`). User pivoted scope: empty default + CRUD + localStorage + real timer. ADR-007 superseded by ADR-017; ADR-018..020 cover persistence, recurrence, live clock. PLANNER re-running. |
+| 2 — Castle (week view)                  | Not started                           | No spec section yet. Awaiting user input after Page 1 pivot ships.                                                                                                                                                                                              |
+| 3 — Kingdom (month view)                | Not started                           | No spec section yet.                                                                                                                                                                                                                                            |
+| 4 — Empire (year view)                  | Not started                           | No spec section yet.                                                                                                                                                                                                                                            |
 
 ## Open loops
 
@@ -44,7 +44,6 @@
 
 ## Next intended action
 
-Two tracks, in parallel:
+PLANNER is being dispatched on the **Page 1 empty-toolkit pivot**. It will rewrite `/docs/plan.md` and `/docs/tests.md` to replace the hardcoded-demo plan with eight named features (wipe demo + empty default → live clock → localStorage → Add Block → Add Brick → Edit/Delete → BrickTimer → recurrence). User approval at Gate #1 follows; then BUILDER runs feature-by-feature per `CLAUDE.md` § Orchestration Flow.
 
-1. **Wire Vercel** to `Ranjith36963/integrity` so `main` auto-deploys to production. Once live, run Lighthouse against the URL.
-2. **Page 2 — Castle (week view).** Dispatch the Planner once the user provides or approves the spec section for that page. On Planner output, the harness runs Builder → Evaluator → Shipper automatically per `CLAUDE.md` § Orchestration Flow.
+Parallel item: **Wire Vercel** to `Ranjith36963/integrity` so previews auto-deploy. Not blocking; the harness can keep iterating without it.
