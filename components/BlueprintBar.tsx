@@ -10,7 +10,7 @@ export function BlueprintBar({ blocks, now }: Props) {
   const total = blocks.reduce((s, b) => s + duration(b), 0);
   const offset = nowOffsetPct(blocks, now);
   return (
-    <section className="px-5 pb-4">
+    <section aria-label="Day blueprint" className="px-5 pb-4">
       <div className="mb-2 flex items-center justify-between">
         <div
           className="text-[10px] tracking-[0.22em] uppercase"
@@ -37,7 +37,8 @@ export function BlueprintBar({ blocks, now }: Props) {
             const pct = (duration(b) / total) * 100;
             return (
               <div
-                key={i}
+                key={`${b.start}-${b.name}`}
+                data-testid="blueprint-segment"
                 className="h-full"
                 style={{
                   width: `${pct}%`,
@@ -51,6 +52,8 @@ export function BlueprintBar({ blocks, now }: Props) {
           })}
         </div>
         <div
+          data-testid="now-pin"
+          aria-label={`Now ${now}`}
           className="absolute top-0 bottom-0"
           style={{ left: `${offset}%`, transform: "translateX(-50%)" }}
         >
@@ -81,7 +84,7 @@ export function BlueprintBar({ blocks, now }: Props) {
               className="text-[9px] tracking-[0.16em] uppercase"
               style={{ color: "var(--ink-faint)" }}
             >
-              {c}
+              {c.toUpperCase()}
             </span>
           </div>
         ))}

@@ -1,12 +1,15 @@
+"use client";
 import { Block, CATEGORY_COLOR, CATEGORY_LABEL } from "@/lib/types";
 import { blockPct, fmtRange } from "@/lib/dharma";
-import { Brick } from "./Brick";
+import { Brick as BrickComponent } from "./Brick";
+import type { Brick } from "@/lib/types";
 
 interface Props {
   block: Block;
+  onLogBrick: (index: number, updated: Brick) => void;
 }
 
-export function NowCard({ block }: Props) {
+export function NowCard({ block, onLogBrick }: Props) {
   const pct = Math.round(blockPct(block));
   const color = CATEGORY_COLOR[block.category];
   return (
@@ -67,7 +70,7 @@ export function NowCard({ block }: Props) {
                 className="text-[9px] tracking-[0.18em] uppercase"
                 style={{ color: "var(--ink-faint)" }}
               >
-                {CATEGORY_LABEL[block.category]}
+                {CATEGORY_LABEL[block.category].toUpperCase()}
               </span>
             </div>
           </div>
@@ -84,7 +87,14 @@ export function NowCard({ block }: Props) {
 
         <div className="mt-4 flex flex-wrap gap-1.5">
           {block.bricks.map((b, i) => (
-            <Brick key={i} brick={b} category={block.category} index={i} />
+            <BrickComponent
+              key={`${block.start}-${b.name}-${b.kind}`}
+              brick={b}
+              category={block.category}
+              index={i}
+              onLog={(updated) => onLogBrick(i, updated)}
+              editMode={false}
+            />
           ))}
         </div>
       </div>

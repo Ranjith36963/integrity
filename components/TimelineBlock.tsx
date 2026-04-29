@@ -1,14 +1,21 @@
+"use client";
+import { X } from "lucide-react";
 import { Block, CATEGORY_COLOR, CATEGORY_LABEL } from "@/lib/types";
 import { blockPct } from "@/lib/dharma";
-import { Brick } from "./Brick";
+import { Brick as BrickComponent } from "./Brick";
 import { Scaffold } from "./Scaffold";
+import { EmptyBricks } from "./EmptyBricks";
+import { useEditMode } from "./EditModeProvider";
+import type { Brick } from "@/lib/types";
 
 interface Props {
   block: Block;
   status: "past" | "current" | "future";
+  onLogBrick: (brickIndex: number, updated: Brick) => void;
 }
 
-export function TimelineBlock({ block, status }: Props) {
+export function TimelineBlock({ block, status, onLogBrick }: Props) {
+  const { editMode } = useEditMode();
   const pct = Math.round(blockPct(block));
   const color = CATEGORY_COLOR[block.category];
   const isCurrent = status === "current";
@@ -16,6 +23,8 @@ export function TimelineBlock({ block, status }: Props) {
 
   return (
     <div
+      data-testid="timeline-block"
+      data-status={status}
       className="flex gap-3 rounded-lg p-3 transition-colors"
       style={{
         background: isCurrent ? "rgba(251,191,36,0.06)" : "var(--card)",
@@ -61,30 +70,52 @@ export function TimelineBlock({ block, status }: Props) {
                 className="text-[9px] tracking-[0.16em] uppercase"
                 style={{ color: "var(--ink-faint)" }}
               >
-                {CATEGORY_LABEL[block.category]}
+                {CATEGORY_LABEL[block.category].toUpperCase()}
               </span>
             </div>
           </div>
-          <div className="text-right">
-            <div
-              className="font-serif-italic text-[26px] leading-none"
-              style={{ color: isPast ? "var(--ink-dim)" : "var(--ink)" }}
-            >
-              {pct}
-              <span
-                className="ml-0.5 align-top text-[12px]"
+          <div className="flex items-start gap-1">
+            <div className="text-right">
+              <div
+                className="font-serif-italic text-[26px] leading-none"
+                style={{ color: isPast ? "var(--ink-dim)" : "var(--ink)" }}
+              >
+                {pct}
+                <span
+                  className="ml-0.5 align-top text-[12px]"
+                  style={{ color: "var(--ink-faint)" }}
+                >
+                  %
+                </span>
+              </div>
+            </div>
+            {editMode && (
+              <button
+                aria-label="Delete block"
+                className="grid h-6 w-6 place-items-center rounded"
                 style={{ color: "var(--ink-faint)" }}
               >
-                %
-              </span>
-            </div>
+                <X size={12} />
+              </button>
+            )}
           </div>
         </div>
 
         <div className="mt-2.5 flex flex-wrap gap-1">
-          {block.bricks.map((b, i) => (
-            <Brick key={i} brick={b} category={block.category} index={i} />
-          ))}
+          {block.bricks.length === 0 ? (
+            <EmptyBricks />
+          ) : (
+            block.bricks.map((b, i) => (
+              <BrickComponent
+                key={`${block.start}-${b.name}-${b.kind}`}
+                brick={b}
+                category={block.category}
+                index={i}
+                onLog={(updated) => onLogBrick(i, updated)}
+                editMode={editMode}
+              />
+            ))
+          )}
         </div>
       </div>
     </div>
