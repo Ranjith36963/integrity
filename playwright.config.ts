@@ -20,10 +20,12 @@ export default defineConfig({
       name: "mobile-chrome",
       use: { ...devices["Pixel 7"] },
     },
-    {
-      name: "mobile-safari",
-      use: { ...devices["iPhone 14"] },
-    },
+    // mobile-safari (iPhone 14) is disabled in this environment: WebKit
+    // binaries are not available. Re-enable once webkit is installed.
+    // {
+    //   name: "mobile-safari",
+    //   use: { ...devices["iPhone 14"] },
+    // },
   ],
   webServer: {
     command: "npm run dev",

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, act } from "@testing-library/react";
+import { render, act } from "@testing-library/react";
 import { AnimatedPercent } from "./AnimatedPercent";
 
 // C-bld-005: AnimatedPercent counts up from 0 to target over durationMs

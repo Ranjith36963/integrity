@@ -12,7 +12,7 @@ export function Hero({ dateLabel, dayNumber, totalDays, pct }: Props) {
     <section className="px-5 pt-2 pb-5">
       <div
         className="text-[10px] tracking-[0.28em] uppercase"
-        style={{ color: "var(--ink-faint)" }}
+        style={{ color: "var(--ink-dim)" }}
       >
         {dateLabel}
       </div>
@@ -37,7 +37,7 @@ export function Hero({ dateLabel, dayNumber, totalDays, pct }: Props) {
       </div>
       <div
         className="mt-2 text-[10px] tracking-[0.18em] uppercase"
-        style={{ color: "var(--ink-faint)" }}
+        style={{ color: "var(--ink-dim)" }}
       >
         day complete
       </div>

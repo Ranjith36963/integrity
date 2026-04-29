@@ -5,7 +5,7 @@ import { BottomBar } from "./BottomBar";
 // C-bld-029: BottomBar has Voice Log button with amber gradient and + Add button
 describe("C-bld-029: BottomBar renders Voice Log and Add buttons", () => {
   it("shows Voice Log button with amber gradient and + button with aria-label Add", () => {
-    const { container } = render(<BottomBar />);
+    render(<BottomBar />);
     // Voice Log button
     expect(screen.getByText(/Voice Log/i)).toBeInTheDocument();
     // + Add button

@@ -46,7 +46,7 @@ export function TimelineBlock({ block, status, onLogBrick }: Props) {
         </div>
         <div
           className="text-[9px] tracking-[0.06em]"
-          style={{ color: "var(--ink-faint)" }}
+          style={{ color: "var(--ink-dim)" }}
         >
           {block.end}
         </div>
@@ -68,7 +68,7 @@ export function TimelineBlock({ block, status, onLogBrick }: Props) {
               />
               <span
                 className="text-[9px] tracking-[0.16em] uppercase"
-                style={{ color: "var(--ink-faint)" }}
+                style={{ color: "var(--ink-dim)" }}
               >
                 {CATEGORY_LABEL[block.category].toUpperCase()}
               </span>
@@ -83,7 +83,7 @@ export function TimelineBlock({ block, status, onLogBrick }: Props) {
                 {pct}
                 <span
                   className="ml-0.5 align-top text-[12px]"
-                  style={{ color: "var(--ink-faint)" }}
+                  style={{ color: "var(--ink-dim)" }}
                 >
                   %
                 </span>
@@ -93,7 +93,7 @@ export function TimelineBlock({ block, status, onLogBrick }: Props) {
               <button
                 aria-label="Delete block"
                 className="grid h-6 w-6 place-items-center rounded"
-                style={{ color: "var(--ink-faint)" }}
+                style={{ color: "var(--ink-dim)" }}
               >
                 <X size={12} />
               </button>

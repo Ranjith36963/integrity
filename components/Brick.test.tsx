@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Brick } from "./Brick";
-import { EditModeProvider } from "./EditModeProvider";
 
 function renderBrick(
   props: Partial<Parameters<typeof Brick>[0]> & { editMode?: boolean },

@@ -16,7 +16,7 @@ export function Timeline({ blocks, now, onLogBrick }: Props) {
     <section className="px-5 pb-32">
       <div
         className="mb-3 text-[10px] tracking-[0.22em] uppercase"
-        style={{ color: "var(--ink-faint)" }}
+        style={{ color: "var(--ink-dim)" }}
       >
         schedule
       </div>

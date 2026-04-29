@@ -16,6 +16,7 @@ export function Scaffold({ pct, category, height = 56 }: Props) {
   }, [pct]);
   return (
     <div
+      role="img"
       className="scaffold"
       style={
         {

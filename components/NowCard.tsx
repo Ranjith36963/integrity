@@ -47,7 +47,7 @@ export function NowCard({ block, onLogBrick }: Props) {
           </div>
           <div
             className="text-[10px] tracking-[0.16em] uppercase"
-            style={{ color: "var(--ink-faint)" }}
+            style={{ color: "var(--ink-dim)" }}
           >
             {fmtRange(block)}
           </div>
@@ -68,7 +68,7 @@ export function NowCard({ block, onLogBrick }: Props) {
               />
               <span
                 className="text-[9px] tracking-[0.18em] uppercase"
-                style={{ color: "var(--ink-faint)" }}
+                style={{ color: "var(--ink-dim)" }}
               >
                 {CATEGORY_LABEL[block.category].toUpperCase()}
               </span>

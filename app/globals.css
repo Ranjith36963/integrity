@@ -86,7 +86,9 @@ body {
 
 .brick--empty {
   background: transparent;
-  color: var(--ink-faint);
+  /* --ink-dim (#94a3b8) used instead of --ink-faint (#64748b) to meet
+     WCAG 2.1 AA contrast (4.5:1) on card backgrounds. */
+  color: var(--ink-dim);
   border: 1px dashed rgba(148, 163, 184, 0.35);
   box-shadow: none;
 }

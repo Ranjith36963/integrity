@@ -74,7 +74,7 @@ export function Brick({ brick, category, index, onLog, editMode }: Props) {
         <button
           aria-label="Delete brick"
           className="grid h-5 w-5 place-items-center rounded"
-          style={{ color: "var(--ink-faint)" }}
+          style={{ color: "var(--ink-dim)" }}
           onClick={(e) => e.stopPropagation()}
         >
           <X size={10} />

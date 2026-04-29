@@ -14,7 +14,7 @@ export function BlueprintBar({ blocks, now }: Props) {
       <div className="mb-2 flex items-center justify-between">
         <div
           className="text-[10px] tracking-[0.22em] uppercase"
-          style={{ color: "var(--ink-faint)" }}
+          style={{ color: "var(--ink-dim)" }}
         >
           day blueprint
         </div>
@@ -33,7 +33,7 @@ export function BlueprintBar({ blocks, now }: Props) {
         }}
       >
         <div className="flex h-full w-full">
-          {blocks.map((b, i) => {
+          {blocks.map((b) => {
             const pct = (duration(b) / total) * 100;
             return (
               <div
@@ -53,6 +53,7 @@ export function BlueprintBar({ blocks, now }: Props) {
         </div>
         <div
           data-testid="now-pin"
+          role="img"
           aria-label={`Now ${now}`}
           className="absolute top-0 bottom-0"
           style={{ left: `${offset}%`, transform: "translateX(-50%)" }}
@@ -82,7 +83,7 @@ export function BlueprintBar({ blocks, now }: Props) {
             />
             <span
               className="text-[9px] tracking-[0.16em] uppercase"
-              style={{ color: "var(--ink-faint)" }}
+              style={{ color: "var(--ink-dim)" }}
             >
               {c.toUpperCase()}
             </span>
