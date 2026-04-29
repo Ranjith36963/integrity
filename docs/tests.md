@@ -495,17 +495,27 @@ All E2E tests run on `mobile-chrome` (Pixel 7) and `mobile-safari` (iPhone 14) p
   THEN there are zero new violations introduced by the `×` affordances.
   Tested by: `tests/e2e/building.a11y.spec.ts`
 
-### Spec gaps
+### Spec gaps — resolved
 
-The following ambiguities in `/docs/spec.md` were encountered while writing this plan. Resolve before BUILDER closes them.
+User approved all 10 gaps as proposed by the planner on 2026-04-29. Builder must implement the **Resolution** for each.
 
-- SG-bld-01 — **Edit-mode `×` icon affordance** is mentioned ("× icon") alongside swipe-left, but spec does not explicitly say the `×` is always visible in edit mode (vs. only after swipe). Plan assumes always visible. Confirm.
-- SG-bld-02 — **Time-brick logging UX in view mode**: spec says "start/stop timer OR manual input". Plan assumes a manual `+/-` stepper for Phase 1 (no real timer) — same component as Goal. Confirm acceptable, or specify which is canonical.
-- SG-bld-03 — **NOW pin position semantics**: spec is silent on what happens when NOW is exactly at a block boundary (e.g. 04:00 — start of the day and end of Sleep). Plan uses `[start, end)` half-open intervals (current `currentBlockIndex` behaviour). Confirm.
-- SG-bld-04 — **Empty-state E2E reachability**: there is no UI path to clear all blocks in Page 1 (Add Block modal is out of scope). Either (a) E-bld-021 is dropped to component-only coverage (C-bld-016 already proves the empty-state component renders), or (b) builder adds a test-only `?empty=1` switch in `BuildingClient`. Recommend (a). Confirm.
-- SG-bld-05 — **Top bar Settings button** has no behaviour specified anywhere; remains a no-op button on Page 1. Confirm acceptable for Page 1 release.
-- SG-bld-06 — **Voice Log button** is shown on Page 1 but the speak→parse→fill behaviour is Phase 1.5. Plan keeps the button as a no-op for Page 1. Confirm.
-- SG-bld-07 — **`%` numeral display rule**: spec says Hero is animated count-up; it does not specify whether decimals are ever shown or always rounded to integer. Plan rounds via `Math.round`. Confirm.
-- SG-bld-08 — **Equal-weight `dayPct` vs the existing duration-weighted implementation**: spec §Scoring is explicit ("All equal weight"). Plan instructs the builder to **fix** `dayPct`. Confirm so this is not treated as a regression.
-- SG-bld-09 — **Brick stagger fade-in** ("Stagger fade-in on page load") — spec is silent on which elements stagger. Plan applies it only to bricks (existing `brick-in` class with `index * 35ms` delay). Confirm scope.
-- SG-bld-10 — **Date label format** is hardcoded `Wed, Apr 29` (no year, comma format). Spec does not pin a format. Plan keeps existing literal. Confirm.
+- SG-bld-01 — Edit-mode `×` icon affordance.
+  **Resolution:** `×` is always visible in edit mode (no swipe gesture in Page 1 scope).
+- SG-bld-02 — Time-brick logging UX in view mode.
+  **Resolution:** `+/-` stepper for Phase 1 — same component as Goal. No real timer.
+- SG-bld-03 — NOW pin position semantics.
+  **Resolution:** half-open `[start, end)` intervals (matches current `currentBlockIndex`).
+- SG-bld-04 — Empty-state E2E reachability.
+  **Resolution:** **drop E-bld-021**; rely on `C-bld-016` for empty-blocks coverage. Builder must mark E-bld-021 as `// dropped per SG-bld-04` in any e2e file rather than implementing it.
+- SG-bld-05 — Top bar Settings button.
+  **Resolution:** stays a no-op for Page 1. Render the icon button; do not wire a handler.
+- SG-bld-06 — Voice Log button.
+  **Resolution:** stays a no-op for Page 1 (parse behavior is Phase 1.5).
+- SG-bld-07 — Hero `%` rounding.
+  **Resolution:** `Math.round` to integer. Never shows decimals.
+- SG-bld-08 — Equal-weight `dayPct`.
+  **Resolution:** **fix** `lib/dharma.ts::dayPct` to a simple mean of `blockPct`. The Hero number changes (~26% → ~57%) — this is intentional, not a regression. Update `lib/dharma.test.ts` to match.
+- SG-bld-09 — Brick stagger fade-in scope.
+  **Resolution:** stagger applies **only to bricks**, using the existing `brick-in` class with `index * 35ms` delay. Do not stagger blocks/cards/sections.
+- SG-bld-10 — Date label format.
+  **Resolution:** keep the existing literal `Wed, Apr 29` from `lib/data.ts::TODAY_LABEL`.
