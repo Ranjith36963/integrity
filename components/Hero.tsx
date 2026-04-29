@@ -20,8 +20,7 @@ export function Hero({ dateLabel, dayNumber, totalDays, pct }: Props) {
         className="mt-1 text-[12px] tracking-[0.04em]"
         style={{ color: "var(--ink-dim)" }}
       >
-        Building{" "}
-        <span style={{ color: "var(--amber)" }}>{dayNumber}</span> of{" "}
+        Building <span style={{ color: "var(--amber)" }}>{dayNumber}</span> of{" "}
         {totalDays}
       </div>
       <div className="mt-3 flex items-end gap-2 leading-none">
@@ -30,7 +29,7 @@ export function Hero({ dateLabel, dayNumber, totalDays, pct }: Props) {
           className="font-serif-italic text-[112px] leading-[0.85]"
         />
         <span
-          className="font-serif-italic text-[40px] leading-[0.9] pb-2"
+          className="font-serif-italic pb-2 text-[40px] leading-[0.9]"
           style={{ color: "var(--ink-dim)" }}
         >
           %

@@ -16,7 +16,7 @@ export function TimelineBlock({ block, status }: Props) {
 
   return (
     <div
-      className="rounded-lg p-3 flex gap-3 transition-colors"
+      className="flex gap-3 rounded-lg p-3 transition-colors"
       style={{
         background: isCurrent ? "rgba(251,191,36,0.06)" : "var(--card)",
         border: `1px solid ${
@@ -25,7 +25,7 @@ export function TimelineBlock({ block, status }: Props) {
         opacity: isPast ? 0.55 : 1,
       }}
     >
-      <div className="flex flex-col items-center pt-1 w-10 shrink-0">
+      <div className="flex w-10 shrink-0 flex-col items-center pt-1">
         <div
           className="text-[10px] tracking-[0.06em]"
           style={{ color: "var(--ink-dim)" }}
@@ -43,18 +43,18 @@ export function TimelineBlock({ block, status }: Props) {
         </div>
       </div>
 
-      <div className="flex-1 min-w-0">
+      <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <div
-              className="text-[14px] leading-tight truncate"
+              className="truncate text-[14px] leading-tight"
               style={{ color: "var(--ink)" }}
             >
               {block.name}
             </div>
             <div className="mt-1 flex items-center gap-1.5">
               <span
-                className="w-1.5 h-1.5 rounded-[2px]"
+                className="h-1.5 w-1.5 rounded-[2px]"
                 style={{ background: color }}
               />
               <span
@@ -72,7 +72,7 @@ export function TimelineBlock({ block, status }: Props) {
             >
               {pct}
               <span
-                className="text-[12px] align-top ml-0.5"
+                className="ml-0.5 align-top text-[12px]"
                 style={{ color: "var(--ink-faint)" }}
               >
                 %
@@ -83,12 +83,7 @@ export function TimelineBlock({ block, status }: Props) {
 
         <div className="mt-2.5 flex flex-wrap gap-1">
           {block.bricks.map((b, i) => (
-            <Brick
-              key={i}
-              brick={b}
-              category={block.category}
-              index={i}
-            />
+            <Brick key={i} brick={b} category={block.category} index={i} />
           ))}
         </div>
       </div>

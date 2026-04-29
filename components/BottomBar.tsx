@@ -2,11 +2,11 @@ import { Mic, Plus } from "lucide-react";
 
 export function BottomBar() {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-20 pointer-events-none">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20">
       <div className="mx-auto max-w-[430px] px-5 pb-5">
-        <div className="flex items-center gap-2 pointer-events-auto">
+        <div className="pointer-events-auto flex items-center gap-2">
           <button
-            className="flex-1 h-12 rounded-full flex items-center justify-center gap-2 text-[12px] tracking-[0.18em] uppercase"
+            className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full text-[12px] tracking-[0.18em] uppercase"
             style={{
               background:
                 "linear-gradient(180deg, var(--amber), var(--amber-deep))",
@@ -20,7 +20,7 @@ export function BottomBar() {
           </button>
           <button
             aria-label="Add"
-            className="h-12 w-12 rounded-full grid place-items-center"
+            className="grid h-12 w-12 place-items-center rounded-full"
             style={{
               background: "var(--card)",
               border: "1px solid var(--card-edge)",
@@ -32,10 +32,9 @@ export function BottomBar() {
         </div>
       </div>
       <div
-        className="absolute inset-x-0 bottom-0 h-24 -z-10 pointer-events-none"
+        className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-24"
         style={{
-          background:
-            "linear-gradient(180deg, transparent, var(--bg) 60%)",
+          background: "linear-gradient(180deg, transparent, var(--bg) 60%)",
         }}
       />
     </div>

@@ -12,26 +12,26 @@ export function NowCard({ block }: Props) {
   return (
     <section className="px-5 pb-5">
       <div
-        className="relative rounded-xl p-4 now-glow"
+        className="now-glow relative rounded-xl p-4"
         style={{
           background:
             "linear-gradient(180deg, rgba(245,158,11,0.06), rgba(245,158,11,0.02))",
           border: "1px solid rgba(251,191,36,0.35)",
         }}
       >
-        <div className="flex items-center justify-between mb-3">
+        <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="relative w-2 h-2">
+            <div className="relative h-2 w-2">
               <span
                 className="absolute inset-0 rounded-full"
                 style={{ background: "var(--amber)" }}
               />
               <span
-                className="absolute inset-0 rounded-full dot-pulse"
+                className="dot-pulse absolute inset-0 rounded-full"
                 style={{ background: "var(--amber)" }}
               />
               <span
-                className="absolute inset-0 rounded-full ring-ping"
+                className="ring-ping absolute inset-0 rounded-full"
                 style={{ background: "var(--amber)" }}
               />
             </div>
@@ -60,7 +60,7 @@ export function NowCard({ block }: Props) {
             </div>
             <div className="mt-1 flex items-center gap-1.5">
               <span
-                className="w-1.5 h-1.5 rounded-[2px]"
+                className="h-1.5 w-1.5 rounded-[2px]"
                 style={{ background: color }}
               />
               <span
@@ -74,7 +74,7 @@ export function NowCard({ block }: Props) {
           <div className="font-serif-italic text-[44px] leading-none">
             {pct}
             <span
-              className="text-[18px] align-top ml-0.5"
+              className="ml-0.5 align-top text-[18px]"
               style={{ color: "var(--ink-dim)" }}
             >
               %
@@ -84,12 +84,7 @@ export function NowCard({ block }: Props) {
 
         <div className="mt-4 flex flex-wrap gap-1.5">
           {block.bricks.map((b, i) => (
-            <Brick
-              key={i}
-              brick={b}
-              category={block.category}
-              index={i}
-            />
+            <Brick key={i} brick={b} category={block.category} index={i} />
           ))}
         </div>
       </div>

@@ -11,7 +11,7 @@ export function BlueprintBar({ blocks, now }: Props) {
   const offset = nowOffsetPct(blocks, now);
   return (
     <section className="px-5 pb-4">
-      <div className="flex items-center justify-between mb-2">
+      <div className="mb-2 flex items-center justify-between">
         <div
           className="text-[10px] tracking-[0.22em] uppercase"
           style={{ color: "var(--ink-faint)" }}
@@ -26,7 +26,7 @@ export function BlueprintBar({ blocks, now }: Props) {
         </div>
       </div>
       <div
-        className="relative h-9 rounded-md overflow-hidden border"
+        className="relative h-9 overflow-hidden rounded-md border"
         style={{
           borderColor: "var(--card-edge)",
           background: "rgba(255,255,255,0.02)",
@@ -55,14 +55,14 @@ export function BlueprintBar({ blocks, now }: Props) {
           style={{ left: `${offset}%`, transform: "translateX(-50%)" }}
         >
           <div
-            className="w-[2px] h-full"
+            className="h-full w-[2px]"
             style={{
               background: "#fff",
               boxShadow: "0 0 8px rgba(255,255,255,0.7)",
             }}
           />
           <div
-            className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full"
+            className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rounded-full"
             style={{
               background: "#fff",
               boxShadow: "0 0 10px rgba(255,255,255,0.9)",
@@ -70,11 +70,11 @@ export function BlueprintBar({ blocks, now }: Props) {
           />
         </div>
       </div>
-      <div className="mt-2 flex items-center gap-3 flex-wrap">
+      <div className="mt-2 flex flex-wrap items-center gap-3">
         {(["health", "mind", "career", "passive"] as const).map((c) => (
           <div key={c} className="flex items-center gap-1.5">
             <span
-              className="w-2 h-2 rounded-[2px]"
+              className="h-2 w-2 rounded-[2px]"
               style={{ background: CATEGORY_COLOR[c] }}
             />
             <span
