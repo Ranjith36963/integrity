@@ -91,18 +91,30 @@ Tasks:
 Forbidden: writing features, reviewing code
 Hands off to: Main Claude
 
-## Orchestration Flow
+## Orchestration Flow (permanent)
 
-User gives a task to Main Claude.
+This is how every feature is shipped. Steps 1–2 are the user's. Steps 3–7 are Main Claude's, run end-to-end without asking.
 
-Main Claude routes:
-  1. PLANNER → outputs plan.md + tests.md
-  2. User approves plan
-  3. BUILDER → writes test + code (TDD loop)
-  4. EVALUATOR → runs Playwright + reviews
-  5. If FAIL → back to BUILDER (loop until PASS)
-  6. If PASS → SHIPPER → deploys
-  7. Main Claude reports done to user
+**The user's role: plan and approve, then react to a live preview.**
+**Main Claude's role: drive 3 → 7 automatically, one feature at a time.**
+
+  1. **PLANNER** — Main Claude dispatches. Reads `/docs/spec.md`. Writes `/docs/plan.md` and `/docs/tests.md`. Tests are grouped by **feature** with explicit feature names. Spec gaps surface as questions for the user.
+  2. **User approves** the plan and resolves spec gaps. This is the only approval gate per page.
+  3. **BUILDER** — Main Claude dispatches. Picks **one feature**. Goes test by test: red → green → refactor → commit. Commits one logical change at a time; the user can watch files appear.
+  4. **BUILDER → EVALUATOR (automatic).** When that one feature is green, BUILDER stops and hands off. Main Claude does not pause for confirmation.
+  5. **EVALUATOR** — runs Playwright, axe, lint, typecheck, full test suite, optional Lighthouse. Returns PASS or FAIL.
+     - **FAIL → back to BUILDER, automatic.** Loop until PASS. No user check-in between iterations unless the loop hits the same gap twice.
+     - **PASS → SHIPPER, automatic.**
+  6. **SHIPPER** — pushes to the deploy branch (Vercel auto-deploys preview). Updates README + CHANGELOG. Returns the live preview URL.
+  7. **Main Claude reports back to the user** with the preview URL and a one-line summary of what landed.
+  8. **User opens the preview, taps, feels, reacts.** Tells Main Claude what's off. Main Claude feeds that back to the harness — usually as a new spec entry (loop returns to step 1) or a follow-up test ID against the existing plan (loop returns to step 3).
+  9. **Next feature → repeat from step 3** until every feature in the plan has shipped a preview.
+
+**Boundary rules**
+- The user only talks to Main Claude. Never to sub-agents.
+- Each sub-agent has isolated context. They exchange files (plan.md, tests.md, commits, the PASS/FAIL report), never reasoning.
+- BUILDER stops after **one feature**, never bundles multiple features into one run.
+- Main Claude does not ask "should I run the evaluator?" — that's automatic. The only times Main Claude pauses for user input are: after PLANNER (approval), after SHIPPER (preview review), or when an agent reports a real ambiguity it can't resolve from its inputs.
 
 User only talks to Main Claude. Never to sub-agents directly.
 
