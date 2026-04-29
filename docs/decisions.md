@@ -188,3 +188,27 @@
 `feedback.md` and `glossary.md` are deferred — added if the workflow demands them.
 
 **Consequences.** PLANNER and BUILDER agent definitions both list `docs/decisions.md` as a required input. SHIPPER agent definition writes `CHANGELOG.md` and `docs/status.md` on every ship.
+
+---
+
+## ADR-015 — `NowCard` does not subscribe to edit mode
+
+**Status:** Accepted · 2026-04-29 · proposed by EVALUATOR on Page 1 PASS
+
+**Context.** Plan.md scoped delete affordances to `TimelineBlock` only. The builder hardcoded `editMode={false}` for bricks rendered inside `NowCard` (`components/NowCard.tsx:96`). Without an ADR, this looks like a coverage gap.
+
+**Decision.** Bricks rendered inside `NowCard` are always view-mode, even when global edit mode is on. The current block can still be edited from the Timeline below.
+
+**Consequences.** Surfacing delete on the active block in NowCard would be a confusing UX — the user is looking at the _now_ surface, not a structural surface. If a future feature wants in-context deletion, it gets a separate spec entry and ADR.
+
+---
+
+## ADR-016 — Tick brick `aria-label` includes the brick name
+
+**Status:** Accepted · 2026-04-29 · proposed by EVALUATOR on Page 1 PASS
+
+**Context.** A naive implementation would set `aria-label` to the raw status string (`"done"` or `"—"`). Goal/time bricks already include the brick name in their visible label.
+
+**Decision.** Tick bricks construct `aria-label` as `"<name> done"` or `"<name> —"` (`components/Brick.tsx:41-42`). The visible text remains just the name — only the accessible name is enriched.
+
+**Consequences.** Screen-reader users hear _which_ brick they're toggling. `U-bld-019` still tests the canonical `brickLabel()` strings (`"done"` / `"—"`); the aria-label augmentation lives in the component layer, not the utility.
