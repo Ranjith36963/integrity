@@ -158,11 +158,11 @@
 
 **Decision.** Codified in `CLAUDE.md` § Orchestration Flow (permanent):
 
-1. PLANNER (dispatched by Main Claude).
-2. **User approves.** ← Gate #1.
-   3–7. BUILDER → EVALUATOR → (FAIL loops back) → SHIPPER, all automatic, **one feature at a time**.
-3. **User opens preview URL, taps, reacts.** ← Gate #2.
-4. Next feature → repeat from 3.
+- Step 1 — PLANNER runs (dispatched by Main Claude).
+- Step 2 — **User approves.** ← Gate #1.
+- Steps 3–7 — BUILDER → EVALUATOR → (FAIL loops back) → SHIPPER, **all automatic**, **one feature at a time**.
+- Step 8 — **User opens preview URL, taps, reacts.** ← Gate #2.
+- Step 9 — Next feature → repeat from step 3.
 
 **Consequences.** PLANNER must group test IDs by named feature. BUILDER must stop after one feature. SHIPPER must produce a preview URL per feature, not per page.
 
