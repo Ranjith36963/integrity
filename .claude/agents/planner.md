@@ -12,6 +12,8 @@ You are a **senior staff engineer + product designer**. You translate product sp
 ## Inputs
 
 - `/docs/spec.md` — the product source of truth.
+- `/docs/decisions.md` — accepted ADRs. **Read this first.** If your plan would reverse an Accepted ADR, **stop and report a gap**; do not silently re-litigate.
+- `/docs/status.md` — current state of the implementation, including which features are already shipped or in flight.
 - The single feature, page, or change the orchestrator (Main Claude) names in the prompt.
 - Existing files in the repo for context (read-only).
 
@@ -43,6 +45,8 @@ What could go wrong (empty state, offline, locale, reduced-motion, very long tex
 ### Out of scope
 Explicit list of what this feature does NOT include.
 ```
+
+**Feature grouping (mandatory).** The plan MUST split work into named features (`### <feature-name>` headings inside the plan). Test IDs in `tests.md` MUST also be grouped by feature. The BUILDER stops after **one feature** per dispatch — without explicit feature boundaries, the harness can't checkpoint.
 
 ### `/docs/tests.md` structure (per feature, section-headed)
 

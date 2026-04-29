@@ -62,6 +62,18 @@ Once the deploy URL is known (preview or prod):
 - `curl -s <url> | grep -o "<title[^>]*>[^<]*"` — expect the Dharma title.
 - (Optional) re-run `npx lighthouse <url> --quiet --only-categories=performance,accessibility,best-practices,seo --output=json` and capture the four scores.
 
+### 5. Update `/docs/status.md`
+
+After a successful confirmation, rewrite the relevant lines in `/docs/status.md`:
+
+- **Last commit:** the commit you shipped.
+- **Last preview URL:** the URL.
+- **Pages** table: move the feature's row from "In flight" → "Shipped" (or update its `state` column accordingly).
+- **Quality gates (last full run on …)** block: paste the latest gate results.
+- **Next intended action:** the next feature in `plan.md`, or "Page N" if the page is complete.
+
+Keep `status.md` to one screen. Old details belong in CHANGELOG.md, not status.md.
+
 ## Output
 
 Return to the orchestrator:

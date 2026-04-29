@@ -125,6 +125,23 @@ User only talks to Main Claude. Never to sub-agents directly.
 - EVALUATOR reads BUILDER's commits, not BUILDER's reasoning
 - This keeps each agent's context clean
 
+## Repository knowledge files
+
+Six files carry the project's durable context. Every fresh session, Main Claude reads these first.
+
+| File | Owner (writes) | Read by | Updated when |
+|---|---|---|---|
+| `docs/spec.md` | user | PLANNER | scope changes |
+| `docs/plan.md` | PLANNER | BUILDER, EVALUATOR | each new feature |
+| `docs/tests.md` | PLANNER | BUILDER, EVALUATOR | each new feature |
+| `docs/decisions.md` | Main Claude + EVALUATOR | PLANNER, BUILDER, EVALUATOR | every non-obvious choice |
+| `docs/status.md` | SHIPPER + Main Claude | everyone (esp. on session restart) | every ship + every handoff |
+| `CHANGELOG.md` | SHIPPER | humans + future-me | every ship |
+
+`CLAUDE.md` (this file) and `AGENTS.md` are operating-manual files, not project state.
+`README.md` is for humans visiting GitHub.
+`feedback.md` and `glossary.md` may be added if the workflow demands them; not required today.
+
 ## Quality Gates (EVALUATOR enforces)
 
 - All Vitest tests pass
