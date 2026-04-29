@@ -1,0 +1,97 @@
+import { Block, CATEGORY_COLOR, CATEGORY_LABEL } from "@/lib/types";
+import { blockPct } from "@/lib/dharma";
+import { Brick } from "./Brick";
+import { Scaffold } from "./Scaffold";
+
+interface Props {
+  block: Block;
+  status: "past" | "current" | "future";
+}
+
+export function TimelineBlock({ block, status }: Props) {
+  const pct = Math.round(blockPct(block));
+  const color = CATEGORY_COLOR[block.category];
+  const isCurrent = status === "current";
+  const isPast = status === "past";
+
+  return (
+    <div
+      className="rounded-lg p-3 flex gap-3 transition-colors"
+      style={{
+        background: isCurrent ? "rgba(251,191,36,0.06)" : "var(--card)",
+        border: `1px solid ${
+          isCurrent ? "rgba(251,191,36,0.35)" : "var(--card-edge)"
+        }`,
+        opacity: isPast ? 0.55 : 1,
+      }}
+    >
+      <div className="flex flex-col items-center pt-1 w-10 shrink-0">
+        <div
+          className="text-[10px] tracking-[0.06em]"
+          style={{ color: "var(--ink-dim)" }}
+        >
+          {block.start}
+        </div>
+        <div className="my-1.5">
+          <Scaffold pct={pct} category={block.category} height={48} />
+        </div>
+        <div
+          className="text-[9px] tracking-[0.06em]"
+          style={{ color: "var(--ink-faint)" }}
+        >
+          {block.end}
+        </div>
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div
+              className="text-[14px] leading-tight truncate"
+              style={{ color: "var(--ink)" }}
+            >
+              {block.name}
+            </div>
+            <div className="mt-1 flex items-center gap-1.5">
+              <span
+                className="w-1.5 h-1.5 rounded-[2px]"
+                style={{ background: color }}
+              />
+              <span
+                className="text-[9px] tracking-[0.16em] uppercase"
+                style={{ color: "var(--ink-faint)" }}
+              >
+                {CATEGORY_LABEL[block.category]}
+              </span>
+            </div>
+          </div>
+          <div className="text-right">
+            <div
+              className="font-serif-italic text-[26px] leading-none"
+              style={{ color: isPast ? "var(--ink-dim)" : "var(--ink)" }}
+            >
+              {pct}
+              <span
+                className="text-[12px] align-top ml-0.5"
+                style={{ color: "var(--ink-faint)" }}
+              >
+                %
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-2.5 flex flex-wrap gap-1">
+          {block.bricks.map((b, i) => (
+            <Brick
+              key={i}
+              brick={b}
+              category={block.category}
+              index={i}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
