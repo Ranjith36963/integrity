@@ -316,3 +316,24 @@ type Recurrence =
 - `lib/data.ts` is reduced to a `defaultState()` factory; no hardcoded constants remain.
 - Tests must inject a controlled clock (a `now` parameter on the relevant helpers, or `vi.setSystemTime`). The `useNow` hook should be mockable in component tests.
 - E2E tests can override `Date.now` via Playwright's `page.addInitScript` or rely on the `useNow` injection seam.
+
+---
+
+## ADR-021 — Main Claude may author plan.md / tests.md when PLANNER repeatedly times out
+
+**Status:** Accepted · 2026-04-29
+
+**Context.** During the empty-toolkit pivot re-plan, the PLANNER subagent timed out twice in a row on the same task (idle-timeout, partial output, 245 s and 125 s). Two retries with progressively tighter scope did not converge. The user (orchestrator gate #1) explicitly authorized Main Claude to author `/docs/plan.md` and `/docs/tests.md` directly to unblock the harness ("go option 2").
+
+**Decision.** This is an **explicit, user-authorized override** of the agent boundaries documented in `CLAUDE.md` and ADR-013. Main Claude may author `/docs/plan.md` and `/docs/tests.md` for a single re-plan when:
+
+1. The PLANNER subagent has failed (idle-timeout, partial output, or explicit error) at least **twice** consecutively on the same dispatch.
+2. The user has been informed of the failure and has explicitly authorized the override (a one-word "go option 2" or equivalent counts; silent override does not).
+3. The override is recorded in this ADR with the SHA of the commit that lands the authored files.
+
+**Consequences.**
+
+- The EVALUATOR remains independent. It still reads `decisions.md`, `spec.md`, and `tests.md`, runs the gates, and judges. It does **not** receive any "Main Claude wrote this" hint, preserving the audit pattern.
+- Future re-plans default to the PLANNER subagent. This ADR is a fallback, not a new norm.
+- If the underlying PLANNER timeout pattern recurs, that's a harness-level bug worth fixing (e.g., dispatch the PLANNER with even smaller per-dispatch scope) rather than normalizing the override.
+- Commit landing the authored files: filled in below once committed.
