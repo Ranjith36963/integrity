@@ -337,3 +337,25 @@ type Recurrence =
 - Future re-plans default to the PLANNER subagent. This ADR is a fallback, not a new norm.
 - If the underlying PLANNER timeout pattern recurs, that's a harness-level bug worth fixing (e.g., dispatch the PLANNER with even smaller per-dispatch scope) rather than normalizing the override.
 - Commit landing the authored files: filled in below once committed.
+
+---
+
+## ADR-022 — PLANNER authors one feature per dispatch
+
+**Status:** Accepted · 2026-04-29
+
+**Context.** Four consecutive timeouts on the empty-toolkit pivot re-plan (three PLANNER subagent runs + one Main Claude direct Write). Root cause: any single tool call generating more than ~200 tokens of output is unsafe when upstream LLM latency is degraded — both subagents and Main Claude are subject to the same stream-idle threshold. ADR-013 already mandates one-feature-per-dispatch for BUILDER; this extends the rule to PLANNER and (where applicable) Main Claude.
+
+**Decision.**
+
+- A single PLANNER dispatch authors exactly ONE named feature group. The orchestrator names the feature in the prompt; the agent appends ~50–80 lines to `/docs/plan.md` and ~50–80 lines to `/docs/tests.md` for that feature only.
+- A multi-feature prompt is a planner gap — the agent rejects it and asks the orchestrator to name a single feature.
+- Same constraint applies to Main Claude when authoring plan/tests directly (per ADR-021): one feature subsection per Edit/Write call, commit after each.
+- Plan and tests files grow **incrementally**. They are never re-authored monolithically.
+
+**Consequences.**
+
+- User approves at Gate #1 per feature, not per page. Page 1 is now ~8 plan-cycle iterations instead of one.
+- Each feature follows the full per-feature loop (PLANNER → user approves → BUILDER → EVALUATOR → SHIPPER → preview → user reacts) before the next is planned. ADR-013 step 9 ("next feature → repeat from step 3") becomes "next feature → repeat from step 1" when the plan itself is incremental.
+- `.claude/agents/planner.md` is updated to enforce the constraint at the agent level.
+- Total wall-clock time for a multi-feature page is longer but resilient. Recovery from a timeout is at most one feature's worth of work, never a full page rewrite.
