@@ -23,6 +23,11 @@ The **SHIPPER** agent updates this file on every ship. The user does not edit it
 - **`test:a11y` script:** `npm run test:a11y` runs the dedicated axe-core Playwright suite
   (`building.a11y.spec.ts`) independently from the full e2e run (added in `c246686` per
   evaluator QoL suggestion).
+- **wipe-demo (Page 1 pivot, feature 1 of 8):** Building view now boots into an empty state
+  on first run. Copy "No blocks yet. Tap + to add your first block." renders by default.
+  BlueprintBar and NowCard are hidden until the user creates blocks. Hero shows 0 % with the
+  "Building N of 365" day-counter line hidden until `programStart` exists (ADR-020).
+  Closes `C-bld-034..038`, `E-bld-022..024`.
 
 ### Changed
 
@@ -37,5 +42,13 @@ The **SHIPPER** agent updates this file on every ship. The user does not edit it
   `playwright.config.ts` for this sandbox; WebKit binaries are unavailable in the build
   environment. Re-enable by restoring the `mobile-safari` project entry once binaries are
   present.
+- **Demo fixtures retired:** removed `BLOCKS`, `NOW`, `DAY_NUMBER`, `TOTAL_DAYS`,
+  `TODAY_LABEL` from `lib/data.ts`. The hardcoded weekday routine is gone; users will create
+  their own. ~17 demo-fixture tests deleted (`U-bld-016..018`, `C-bld-008..015`,
+  `E-bld-002..007/014/019`); replacement coverage tracked in `tests.md` migration table.
+- **Groundwork for persistence:** `lib/data.ts` introduces an unused `defaultState()` factory
+  and `AppState` interface per ADR-018; the `persist` feature (feature 3 of 8) will wire them.
+- **Hero `dayNumber` is now optional** (`dayNumber?: number`); when undefined, the
+  "Building N of 365" line is omitted from the DOM.
 
 ---
