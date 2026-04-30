@@ -59,3 +59,33 @@ describe("C-bld-033: Hero renders 100 after count-up for pct=100", () => {
     expect(screen.getByText("100")).toBeInTheDocument();
   });
 });
+
+// C-bld-037: No blocks → Hero AnimatedPercent target is 0
+describe("C-bld-037: Hero renders with pct=0 when no blocks", () => {
+  it("AnimatedPercent target is 0 when pct prop is 0", async () => {
+    render(<Hero dateLabel="" dayNumber={undefined} totalDays={365} pct={0} />);
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    // DAY COMPLETE must still be visible
+    expect(screen.getByText(/day complete/i)).toBeInTheDocument();
+    // The animated percent shows 0
+    expect(screen.getByText("0")).toBeInTheDocument();
+  });
+});
+
+// C-bld-038: Hero receives dayNumber={undefined} → "Building N of 365" is not in DOM
+describe("C-bld-038: Hero hides Building N of Y when dayNumber is undefined", () => {
+  it("does not render the building counter line when dayNumber is undefined", () => {
+    render(
+      <Hero
+        dateLabel="Wed, Apr 29"
+        dayNumber={undefined}
+        totalDays={365}
+        pct={57}
+      />,
+    );
+    // "Building" text should NOT appear
+    expect(screen.queryByText(/building/i)).not.toBeInTheDocument();
+  });
+});
