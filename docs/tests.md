@@ -1,4 +1,77 @@
-## Page 1 — Building view — Tests
+## Page 1 — Building view — Tests (empty-toolkit pivot)
+
+### wipe-demo
+
+#### Component (Vitest + Testing Library)
+
+- ID: C-bld-034
+  GIVEN BuildingClient mounts with no localStorage
+  WHEN page renders
+  THEN blocks state is `[]` and EmptyBlocks copy ("No blocks yet. Tap + to add your first block.") is visible.
+  Tested by: `app/(building)/BuildingClient.test.tsx`
+
+- ID: C-bld-035
+  GIVEN no blocks
+  WHEN page renders
+  THEN BlueprintBar is NOT in the DOM.
+  Tested by: `app/(building)/BuildingClient.test.tsx`
+
+- ID: C-bld-036
+  GIVEN no blocks
+  WHEN page renders
+  THEN NowCard is NOT in the DOM.
+  Tested by: `app/(building)/BuildingClient.test.tsx`
+
+- ID: C-bld-037
+  GIVEN no blocks
+  WHEN Hero renders
+  THEN AnimatedPercent target is `0`.
+  Tested by: `components/Hero.test.tsx`
+
+- ID: C-bld-038
+  GIVEN Hero receives `dayNumber={undefined}`
+  WHEN it renders
+  THEN the "Building N of 365" line is not in the DOM.
+  Tested by: `components/Hero.test.tsx`
+
+#### E2E (Playwright)
+
+- ID: E-bld-022
+  GIVEN fresh page load
+  WHEN visiting `/`
+  THEN "No blocks yet. Tap + to add your first block." is visible.
+  Tested by: `tests/e2e/empty.spec.ts`
+
+- ID: E-bld-023
+  GIVEN fresh page load
+  WHEN visiting `/`
+  THEN no `.now-glow` element exists.
+  Tested by: `tests/e2e/empty.spec.ts`
+
+- ID: E-bld-024
+  GIVEN fresh page load
+  WHEN visiting `/`
+  THEN BottomBar Add button is visible and labeled (`aria-label="Add"`).
+  Tested by: `tests/e2e/empty.spec.ts`
+
+### Migration of demo-build IDs (started — wipe-demo pass)
+
+After wipe-demo, these existing IDs are obsolete (delete the test files that contain them, or mark `it.skip` with a "Replaced by wipe-demo" comment):
+
+- U-bld-016 [obsolete: BLOCKS constant gone]
+- U-bld-017 [obsolete: BLOCKS constant gone]
+- U-bld-018 [obsolete: BLOCKS constant gone]
+- C-bld-008 / C-bld-009 / C-bld-010 / C-bld-011 [obsolete: BlueprintBar tests against demo BLOCKS]
+- C-bld-012 / C-bld-013 [obsolete: NowCard tests against demo "Work block"]
+- C-bld-014 / C-bld-015 / C-bld-017 / C-bld-018 [obsolete: TimelineBlock tests against demo blocks]
+- E-bld-002 [obsolete: Hero=57 only true for demo fixture]
+- E-bld-004..007, E-bld-014, E-bld-019 [obsolete: assert demo block content]
+
+(Other migration tags will be added as later features land. This file is append-only across features.)
+
+---
+
+## Page 1 — Building view — Tests (legacy demo-build, partially superseded)
 
 Every assertion below maps to an acceptance criterion derived from `/docs/spec.md` (UX Spec — Phase 1 Toolkit). IDs are stable; do not renumber. Suggested file paths are relative to the repo root.
 
