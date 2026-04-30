@@ -10,7 +10,6 @@ import {
   blockStatus,
   brickLabel,
 } from "./dharma";
-import { BLOCKS } from "./data";
 import type { Block } from "./types";
 
 describe("dharma utilities (harness smoke test)", () => {
@@ -156,25 +155,9 @@ it("U-bld-015: dayOffset returns 1439 for 03:59", () => {
   expect(dayOffset("03:59")).toBe(1439);
 });
 
-// U-bld-016: currentBlockIndex(BLOCKS, "11:47") = 9 (Work block)
-it("U-bld-016: currentBlockIndex returns 9 for 11:47 (Work block)", () => {
-  expect(currentBlockIndex(BLOCKS, "11:47")).toBe(9);
-});
-
-// U-bld-017: nowOffsetPct is strictly between 0 and 100 for 11:47
-it("U-bld-017: nowOffsetPct for 11:47 is strictly between 0 and 100", () => {
-  const pct = nowOffsetPct(BLOCKS, "11:47");
-  expect(pct).toBeGreaterThan(0);
-  expect(pct).toBeLessThan(100);
-});
-
-// U-bld-018: blockStatus returns past/current/future correctly
-it("U-bld-018: blockStatus returns past/current/future correctly", () => {
-  const currentIdx = currentBlockIndex(BLOCKS, "11:47"); // 9
-  expect(blockStatus(BLOCKS, "11:47", currentIdx - 1)).toBe("past");
-  expect(blockStatus(BLOCKS, "11:47", currentIdx)).toBe("current");
-  expect(blockStatus(BLOCKS, "11:47", currentIdx + 1)).toBe("future");
-});
+// U-bld-016, U-bld-017, U-bld-018: obsolete — BLOCKS constant removed from lib/data.ts
+// Replaced by wipe-demo (see tests.md § Migration of demo-build IDs).
+// These tests required import { BLOCKS } from "./data" which no longer exports BLOCKS.
 
 // U-bld-019: brickLabel for tick bricks
 it("U-bld-019: brickLabel returns done/— for tick bricks", () => {
@@ -200,4 +183,46 @@ it("U-bld-021: brickLabel returns correct string for time brick", () => {
   expect(
     brickLabel({ kind: "time", name: "meditate", current: 30, target: 45 }),
   ).toBe("30/45 min");
+});
+
+// currentBlockIndex + nowOffsetPct + blockStatus — inline fixtures (no BLOCKS import)
+const inlineBlocks: Block[] = [
+  {
+    start: "04:00",
+    end: "08:45",
+    name: "Morning",
+    category: "health",
+    bricks: [],
+  },
+  {
+    start: "08:45",
+    end: "17:15",
+    name: "Work block",
+    category: "passive",
+    bricks: [],
+  },
+  {
+    start: "17:15",
+    end: "04:00",
+    name: "Evening",
+    category: "mind",
+    bricks: [],
+  },
+];
+
+it("currentBlockIndex returns correct index for inline fixture at 11:47", () => {
+  expect(currentBlockIndex(inlineBlocks, "11:47")).toBe(1);
+});
+
+it("nowOffsetPct is strictly between 0 and 100 for inline fixture at 11:47", () => {
+  const pct = nowOffsetPct(inlineBlocks, "11:47");
+  expect(pct).toBeGreaterThan(0);
+  expect(pct).toBeLessThan(100);
+});
+
+it("blockStatus returns past/current/future correctly for inline fixture", () => {
+  const currentIdx = currentBlockIndex(inlineBlocks, "11:47"); // 1
+  expect(blockStatus(inlineBlocks, "11:47", currentIdx - 1)).toBe("past");
+  expect(blockStatus(inlineBlocks, "11:47", currentIdx)).toBe("current");
+  expect(blockStatus(inlineBlocks, "11:47", currentIdx + 1)).toBe("future");
 });

@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { dayPct, buildingPct, blockPct } from "./scoring";
-import { BLOCKS } from "./data";
 import type { Block } from "./types";
 
 // U-bld-010: Two blocks of unequal duration with percentages 50 and 100
@@ -55,12 +54,40 @@ describe("U-bld-010: dayPct uses equal-weighted averaging", () => {
   });
 });
 
-// U-bld-011: BLOCKS from lib/data.ts → dayPct equals equal-weighted mean of blockPct
-describe("U-bld-011: dayPct(BLOCKS) equals equal-weighted mean of blockPct", () => {
-  it("matches manual equal-weighted calculation over BLOCKS", () => {
+// U-bld-011: obsolete — BLOCKS constant removed from lib/data.ts per wipe-demo.
+// Replaced by inline-fixture coverage below. See tests.md § Migration.
+// The equal-weighted mean property is proven by U-bld-010 above.
+describe("U-bld-011 (inline fixture): dayPct equals equal-weighted mean", () => {
+  it("matches manual equal-weighted calculation over inline fixture", () => {
+    const blocks: Block[] = [
+      {
+        start: "04:00",
+        end: "05:00",
+        name: "A",
+        category: "health",
+        bricks: [
+          { kind: "tick", name: "x", done: true },
+          { kind: "tick", name: "y", done: false },
+        ], // 50%
+      },
+      {
+        start: "05:00",
+        end: "06:00",
+        name: "B",
+        category: "career",
+        bricks: [{ kind: "goal", name: "z", current: 3, target: 4 }], // 75%
+      },
+      {
+        start: "06:00",
+        end: "07:00",
+        name: "C",
+        category: "mind",
+        bricks: [{ kind: "tick", name: "w", done: true }], // 100%
+      },
+    ];
     const expected =
-      BLOCKS.reduce((s, b) => s + blockPct(b), 0) / BLOCKS.length;
-    expect(dayPct(BLOCKS)).toBeCloseTo(expected);
+      blocks.reduce((s, b) => s + blockPct(b), 0) / blocks.length;
+    expect(dayPct(blocks)).toBeCloseTo(expected);
   });
 });
 
@@ -77,7 +104,16 @@ describe("buildingPct is an alias for dayPct", () => {
     expect(buildingPct([])).toBe(0);
   });
 
-  it("buildingPct(BLOCKS) === dayPct(BLOCKS)", () => {
-    expect(buildingPct(BLOCKS)).toBe(dayPct(BLOCKS));
+  it("buildingPct with inline fixture === dayPct with same fixture", () => {
+    const blocks: Block[] = [
+      {
+        start: "04:00",
+        end: "05:00",
+        name: "A",
+        category: "health",
+        bricks: [{ kind: "tick", name: "x", done: true }],
+      },
+    ];
+    expect(buildingPct(blocks)).toBe(dayPct(blocks));
   });
 });
