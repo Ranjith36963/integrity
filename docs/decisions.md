@@ -403,9 +403,11 @@ type Recurrence =
 
 ---
 
-## ADR-025 — "The Loop": named SDD-outside / TDD-inside contract with three gates
+## ADR-025 — "The Loop": named SDD-outside / TDD-inside contract
 
-**Status:** Accepted · 2026-05-01 · refines ADR-013 + ADR-022
+**Status:** Accepted · 2026-05-01 · refines ADR-013 + ADR-022 · **gate count refined by ADR-026 (see banner below)**
+
+> ⚠️ **Refined by ADR-026.** This ADR originally codified **three** human gates (after PLAN, after TESTS, after SHIP). ADR-026 collapses Gate #1 + Gate #2 into a single planning gate that fires after BOTH PLANNER dispatches return. The two-dispatch architecture (PLAN dispatch then TESTS dispatch) is **preserved**. Read the table below as the historical decision; the current contract is two gates per ADR-026.
 
 **Context.** The orchestration flow in `CLAUDE.md` and the pipeline in `.claude/commands/feature.md` already encode SDD-outside / TDD-inside, but the contract was implicit. Two specific weaknesses surfaced:
 

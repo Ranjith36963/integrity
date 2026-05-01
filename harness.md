@@ -47,35 +47,31 @@ Main Claude (orchestrator)
 
 ## The slash command (key automation)
 
-`/feature <name>` runs the whole pipeline.
+`/feature <name>` runs the whole pipeline. The actual contract lives in `.claude/commands/feature.md`; this is a high-level summary.
 
 ```
-# .claude/commands/feature.md
-
-Run the full Dharma feature pipeline for: $ARGUMENTS
-
-1. Spawn planner subagent. Read /docs/spec.md.
-   Output: /docs/plan.md and /docs/tests.md.
-   STOP. Show plan to user. Wait for approval.
-
-2. On approval, spawn builder subagent.
-   TDD loop. Commit each green test.
-   Output: feature branch with passing tests.
-
-3. Spawn evaluator subagent.
-   Run Playwright + quality gates.
-   Return PASS or FAIL report.
-
-4. If FAIL: re-spawn builder with FAIL report. Loop.
-
-5. If PASS: spawn shipper subagent.
-   Deploy. Update docs.
-
-6. Report done.
+/feature <name>  →  pre-flight (validates spec.md has Intent/Inputs/Outputs/Edge cases/Acceptance criteria)
+                 ↓
+   1. PLANNER mode: PLAN     →  writes /docs/plan.md       (commits as docs(plan-<feat>):)
+                 ↓ auto-chain (ADR-026)
+   2. PLANNER mode: TESTS    →  writes /docs/tests.md      (commits as docs(tests-<feat>):)
+                 ↓
+              ⏸ Gate #1: user reviews plan.md + tests.md together. Approve to continue.
+                 ↓
+   3. BUILDER  →  TDD red→green→refactor per test ID       (test/feat/fix(<feat>):)
+                 ↓
+   4. EVALUATOR  →  npm run eval. PASS or FAIL.
+                 ↓ FAIL → retry BUILDER, up to 3x (ADR-024) then escalate
+                 ↓ PASS
+   5. (Auto-FAIL retry loop, capped per ADR-024)
+                 ↓
+   6. SHIPPER  →  push branch + update README + CHANGELOG + status.md (mandatory, ADR-026)
+                                                            (commits as chore/docs(ship-<feat>):)
+                 ↓
+   7. ⏸ Gate #2: user taps preview URL, reacts → input for next /feature.
 ```
 
-You type: `/feature brick-tracker`
-Chain runs. You only step in at plan approval and final review.
+You type: `/feature brick-tracker`. Chain runs. You only step in at Gate #1 (planning) and Gate #2 (preview tap).
 
 ## Hooks (more automation)
 

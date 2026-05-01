@@ -27,6 +27,26 @@ The **SHIPPER** agent updates this file on every ship. The user does not edit it
 - **SDD/TDD harness:** `CLAUDE.md` agent operating manual, `docs/spec.md`, `docs/plan.md`,
   `docs/tests.md`, `docs/decisions.md` (ADR-001..016), `docs/status.md`, Husky + commitlint,
   lint-staged, Vitest config, Playwright config, Serwist PWA config.
+- **SDD/TDD harness V1 upgrade (2026-05-01):** `npm run eval` bundles all gates
+  (lint + typecheck + vitest + e2e + a11y); `/feature <name>` slash command becomes the
+  one-prompt pipeline trigger; ADR-024 caps the auto-FAIL → BUILDER loop at 3 retries; ADRs
+  017–024 capture the per-feature dispatch policy (ADR-022), localStorage schema (ADR-018),
+  recurrence union (ADR-019), live-derived `now`/`today`/`dayNumber` (ADR-020), `BrickTimer`
+  decision (ADR-017), and `useNow` SSR-paint rationale (ADR-023).
+- **SDD/TDD harness V2 upgrade (2026-05-01):** the methodology is named **The Loop**
+  (ADR-025) and runs as PLAN → TESTS → IMPL → EVAL → SHIP with two human gates (ADR-026 —
+  Gate #1 after both PLANNER dispatches return, Gate #2 after SHIPPER deploys). PLANNER
+  splits into `mode: PLAN` and `mode: TESTS` dispatches per feature for timeout resilience.
+  Per-phase commit-prefix convention adopted (ADR-027): `docs(plan-<feat>):` /
+  `docs(tests-<feat>):` / `test(<feat>):` / `feat(<feat>):` / `docs(eval-<feat>):` /
+  `chore(ship-<feat>):` / `docs(ship-<feat>):`. SHIPPER's `docs/status.md` update is now
+  strictly mandatory on every ship. Slash-command pre-flight tightened to validate the
+  feature's SPEC entry has all five required sections (Intent / Inputs / Outputs /
+  Edge cases / Acceptance criteria) before The Loop runs.
+- **`phase1plan.md`** added at the repo root: 11-milestone build order M0..M10 covering
+  Design System through Voice Log, with carried-forward decisions, locked AppState schema,
+  test migration discipline, and tracked spec gaps (SG-bld-13..19). Supersedes the previous
+  8-feature empty-toolkit pivot for forward planning.
 - **`test:a11y` script:** `npm run test:a11y` runs the dedicated axe-core Playwright suite
   (`building.a11y.spec.ts`) independently from the full e2e run (added in `c246686` per
   evaluator QoL suggestion).
