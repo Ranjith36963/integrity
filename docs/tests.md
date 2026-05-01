@@ -1,4 +1,123 @@
-## Page 1 — Building view — Tests
+## Page 1 — Building view — Tests (empty-toolkit pivot)
+
+### wipe-demo
+
+#### Component (Vitest + Testing Library)
+
+- ID: C-bld-034
+  GIVEN BuildingClient mounts with no localStorage
+  WHEN page renders
+  THEN blocks state is `[]` and EmptyBlocks copy ("No blocks yet. Tap + to add your first block.") is visible.
+  Tested by: `app/(building)/BuildingClient.test.tsx`
+
+- ID: C-bld-035
+  GIVEN no blocks
+  WHEN page renders
+  THEN BlueprintBar is NOT in the DOM.
+  Tested by: `app/(building)/BuildingClient.test.tsx`
+
+- ID: C-bld-036
+  GIVEN no blocks
+  WHEN page renders
+  THEN NowCard is NOT in the DOM.
+  Tested by: `app/(building)/BuildingClient.test.tsx`
+
+- ID: C-bld-037
+  GIVEN no blocks
+  WHEN Hero renders
+  THEN AnimatedPercent target is `0`.
+  Tested by: `components/Hero.test.tsx`
+
+- ID: C-bld-038
+  GIVEN Hero receives `dayNumber={undefined}`
+  WHEN it renders
+  THEN the "Building N of 365" line is not in the DOM.
+  Tested by: `components/Hero.test.tsx`
+
+#### E2E (Playwright)
+
+- ID: E-bld-022
+  GIVEN fresh page load
+  WHEN visiting `/`
+  THEN "No blocks yet. Tap + to add your first block." is visible.
+  Tested by: `tests/e2e/empty.spec.ts`
+
+- ID: E-bld-023
+  GIVEN fresh page load
+  WHEN visiting `/`
+  THEN no `.now-glow` element exists.
+  Tested by: `tests/e2e/empty.spec.ts`
+
+- ID: E-bld-024
+  GIVEN fresh page load
+  WHEN visiting `/`
+  THEN BottomBar Add button is visible and labeled (`aria-label="Add"`).
+  Tested by: `tests/e2e/empty.spec.ts`
+
+### live-clock
+
+#### Unit (Vitest)
+
+- ID: U-bld-022
+  GIVEN `vi.setSystemTime(new Date("2026-04-29T11:47:00"))` and `useNow()` mounted in a test renderer
+  WHEN the hook returns and `vi.advanceTimersByTime(60_000)` is called after the system time is bumped to `12:48`
+  THEN the first render returns `"11:47"` and after the tick the value becomes `"12:48"`. The interval is cleared on unmount (a second advance after unmount produces no further state updates).
+  Tested by: `lib/useNow.test.ts`
+
+- ID: U-bld-023
+  GIVEN a `Date` of `2026-04-29T11:47:00` (local)
+  WHEN `today(d)` is called
+  THEN result is the string `"2026-04-29"`. Also verify zero-padding: `today(new Date(2026, 0, 5))` returns `"2026-01-05"`.
+  Tested by: `lib/dharma.test.ts`
+
+- ID: U-bld-024
+  GIVEN `programStart="2026-04-01"` and `today="2026-04-29"`
+  WHEN `dayNumber(programStart, today)` is computed
+  THEN result is `29`. AND `dayNumber(null, "2026-04-29")` returns `undefined`; `dayNumber("", "2026-04-29")` returns `undefined`; `dayNumber("2026-04-29", "2026-04-29")` returns `1`.
+  Tested by: `lib/dharma.test.ts`
+
+- ID: U-bld-025
+  GIVEN `today="2026-04-29"`
+  WHEN `dateLabel(today)` is called
+  THEN result is `"Wed, Apr 29"` (locale fixed to `en-US`, format `weekday:"short", month:"short", day:"numeric"` per SG-bld-11). Also verify `dateLabel("2026-01-05")` returns `"Mon, Jan 5"` (no leading zero on day).
+  Tested by: `lib/dharma.test.ts`
+
+#### Component (Vitest + Testing Library)
+
+- ID: C-bld-039
+  GIVEN `vi.setSystemTime(new Date("2026-04-29T11:47:00"))` and `BuildingClient` rendered
+  WHEN the page mounts
+  THEN the Hero shows the live `dateLabel` `"Wed, Apr 29"` (NOT the `wipe-demo` placeholder `""`) and the BlueprintBar's NOW pin reflects `"11:47"` (NOT `"00:00"`).
+  Tested by: `app/(building)/BuildingClient.test.tsx`
+
+- ID: C-bld-040
+  GIVEN `vi.setSystemTime(new Date("2026-04-29T11:47:00"))` and `BuildingClient` rendered with the placeholder `programStart = today()`
+  WHEN the Hero renders
+  THEN the visible text includes `"Building 1 of 365"` (since `programStart === today` → `dayNumber === 1`). This proves the Hero's day-counter line renders when `dayNumber` is defined, and verifies the placeholder behaviour documented in the plan.
+  Tested by: `app/(building)/BuildingClient.test.tsx`
+
+#### Spec gaps
+
+- SG-bld-11 — `dateLabel` format. Spec § "UX Spec — Phase 1 Toolkit" does not specify locale, 12h vs 24h, or weekday-comma style. **Resolution (user approved 2026-05-01):** fixed `en-US` locale, `Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" })` → `"Wed, Apr 29"`. Time format already fixed at 24h `HH:MM` by `lib/data.ts` precedent and SG-bld-10. If the user later wants locale-aware labels, that's a follow-up feature; tests assert the `en-US` output today.
+
+### Migration of demo-build IDs (started — wipe-demo pass)
+
+After wipe-demo, these existing IDs are obsolete (delete the test files that contain them, or mark `it.skip` with a "Replaced by wipe-demo" comment):
+
+- U-bld-016 [obsolete: BLOCKS constant gone]
+- U-bld-017 [obsolete: BLOCKS constant gone]
+- U-bld-018 [obsolete: BLOCKS constant gone]
+- C-bld-008 / C-bld-009 / C-bld-010 / C-bld-011 [obsolete: BlueprintBar tests against demo BLOCKS]
+- C-bld-012 / C-bld-013 [obsolete: NowCard tests against demo "Work block"]
+- C-bld-014 / C-bld-015 / C-bld-017 / C-bld-018 [obsolete: TimelineBlock tests against demo blocks]
+- E-bld-002 [obsolete: Hero=57 only true for demo fixture]
+- E-bld-004..007, E-bld-014, E-bld-019 [obsolete: assert demo block content]
+
+(Other migration tags will be added as later features land. This file is append-only across features.)
+
+---
+
+## Page 1 — Building view — Tests (legacy demo-build, partially superseded)
 
 Every assertion below maps to an acceptance criterion derived from `/docs/spec.md` (UX Spec — Phase 1 Toolkit). IDs are stable; do not renumber. Suggested file paths are relative to the repo root.
 

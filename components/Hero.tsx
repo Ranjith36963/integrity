@@ -2,7 +2,7 @@ import { AnimatedPercent } from "./AnimatedPercent";
 
 interface Props {
   dateLabel: string;
-  dayNumber: number;
+  dayNumber?: number;
   totalDays: number;
   pct: number;
 }
@@ -16,13 +16,15 @@ export function Hero({ dateLabel, dayNumber, totalDays, pct }: Props) {
       >
         {dateLabel}
       </div>
-      <div
-        className="mt-1 text-[12px] tracking-[0.04em]"
-        style={{ color: "var(--ink-dim)" }}
-      >
-        Building <span style={{ color: "var(--amber)" }}>{dayNumber}</span> of{" "}
-        {totalDays}
-      </div>
+      {dayNumber !== undefined && (
+        <div
+          className="mt-1 text-[12px] tracking-[0.04em]"
+          style={{ color: "var(--ink-dim)" }}
+        >
+          Building <span style={{ color: "var(--amber)" }}>{dayNumber}</span> of{" "}
+          {totalDays}
+        </div>
+      )}
       <div className="mt-3 flex items-end gap-2 leading-none">
         <AnimatedPercent
           value={pct}

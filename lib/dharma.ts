@@ -78,3 +78,46 @@ export function brickLabel(b: Brick): string {
 export function fmtRange(block: Block): string {
   return `${block.start}–${block.end}`;
 }
+
+/**
+ * Returns the local date as "YYYY-MM-DD" (zero-padded).
+ * Uses local date components — NOT UTC — so DST transitions and
+ * cross-timezone runs stay consistent with the user's current day.
+ * Pass an explicit Date for testability; defaults to new Date().
+ */
+export function today(d: Date = new Date()): string {
+  const yyyy = String(d.getFullYear());
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/**
+ * Returns the 1-based program day number (day 1 = programStart).
+ * Returns `undefined` if programStart is null, undefined, or empty string.
+ * Both ISO strings are parsed as local midnight to keep DST-safe integer math.
+ */
+export function dayNumber(
+  programStart: string | null | undefined,
+  todayIso: string,
+): number | undefined {
+  if (!programStart) return undefined;
+  const start = new Date(programStart + "T00:00:00");
+  const end = new Date(todayIso + "T00:00:00");
+  const delta = Math.floor((end.getTime() - start.getTime()) / 86_400_000);
+  return delta + 1;
+}
+
+/**
+ * Formats a "YYYY-MM-DD" ISO date string as "Wed, Apr 29" (en-US locale).
+ * Locale is fixed to "en-US" per SG-bld-11 (user-approved 2026-05-01).
+ * If locale-aware formatting is needed later, introduce a follow-up feature.
+ */
+export function dateLabel(todayIso: string): string {
+  const d = new Date(todayIso + "T00:00:00");
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(d);
+}

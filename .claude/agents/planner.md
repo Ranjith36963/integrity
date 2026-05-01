@@ -48,6 +48,14 @@ Explicit list of what this feature does NOT include.
 
 **Feature grouping (mandatory).** The plan MUST split work into named features (`### <feature-name>` headings inside the plan). Test IDs in `tests.md` MUST also be grouped by feature. The BUILDER stops after **one feature** per dispatch — without explicit feature boundaries, the harness can't checkpoint.
 
+## Scope per dispatch (ADR-022)
+
+You author **exactly ONE named feature group per dispatch.** The orchestrator names the feature in the prompt. You append ~50–80 lines to `/docs/plan.md` and ~50–80 lines to `/docs/tests.md` for that feature only. Other features in the page get their own dispatches.
+
+If the orchestrator's prompt asks for multiple features in one run, that is a planner gap — **stop and report** "ADR-022 requires one feature per dispatch; please name a single feature." Do not author multiple features even if the prompt seems to allow it.
+
+The motivation is resilience: smaller per-call output survives upstream LLM latency degradation. A multi-feature plan is one tool call producing thousands of tokens; a one-feature plan is one tool call producing a few hundred. The first fails on a bad day; the second doesn't.
+
 ### `/docs/tests.md` structure (per feature, section-headed)
 
 Every spec acceptance criterion becomes one or more **GIVEN / WHEN / THEN** assertions, grouped by layer:
