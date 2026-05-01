@@ -54,6 +54,52 @@
   THEN BottomBar Add button is visible and labeled (`aria-label="Add"`).
   Tested by: `tests/e2e/empty.spec.ts`
 
+### live-clock
+
+#### Unit (Vitest)
+
+- ID: U-bld-022
+  GIVEN `vi.setSystemTime(new Date("2026-04-29T11:47:00"))` and `useNow()` mounted in a test renderer
+  WHEN the hook returns and `vi.advanceTimersByTime(60_000)` is called after the system time is bumped to `12:48`
+  THEN the first render returns `"11:47"` and after the tick the value becomes `"12:48"`. The interval is cleared on unmount (a second advance after unmount produces no further state updates).
+  Tested by: `lib/useNow.test.ts`
+
+- ID: U-bld-023
+  GIVEN a `Date` of `2026-04-29T11:47:00` (local)
+  WHEN `today(d)` is called
+  THEN result is the string `"2026-04-29"`. Also verify zero-padding: `today(new Date(2026, 0, 5))` returns `"2026-01-05"`.
+  Tested by: `lib/dharma.test.ts`
+
+- ID: U-bld-024
+  GIVEN `programStart="2026-04-01"` and `today="2026-04-29"`
+  WHEN `dayNumber(programStart, today)` is computed
+  THEN result is `29`. AND `dayNumber(null, "2026-04-29")` returns `undefined`; `dayNumber("", "2026-04-29")` returns `undefined`; `dayNumber("2026-04-29", "2026-04-29")` returns `1`.
+  Tested by: `lib/dharma.test.ts`
+
+- ID: U-bld-025
+  GIVEN `today="2026-04-29"`
+  WHEN `dateLabel(today)` is called
+  THEN result is `"Wed, Apr 29"` (locale fixed to `en-US`, format `weekday:"short", month:"short", day:"numeric"` per SG-bld-11). Also verify `dateLabel("2026-01-05")` returns `"Mon, Jan 5"` (no leading zero on day).
+  Tested by: `lib/dharma.test.ts`
+
+#### Component (Vitest + Testing Library)
+
+- ID: C-bld-039
+  GIVEN `vi.setSystemTime(new Date("2026-04-29T11:47:00"))` and `BuildingClient` rendered
+  WHEN the page mounts
+  THEN the Hero shows the live `dateLabel` `"Wed, Apr 29"` (NOT the `wipe-demo` placeholder `""`) and the BlueprintBar's NOW pin reflects `"11:47"` (NOT `"00:00"`).
+  Tested by: `app/(building)/BuildingClient.test.tsx`
+
+- ID: C-bld-040
+  GIVEN `vi.setSystemTime(new Date("2026-04-29T11:47:00"))` and `BuildingClient` rendered with the placeholder `programStart = today()`
+  WHEN the Hero renders
+  THEN the visible text includes `"Building 1 of 365"` (since `programStart === today` → `dayNumber === 1`). This proves the Hero's day-counter line renders when `dayNumber` is defined, and verifies the placeholder behaviour documented in the plan.
+  Tested by: `app/(building)/BuildingClient.test.tsx`
+
+#### Spec gaps
+
+- SG-bld-11 — `dateLabel` format. Spec § "UX Spec — Phase 1 Toolkit" does not specify locale, 12h vs 24h, or weekday-comma style. **Resolution (planner-proposed, awaiting user approval):** fixed `en-US` locale, `Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" })` → `"Wed, Apr 29"`. Time format already fixed at 24h `HH:MM` by `lib/data.ts` precedent and SG-bld-10. If the user later wants locale-aware labels, that's a follow-up feature; tests assert the `en-US` output today.
+
 ### Migration of demo-build IDs (started — wipe-demo pass)
 
 After wipe-demo, these existing IDs are obsolete (delete the test files that contain them, or mark `it.skip` with a "Replaced by wipe-demo" comment):
