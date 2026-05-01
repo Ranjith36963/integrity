@@ -437,3 +437,64 @@ type Recurrence =
 - Existing `phase1plan.md` milestones already use this rhythm informally (the M0 → M10 build order assumes a plan-then-tests pause); ADR-025 just makes it enforceable.
 - No backwards-compat shim needed: the next `/feature m0` invocation runs The Loop with both gates from the start.
 - Spec drift is now caught at Gate #1 (cheap to fix); test→spec drift caught at Gate #2 (still cheap); code drift would surface at EVAL (expensive to fix), which is why both upstream gates exist.
+
+> **Refined by ADR-026.** Gate #1 and Gate #2 are collapsed into a single planning gate after both PLANNER dispatches return. The two-dispatch architecture is preserved.
+
+---
+
+## ADR-026 — Two user gates, not three (refines ADR-025)
+
+**Status:** Accepted · 2026-05-01 · refines ADR-025
+
+**Context.** ADR-025 codified The Loop with three human gates — after PLAN, after TESTS, after SHIP. In practice, the user prefers two gate points: one when the planner phase is fully done, one when the preview is live. The two-PLANNER-dispatch architecture (PLAN dispatch then TESTS dispatch) was correct for timeout resilience per ADR-022, but bracketing each dispatch with its own user-approval check added friction without commensurate benefit. The user reads `plan.md` and `tests.md` together as one design artifact; splitting the review across two interruptions doesn't catch more drift than reviewing both at once.
+
+**Decision.**
+
+- The Loop has **two human gates**, not three:
+  - **Gate #1 — Planning gate.** Fires after the PLANNER's `mode: TESTS` dispatch returns (i.e., once both `plan.md` AND `tests.md` exist for the feature). User reviews both files together and approves, amends, or rejects.
+  - **Gate #2 — Preview gate.** Fires after SHIPPER deploys and surfaces a preview URL. User taps the preview and reacts.
+- The PLAN dispatch and TESTS dispatch from ADR-025 are **preserved** (two separate dispatches for timeout resilience per ADR-022). Main Claude **auto-chains** PLAN → TESTS without pausing. Only after TESTS returns does the user check fire.
+- Phase numbering in The Loop is unchanged: Phase 1 SPEC → Phase 2 PLAN → Phase 3 TESTS → Phase 4 IMPL → Phase 5 EVAL → Phase 6 SHIP. The phase boundaries remain; only the gating between Phase 2 and Phase 3 collapses.
+
+**Consequences.**
+
+- `CLAUDE.md` § Methodology updated to describe two gates with revised "why two" rationale.
+- `.claude/commands/feature.md`: PLAN step auto-chains to TESTS step without user pause. Single planning gate fires after TESTS returns.
+- `.claude/agents/planner.md` handoff section updated: after `mode: PLAN`, orchestrator does NOT pause; after `mode: TESTS`, orchestrator surfaces BOTH files for the single planning gate.
+- Trade-off acknowledged: if the plan is misaligned, the tests get written against the misaligned plan and the user catches drift only at Gate #1. Acceptable cost — minimal interruptions matter more, and a redo of plan + tests is still cheaper than catching code drift at EVAL.
+- ADR-025 stays Accepted; this ADR refines its gate count without superseding the dispatch architecture.
+
+---
+
+## ADR-027 — Commit-prefix convention per Loop phase
+
+**Status:** Accepted · 2026-05-01
+
+**Context.** Each Loop phase produces commits, but there has been no convention to identify which phase a commit came from. After months of work, `git log` becomes opaque — you cannot filter "show me every PLAN commit on M3" or "how long did the IMPL phase take on M0." A consistent prefix per phase makes the log navigable and audit-friendly.
+
+**Decision.**
+
+Commit prefixes per Loop phase, layered on top of Conventional Commits (commitlint config unchanged — scopes are free-form):
+
+| Phase             | Prefix template                                             | Example                                                       |
+| ----------------- | ----------------------------------------------------------- | ------------------------------------------------------------- |
+| 2. PLAN           | `docs(plan-<feature>): …`                                   | `docs(plan-m0): design system tokens`                         |
+| 3. TESTS          | `docs(tests-<feature>): …`                                  | `docs(tests-m0): u/c/e/a ids 001..030`                        |
+| 4. IMPL — TDD red | `test(<feature>): …`                                        | `test(m0): button primitive red`                              |
+| 4. IMPL — green   | `feat(<feature>): …` or `fix(<feature>): …`                 | `feat(m0): button primitive green`                            |
+| 5. EVAL follow-up | `docs(eval-<feature>): …` or `chore(eval-<feature>): …`     | `docs(eval-m0): m0 pass report notes`                         |
+| 6. SHIP           | `chore(ship-<feature>): …` and/or `docs(ship-<feature>): …` | `chore(ship-m0): release notes`, `docs(ship-m0): status snap` |
+
+- `<feature>` is the feature slug, matching the heading in `plan.md` / `tests.md` (e.g., `m0`, `m3`, `add-block`).
+- Out-of-Loop harness commits (ADRs, slash commands, agent definitions, harness audits) continue to use `docs(harness): …` or other existing scopes.
+- Subjects remain lowercase per existing commitlint config.
+- Existing types (feat / fix / docs / chore / test / refactor / perf / build / ci / revert) are sufficient — no new types are added.
+
+**Consequences.**
+
+- `git log --grep='^docs(plan-m0)'` reconstructs the PLAN-phase history of M0; analogous greps for any phase.
+- `git log --grep='^chore(ship-' --oneline` lists every SHIP across the project.
+- `CLAUDE.md` § Methodology gains a commit-prefix table the agents read at session start.
+- PLANNER agent definition references `docs(plan-…)` and `docs(tests-…)`; SHIPPER references `chore(ship-…)` and `docs(ship-…)`.
+- BUILDER continues `feat(<feature>):` / `fix(<feature>):` / `test(<feature>):` per existing TDD discipline; ADR-027 just formalizes that the scope == feature slug.
+- No commitlint config change required.
