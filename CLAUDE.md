@@ -15,25 +15,54 @@ Users build their day brick by brick. Bricks → Blocks → Buildings (days) →
 - Vercel (deploy)
 - Future: Capacitor for iOS + Android app stores
 
-## Methodology
+## Methodology: The Loop (SDD outside, TDD inside)
 
-### Outer loop: Spec-Driven Development (SDD)
-- /docs/spec.md is the source of truth
-- Every feature traces back to a spec line
-- No code without a spec
-- Spec changes = explicit decision, never silent
+Every feature follows this exact sequence. We name it **The Loop** so any prompt, ADR, or commit can reference it without re-stating the contract. Codified by ADR-025.
 
-### Inner loop: Test-Driven Development (TDD)
-- Inside SDD, every feature is built test-first
-- Red → Green → Refactor
-- Write failing test → minimum code to pass → clean up
-- Tests are the proof the spec is met
-
-### How they nest
 SPEC defines WHAT.
-TESTS prove the WHAT is met.
+PLAN defines HOW.
+TESTS prove HOW will satisfy WHAT.
 CODE makes tests green.
-TDD lives inside SDD.
+EVAL proves the green is real.
+SHIP puts it in front of the user.
+
+### Phase 1 — SPEC (user owns)
+- User authors the feature entry in `/docs/spec.md`.
+- Defines: what the system should do, inputs/outputs, edge cases.
+- This is the only phase where new requirements enter the system.
+- (Precondition to The Loop, not a Loop step. No agent gate.)
+
+### Phase 2 — PLAN (PLANNER owns) → Gate #1
+- PLANNER reads `/docs/spec.md` and emits the feature's `/docs/plan.md` entry: file structure, data models, components, design tokens, decisions to honor.
+- **STOP. User reviews `plan.md`.** Approve, amend, or reject.
+- Spec drift caught here. Cheapest gate to fix.
+
+### Phase 3 — TESTS (PLANNER owns) → Gate #2
+- Separate PLANNER dispatch. Derives GIVEN/WHEN/THEN tests from the approved `plan.md`.
+- Covers success cases, failure cases, edge cases.
+- Output: `/docs/tests.md` entry for the feature.
+- **STOP. User reviews `tests.md`.** Approve, amend, or reject.
+- Test→spec coverage drift caught here. Still cheap to fix.
+
+### Phase 4 — IMPL (BUILDER owns, TDD inner loop)
+- For each test in `tests.md`: Red → Green → Refactor → Commit (one conventional commit per test).
+- No phase exit until every `tests.md` ID for this feature is green.
+- Auto-chains to Phase 5. No user gate.
+
+### Phase 5 — EVAL (EVALUATOR owns)
+- Runs `npm run eval` (lint + typecheck + vitest + e2e + a11y) plus spec-coverage and test-integrity review.
+- PASS → auto-chain to Phase 6.
+- FAIL → auto-chain back to BUILDER with gap list (capped at 3 retries per ADR-024). No user gate inside the FAIL loop.
+
+### Phase 6 — SHIP (SHIPPER owns) → Gate #3
+- Updates README + CHANGELOG + `docs/status.md`. Pushes to the deploy branch (Vercel auto-deploys preview).
+- **STOP. User taps the preview, reacts.** Reaction feeds the next `/feature` invocation.
+
+### Why three gates, not one
+- Gate #1 (after PLAN) catches design misalignment when no code is written yet.
+- Gate #2 (after TESTS) catches test→spec coverage gaps when no code is written yet.
+- Gate #3 (after SHIP) is the only gate that judges live behavior.
+- Phases 4 + 5 run unattended because by then, both upstream gates have certified that "green tests = correct feature." If that contract is broken, fix it at Gate #1 or #2, not by inserting more gates downstream.
 
 ## The 4 Agents
 

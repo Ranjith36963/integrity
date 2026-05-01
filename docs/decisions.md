@@ -400,3 +400,40 @@ type Recurrence =
 - Pathological cases bounded by the 3-retry cap.
 - `.claude/commands/feature.md` step 4 implements this policy.
 - If a user wants a higher cap for a specific feature, they invoke `/feature <name> --max-fails=5` (slash command interprets the override; this ADR is the default).
+
+---
+
+## ADR-025 — "The Loop": named SDD-outside / TDD-inside contract with three gates
+
+**Status:** Accepted · 2026-05-01 · refines ADR-013 + ADR-022
+
+**Context.** The orchestration flow in `CLAUDE.md` and the pipeline in `.claude/commands/feature.md` already encode SDD-outside / TDD-inside, but the contract was implicit. Two specific weaknesses surfaced:
+
+1. The pattern had no name, so prompts had to re-state it every time ("plan first, then test, then build, then eval, then ship…").
+2. PLANNER produced `plan.md` and `tests.md` in a single dispatch with **one** user approval gate after both. This bundled two distinct review questions ("does the design match my intent?" and "do the tests prove the design?") into one decision and made spec-vs-test drift expensive to catch — once the user said "approve," the BUILDER would close 90+ test IDs against a possibly-misaligned tests.md.
+
+**Decision.**
+
+- Name the pattern **The Loop**. Any prompt, ADR, or commit may reference "run The Loop on X" and the contract below applies.
+- The Loop has **six phases** and **three human gates**, mapped to this project's existing knowledge files and agent ownership:
+
+  | #   | Phase | Owner     | Output                                        | Gate after?                                    |
+  | --- | ----- | --------- | --------------------------------------------- | ---------------------------------------------- |
+  | 1   | SPEC  | user      | `/docs/spec.md` entry                         | n/a (precondition)                             |
+  | 2   | PLAN  | PLANNER   | `/docs/plan.md` entry                         | **Gate #1** — user approves design             |
+  | 3   | TESTS | PLANNER   | `/docs/tests.md` entry                        | **Gate #2** — user approves test→spec coverage |
+  | 4   | IMPL  | BUILDER   | code + commits (TDD)                          | none (auto-chain)                              |
+  | 5   | EVAL  | EVALUATOR | PASS/FAIL report                              | none (auto-chain; FAIL → BUILDER per ADR-024)  |
+  | 6   | SHIP  | SHIPPER   | preview URL + README/CHANGELOG/status updates | **Gate #3** — user taps preview                |
+
+- **Phase 2 and Phase 3 are two separate PLANNER dispatches**, not one. This refines ADR-022's "one feature per dispatch" further: within a feature, plan and tests are also separate dispatches. Smaller scope per dispatch reduces timeouts (root cause of ADR-021/022) and gives the user a chance to course-correct before tests crystallise the design.
+- This project's "SPEC" phase is **user-owned** (per ADR-014's knowledge-file ownership table), which diverges from the generic 4-step SDD-TDD pattern where the planner owns spec. Honored here so we don't break the existing CLAUDE.md contract.
+
+**Consequences.**
+
+- `CLAUDE.md` § Methodology replaced with the named "The Loop" contract.
+- `.claude/commands/feature.md` Step 1 split into Step 1 (PLAN + Gate #1) and Step 2 (TESTS + Gate #2). Subsequent steps renumbered.
+- ADR-013 step 2 ("user approves the plan and resolves spec gaps") now means "user approves Gate #1 AND Gate #2" — both gates must pass before BUILDER dispatches.
+- Existing `phase1plan.md` milestones already use this rhythm informally (the M0 → M10 build order assumes a plan-then-tests pause); ADR-025 just makes it enforceable.
+- No backwards-compat shim needed: the next `/feature m0` invocation runs The Loop with both gates from the start.
+- Spec drift is now caught at Gate #1 (cheap to fix); test→spec drift caught at Gate #2 (still cheap); code drift would surface at EVAL (expensive to fix), which is why both upstream gates exist.
