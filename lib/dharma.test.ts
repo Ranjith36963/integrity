@@ -9,6 +9,9 @@ import {
   nowOffsetPct,
   blockStatus,
   brickLabel,
+  today,
+  dayNumber,
+  dateLabel,
 } from "./dharma";
 import type { Block } from "./types";
 
@@ -225,4 +228,28 @@ it("blockStatus returns past/current/future correctly for inline fixture", () =>
   expect(blockStatus(inlineBlocks, "11:47", currentIdx - 1)).toBe("past");
   expect(blockStatus(inlineBlocks, "11:47", currentIdx)).toBe("current");
   expect(blockStatus(inlineBlocks, "11:47", currentIdx + 1)).toBe("future");
+});
+
+// U-bld-023: today(d) returns local YYYY-MM-DD string, zero-padded
+it("U-bld-023: today() returns local YYYY-MM-DD, zero-padded", () => {
+  expect(today(new Date("2026-04-29T11:47:00"))).toBe("2026-04-29");
+  // Verify zero-padding: January 5 → "2026-01-05"
+  expect(today(new Date(2026, 0, 5))).toBe("2026-01-05");
+});
+
+// U-bld-024: dayNumber computes correct day delta; returns undefined for null/empty start
+it("U-bld-024: dayNumber returns correct delta and undefined for missing start", () => {
+  expect(dayNumber("2026-04-01", "2026-04-29")).toBe(29);
+  expect(dayNumber(null, "2026-04-29")).toBeUndefined();
+  expect(dayNumber("", "2026-04-29")).toBeUndefined();
+  expect(dayNumber(undefined, "2026-04-29")).toBeUndefined();
+  expect(dayNumber("2026-04-29", "2026-04-29")).toBe(1);
+});
+
+// U-bld-025: dateLabel formats today ISO string as "Wed, Apr 29" style (en-US, SG-bld-11)
+it("U-bld-025: dateLabel returns short weekday + month + day, en-US", () => {
+  // Fixed locale en-US per SG-bld-11 approval 2026-05-01
+  expect(dateLabel("2026-04-29")).toBe("Wed, Apr 29");
+  // No leading zero on day: January 5 → "Mon, Jan 5"
+  expect(dateLabel("2026-01-05")).toBe("Mon, Jan 5");
 });
