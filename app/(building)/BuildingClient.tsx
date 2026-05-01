@@ -1,6 +1,13 @@
 "use client";
 import { useState } from "react";
-import { currentBlockIndex, dayPct } from "@/lib/dharma";
+import {
+  currentBlockIndex,
+  dayPct,
+  today,
+  dayNumber,
+  dateLabel,
+} from "@/lib/dharma";
+import { useNow } from "@/lib/useNow";
 import { EditModeProvider } from "@/components/EditModeProvider";
 import { TopBar } from "@/components/TopBar";
 import { Hero } from "@/components/Hero";
@@ -10,20 +17,21 @@ import { Timeline } from "@/components/Timeline";
 import { BottomBar } from "@/components/BottomBar";
 import type { Block, Brick } from "@/lib/types";
 
-// Local placeholder constants — replaced in subsequent features:
-// - `now` will come from useNow() (live-clock feature, ADR-020)
-// - `dayNumber` is undefined until programStart is set (persist feature, ADR-018)
-// - `totalDays` and `dateLabel` will be derived live (live-clock feature)
-const now = "00:00";
-const dayNumber = undefined as number | undefined;
 const totalDays = 365;
-const dateLabel = "";
 
 // Page-1 client component. State is in-memory only — mutations are lost on refresh.
 // No localStorage or server persistence in this feature (wipe-demo scope).
 // Empty state is the default; blocks are created by the user via the add-block feature.
 export function BuildingClient() {
   const [blocks, setBlocks] = useState<Block[]>([]);
+
+  // Live clock — updates every 60 s (ADR-020)
+  const now = useNow();
+  const todayIso = today();
+  // TODO(persist): load programStart from AppState (persist feature, ADR-018)
+  const programStart = todayIso;
+  const dayNumberValue = dayNumber(programStart, todayIso);
+  const dateLabelValue = dateLabel(todayIso);
 
   function handleLogBrick(
     blockIndex: number,
@@ -52,8 +60,8 @@ export function BuildingClient() {
       <div className="relative mx-auto min-h-dvh max-w-[430px]">
         <TopBar />
         <Hero
-          dateLabel={dateLabel}
-          dayNumber={dayNumber}
+          dateLabel={dateLabelValue}
+          dayNumber={dayNumberValue}
           totalDays={totalDays}
           pct={pct}
         />
