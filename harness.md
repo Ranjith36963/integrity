@@ -194,7 +194,7 @@ You prompt 3 times per feature. Chain ships it.
 | `.claude/agents/builder.md` | role definition | yes | ✅ DONE |
 | `.claude/agents/evaluator.md` | role definition | yes | ✅ DONE |
 | `.claude/agents/shipper.md` | role definition | yes | ✅ DONE |
-| `.claude/commands/feature.md` | `/feature <name>` slash command | **does not exist** | ❌ MISSING |
+| `.claude/commands/feature.md` | `/feature <name>` slash command | **wired** — full pipeline orchestrator with 6 steps + auto-FAIL loop per ADR-024 | ✅ DONE (V1) |
 | `.claude/hooks/post-tool-use.sh` | auto-run lint+typecheck after Builder commits | **does not exist** | ❌ MISSING |
 | `.claude/hooks/pre-commit.sh` | block non-conventional commits | partial: `.husky/commit-msg` runs commitlint, `.husky/pre-commit` runs lint-staged | 🟡 PARTIAL (Husky-managed, not under `.claude/hooks/`) |
 | `.claude/hooks/stop.sh` | auto-pipe Evaluator FAIL → Builder | partial: `~/.claude/stop-hook-git-check.sh` only checks for uncommitted git changes (user-global, not project) | 🟡 PARTIAL |
@@ -203,14 +203,15 @@ You prompt 3 times per feature. Chain ships it.
 | Vercel MCP | Shipper deploys + verifies prod URL | **not wired**; sandbox returns 403 on Vercel hosts; user does verification | ❌ MISSING |
 | Context7 MCP | Builder pulls Next.js/Tailwind docs | **not wired**; Builder reads `node_modules/next/dist/docs/` | ❌ MISSING |
 | Supabase MCP | future auth/data | **not wired**; not yet needed (M8 persist is localStorage-only) | ⏸️ DEFERRED |
-| `npm run eval` | one-shot all-gates script | partial: `npm run verify` runs lint+typecheck+vitest only; no playwright/lighthouse/axe-bundled | 🟡 PARTIAL |
+| `npm run eval` | one-shot all-gates script | **wired** — `lint + typecheck + vitest + e2e + a11y`. Lighthouse still deferred until prod URL reachable | ✅ DONE (V1) |
 | Conventional commits | enforced at commit-msg | yes, via commitlint | ✅ DONE |
 | Lighthouse gate | EVALUATOR runs `npx lighthouse` | **never runs in this sandbox** (no Vercel host reachable; deferred until prod URL) | 🟡 BLOCKED |
 | Checkpoint commits | per-step durable progress | yes; PLANNER/BUILDER/EVALUATOR/SHIPPER each commit independently per ADR-013/022 | ✅ DONE (beyond doc) |
 | Per-feature dispatch | one feature per agent run | yes; ADR-013 (BUILDER) + ADR-022 (PLANNER) | ✅ DONE (beyond doc) |
-| Auto-FAIL → BUILDER loop | hands-off retry on EVALUATOR FAIL | **not wired**; Main Claude manually re-dispatches | ❌ MISSING |
+| Auto-FAIL → BUILDER loop | hands-off retry on EVALUATOR FAIL | **wired** — ADR-024 policy + `.claude/commands/feature.md` step 4. 3-retry cap, then escalate. | ✅ DONE (V1) |
 
-## Score: 13 ✅ done · 5 🟡 partial · 5 ❌ missing · 1 ⏸️ deferred · 1 🟡 blocked
+## Score: 16 ✅ done · 4 🟡 partial · 3 ❌ missing · 1 ⏸️ deferred · 1 🟡 blocked
+## V1 harness upgrade landed 2026-05-01: slash command + `npm run eval` + ADR-024 (auto-FAIL loop)
 
 ## What's actually happening (honest)
 
@@ -231,17 +232,21 @@ The architecture above proposes 3. Closing the gap requires:
 3. **Vercel MCP** so SHIPPER auto-verifies the URL instead of asking the user to tap.
 4. **Combined `npm run eval` script** so EVALUATOR runs one command instead of 4–5 separate ones.
 
-## Recommendation: closeable in one ~30-min "harness upgrade" feature
+## V1 harness upgrade — what landed (2026-05-01)
 
-Do this as a single non-feature "harness ship" before Milestone 0. Adds the missing pieces above. Won't change any user-visible behavior; only reduces my prompts and the per-feature wall-clock by ~3–5 min.
+- ✅ `.claude/commands/feature.md` — full pipeline orchestrator (PLANNER → BUILDER → EVALUATOR → SHIPPER), auto-FAIL loop per step 4
+- ✅ `npm run eval` — bundled all-gates script (lint + typecheck + vitest + e2e + a11y)
+- ✅ ADR-024 — Auto-FAIL → BUILDER loop policy (3-retry cap then escalate)
+- ✅ This file's audit table updated
 
-Specifically:
+## V1 deferred
 
-- `.claude/commands/feature.md` — full chain trigger (writes the orchestrator prompt template)
-- `.claude/hooks/post-tool-use.sh` — `npm run lint && npm run typecheck` after every BUILDER edit, exits non-zero on failure
-- `.claude/hooks/stop.sh` — when an agent task finishes with EVALUATOR FAIL output, parse the gap list and auto-spawn BUILDER with it
-- `package.json` add: `"eval": "npm run lint && npm run typecheck && npm run test && npm run test:e2e && npm run test:a11y"`
-- Vercel MCP setup steps documented in `/CLAUDE.md` § Required Plugins
-- README pointer at this `harness.md`
+- 🟡 `.claude/hooks/post-tool-use.sh` — auto lint+typecheck after every Edit/Write tool call. **Deferred** — would slow BUILDER's red→green cycles by 5–10 s per edit, and Husky pre-commit already gates broken code at commit time. Reconsider if BUILDER's "I claimed X exists when it didn't" pattern recurs.
+- 🟡 `.claude/hooks/stop.sh` (project-local) — auto-FAIL handling now lives in the slash command (step 4) instead of a hook. The user-global `~/.claude/stop-hook-git-check.sh` still nags about uncommitted changes; that's enough for V1.
+- ❌ Vercel MCP setup steps in `CLAUDE.md` — `CLAUDE.md` is in `.prettierignore` (ADR-012, user-verbatim text). Vercel MCP setup lives here in `harness.md` and in the setup walkthrough I'd give in chat.
 
-Roughly 200 lines of code + 1 ADR (ADR-024 — auto-FAIL loop policy). Then we're ~3 prompts per feature for real.
+## Outstanding (still ❌ MISSING or 🟡 PARTIAL)
+
+- Vercel MCP, Context7 MCP, Playwright MCP — wired in your Claude account but not loaded into this session; pick up on next chat
+- Lighthouse — runs after Vercel MCP confirms a prod URL is reachable
+- README pointer at this `harness.md` — todo (small)

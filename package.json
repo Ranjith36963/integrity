@@ -17,6 +17,7 @@
     "test:a11y": "playwright test building.a11y",
     "test:e2e:install": "playwright install --with-deps",
     "verify": "npm run lint && npm run typecheck && npm run test",
+    "eval": "npm run lint && npm run typecheck && npm run test && npm run test:e2e && npm run test:a11y",
     "prepare": "husky"
   },
   "dependencies": {

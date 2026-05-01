@@ -378,3 +378,25 @@ type Recurrence =
 - Future ADR could move to option (a) under a strict-CLS design system; this ADR is the active default.
 
 `lib/useNow.ts` carries a one-line comment referencing this ADR so future readers find the decision quickly.
+
+---
+
+## ADR-024 — Auto-FAIL → BUILDER loop policy
+
+**Status:** Accepted · 2026-05-01
+
+**Context.** EVALUATOR FAIL today triggers a manual re-dispatch by Main Claude. The harness goal is to close the loop without user intervention until quality gates pass. But unbounded auto-retries risk burning compute and masking real issues (e.g. a BUILDER consistently failing to address a gap because it doesn't understand it).
+
+**Decision.**
+
+- On EVALUATOR FAIL, the orchestrator **automatically re-dispatches BUILDER** with the gap list (G1..Gn) as the only IDs to address. No user gate between FAIL and re-spawn.
+- After **3 consecutive FAILs on the same feature**, the loop **stops** and the orchestrator escalates to the user with the EVALUATOR's last gap list verbatim. The user decides: relax a gate, narrow scope, or fix manually.
+- BUILDER's "FAIL retry" mode: the agent receives the gap list, addresses ONLY those gaps, and does not introduce new functionality or new test IDs.
+- EVALUATOR runs are independent — each FAIL produces its own report; the orchestrator does not aggregate gap lists across iterations.
+
+**Consequences.**
+
+- Loop closes itself in the common case (one FAIL, one fix, PASS).
+- Pathological cases bounded by the 3-retry cap.
+- `.claude/commands/feature.md` step 4 implements this policy.
+- If a user wants a higher cap for a specific feature, they invoke `/feature <name> --max-fails=5` (slash command interprets the override; this ADR is the default).
