@@ -359,3 +359,22 @@ type Recurrence =
 - Each feature follows the full per-feature loop (PLANNER → user approves → BUILDER → EVALUATOR → SHIPPER → preview → user reacts) before the next is planned. ADR-013 step 9 ("next feature → repeat from step 3") becomes "next feature → repeat from step 1" when the plan itself is incremental.
 - `.claude/agents/planner.md` is updated to enforce the constraint at the agent level.
 - Total wall-clock time for a multi-feature page is longer but resilient. Recovery from a timeout is at most one feature's worth of work, never a full page rewrite.
+
+---
+
+## ADR-023 — `useNow()` paints the server clock on first render
+
+**Status:** Accepted · 2026-05-01 · proposed by EVALUATOR on live-clock PASS
+
+**Context.** The `useNow()` hook (`lib/useNow.ts`) initializes via `useState(() => formatHHMM(new Date()))`. On SSR, `new Date()` is the server's clock; on client first paint, it may differ slightly from the user's clock (network-roundtrip-bounded skew, typically < 2 s). Two options were available: (a) return `""` on SSR and update post-mount, eliminating the skew at the cost of a one-frame layout flash; (b) format the server-side clock and accept the small skew, avoiding the flash.
+
+**Decision.** Use option (b). Server-side `Date()` formats to a placeholder `HH:MM`; the next `setInterval` tick (within 60 s) reconciles to the client clock. Acceptable for a single-user PWA where skew is bounded by network latency and the value is informational only (it doesn't drive math).
+
+**Consequences.**
+
+- No CLS flash on first paint.
+- For up to one minute after first paint, the displayed time can be off by a few seconds vs. the user's wall clock. Imperceptible in practice.
+- If the BlueprintBar's NOW pin ever drives time-critical UX (e.g. snapping animations to the minute boundary), revisit this — the wired component already accepts `now` as a string, so the seam is clean.
+- Future ADR could move to option (a) under a strict-CLS design system; this ADR is the active default.
+
+`lib/useNow.ts` carries a one-line comment referencing this ADR so future readers find the decision quickly.
