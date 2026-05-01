@@ -17,7 +17,7 @@ Users build their day brick by brick. Bricks → Blocks → Buildings (days) →
 
 ## Methodology: The Loop (SDD outside, TDD inside)
 
-Every feature follows this exact sequence. We name it **The Loop** so any prompt, ADR, or commit can reference it without re-stating the contract. Codified by ADR-025.
+Every feature follows this exact sequence. We name it **The Loop** so any prompt, ADR, or commit can reference it without re-stating the contract. Codified by ADR-025; gating refined by ADR-026; commit prefixes by ADR-027.
 
 SPEC defines WHAT.
 PLAN defines HOW.
@@ -28,41 +28,58 @@ SHIP puts it in front of the user.
 
 ### Phase 1 — SPEC (user owns)
 - User authors the feature entry in `/docs/spec.md`.
-- Defines: what the system should do, inputs/outputs, edge cases.
+- Required sections: Intent · Inputs · Outputs · Edge cases · Acceptance criteria.
 - This is the only phase where new requirements enter the system.
 - (Precondition to The Loop, not a Loop step. No agent gate.)
 
-### Phase 2 — PLAN (PLANNER owns) → Gate #1
+### Phase 2 — PLAN (PLANNER `mode: PLAN`)
 - PLANNER reads `/docs/spec.md` and emits the feature's `/docs/plan.md` entry: file structure, data models, components, design tokens, decisions to honor.
-- **STOP. User reviews `plan.md`.** Approve, amend, or reject.
-- Spec drift caught here. Cheapest gate to fix.
+- Commits as `docs(plan-<feature>): …`.
+- Auto-chains to Phase 3. No user gate.
 
-### Phase 3 — TESTS (PLANNER owns) → Gate #2
-- Separate PLANNER dispatch. Derives GIVEN/WHEN/THEN tests from the approved `plan.md`.
-- Covers success cases, failure cases, edge cases.
+### Phase 3 — TESTS (PLANNER `mode: TESTS`) → Gate #1
+- Separate PLANNER dispatch. Derives GIVEN/WHEN/THEN tests from the just-written `plan.md`.
+- Covers success, failure, and edge cases.
 - Output: `/docs/tests.md` entry for the feature.
-- **STOP. User reviews `tests.md`.** Approve, amend, or reject.
-- Test→spec coverage drift caught here. Still cheap to fix.
+- Commits as `docs(tests-<feature>): …`.
+- **STOP. User reviews `plan.md` AND `tests.md` together.** Approve, amend, or reject. This is the single planning gate (ADR-026).
 
 ### Phase 4 — IMPL (BUILDER owns, TDD inner loop)
-- For each test in `tests.md`: Red → Green → Refactor → Commit (one conventional commit per test).
+- For each test in `tests.md`: Red → Green → Refactor → Commit.
+- Red commit: `test(<feature>): …`. Green/refactor commit: `feat(<feature>): …` or `fix(<feature>): …`.
 - No phase exit until every `tests.md` ID for this feature is green.
 - Auto-chains to Phase 5. No user gate.
 
 ### Phase 5 — EVAL (EVALUATOR owns)
 - Runs `npm run eval` (lint + typecheck + vitest + e2e + a11y) plus spec-coverage and test-integrity review.
+- Eval-driven follow-up commits: `docs(eval-<feature>): …` or `chore(eval-<feature>): …`.
 - PASS → auto-chain to Phase 6.
 - FAIL → auto-chain back to BUILDER with gap list (capped at 3 retries per ADR-024). No user gate inside the FAIL loop.
 
-### Phase 6 — SHIP (SHIPPER owns) → Gate #3
-- Updates README + CHANGELOG + `docs/status.md`. Pushes to the deploy branch (Vercel auto-deploys preview).
+### Phase 6 — SHIP (SHIPPER owns) → Gate #2
+- Updates README + CHANGELOG + `docs/status.md` (status update is **mandatory** — every ship commit includes it). Pushes to the deploy branch (Vercel auto-deploys preview).
+- Commits as `chore(ship-<feature>): …` and/or `docs(ship-<feature>): …`.
 - **STOP. User taps the preview, reacts.** Reaction feeds the next `/feature` invocation.
 
-### Why three gates, not one
-- Gate #1 (after PLAN) catches design misalignment when no code is written yet.
-- Gate #2 (after TESTS) catches test→spec coverage gaps when no code is written yet.
-- Gate #3 (after SHIP) is the only gate that judges live behavior.
-- Phases 4 + 5 run unattended because by then, both upstream gates have certified that "green tests = correct feature." If that contract is broken, fix it at Gate #1 or #2, not by inserting more gates downstream.
+### Why two gates, not three
+- Gate #1 (after PLAN+TESTS) catches design AND test→spec drift when no code is written. Both files reviewed together; one interruption.
+- Gate #2 (after SHIP) is the only gate that judges live behavior.
+- Phases 4 + 5 run unattended because by then, the upstream gate has certified that "green tests = correct feature." If that contract is broken, fix it at Gate #1, not by inserting more gates downstream.
+
+### Commit-prefix convention (ADR-027)
+
+Layered on Conventional Commits. `<feature>` is the slug used in `plan.md` / `tests.md` (e.g., `m0`, `m3`, `add-block`):
+
+| Phase             | Prefix                                            |
+| ----------------- | ------------------------------------------------- |
+| 2. PLAN           | `docs(plan-<feature>): …`                         |
+| 3. TESTS          | `docs(tests-<feature>): …`                        |
+| 4. IMPL — red     | `test(<feature>): …`                              |
+| 4. IMPL — green   | `feat(<feature>): …` or `fix(<feature>): …`       |
+| 5. EVAL follow-up | `docs(eval-<feature>): …` / `chore(eval-…): …`    |
+| 6. SHIP           | `chore(ship-<feature>): …` / `docs(ship-…): …`    |
+
+Out-of-Loop harness commits (ADRs, slash commands, agent definitions) continue as `docs(harness): …`.
 
 ## The 4 Agents
 
