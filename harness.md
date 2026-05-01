@@ -19,15 +19,17 @@ Main Claude (orchestrator)
  ├─ reads CLAUDE.md (rules)
  ├─ reads /docs/spec.md (truth)
  │
- ├─ spawns Planner ──→ writes plan.md + tests.md
- │                      ↓
+ ├─ spawns Planner ──→ writes plan.md (mode: PLAN)
+ │     ↓ auto-chain (no user gate, ADR-026)
+ ├─ spawns Planner ──→ writes tests.md (mode: TESTS)
+ │     ↓ Gate #1: user reviews plan.md AND tests.md together
  ├─ spawns Builder ──→ TDD loop, commits to branch
  │                      ↓
  ├─ spawns Evaluator ─→ runs Playwright, returns PASS/FAIL
  │                      ↓ (FAIL → loop back to Builder)
  │                      ↓ (PASS)
- ├─ spawns Shipper ──→ deploy, update README/CHANGELOG
- │
+ ├─ spawns Shipper ──→ deploy + update README/CHANGELOG/status.md (mandatory, ADR-026)
+ │     ↓ Gate #2: user taps preview URL, reacts
  └─ reports done to you
 ```
 
@@ -187,14 +189,14 @@ You prompt 3 times per feature. Chain ships it.
 | `/docs/spec.md` | source of truth | yes; UX Phase 1 Toolkit + new `/phase1plan.md` exists at root | ✅ DONE |
 | `/docs/plan.md` | per-feature plan | yes; pivot section + legacy section | ✅ DONE |
 | `/docs/tests.md` | per-feature tests w/ G/W/T IDs | yes; 94 IDs total | ✅ DONE |
-| `/docs/decisions.md` | ADRs | yes; 23 ADRs | ✅ DONE (beyond doc) |
+| `/docs/decisions.md` | ADRs | yes; 27 ADRs (ADR-025 names "The Loop", ADR-026 sets 2 gates, ADR-027 sets per-phase commit prefixes) | ✅ DONE (beyond doc) |
 | `/docs/status.md` | live-snapshot | yes; SHIPPER updates | ✅ DONE (beyond doc) |
 | `/CHANGELOG.md` | per-ship release log | yes; SHIPPER updates | ✅ DONE (beyond doc) |
-| `.claude/agents/planner.md` | role definition | yes, ADR-022 enforces one-feature-per-dispatch | ✅ DONE |
+| `.claude/agents/planner.md` | role definition | yes; ADR-022 (one feature per dispatch) + ADR-025 (mode: PLAN / mode: TESTS, two dispatches per feature) + ADR-026 (auto-chain, single planning gate) + ADR-027 (commit prefixes) | ✅ DONE |
 | `.claude/agents/builder.md` | role definition | yes | ✅ DONE |
 | `.claude/agents/evaluator.md` | role definition | yes | ✅ DONE |
-| `.claude/agents/shipper.md` | role definition | yes | ✅ DONE |
-| `.claude/commands/feature.md` | `/feature <name>` slash command | **wired** — full pipeline orchestrator with 6 steps + auto-FAIL loop per ADR-024 | ✅ DONE (V1) |
+| `.claude/agents/shipper.md` | role definition | yes; ADR-026 makes status.md update mandatory (Task 1, non-negotiable); ADR-027 sets ship commit prefixes | ✅ DONE |
+| `.claude/commands/feature.md` | `/feature <name>` slash command | **wired** — full pipeline orchestrator with 7 steps + auto-FAIL loop per ADR-024 + The Loop contract per ADR-025/026/027 (PLAN auto-chains to TESTS, single planning gate, mandatory status.md update, per-phase commit prefixes, tightened pre-flight SPEC validation) | ✅ DONE (V2) |
 | `.claude/hooks/post-tool-use.sh` | auto-run lint+typecheck after Builder commits | **does not exist** | ❌ MISSING |
 | `.claude/hooks/pre-commit.sh` | block non-conventional commits | partial: `.husky/commit-msg` runs commitlint, `.husky/pre-commit` runs lint-staged | 🟡 PARTIAL (Husky-managed, not under `.claude/hooks/`) |
 | `.claude/hooks/stop.sh` | auto-pipe Evaluator FAIL → Builder | partial: `~/.claude/stop-hook-git-check.sh` only checks for uncommitted git changes (user-global, not project) | 🟡 PARTIAL |
@@ -211,26 +213,27 @@ You prompt 3 times per feature. Chain ships it.
 | Auto-FAIL → BUILDER loop | hands-off retry on EVALUATOR FAIL | **wired** — ADR-024 policy + `.claude/commands/feature.md` step 4. 3-retry cap, then escalate. | ✅ DONE (V1) |
 
 ## Score: 16 ✅ done · 4 🟡 partial · 3 ❌ missing · 1 ⏸️ deferred · 1 🟡 blocked
+
 ## V1 harness upgrade landed 2026-05-01: slash command + `npm run eval` + ADR-024 (auto-FAIL loop)
 
-## What's actually happening (honest)
+## V2 harness upgrade landed 2026-05-01: The Loop named + 2-gate model + commit-prefix discipline
 
-**The user prompts ~5–7 times per feature, not 3.** Today's loop:
+## What's actually happening (honest, post-V2)
 
-1. Paste/edit spec
-2. Approve plan (Gate #1)
-3. Resolve any spec gap (e.g. SG-bld-11)
-4. Acknowledge BUILDER green
-5. Acknowledge EVALUATOR PASS (often combined with the next step)
-6. Tap preview URL (Gate #2)
-7. Greenlight next feature
+**The user prompts 2–3 times per feature**, down from 5–7. The post-V2 loop:
 
-The architecture above proposes 3. Closing the gap requires:
+1. (Optional) edit `/docs/spec.md` if the feature isn't already specced.
+2. Type `/feature <name>` — kicks off the full Loop. PLAN auto-chains to TESTS without pausing.
+3. **Gate #1 — approve `plan.md` + `tests.md` together** (single planning gate per ADR-026). Amend if drift, otherwise approve once.
+4. Chain runs unattended: BUILDER (TDD) → EVALUATOR (`npm run eval`) → (auto-FAIL retries up to 3) → SHIPPER (deploys + status.md update is mandatory).
+5. **Gate #2 — tap preview URL**, react. Reaction feeds the next `/feature <name>`.
 
-1. **Slash command** so the user types `/feature <name>` once instead of "plan X" → "approve" → BUILDER dispatch → "evaluate" → SHIPPER dispatch.
-2. **Auto-FAIL → BUILDER hook** (currently Main Claude does this manually; mostly works but loses time on context-switching).
-3. **Vercel MCP** so SHIPPER auto-verifies the URL instead of asking the user to tap.
-4. **Combined `npm run eval` script** so EVALUATOR runs one command instead of 4–5 separate ones.
+That's **two user check-ins per feature** matching the architectural target. Down from the V1 reality (≈5–7 because EVAL was manually re-dispatched and gates were split into Gate #1 plan + Gate #2 tests).
+
+Remaining drivers of extra prompts:
+
+1. **Vercel MCP not loaded in this session** — SHIPPER currently surfaces "user verification required" instead of `curl -I`-confirming the preview. One extra round-trip per ship until the next chat picks up the MCP.
+2. **Lighthouse gate** — still skipped because the sandbox can't reach Vercel hosts. Reactivates when Vercel MCP lands.
 
 ## V1 harness upgrade — what landed (2026-05-01)
 
@@ -238,6 +241,16 @@ The architecture above proposes 3. Closing the gap requires:
 - ✅ `npm run eval` — bundled all-gates script (lint + typecheck + vitest + e2e + a11y)
 - ✅ ADR-024 — Auto-FAIL → BUILDER loop policy (3-retry cap then escalate)
 - ✅ This file's audit table updated
+
+## V2 harness upgrade — what landed (2026-05-01)
+
+- ✅ **ADR-025** — names the methodology **The Loop** (SDD outside / TDD inside, six phases). Splits PLANNER into two dispatches per feature (`mode: PLAN`, then `mode: TESTS`) for timeout resilience.
+- ✅ **ADR-026** — collapses the gate count from three to **two**: Gate #1 fires once after both PLANNER dispatches return (user reviews `plan.md` + `tests.md` together); Gate #2 fires after SHIPPER deploys. PLAN auto-chains to TESTS without pausing.
+- ✅ **ADR-027** — commit-prefix convention per Loop phase: `docs(plan-<feat>):` / `docs(tests-<feat>):` / `test(<feat>):` / `feat(<feat>):` / `docs(eval-<feat>):` / `chore(ship-<feat>):` + `docs(ship-<feat>):`. `git log --grep` now reconstructs phase history.
+- ✅ `CLAUDE.md` § Methodology rewritten as the named "The Loop" contract.
+- ✅ `.claude/commands/feature.md` rewritten: 7 steps, auto-chain PLAN→TESTS, single planning gate, tightened pre-flight SPEC validation (requires Intent / Inputs / Outputs / Edge cases / Acceptance criteria sections), mandatory status.md on every ship.
+- ✅ `.claude/agents/planner.md` mode-scoped (PLAN mode vs TESTS mode); writing both files in one dispatch is now a contract violation.
+- ✅ `.claude/agents/shipper.md` — `docs/status.md` update promoted to **Task 1 (MANDATORY, NON-NEGOTIABLE)**.
 
 ## V1 deferred
 
