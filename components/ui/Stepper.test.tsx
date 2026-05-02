@@ -41,6 +41,10 @@ describe("C-m0-011: Stepper bounds", () => {
 
 // C-m0-012
 describe("C-m0-012: Stepper long-press accelerator", () => {
+  // BASE_INTERVAL_MS=300, ACCEL_START_MS=1500, MAX_ACCEL=10 (from Stepper.tsx)
+  const BASE_INTERVAL_MS = 300;
+  const MAX_ACCEL = 10;
+
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -48,23 +52,41 @@ describe("C-m0-012: Stepper long-press accelerator", () => {
     vi.useRealTimers();
   });
 
-  it("calls onChange multiple times during a 3s hold (acceleration ramps to 10×)", () => {
+  it("ramp: calls-per-tick grows over first 1500ms, and cap: never exceeds 10× per tick", () => {
     const spy = vi.fn();
     render(<Stepper value={0} max={1000} onChange={spy} />);
     const incBtn = screen.getByRole("button", { name: "Increment" });
 
-    // Trigger onPointerDown to start the long-press interval
+    // Start long-press
     incBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
 
-    // Advance 3s — the interval fires every 300ms = 10 ticks before acceleration
-    // After 1500ms acceleration starts ramping
-    vi.advanceTimersByTime(3000);
+    // ── Early tick (t=300ms from press start) ──────────────────────────────
+    // accel = min(10, 1 + floor((300/1500) * 9)) = min(10, 1+1) = 2
+    spy.mockClear();
+    vi.advanceTimersByTime(BASE_INTERVAL_MS);
+    const earlyTickCalls = spy.mock.calls.length;
 
-    // Stop
+    // ── Advance past the ramp (total elapsed = 1800ms) ─────────────────────
+    // accel at t=1800ms = min(10, 1 + floor((1800/1500) * 9)) = 10
+    spy.mockClear();
+    vi.advanceTimersByTime(1500);
+
+    // ── Late tick (one more 300ms window at full speed) ────────────────────
+    spy.mockClear();
+    vi.advanceTimersByTime(BASE_INTERVAL_MS);
+    const lateTickCalls = spy.mock.calls.length;
+
+    // Stop long-press
     incBtn.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
 
-    // Should have been called many times (at least one per 300ms tick = ~10 + acceleration)
-    expect(spy.mock.calls.length).toBeGreaterThan(5);
+    // Ramp: the late tick must commit more per tick than the early tick did.
+    expect(lateTickCalls).toBeGreaterThan(earlyTickCalls);
+
+    // Cap: the late tick must never exceed MAX_ACCEL calls (10× floor).
+    expect(lateTickCalls).toBeLessThanOrEqual(MAX_ACCEL);
+
+    // Sanity: early tick observed at least 1 call.
+    expect(earlyTickCalls).toBeGreaterThanOrEqual(1);
   }, 10_000);
 });
 
