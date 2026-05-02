@@ -12,6 +12,14 @@ The **SHIPPER** agent updates this file on every ship. The user does not edit it
 
 ### Added
 
+- **M0 — Design System:** 10 primitive components (`<Button>`, `<Modal>`, `<Sheet>`, `<Chip>`,
+  `<Input>`, `<Stepper>`, `<Toggle>`, `<EmptyState>`, `<BlockCard>`, `<BrickChip>`) with cva
+  variants; design tokens migrated to `#07090f` warm-dark palette per ADR-011; new `/design`
+  harness page renders all primitives in every documented state; motion / haptics /
+  reduced-motion lib modules. Closes 48 M0 test IDs (`U-m0-001..012`, `C-m0-001..023`,
+  `E-m0-001..008`, `A-m0-001..005`). New ADRs: 028 (`aria-checked` on `role="switch"`),
+  029 (`devIndicators: false` for touch-target tests), 030 (`/design` route, no underscore),
+  031 (`Button sm` keeps `min-h-[44px]`).
 - **live-clock (Page 1 pivot, feature 2 of 8):** Real-time clock + date wired into the
   Building view. Hero now shows today's date in `Wed, Apr 29` style (en-US per ADR-023 /
   SG-bld-11), and the day-counter line reads `Building 1 of 365` against a placeholder
@@ -58,6 +66,9 @@ The **SHIPPER** agent updates this file on every ship. The user does not edit it
 
 ### Changed
 
+- **M0 test migration complete:** the 94 pre-pivot test IDs from `docs/tests.md` have been
+  tagged `[survives]`, `[re-author]`, or `[obsolete]` by the M0 PLANNER dispatch, fulfilling
+  the `phase1plan.md` § Test Migration Discipline requirement. No IDs were silently dropped.
 - **`lib/data.ts` placeholders gone:** `now="00:00"` and `dateLabel=""` are removed from
   `BuildingClient`; live values flow through from `useNow`.
 - **`dayPct` scoring — equal-weighted (ADR-005 / SG-bld-08):** completion percentage is now

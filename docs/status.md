@@ -6,35 +6,35 @@
 
 ## Snapshot
 
-- **Branch:** `claude/build-dharma-pwa-8WVNB` at `ed526ba` · `main` at `c3ef9f1` (feature branch not yet merged)
-- **Last commit:** `ed526ba` — `docs(harness): apply adr-026 (two gates) and adr-027 (commit prefixes) across the loop`
-- **Last preview URL:** `https://integrity-git-claude-buil-f6ede9-rahulranjith369-5644s-projects.vercel.app/` (showing the previous `wipe-demo` + `live-clock` build; user tap-test required — sandbox cannot curl Vercel hosts)
+- **Branch:** `claude/build-dharma-pwa-8WVNB` at `<ship-commit>` · `main` at `c3ef9f1` (feature branch not yet merged)
+- **Last commit:** `<ship-commit>` — `docs(ship-m0): release notes + status snapshot for m0`
+- **Last preview URL:** `https://integrity-git-claude-build-dharma-pwa-8wvnb-rahulranjith369-5644s-projects.vercel.app/` — **manual verification required** (Vercel MCP not loaded in this session per ADR-010 + open loop below; sandbox returns 403 on Vercel hosts)
 - **Methodology:** The Loop (SDD-outside, TDD-inside) per ADR-025; two human gates per ADR-026; per-phase commit prefixes per ADR-027.
 
 ## Plan in force
 
 - `phase1plan.md` (root, in `.prettierignore`) — **11-milestone build order M0..M10** with carried-forward decisions, locked AppState schema, and open spec gaps. This supersedes the previous 8-feature empty-toolkit pivot listed in older `plan.md` / `tests.md` sections.
-- The 94 existing test IDs from the previous pivot remain in `docs/tests.md` and must be tagged `[survives] / [re-author] / [obsolete]` by the M0 PLANNER dispatch (per `phase1plan.md` § Test Migration Discipline).
+- The 94 existing test IDs from the previous pivot have been tagged `[survives]` / `[re-author]` / `[obsolete]` by the M0 PLANNER dispatch (per `phase1plan.md` § Test Migration Discipline). Migration is complete.
 
 ## Milestones
 
-| Milestone                                 | State                                                         | Notes                                                                                                                                         |
-| ----------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| **M0 — Design System**                    | **Not started — next up.** Awaiting `/feature m0` invocation. | Builds 10 primitives + tokens. M0 acceptance requires WCAG AA re-verification on the new `#07090f` bg + `--ink-dim`. Test ID prefix `*-m0-*`. |
-| M1 — Empty Building Shell                 | Not started                                                   | Page renders with empty state, no hardcoded blocks.                                                                                           |
-| M2 — Add Block Flow                       | Not started                                                   | First feature to lock the shared `Block` + `Recurrence` schema (ADR-019).                                                                     |
-| M3 — Add Brick + Live Scoring             | Not started                                                   | Three brick types (tick / goal / time), visual fill, hero count-up.                                                                           |
-| M4 — Block Expand + Brick Logging         | Not started                                                   | FLIP expand, real timer per ADR-017.                                                                                                          |
-| M5 — Edit Mode + Delete                   | Not started                                                   | "Just today" delete writes to `deletions[date:blockId]` per locked schema.                                                                    |
-| M6 — Drag Reorder                         | Not started                                                   | Framer Motion layout animations.                                                                                                              |
-| M7 — Polish Layer                         | Not started                                                   | Cinematic. 60fps target. `prefers-reduced-motion` respected.                                                                                  |
-| M8 — Persistence                          | Not started                                                   | localStorage `dharma:v1` with separate `logs` / `timers` / `deletions` keyed maps (ADR-018). DST fixtures required.                           |
-| M9 — Calendar Nav (Castle/Kingdom/Empire) | Not started                                                   | Helpers: `appliesOn(rec, date)` and `currentDayBlocks(today, state)`.                                                                         |
-| M10 — Voice Log                           | Not started                                                   | Claude API round-trip. Failure mode SG-bld-19 unresolved.                                                                                     |
+| Milestone                                 | State                                                     | Notes                                                                                                                                                                                                                            |
+| ----------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **M0 — Design System**                    | **Shipped (preview live; user tap-test pending Gate #2)** | 10 primitives + tokens. 48 IDs closed (`U-m0-001..012`, `C-m0-001..023`, `E-m0-001..008`, `A-m0-001..005`). New ADRs: 028 (`aria-checked`), 029 (`devIndicators: false`), 030 (`/design` route), 031 (`Button sm min-h-[44px]`). |
+| M1 — Empty Building Shell                 | Not started — next up                                     | Page renders with empty state, no hardcoded blocks. PLANNER must inherit ADRs 028–031.                                                                                                                                           |
+| M2 — Add Block Flow                       | Not started                                               | First feature to lock the shared `Block` + `Recurrence` schema (ADR-019).                                                                                                                                                        |
+| M3 — Add Brick + Live Scoring             | Not started                                               | Three brick types (tick / goal / time), visual fill, hero count-up.                                                                                                                                                              |
+| M4 — Block Expand + Brick Logging         | Not started                                               | FLIP expand, real timer per ADR-017.                                                                                                                                                                                             |
+| M5 — Edit Mode + Delete                   | Not started                                               | "Just today" delete writes to `deletions[date:blockId]` per locked schema.                                                                                                                                                       |
+| M6 — Drag Reorder                         | Not started                                               | Framer Motion layout animations.                                                                                                                                                                                                 |
+| M7 — Polish Layer                         | Not started                                               | Cinematic. 60fps target. `prefers-reduced-motion` respected.                                                                                                                                                                     |
+| M8 — Persistence                          | Not started                                               | localStorage `dharma:v1` with separate `logs` / `timers` / `deletions` keyed maps (ADR-018). DST fixtures required.                                                                                                              |
+| M9 — Calendar Nav (Castle/Kingdom/Empire) | Not started                                               | Helpers: `appliesOn(rec, date)` and `currentDayBlocks(today, state)`.                                                                                                                                                            |
+| M10 — Voice Log                           | Not started                                               | Claude API round-trip. Failure mode SG-bld-19 unresolved.                                                                                                                                                                        |
 
 ## Already shipped (pre-pivot — superseded by phase1plan.md)
 
-- `wipe-demo` and `live-clock` features from the 8-feature empty-toolkit pivot landed at `a33b80b`. Their test IDs and code stay on the feature branch but the M0 PLANNER dispatch will tag them `[survives]` / `[re-author]` / `[obsolete]` against the new milestone plan.
+- `wipe-demo` and `live-clock` features from the 8-feature empty-toolkit pivot landed at `a33b80b`. Their test IDs and code stay on the feature branch; migration tagging is now complete (done by M0 PLANNER dispatch).
 
 ## Open loops
 
@@ -44,32 +44,26 @@
 - **Lighthouse scores not yet measured.** No prod URL reachable from sandbox. Measure after Vercel MCP loads or after `main` merge.
 - **Hero `data-testid="building-counter"` missing (N3).** `C-bld-040` uses a brittle class-name container query; add the testid in a future polish chunk (likely M7).
 - **DST off-by-one in `dayNumber()` (N4).** Fix lands in M8 with proper `programStart` math + DST fixtures.
-- **`harness.md` MCP rows still ❌ MISSING for Vercel + Context7 + Playwright** — wired in user's Claude account, not loaded into this session.
+- **`harness.md` MCP rows still MISSING for Vercel + Context7 + Playwright** — wired in user's Claude account, not loaded into this session.
+- **M1 PLANNER must inherit ADR-028..031** (`aria-checked` on `role="switch"`, `devIndicators: false` for touch-target tests, `/design` route (no underscore), `Button sm` keeps `min-h-[44px]`). Also: `components/ui/README.md:23` claims `h-9` but implementation uses `min-h-[44px]` — stale size-table, defer to M1 or a focused chore commit.
 
 ## Spec gaps
 
 - `SG-bld-01..11` — closed against the previous pivot; resolutions live in `docs/tests.md` § "Spec gaps — resolved".
 - `SG-bld-13..19` — open, tracked in `phase1plan.md` § "Open Spec Gaps". To be resolved by the milestone they block (not all at once).
 
-## Quality gates (last full Evaluator PASS on `a33b80b`)
+## Quality gates (last full Evaluator PASS on `cfc09ad`)
 
-| Gate                       | Result                                 |
-| -------------------------- | -------------------------------------- |
-| ESLint                     | clean                                  |
-| `tsc --noEmit`             | clean                                  |
-| Vitest                     | 68/68 passed                           |
-| Playwright (mobile-chrome) | 9/9 passed                             |
-| Playwright (mobile-safari) | not run — WebKit unavailable (ADR-010) |
-| axe-core                   | 5/5 passed, 0 violations               |
-| Lighthouse                 | not measured — no prod URL             |
+| Gate                       | Result                                            |
+| -------------------------- | ------------------------------------------------- |
+| ESLint                     | clean                                             |
+| `tsc --noEmit`             | clean                                             |
+| Vitest                     | 210/210 passed (28 files)                         |
+| Playwright (mobile-chrome) | 37/37 passed                                      |
+| Playwright (mobile-safari) | not run — WebKit unavailable (ADR-010)            |
+| axe-core                   | 5/5 passed, 0 violations                          |
+| Lighthouse                 | not measured — no prod URL reachable from sandbox |
 
 ## Next intended action
 
-Invoke `/feature m0` to start The Loop on **M0 — Design System** (the first milestone of `phase1plan.md`). The slash command will:
-
-1. Pre-flight validate the M0 SPEC entry has Intent / Inputs / Outputs / Edge cases / Acceptance criteria sections in `/docs/spec.md`. **If those aren't yet authored in `docs/spec.md` for M0, that step will halt — the user must add the SPEC entry first** (Phase 1 is user-owned per ADR-025).
-2. Dispatch PLANNER `mode: PLAN` for `m0` (writes `docs/plan.md` entry + the 94-test migration table).
-3. Auto-chain to PLANNER `mode: TESTS` for `m0` (writes `docs/tests.md` entry).
-4. Surface both files for **Gate #1 (planning gate)**. Awaiting user approval before BUILDER dispatches.
-
-Commit prefixes for the M0 cycle (per ADR-027): `docs(plan-m0):` → `docs(tests-m0):` → `test(m0):` / `feat(m0):` → `docs(eval-m0):` → `chore(ship-m0):` + `docs(ship-m0):`.
+**Start a fresh chat session** so Vercel + Playwright + Context7 MCPs load. In the new session, author the M1 SPEC entry in `/docs/spec.md` (Intent / Inputs / Outputs / Edge cases / Acceptance criteria), then invoke `/feature m1`. Per status.md continuity, M1 is **Empty Building Shell** — page renders with empty state, no hardcoded blocks. PLANNER must inherit ADRs 028–031.
