@@ -31,8 +31,9 @@ describe("C-m0-001: Button renders with primary+md defaults", () => {
 describe("C-m0-002: Button renders all variant+size pairs with distinct classes", () => {
   const variants = ["primary", "secondary", "ghost"] as const;
   const sizes = ["sm", "md", "lg"] as const;
+  // sm uses min-h-[44px] (tap target compliant); md/lg use h-11/h-12
   const sizeHeights: Record<(typeof sizes)[number], string> = {
-    sm: "h-9",
+    sm: "min-h-[44px]",
     md: "h-11",
     lg: "h-12",
   };

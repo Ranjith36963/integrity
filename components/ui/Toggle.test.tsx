@@ -15,18 +15,18 @@ describe("C-m0-014: Toggle a11y wiring and 44px", () => {
     expect(spy).toHaveBeenCalledWith(true);
   });
 
-  it("has aria-pressed='false' initially", () => {
+  it("has aria-checked='false' initially (role=switch requires aria-checked)", () => {
     render(
       <Toggle pressed={false} onPressedChange={vi.fn()} label="Edit mode" />,
     );
     const btn = screen.getByRole("switch", { name: "Edit mode" });
-    expect(btn).toHaveAttribute("aria-pressed", "false");
+    expect(btn).toHaveAttribute("aria-checked", "false");
   });
 
-  it("has aria-pressed='true' when pressed=true", () => {
+  it("has aria-checked='true' when pressed=true", () => {
     render(<Toggle pressed onPressedChange={vi.fn()} label="Edit mode" />);
     const btn = screen.getByRole("switch", { name: "Edit mode" });
-    expect(btn).toHaveAttribute("aria-pressed", "true");
+    expect(btn).toHaveAttribute("aria-checked", "true");
   });
 
   it("has accessible name from label prop", () => {

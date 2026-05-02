@@ -21,7 +21,7 @@ export function Toggle({
     <button
       type="button"
       role="switch"
-      aria-pressed={pressed}
+      aria-checked={pressed}
       aria-label={label}
       disabled={disabled}
       className={cn(

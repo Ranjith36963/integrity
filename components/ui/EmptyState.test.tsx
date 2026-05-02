@@ -1,6 +1,8 @@
 /**
  * C-m0-015: EmptyState renders message and CTA button.
- * C-m0-016: EmptyState with pulse and reduced-motion removes animation.
+ * C-m0-016: EmptyState pulse is controlled via data-pulse attribute (CSS-driven).
+ *   The animation is applied by globals.css using @media (prefers-reduced-motion: no-preference)
+ *   on [data-pulse="true"], so no JS hook is needed and there is no hydration flash.
  */
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
@@ -37,45 +39,23 @@ describe("C-m0-015: EmptyState message and CTA", () => {
 });
 
 // C-m0-016
-describe("C-m0-016: EmptyState pulse is disabled under reduced-motion", () => {
-  it("omits animate-pulse class when usePrefersReducedMotion returns true", () => {
-    // Mock matchMedia to return prefers-reduced-motion: reduce
-    Object.defineProperty(window, "matchMedia", {
-      value: vi.fn().mockReturnValue({
-        matches: true,
-        media: "(prefers-reduced-motion: reduce)",
-        addEventListener: vi.fn((_, handler) => handler({ matches: true })),
-        removeEventListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-        addListener: vi.fn(),
-        removeListener: vi.fn(),
-      }),
-      writable: true,
-      configurable: true,
-    });
-
+describe("C-m0-016: EmptyState pulse is CSS-driven via data-pulse attribute", () => {
+  it("never has animate-pulse in className (animation is CSS-only)", () => {
     render(<EmptyState message="X" pulse />);
     const card = screen.getByTestId("empty-state");
+    // animate-pulse class is NOT used; CSS handles it via data-pulse + @media query
     expect(card.className).not.toContain("animate-pulse");
   });
 
-  it("has animate-pulse class when reduced-motion is off and pulse=true", () => {
-    Object.defineProperty(window, "matchMedia", {
-      value: vi.fn().mockReturnValue({
-        matches: false,
-        media: "(prefers-reduced-motion: reduce)",
-        addEventListener: vi.fn((_, handler) => handler({ matches: false })),
-        removeEventListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-        addListener: vi.fn(),
-        removeListener: vi.fn(),
-      }),
-      writable: true,
-      configurable: true,
-    });
-
+  it("sets data-pulse=true when pulse prop is true", () => {
     render(<EmptyState message="X" pulse />);
     const card = screen.getByTestId("empty-state");
-    expect(card.className).toContain("animate-pulse");
+    expect(card.getAttribute("data-pulse")).toBe("true");
+  });
+
+  it("sets data-pulse=false when pulse prop is false", () => {
+    render(<EmptyState message="X" pulse={false} />);
+    const card = screen.getByTestId("empty-state");
+    expect(card.getAttribute("data-pulse")).toBe("false");
   });
 });

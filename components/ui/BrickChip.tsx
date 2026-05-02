@@ -196,7 +196,6 @@ function TimeChip({
       <button
         type="button"
         aria-label={ariaLabel}
-        aria-valuenow={Math.round(pct)}
         className={cn(
           "flex min-h-[44px] items-center gap-2 rounded-lg px-3 py-2",
           "font-mono text-[--fs-12] text-[--ink] transition-colors",

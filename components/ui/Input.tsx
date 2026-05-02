@@ -50,7 +50,7 @@ export function Input({
         className={cn(
           "h-11 w-full rounded-lg border border-[--ink-dim]/30 bg-[--bg-elev] px-3",
           "font-mono text-[--fs-14] text-[--ink] placeholder:text-[--ink-dim]",
-          "focus:ring-2 focus:ring-[--accent] focus:ring-offset-0 focus:outline-none",
+          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[--accent]",
           "disabled:pointer-events-none disabled:opacity-50",
           error && "border-[--accent-deep] focus:ring-[--accent-deep]",
         )}

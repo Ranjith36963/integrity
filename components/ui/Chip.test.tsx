@@ -16,8 +16,6 @@ describe("C-m0-008: Chip variant matrix", () => {
     "category-career",
     "category-passive",
   ];
-  const sizes = ["sm", "md"] as const;
-
   it("selected=true shows filled bg class, unselected shows bg-transparent", () => {
     for (const tone of tones) {
       const selectedClasses = chipVariants({ tone, selected: true });

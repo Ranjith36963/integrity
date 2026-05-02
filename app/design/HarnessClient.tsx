@@ -141,7 +141,6 @@ export function HarnessClient() {
         </h2>
         <div className="flex flex-col gap-3">
           <Input
-            data-testid="input"
             id="harness-input"
             type="text"
             value={inputVal}
@@ -172,14 +171,16 @@ export function HarnessClient() {
         <h2 className="mb-3 font-mono tracking-wider text-[--fs-12] text-[--ink-dim] uppercase">
           Stepper
         </h2>
-        <Stepper
-          data-testid="stepper"
-          value={stepperVal}
-          min={0}
-          max={20}
-          onChange={setStepperVal}
-          unit="reps"
-        />
+        {/* wrapper div provides the data-testid for e2e targeting */}
+        <div data-testid="stepper">
+          <Stepper
+            value={stepperVal}
+            min={0}
+            max={20}
+            onChange={setStepperVal}
+            unit="reps"
+          />
+        </div>
       </section>
 
       {/* ── Toggle ── */}
@@ -187,12 +188,14 @@ export function HarnessClient() {
         <h2 className="mb-3 font-mono tracking-wider text-[--fs-12] text-[--ink-dim] uppercase">
           Toggle
         </h2>
-        <Toggle
-          data-testid="toggle"
-          pressed={togglePressed}
-          onPressedChange={setTogglePressed}
-          label="Edit mode"
-        />
+        {/* wrapper div provides the data-testid for e2e targeting */}
+        <div data-testid="toggle">
+          <Toggle
+            pressed={togglePressed}
+            onPressedChange={setTogglePressed}
+            label="Edit mode"
+          />
+        </div>
       </section>
 
       {/* ── EmptyState ── */}
@@ -201,7 +204,6 @@ export function HarnessClient() {
           EmptyState
         </h2>
         <EmptyState
-          data-testid="empty-state"
           message="No blocks yet. Tap + to add your first block."
           actionLabel="Add Block"
           onAction={() => {}}
@@ -248,14 +250,16 @@ export function HarnessClient() {
           BrickChip
         </h2>
         <div className="flex flex-col gap-2">
-          <BrickChip
-            data-testid="brick-chip"
-            kind="tick"
-            name="meditate"
-            done={false}
-            onToggle={() => {}}
-            category="mind"
-          />
+          {/* wrapper div provides the data-testid for e2e targeting */}
+          <div data-testid="brick-chip">
+            <BrickChip
+              kind="tick"
+              name="meditate"
+              done={false}
+              onToggle={() => {}}
+              category="mind"
+            />
+          </div>
           <BrickChip
             kind="tick"
             name="journal"

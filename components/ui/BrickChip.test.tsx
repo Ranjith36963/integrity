@@ -118,7 +118,7 @@ describe("C-m0-020: BrickChip goal variant", () => {
 
 // C-m0-021
 describe("C-m0-021: BrickChip time variant", () => {
-  it("aria-valuenow=50 for 900/1800 seconds (50%)", () => {
+  it("accessible label includes progress for 900/1800 seconds (50%)", () => {
     render(
       <BrickChip
         kind="time"
@@ -130,8 +130,10 @@ describe("C-m0-021: BrickChip time variant", () => {
         category="mind"
       />,
     );
-    const btn = screen.getByRole("button", { name: /meditate/ });
-    expect(btn).toHaveAttribute("aria-valuenow", "50");
+    // Progress is expressed in the aria-label text (not aria-valuenow on a button,
+    // which is an invalid ARIA pattern — button does not support aria-valuenow).
+    const btn = screen.getByRole("button", { name: /meditate 15\/30 min/ });
+    expect(btn).toBeInTheDocument();
   });
 
   it("accessible label includes '15/30 min'", () => {

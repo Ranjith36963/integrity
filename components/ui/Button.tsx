@@ -14,7 +14,7 @@ export const buttonVariants = cva(
         ghost: "text-[--ink-dim] hover:text-[--ink]",
       },
       size: {
-        sm: "h-9 px-3 text-[--fs-12] min-w-[44px]",
+        sm: "min-h-[44px] px-3 text-[--fs-12] min-w-[44px]",
         md: "h-11 px-4 text-[--fs-14] min-w-[44px]",
         lg: "h-12 px-6 text-[--fs-16] min-w-[44px]",
       },
@@ -32,15 +32,32 @@ export interface ButtonProps
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (
-    { className, variant, size, loading, disabled, children, ...props },
+    {
+      className,
+      variant,
+      size,
+      loading,
+      disabled,
+      children,
+      "aria-label": ariaLabelProp,
+      ...props
+    },
     ref,
   ) => {
+    // When loading, children are hidden visually — derive the accessible label
+    // from the children text so screen readers still announce the button purpose.
+    const loadingLabel =
+      loading && !ariaLabelProp && typeof children === "string"
+        ? children
+        : ariaLabelProp;
+
     return (
       <button
         ref={ref}
         className={cn(buttonVariants({ variant, size }), className)}
         disabled={disabled ?? loading}
         aria-busy={loading ? "true" : undefined}
+        aria-label={loadingLabel}
         {...props}
       >
         {loading ? (
