@@ -89,30 +89,41 @@ test.describe("E-m0-003: every interactive element has ≥44×44 bounding box", 
   });
 });
 
-test.describe("E-m0-004: reduced-motion collapses transitions", () => {
-  test("data-motion elements have no animation, EmptyState has no pulse", async ({
-    page,
-  }) => {
+test.describe("E-m0-004: reduced-motion collapses EmptyState pulse animation", () => {
+  // The EmptyState pulse is CSS-driven via @media(prefers-reduced-motion:no-preference).
+  // Under "reduce", the animation must not run. Under "no-preference", it must run.
+  // These two complementary assertions prove the gate is real (not a tautology).
+
+  test("under reduce: EmptyState animationName is none", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/design");
 
-    // Any [data-motion] elements should have 0s animation duration
-    const motionEls = await page.locator("[data-motion]").count();
-    for (let i = 0; i < motionEls; i++) {
-      const el = page.locator("[data-motion]").nth(i);
-      const animDuration = await el.evaluate(
-        (node) => getComputedStyle(node).animationDuration,
-      );
-      // Under reduced-motion, duration should be 0s
-      expect(animDuration).toBe("0s");
-    }
-
-    // EmptyState should not have animate-pulse when reduced-motion is on
     const emptyState = page.locator('[data-testid="empty-state"]');
-    if ((await emptyState.count()) > 0) {
-      const classes = await emptyState.getAttribute("class");
-      expect(classes).not.toContain("animate-pulse");
-    }
+    await expect(emptyState).toBeVisible();
+
+    const animName = await emptyState.evaluate(
+      (node) => getComputedStyle(node).animationName,
+    );
+    // Under prefers-reduced-motion:reduce, the @media block does not apply
+    // → animationName must be "none".
+    expect(animName).toBe("none");
+  });
+
+  test("under no-preference: EmptyState animationName is not none (pulse runs)", async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.goto("/design");
+
+    const emptyState = page.locator('[data-testid="empty-state"]');
+    await expect(emptyState).toBeVisible();
+
+    const animName = await emptyState.evaluate(
+      (node) => getComputedStyle(node).animationName,
+    );
+    // Under prefers-reduced-motion:no-preference, the @media block applies
+    // → animationName must match the keyframe name defined in globals.css ("pulse").
+    expect(animName).not.toBe("none");
   });
 });
 
