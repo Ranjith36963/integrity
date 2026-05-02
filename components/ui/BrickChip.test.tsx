@@ -118,7 +118,7 @@ describe("C-m0-020: BrickChip goal variant", () => {
 
 // C-m0-021
 describe("C-m0-021: BrickChip time variant", () => {
-  it("accessible label includes progress for 900/1800 seconds (50%)", () => {
+  it("accessible label includes '15/30 min' for 900/1800s (50%)", () => {
     render(
       <BrickChip
         kind="time"
@@ -130,14 +130,14 @@ describe("C-m0-021: BrickChip time variant", () => {
         category="mind"
       />,
     );
-    // Progress is expressed in the aria-label text (not aria-valuenow on a button,
-    // which is an invalid ARIA pattern — button does not support aria-valuenow).
+    // aria-valuenow on a button is invalid ARIA — the accessible name carries the progress.
+    // 900s = 15min, 1800s = 30min
     const btn = screen.getByRole("button", { name: /meditate 15\/30 min/ });
     expect(btn).toBeInTheDocument();
   });
 
-  it("accessible label includes '15/30 min'", () => {
-    render(
+  it("fill circle strokeDashoffset represents 50% for 900/1800s", () => {
+    const { container } = render(
       <BrickChip
         kind="time"
         name="meditate"
@@ -148,9 +148,16 @@ describe("C-m0-021: BrickChip time variant", () => {
         category="mind"
       />,
     );
-    // 900s = 15min, 1800s = 30min
-    const btn = screen.getByRole("button", { name: /meditate 15\/30 min/ });
-    expect(btn).toBeInTheDocument();
+    // The fill circle is the second <circle> in the SVG (track is first).
+    // r=12, pct=50% → strokeDashoffset = 2π * 12 * (1 - 0.5) = 12π ≈ 37.699
+    const circles = container.querySelectorAll("svg circle");
+    expect(circles.length).toBeGreaterThanOrEqual(2);
+    const fillCircle = circles[1] as SVGCircleElement;
+    const dashoffset = parseFloat(
+      fillCircle.getAttribute("stroke-dashoffset") ?? "NaN",
+    );
+    const expected = 2 * Math.PI * 12 * (1 - 0.5); // ≈ 37.699
+    expect(dashoffset).toBeCloseTo(expected, 2);
   });
 });
 
