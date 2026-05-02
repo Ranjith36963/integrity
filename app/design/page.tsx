@@ -1,11 +1,12 @@
 /**
- * app/_design/page.tsx — Design system harness.
+ * app/design/page.tsx — Design system harness.
  * Renders all 10 M0 primitives in every documented state.
  * Also includes a contrast-pair table at the bottom for axe scanning.
  *
- * Route: /_design
- * Accessible in dev and Playwright; excluded from prod nav by Next.js
- * underscore-prefix convention. See components/ui/README.md for docs.
+ * Route: /design (no underscore — App Router treats `_`-prefixed
+ * directories as private/non-routable; see ADR-030). Privacy from
+ * production nav is enforced by absence of any link to this route.
+ * Accessible in dev and Playwright. See components/ui/README.md for docs.
  */
 import React from "react";
 import { HarnessClient } from "./HarnessClient";
