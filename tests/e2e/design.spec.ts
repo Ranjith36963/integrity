@@ -94,22 +94,24 @@ test.describe("E-m0-004: reduced-motion collapses EmptyState pulse animation", (
   // Under "reduce", the animation must not run. Under "no-preference", it must run.
   // These two complementary assertions prove the gate is real (not a tautology).
 
-  test("under reduce: EmptyState animationName is none", async ({ page }) => {
+  test("under reduce: EmptyState animation-name is none", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/design");
 
     const emptyState = page.locator('[data-testid="empty-state"]');
     await expect(emptyState).toBeVisible();
 
-    const animName = await emptyState.evaluate(
-      (node) => getComputedStyle(node).animationName,
+    // Use getPropertyValue('animation-name') — the JS camelCase accessor (.animationName)
+    // has a Chromium quirk where it returns "none" even when the longhand resolves to "pulse".
+    const animName = await emptyState.evaluate((node) =>
+      getComputedStyle(node).getPropertyValue("animation-name"),
     );
     // Under prefers-reduced-motion:reduce, the @media block does not apply
-    // → animationName must be "none".
+    // → animation-name must be "none".
     expect(animName).toBe("none");
   });
 
-  test("under no-preference: EmptyState animationName is not none (pulse runs)", async ({
+  test("under no-preference: EmptyState animation-name is pulse", async ({
     page,
   }) => {
     await page.emulateMedia({ reducedMotion: "no-preference" });
@@ -118,12 +120,12 @@ test.describe("E-m0-004: reduced-motion collapses EmptyState pulse animation", (
     const emptyState = page.locator('[data-testid="empty-state"]');
     await expect(emptyState).toBeVisible();
 
-    const animName = await emptyState.evaluate(
-      (node) => getComputedStyle(node).animationName,
+    const animName = await emptyState.evaluate((node) =>
+      getComputedStyle(node).getPropertyValue("animation-name"),
     );
     // Under prefers-reduced-motion:no-preference, the @media block applies
-    // → animationName must match the keyframe name defined in globals.css ("pulse").
-    expect(animName).not.toBe("none");
+    // → animation-name must be "pulse" (the keyframe name in globals.css).
+    expect(animName).toBe("pulse");
   });
 });
 
