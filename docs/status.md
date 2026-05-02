@@ -6,8 +6,8 @@
 
 ## Snapshot
 
-- **Branch:** `claude/build-dharma-pwa-8WVNB` at `cc9f3c7` · `main` at `c3ef9f1` (feature branch not yet merged)
-- **Last commit:** `cc9f3c7` — `docs(ship-m0): resolve <ship-commit> placeholder with actual sha 18e737f`
+- **Branch:** `claude/build-dharma-pwa-8WVNB` at `cfaa048` · `main` at `c3ef9f1` (feature branch not yet merged)
+- **Last commit:** `cfaa048` — `docs(ship-m0): update snapshot sha to cc9f3c7 (final pushed tip)`
 - **Last preview URL:** `https://integrity-git-claude-build-dharma-pwa-8wvnb-rahulranjith369-5644s-projects.vercel.app/` — **manual verification required** (Vercel MCP not loaded in this session per ADR-010 + open loop below; sandbox returns 403 on Vercel hosts)
 - **Methodology:** The Loop (SDD-outside, TDD-inside) per ADR-025; two human gates per ADR-026; per-phase commit prefixes per ADR-027.
 
