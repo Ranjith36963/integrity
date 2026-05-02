@@ -28,30 +28,50 @@ function extractRootBlock(source: string): string {
 
 const root = extractRootBlock(css);
 
+// Helpers for matching CSS tokens regardless of formatting differences
+// (prettier normalizes rgba(245,241,232,.5) → rgba(245, 241, 232, 0.5)).
+function checkToken(cssRoot: string, token: string, value: string) {
+  const normalizedRoot = cssRoot.replace(/\s+/g, " ");
+  // Normalize the expected value the same way: collapse spaces, expand .5 → 0.5
+  const normalizedValue = value
+    .replace(/\s+/g, " ")
+    .replace(
+      /rgba\((\d+),\s*(\d+),\s*(\d+),\s*\.(\d+)\)/,
+      (_, r, g, b, a) => `rgba(${r}, ${g}, ${b}, 0.${a})`,
+    );
+  const tokenEsc = token.replace(/[-]/g, "\\-");
+  const valueEsc = normalizedValue
+    .replace(/[().,[\]]/g, (c) => `\\${c}`)
+    .replace(/\s+/g, "\\s*");
+  const pattern = new RegExp(`${tokenEsc}\\s*:\\s*${valueEsc}`);
+  expect(normalizedRoot).toMatch(pattern);
+}
+
 // U-m0-001: Color tokens
 describe("U-m0-001: globals.css :root declares M0 color tokens", () => {
-  const colorTokens: [string, string][] = [
-    ["--bg", "#07090f"],
-    ["--bg-elev", "#0c1018"],
-    ["--ink", "#f5f1e8"],
-    ["--ink-dim", "rgba(245,241,232,.5)"],
-    ["--accent", "#fbbf24"],
-    ["--accent-deep", "#d97706"],
-    ["--cat-health", "#34d399"],
-    ["--cat-mind", "#c4b5fd"],
-    ["--cat-career", "#fbbf24"],
-    ["--cat-passive", "#64748b"],
-  ];
-
-  it.each(colorTokens)("declares %s: %s", (token, value) => {
-    // Normalize whitespace in value for comparison (spaces vs no-spaces in rgba)
-    const normalizedRoot = root.replace(/\s+/g, " ");
-    // Check token is present with the exact value (allow spaces around colon and semicolons)
-    const pattern = new RegExp(
-      `${token.replace("--", "\\-\\-")}\\s*:\\s*${value.replace(/[().,]/g, (c) => `\\${c}`).replace(/\s+/g, "\\s*")}`,
+  it("declares --bg: #07090f", () => checkToken(root, "--bg", "#07090f"));
+  it("declares --bg-elev: #0c1018", () =>
+    checkToken(root, "--bg-elev", "#0c1018"));
+  it("declares --ink: #f5f1e8", () => checkToken(root, "--ink", "#f5f1e8"));
+  // ink-dim is rgba warm-white at 50% alpha; prettier may normalize spacing + 0.5 vs .5
+  it("declares --ink-dim: rgba(245,241,232,.5)", () => {
+    // Accept either compact or spaced form, and either 0.5 or .5 — same semantic value
+    expect(root).toMatch(
+      /--ink-dim\s*:\s*rgba\(\s*245\s*,\s*241\s*,\s*232\s*,\s*0?\.5\s*\)/,
     );
-    expect(normalizedRoot).toMatch(pattern);
   });
+  it("declares --accent: #fbbf24", () =>
+    checkToken(root, "--accent", "#fbbf24"));
+  it("declares --accent-deep: #d97706", () =>
+    checkToken(root, "--accent-deep", "#d97706"));
+  it("declares --cat-health: #34d399", () =>
+    checkToken(root, "--cat-health", "#34d399"));
+  it("declares --cat-mind: #c4b5fd", () =>
+    checkToken(root, "--cat-mind", "#c4b5fd"));
+  it("declares --cat-career: #fbbf24", () =>
+    checkToken(root, "--cat-career", "#fbbf24"));
+  it("declares --cat-passive: #64748b", () =>
+    checkToken(root, "--cat-passive", "#64748b"));
 });
 
 // U-m0-002: Typography tokens
