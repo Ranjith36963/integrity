@@ -81,6 +81,8 @@ We don't invent everything. Each move below is borrowed from a specific app's st
 
 ### § 0.3 — Visual identity
 
+> **Operating principle (per ADR-039): the tool ships empty.** Dharma is a setup-it-yourself SaaS — like Notion or Linear, not Headspace or Apple Health. **No factory habits, no pre-baked routines, no default categories, no seed data.** The user opens Dharma on day 1 and builds their day brick by brick. Every example in this spec ("Morning workout", "Drink water", etc.) describes what a user *might* create — never what we ship in code.
+
 The Building (today) page is the canonical surface. Every other screen extends it.
 
 - **Hero** = single % ring at top. Below the ring, a horizontal bar chart with one segment per user-defined category (segment width ∝ category's brick count, fill ∝ category's completion %). Per ADR-032 + ADR-033.
@@ -169,7 +171,7 @@ Sparing, intentional, never gratuitous.
 - **Streak milestones** — 7 / 30 / 100 / 365 days → bespoke shareable card screens
 - **Empty schedule but past noon** — empty state evolves: "It's 3 PM and your day is still empty. Want to add something?"
 - **Easter egg** — long-press the Dharma logo → reveals year heatmap miniature
-- **Templates** ("Monk Mode", "Builder Mode", "Athlete Mode") — Settings → Templates → preview → "Apply to: Today / This week / Range". Custom: save current day as template. Probable milestone: M5 or later — TBD.
+- **User-saved templates** — Settings → Templates → "Save current day as template" → re-apply to Today / This week / Range. **No factory templates ship with the app** (per ADR-039 — no "Monk Mode" / "Builder Mode" / "Athlete Mode" pre-bakes; templates are user-content-only). Probable milestone: M5 or later — TBD.
 
 ### § 0.9 — Data model rules (locked)
 
@@ -218,7 +220,7 @@ Per existing `lib/haptics.ts`. iOS PWA limited to 17.4+; Android uses `navigator
 | --------------------------------------------------------------------------- | ---------------- | -------------------------------------------------- |
 | Loose Bricks tray location: pinned above dock / bottom of timeline / top    | M2               | Pinned above dock (always reachable)               |
 | Pinch-to-zoom across views: primary or fallback?                            | M9               | Dock primary; pinch as bonus on Android/desktop    |
-| Templates ("Monk Mode" etc.) — ship in M5 or defer to M11+                  | M5               | Defer; ship custom-template-from-current-day first |
+| User-saved templates — ship in M5 or defer to M11+                          | M5               | Defer; v1 ships with no templates at all (ADR-039) |
 | Streak milestone numbers (7 / 30 / 100 / 365 vs others)                     | M7               | The four listed; bespoke per-screen                |
 | Empire view export — auto-yearly only, or anytime                           | M9               | Anytime; auto-prompt at year-end                   |
 
@@ -245,6 +247,7 @@ For ADR navigation:
 - **ADR-036** — Add Block sheet uses plain forms in M2; inline parsing arrives in M7
 - **ADR-037** — Voice mic ships in M10 (late, not early)
 - **ADR-038** — Forgiveness model: missed days = gray, never red
+- **ADR-039** — Dharma ships empty: no factory habits, templates, or category defaults
 
 ### § 0.14 — Explicit antipatterns (what we reject)
 
@@ -264,10 +267,10 @@ The prior build forced every routine, including single-action ones, into a timed
 
 This makes the day model feel rigid and verbose. A ten-minute "block" containing one atomic action is just a brick wearing a costume — it asks the user to defend a calendar slot for something that doesn't need one.
 
-**The new rule (per § 0.9 + ADR-035):** blocks are for *bigger rituals worth defending on the calendar* — multi-brick groupings, or genuinely time-bound stretches. Single atomic actions go in the Loose Bricks tray. A healthy day mixes both:
+**The new rule (per § 0.9 + ADR-035):** blocks are for *bigger rituals worth defending on the calendar* — multi-brick groupings, or genuinely time-bound stretches. Single atomic actions go in the Loose Bricks tray. A healthy day mixes both. **Illustrative only — not what ships (ADR-039 forbids factory routines):**
 
-- **3–5 timed blocks** — e.g., morning ritual, work block, evening wind-down (each contains 2+ bricks)
-- **5–15 standalone bricks** — e.g., drink water, stretch, write, take vitamin, face wash, brush teeth, journal
+- 3–5 timed blocks — e.g., a morning ritual, a focused work block, an evening wind-down (each containing 2+ bricks)
+- 5–15 standalone bricks — e.g., drink water, stretch, write, take vitamin, face wash, brush teeth, journal
 
 If a routine has only one brick in it, it should probably *be* a brick.
 
@@ -278,6 +281,14 @@ The prior build shipped four fixed categories — Health / Mind / Career / Passi
 #### Antipattern 3 — Implicit "Passive" catch-all category
 
 The prior build leaned heavily on a generic "Passive" category for things like commuting, sleep, walking — moves that don't fit Health/Mind/Career. Under user-defined categories (ADR-032), users can be specific ("Transit", "Sleep", "Movement") or just leave a routine uncategorized. We do NOT ship a default "Passive" bucket; the absence of a category is itself meaningful and should be allowed.
+
+#### Antipattern 4 — Factory-shipped habits, templates, or seed data
+
+Per ADR-039, **Dharma is a setup-it-yourself SaaS tool, not a curated content app.** Earlier drafts mentioned pre-baked templates ("Monk Mode" / "Builder Mode" / "Athlete Mode") as a delight feature; those are obsolete. No factory habits, no factory routines, no factory category palette, no seed data ship in production. The user opens the app on day 1 and builds from zero.
+
+Every example in this spec — "morning workout", "drink water", "face wash", "Building AI", "Wake ritual", any block name, any brick name, any category name — is **illustrative only**. Examples must NOT be transcribed into code as defaults, demo content, or onboarding fixtures. M1's empty state is *literally empty*: a blank timeline + the prompt "Tap any slot to lay your first block."
+
+User-saved templates ("save current day, re-apply later") remain a possible feature in M5+, but only as user-content. They never ship pre-populated.
 
 #### Note on the prior build's hero treatment
 

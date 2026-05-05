@@ -45,7 +45,7 @@
 - **Hero `data-testid="building-counter"` missing (N3).** `C-bld-040` uses a brittle class-name container query; add the testid in a future polish chunk (likely M7).
 - **DST off-by-one in `dayNumber()` (N4).** Fix lands in M8 with proper `programStart` math + DST fixtures.
 - **`harness.md` MCP rows still MISSING for Vercel + Context7 + Playwright** — wired in user's Claude account, not loaded into this session.
-- **M1+ PLANNER must inherit ADR-028..038** (M0 quartet 028–031 plus the design-pillar lock 032–038: user-defined N categories, single-% ring + bar chart, blocks-always-timed, bricks-inside-or-standalone, plain forms in M2, voice in M10, gray missed days). Also: `components/ui/README.md:23` claims `h-9` but implementation uses `min-h-[44px]` — stale size-table, defer to M1 or a focused chore commit.
+- **M1+ PLANNER must inherit ADR-028..039** (M0 quartet 028–031 plus the design-pillar lock 032–039: user-defined N categories, single-% ring + bar chart, blocks-always-timed, bricks-inside-or-standalone, plain forms in M2, voice in M10, gray missed days, **and ADR-039: Dharma ships empty — no factory habits, templates, or category defaults**). Also: `components/ui/README.md:23` claims `h-9` but implementation uses `min-h-[44px]` — stale size-table, defer to M1 or a focused chore commit.
 - **Loose Bricks tray location (TBD).** Three options on the table (pinned above dock / bottom of timeline / top of timeline). Per `spec.md § 0.11`, must lock before M2 PLANNER dispatch. Does NOT block M1 SPEC drafting.
 
 ## Spec gaps

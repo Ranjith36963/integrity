@@ -684,3 +684,28 @@ Commit prefixes per Loop phase, layered on top of Conventional Commits (commitli
 - A streak counter resets on a true 0% day, but past-day visualization stays gray (not red) — the day is observed, not shamed.
 - Empire view's identity-stats overlay (§ 0.6) frames presence-positively.
 - This is explicit positioning vs Streaks.app, Habitica, Duolingo — Dharma is the no-shame habit tracker.
+
+---
+
+## ADR-039 — Dharma ships empty: no factory habits, templates, or categories
+
+**Status:** Accepted · 2026-05-05 · supersedes "Templates ('Monk Mode', 'Builder Mode', 'Athlete Mode')" mention in earlier `spec.md § 0.8` draft
+
+**Context.** During design-pillar drafting (2026-05-05), `spec.md § 0.8` listed pre-baked templates ("Monk Mode" / "Builder Mode" / "Athlete Mode") as a delight feature, alongside "save current day as a template" as a custom user move. The user clarified: **Dharma is a setup-it-yourself SaaS tool — like Notion, Linear, or Airtable — not a curated content app like Headspace, Apple Health, Habitica, or Streaks.app.** No factory habits, no pre-baked routines, no default category palette ship with the application. The user opens Dharma on day 1 and builds from zero.
+
+**Decision.** Dharma ships empty. Specifically:
+
+1. **No factory habits or pre-baked routines.** The first run of the app shows a blank timeline. No "Wake ritual", "Morning workout", "Work block", "Sleep" demo content.
+2. **No factory templates.** "Monk Mode" / "Builder Mode" / "Athlete Mode" and any other named pre-bakes are forbidden. User-saved templates ("save current day, re-apply later") remain on the table as a M5+ feature, but only as user-content — never factory-shipped.
+3. **No factory category palette.** Already locked by ADR-032 (categories are user-defined). This ADR reinforces: the app does not seed any starter categories, including no "Passive" / "General" / "Other" catch-all.
+4. **No seed data in production builds.** Test fixtures live only in `*.test.ts`, Playwright fixtures, and Storybook-style harness pages (e.g., `/design`). They must NOT leak into the production bundle.
+5. **Every example in `spec.md` is illustrative only.** "Morning workout", "drink water", "face wash", "Building AI", any block name, brick name, or category name in the spec is a *reader-aid*, not a code default. PLANNER and BUILDER must not transcribe spec examples into demo content.
+
+**Consequences.**
+
+- M1's empty state is **literally empty** — blank timeline + faded time labels + a single prompt: "Tap any slot to lay your first block." No demo blocks, no demo bricks.
+- M2's Add Block sheet starts with no defaults beyond a current-time start (no pre-filled title, no pre-selected category). Categories are user-created on the fly when the user adds their first one.
+- M3's Add Brick sheet has no defaults.
+- M5's Settings → Templates tab (if it ships) starts empty: "You haven't saved any templates yet."
+- This is explicit positioning vs Habitica (factory habits), Streaks.app (10 default tracks), Finch (preset journeys). Dharma = blank canvas. The marketing one-liner: "Dharma doesn't tell you how to live. You build your day, brick by brick."
+- Antipattern 4 in `spec.md § 0.14` codifies this for PLANNER discipline.
