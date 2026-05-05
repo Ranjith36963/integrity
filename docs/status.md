@@ -6,9 +6,9 @@
 
 ## Snapshot
 
-- **Branch:** `claude/build-dharma-pwa-8WVNB` at `cfaa048` · `main` at `c3ef9f1` (feature branch not yet merged)
-- **Last commit:** `cfaa048` — `docs(ship-m0): update snapshot sha to cc9f3c7 (final pushed tip)`
-- **Last preview URL:** `https://integrity-git-claude-build-dharma-pwa-8wvnb-rahulranjith369-5644s-projects.vercel.app/` — **manual verification required** (Vercel MCP not loaded in this session per ADR-010 + open loop below; sandbox returns 403 on Vercel hosts)
+- **Branch:** `claude/build-dharma-pwa-8WVNB` at `2ce4562` · `main` at `c3ef9f1` (feature branch not yet merged)
+- **Last commit:** `2ce4562` — `docs(ship-m0): finalize snapshot — branch tip cfaa048, sha loop closed`
+- **Last preview URL:** `https://integrity-git-claude-buil-f6ede9-rahulranjith369-5644s-projects.vercel.app` — **verified Ready** via the Vercel App's GitHub commit-status on `2ce4562` (state=`success`, "Deployment has completed", inspector `https://vercel.com/rahulranjith369-5644s-projects/integrity/E1G1YuXsSPLtPNqdjKUt73VyHFG3`). User tap-tested on iPad Safari 2026-05-05 — Gate #2 ✓.
 - **Methodology:** The Loop (SDD-outside, TDD-inside) per ADR-025; two human gates per ADR-026; per-phase commit prefixes per ADR-027.
 
 ## Plan in force
@@ -20,7 +20,7 @@
 
 | Milestone                                 | State                                                     | Notes                                                                                                                                                                                                                            |
 | ----------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **M0 — Design System**                    | **Shipped (preview live; user tap-test pending Gate #2)** | 10 primitives + tokens. 48 IDs closed (`U-m0-001..012`, `C-m0-001..023`, `E-m0-001..008`, `A-m0-001..005`). New ADRs: 028 (`aria-checked`), 029 (`devIndicators: false`), 030 (`/design` route), 031 (`Button sm min-h-[44px]`). |
+| **M0 — Design System**                    | **Shipped + tap-tested ✓**                                | 10 primitives + tokens. 48 IDs closed (`U-m0-001..012`, `C-m0-001..023`, `E-m0-001..008`, `A-m0-001..005`). New ADRs: 028 (`aria-checked`), 029 (`devIndicators: false`), 030 (`/design` route), 031 (`Button sm min-h-[44px]`). Gate #2 closed 2026-05-05 — preview verified live via GitHub commit-status + user tap-test. |
 | M1 — Empty Building Shell                 | Not started — next up                                     | Page renders with empty state, no hardcoded blocks. PLANNER must inherit ADRs 028–031.                                                                                                                                           |
 | M2 — Add Block Flow                       | Not started                                               | First feature to lock the shared `Block` + `Recurrence` schema (ADR-019).                                                                                                                                                        |
 | M3 — Add Brick + Live Scoring             | Not started                                               | Three brick types (tick / goal / time), visual fill, hero count-up.                                                                                                                                                              |
@@ -38,7 +38,8 @@
 
 ## Open loops
 
-- **Vercel MCP authorized but not loaded in this session.** SHIPPER must say "user verification required" after each ship until a fresh chat picks up the MCP. Sandbox returns `403 host_not_allowed` on Vercel hosts.
+- **Vercel MCP scope mismatch.** The MCP is loaded but authenticated to a Vercel account that is **not** a member of the `rahulranjith369-5644s-projects` team that owns the `integrity` project (`list_teams → []`, `get_deployment → 404` for any hostname under that team). Until SHIPPER's MCP is re-authed under the right account, deploy verification must come from the **GitHub commit-status** posted by the Vercel App (`pull_request_read --method get_status`) or from the **Vercel-bot PR comment**. **Never template the preview URL from the branch name** — Vercel truncates+hashes long branches (e.g., `claude/build-dharma-pwa-8WVNB` collapses to `claude-buil-f6ede9`), so the templated URL silently 404s.
+- **Duplicate Vercel project `integrity-jhsn`.** Both `integrity` (`prj_jPyBOXfgEQ09vxB3nQgp8UnSAvSM`) and `integrity-jhsn` (`prj_BloEI8BTMAH695V0RUhsTH7aR90G`) are wired to the same GitHub repo and build on every push. Canonical preview is on `integrity`; `integrity-jhsn` should be deleted (Vercel MCP cannot do this from the current session — needs re-auth or manual cleanup in the Vercel UI).
 - **Vercel project connected; main push pending user authorization.** Branch `claude/build-dharma-pwa-8WVNB` ahead of `main`. Preview URL auto-updates with each branch push.
 - **Mobile-Safari (WebKit) Playwright project disabled** per ADR-010. Re-enable when running in an environment with WebKit binaries present.
 - **Lighthouse scores not yet measured.** No prod URL reachable from sandbox. Measure after Vercel MCP loads or after `main` merge.
@@ -66,4 +67,4 @@
 
 ## Next intended action
 
-**Start a fresh chat session** so Vercel + Playwright + Context7 MCPs load. In the new session, author the M1 SPEC entry in `/docs/spec.md` (Intent / Inputs / Outputs / Edge cases / Acceptance criteria), then invoke `/feature m1`. Per status.md continuity, M1 is **Empty Building Shell** — page renders with empty state, no hardcoded blocks. PLANNER must inherit ADRs 028–031.
+**Author the M1 SPEC entry** in `/docs/spec.md` (Intent / Inputs / Outputs / Edge cases / Acceptance criteria), then invoke `/feature m1`. M1 is **Empty Building Shell** — page renders with empty state, no hardcoded blocks. PLANNER must inherit ADRs 028–031.

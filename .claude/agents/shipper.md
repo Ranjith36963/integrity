@@ -72,6 +72,8 @@ On a tagged release, promote `[unreleased]` to `[x.y.z] — YYYY-MM-DD`.
 
 ### 5. Confirm production URL works
 
+**Source the URL, never template it.** Vercel truncates and hashes long branch names in the preview hostname (e.g., `claude/build-dharma-pwa-8WVNB` collapses to `claude-buil-f6ede9`), so a URL constructed from `<project>-git-<branch>-<team>.vercel.app` is often wrong and silently 404s. Read the URL from one of these sources, in order of preference: (a) Vercel MCP `get_deployment` once authenticated to the right account; (b) the **GitHub commit-status** posted by the Vercel App — `mcp__github__pull_request_read --method get_status` returns `target_url` pointing at `https://vercel.com/<team>/<project>/<id>` and the preview hostname is in the corresponding deployment metadata; (c) the **Vercel-bot PR comment** — its markdown table lists every project's `Preview` link verbatim.
+
 Once the deploy URL is known (preview or prod):
 
 - `curl -I <url>` — expect HTTP 200.
