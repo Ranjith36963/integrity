@@ -564,3 +564,123 @@ Commit prefixes per Loop phase, layered on top of Conventional Commits (commitli
 - Plan vs. spec drift was resolved spec-wins. Future plan.md cva snapshots that contradict spec acceptance criteria default to spec.
 - `components/ui/Button.tsx` and the C-m0-002 test reflect the floor; the `components/ui/README.md` size table (currently shows `h-9` etc.) must be updated by SHIPPER or in an early M1 follow-up.
 - If a future spec relaxes the 44 px floor (e.g., for a dense desktop view), it must be a deliberate spec amendment, not a silent plan change.
+
+---
+
+## ADR-032 — Categories: user-defined, unlimited count
+
+**Status:** Accepted · 2026-05-05 · supersedes `spec.md` "UX Spec — Phase 1 Toolkit § Categories"
+
+**Context.** The original Phase 1 toolkit spec fixed four categories (Health / Mind / Career / Passive) with hardcoded colors. The 2026-05-05 design-pillar synthesis (`spec.md § 0`) changes this: users define their own categories at any count. No closed enum, no master list shipped with the app.
+
+**Decision.** Block schema and standalone-brick schema both carry `category: string` (free text, user-managed). Categories are stored in user state, not enumerated in code. User adds / edits / deletes categories from settings; each category has a user-picked color. Pre-pivot blocks (none currently in the live data model) would default to a "general" category at migration time.
+
+**Consequences.**
+
+- The closed-set color list in the older spec section is **OBSOLETE**.
+- This forces ADR-033 (single-% ring instead of Apple Fitness three-ring) — N rings cannot be drawn for arbitrary N.
+- Per-category visualization is a horizontal bar chart below the hero ring, one segment per category (segment width ∝ brick count, fill ∝ category completion %). Layout uses CSS grid auto-flow; wraps gracefully for N > ~7.
+- M2's Add Block sheet has a category picker that doubles as "create new category" affordance.
+- M5's Settings sheet must include category management (rename, recolor, delete with reassignment prompt).
+
+---
+
+## ADR-033 — Hero is single-% ring + per-category bar chart (not three rings)
+
+**Status:** Accepted · 2026-05-05 · paired with ADR-032
+
+**Context.** Apple Fitness's three-ring identity is iconic but requires a closed-set enum (Move / Exercise / Stand). ADR-032 chose user-defined N categories instead. With N rings impossible to draw for arbitrary N, the hero shape changes.
+
+**Decision.** Hero = a single % ring on top showing overall day completion. Below the ring: a horizontal bar chart with one segment per user-defined category (width ∝ category brick count, fill ∝ category completion %). Per-category insight survives without the closed-set Apple Fitness aesthetic.
+
+**Consequences.**
+
+- M3 ("Add Brick + Live Scoring") plans a single-% count-up animation, not three concentric arcs.
+- The bar chart is a separate component from the ring and ships in M3.
+- Empty-day hero shows the ring at `0%` with no bar chart (zero categories engaged).
+- The "three rings" aesthetic is sacrificed; Dharma's visual identity will lean harder on the spatial timeline + Empire view as iconic signatures.
+
+---
+
+## ADR-034 — Blocks always timed; bricks never timed
+
+**Status:** Accepted · 2026-05-05 · clarifies M2 data model · supersedes `spec.md` "UX Spec — Phase 1 Toolkit § Add a Block" implicit "anytime block" affordance
+
+**Context.** Earlier discussion explored "anytime blocks" (a block that has no scheduled time and lives in a separate tray). The 2026-05-05 design-pillar synthesis collapses this: every block has a time. Bricks never have a time of their own — a "Time"-type brick has a target *duration*, not a *schedule*.
+
+**Decision.** Block schema requires `start: string` ("HH:MM"), `end: string | null` ("HH:MM" or null). Brick schema has no time fields at all. The "Time"-type brick's `durationMin: number` is a target, not a clock-position; the brick's parent block (or the Loose Bricks tray) determines when.
+
+**Consequences.**
+
+- The Add Block sheet always asks for a start time. Default = current time slot, rounded.
+- The daily page renders as a vertical spatial timeline (time labels left, blocks at their `start` position, height ∝ duration).
+- The "Anytime tray" concept (for blocks) is killed — that earlier suggestion is now obsolete.
+- Bricks living outside a block live in a separate "Loose Bricks" tray — see ADR-035 + § 0.11 for tray-location TBD.
+
+---
+
+## ADR-035 — Bricks can be inside a block OR standalone
+
+**Status:** Accepted · 2026-05-05
+
+**Context.** The 2026-05-05 design-pillar synthesis distinguishes two flavors of brick: bricks inside a block (sub-units of a ritual: "30 push-ups" inside Morning Workout) and standalone bricks (minor tasks with no parent: "Drink 2L water", "Take vitamin", "Stretch once"). Both are bricks; the only difference is whether they have a parent block.
+
+**Decision.** Brick schema has `parentBlockId: string | null`. When `null`, the brick is standalone and renders in the **"Loose Bricks" tray** (location TBD; see `spec.md § 0.11`). When set, brick renders inside its parent block on the timeline. Same schema either way — no separate `BlockBrick` / `TaskBrick` types.
+
+**Consequences.**
+
+- Day score is the average across all top-level units (blocks + standalone bricks). Standalone bricks count equally with blocks for scoring purposes.
+- M1 must allocate a render zone for the tray. Three options shortlisted (pinned above dock / bottom of timeline / top of timeline). PLANNER must lock before authoring M2 plan.
+- M5 Edit Mode supports moving a brick between block-parent and standalone (drag from tray into block, or out of block into tray).
+- An empty block (zero bricks) is still a valid scoring unit — see § 0.9 ("empty block → 0 or 1 boolean tick").
+
+---
+
+## ADR-036 — Add Block sheet uses plain forms in M2; inline parsing arrives in M7
+
+**Status:** Accepted · 2026-05-05 · resolves design-pillar Q3
+
+**Context.** Three input methods for adding a block: tap timeline slot, floating `+`, voice (M10). The Fantastical-style inline natural-language parsing ("Run 6-7am daily" → form auto-fills as you type) is desirable but adds ~1 week of scope to M2 (regex grammar over time tokens, real-time parsing UX). M2's existing scope (sheet UI + recurrence picker + brick adder + category picker + 3 brick types) is already large.
+
+**Decision.** M2 ships explicit form fields only — Title, Start, End (optional), Recurrence picker, Brick adder, Category. Inline natural-language parsing is layered on in **M7 Polish** (regex grammar over time/recurrence tokens; no LLM). LLM-based parsing remains exclusive to M10 voice; not used for typed input ever.
+
+**Consequences.**
+
+- M2 stays a ~1-week milestone instead of swelling to ~3 weeks.
+- M7 polish gains a meaningful UX upgrade (the magic-typing experience).
+- Voice (M10) keeps the LLM round-trip; typed input never depends on a network call.
+- If users in the M2-M6 window beg for the magic-typing flow, it stays a feature ship in M7, not a re-prioritization.
+
+---
+
+## ADR-037 — Voice mic ships in M10 (late, not early)
+
+**Status:** Accepted · 2026-05-05 · resolves design-pillar Q4
+
+**Context.** Voice was considered for an early slot (M5/M6, right after Add Block + Add Brick + Live Scoring) on the argument that "the killer feature should ship as soon as there's something to log into." Counter-argument: every other foundation (calendar nav, persistence, polish) is fragile until shipped, and AI cost + latency in beta is a real risk if voice lands before the rest is solid.
+
+**Decision.** Voice mic stays at **M10**, the final phase-1 milestone. M2–M9 ship without voice. The mic is a placeholder visual through that period.
+
+**Consequences.**
+
+- Phase-1 milestone order in `phase1plan.md` is unchanged.
+- Demos through M9 use the typed Add Block flow only — accepted compromise.
+- M10 builds on a fully polished foundation, so its API integration risk is isolated.
+- SG-bld-19 (voice failure-mode handling) is still required at M10; defer its resolution to M10 SPEC.
+
+---
+
+## ADR-038 — Forgiveness model: missed days = gray, no shame
+
+**Status:** Accepted · 2026-05-05 · resolves design-pillar Q5
+
+**Context.** Three forgiveness models considered for missed days: (a) Duolingo's streak-freeze (one free skip per week, use-or-lose), (b) Headspace's gentle gray (missed days observed, never punished), (c) Dharma-native compound forgiveness (break a streak → next 3 days at 50%+ rebuilds it; harder break = harder rebuild). The rest of Dharma's tone is calm-confident; punishment-via-red breaks that tone. Most competitors get this wrong (see § 0.1 wedge point 6).
+
+**Decision.** Missed days render **gray, never red** across all calendar views (Castle / Kingdom / Empire). Streaks are visible to those who want them (flame icon, days-in-a-row over 50%) but they're a *feature*, not the spine of the UI. No auto-broken streaks, no compounding penalties. Identity stats highlight presence ("Days you ran: 142"), never absence.
+
+**Consequences.**
+
+- M9 calendar visualizations (Castle / Kingdom / Empire) use a gray→green color scale. Red is reserved for destructive UI affordances only (delete confirmations).
+- A streak counter resets on a true 0% day, but past-day visualization stays gray (not red) — the day is observed, not shamed.
+- Empire view's identity-stats overlay (§ 0.6) frames presence-positively.
+- This is explicit positioning vs Streaks.app, Habitica, Duolingo — Dharma is the no-shame habit tracker.

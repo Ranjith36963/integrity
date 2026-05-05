@@ -36,9 +36,223 @@ What this feature does NOT do.
 
 ---
 
+## § 0 — Design Pillars
+
+> Authored 2026-05-05 from a multi-screen synthesis between user and Main Claude. **Read this section first.** Every milestone SPEC entry below cites the pillars it implements. Where this section conflicts with older free-form notes (e.g., the original "UX Spec — Phase 1 Toolkit" below), **§ 0 wins**, and the older note will be marked _superseded_.
+
+### § 0.1 — The wedge: what no competitor does
+
+Dharma's right to exist sits at the intersection of six gaps in the routine-tracking market.
+
+1. **No competitor shows a full year as buildings rising.** GitHub does it for code, Strava for runs — nobody does it for life.
+2. **No competitor scores the day automatically.** Calendars show plans; Dharma shows proof.
+3. **No competitor does voice end-of-day.** A 10-second voice log replaces 5 minutes of tapping.
+4. **No competitor has brick-by-brick visual fill.** Habit trackers tick boxes; Dharma stacks bricks that visibly become a building.
+5. **No competitor has an Empire view.** Year on one screen, every day a Building, identity earned in pixels.
+6. **Most competitors punish missed days. None forgive intelligently.** Dharma does (see § 0.7).
+
+### § 0.2 — Inspiration matrix
+
+We don't invent everything. Each move below is borrowed from a specific app's strongest pattern.
+
+| App                    | What they nailed                            |
+| ---------------------- | ------------------------------------------- |
+| Apple Calendar         | Spatial day view; time-blocks feel real     |
+| Google Calendar        | Color-coding; month overview                |
+| Notion Calendar (Cron) | Smooth motion; keyboard-fast                |
+| Things 3               | Typography; calmness; joy of checking off   |
+| Fantastical            | Natural-language input                      |
+| Sunsama                | Daily ritual; plan-the-day flow             |
+| Apple Fitness rings    | Visual identity; one glance = mood          |
+| Duolingo               | Streaks; dopamine; tree progress            |
+| Strava                 | Year heatmap; public proof                  |
+| GitHub                 | Contribution graph; 365 squares             |
+| Headspace              | Animated calmness; breath-paced motion      |
+| Arc Browser            | Motion as identity                          |
+| Linear                 | Speed; keyboard; sharp                      |
+| Raycast                | Command palette; power-user feel            |
+| Cal.com                | Booking-flow polish                         |
+| BeReal                 | Daily prompt urgency                        |
+| Robinhood              | Visceral chart animation                    |
+| Apple Health           | Year-over-year compare                      |
+| Whoop                  | Recovery score = identity                   |
+| Finch                  | Cute friend that grows                      |
+| Streaks                | Pure habit dopamine                         |
+
+### § 0.3 — Visual identity
+
+The Building (today) page is the canonical surface. Every other screen extends it.
+
+- **Hero** = single % ring at top. Below the ring, a horizontal bar chart with one segment per user-defined category (segment width ∝ category's brick count, fill ∝ category's completion %). Per ADR-032 + ADR-033.
+- **Page = vertical spatial timeline.** Time labels run down the left margin. Blocks render at their scheduled `start` position with height proportional to duration. The amber **now-line** sweeps down all day (re-uses `useNow()` per ADR-023).
+- **Two zones on the daily page:**
+  - Top: timeline of timed blocks
+  - Bottom: **"Loose Bricks" tray** — standalone bricks (no parent block). Tray location is **TBD** (pinned-above-dock vs bottom-of-timeline vs top-of-timeline) — see § 0.11.
+- **Color rule:** one dominant (warm-dark `#07090f` per ADR-011), one accent (amber). Category dot prefixes used sparingly. Don't paint everything.
+- **Typography:**
+  - Display numbers (hero %, scores) — **Instrument Serif Italic**, big, confident
+  - Block names, time labels — **JetBrains Mono**, architectural
+  - Body, copy — **Geist Sans**, readable
+- **Empty-state philosophy:** never a blank page. Empty Building shows the timeline (with faded time labels) and a single floating card: "Tap any slot to lay your first block."
+
+### § 0.4 — Motion vocabulary
+
+One consistent motion language across the app. Framer Motion's `layout` does most of the work for free.
+
+| Action                | Motion                                          |
+| --------------------- | ----------------------------------------------- |
+| Tap                   | Scale 0.96, 100ms ease-out                      |
+| Brick fill            | Width transition 600ms cubic-bezier             |
+| Block complete        | Subtle bloom + chime                            |
+| Modal open            | Slide from bottom, spring physics               |
+| Modal close           | Soft fade + slide                               |
+| Page transition       | FLIP shared element (block → expanded view)     |
+| Long press            | Haptic + scale-up 1.02 + shadow lift            |
+| Empire square land    | Stagger 30ms each, scale-in from 0.7            |
+
+`prefers-reduced-motion: reduce` collapses every entry above to instant transitions. Reduced-motion is not optional; it's the floor.
+
+### § 0.5 — Interaction primitives
+
+**Three ways to add a block:**
+
+1. Tap an empty timeline slot → Add Block sheet pre-fills with the tapped time
+2. Floating `+` button → sheet at default time (current hour, rounded)
+3. Voice mic (M10) → speak a description, Claude API parses, block appears
+
+**Add Block sheet (M2)**: plain forms only — Title, Start, End (optional), Recurrence picker, Brick adder, Category. Inline natural-language parsing arrives in M7 polish per ADR-036.
+
+**Brick logging gestures:**
+
+- **Tick** brick → tap = haptic + scale + fill gradient. One satisfying click.
+- **Goal** brick → +/- stepper with momentum (long-press accelerates, capped at 10× per existing ADR).
+- **Time** brick → tap "Start" → countdown ring fills; tap to pause/stop. BrickTimer per ADR-017.
+
+**Block expand**: tap a block card → FLIP animation expands it to fullscreen. All bricks visible; large numeric pad for goal types; large timer for time types. Tap "Done" to collapse.
+
+**Edit Mode (pencil icon)**: enters a deliberate state (not always-on). Blocks gently jiggle (iOS-style). Each block shows: drag handle (M6), pencil (re-open Add Block sheet), × delete. Tap pencil again or "Done" to exit and save.
+
+**Delete prompts** (Apple-Calendar language verbatim):
+- "This event only" → adds entry to `deletions[date:blockId]` per ADR-018
+- "All future events" → sets recurrence end-date to yesterday
+- "All events" → removes block entirely (destructive, red)
+
+### § 0.6 — Calendar hierarchy: Building → Castle → Kingdom → Empire
+
+Each view has its own visualization vocabulary.
+
+- **Building (today)** — the spatial timeline described in § 0.3
+- **Castle (week)** — 7 buildings as vertical bars, height ∝ daily %. Today highlighted; past dim; future outlined only. Tap a day → smooth zoom into that Building. Top stat: italic-serif week %. Streak indicator (flame icon, days-in-a-row over 50%). Compare-to-last-week delta (Robinhood-style: "+12% vs last week").
+- **Kingdom (month)** — ~30 squares colored by score; saturated green = great day, gray = missed day (per ADR-038), outline = future. Tap any square → drill into that Building. Long-press → tooltip ("Apr 14 · 78% · 9 blocks completed"). Horizontal swipe between months. Top stats: average / best / streak.
+- **Empire (year) — the killer screen** — 52 weeks × 7 days = 364 squares, whole year on one screen. Each square is a Building, color by score. Identity stats overlay: "Days you ran: 142. Days you meditated: 287." **Shareable image export** (Spotify-Wrapped-style "Year as Empire" card). Animated build-up on load: squares fill in left-to-right week by week.
+
+**View navigation**: dock-based (bottom segmented control: Building / Castle / Kingdom / Empire) is primary. Pinch-to-zoom is a delight bonus on platforms that support it (Android/desktop). iOS PWA falls back to dock — see § 0.11.
+
+**Top-of-every-screen tiny week strip**: 7 day-circles with scores. Tap → jump to that day. (Cron-inspired, lands in M9.)
+
+### § 0.7 — Forgiveness model
+
+Per ADR-038. The rest of Dharma is calm-confident; punishment-via-red breaks that tone.
+
+- **Missed days render gray, never red.** No shame, no auto-broken streaks, no compounding penalties.
+- **Streaks are visible to those who want them** (flame icon, days-in-a-row over 50%) but they're a *feature*, not the *spine* of the UI.
+- **Identity stats** highlight presence ("Days you ran: 142"), never absence.
+- **Headspace tone**: missed days observed, not punished.
+
+### § 0.8 — Delight & surprise
+
+Sparing, intentional, never gratuitous.
+
+- **First-launch onboarding** — 3-screen carousel ("Bricks → Blocks → Buildings"), skippable
+- **First brick laid** — small text card slides in: "Your Empire begins."
+- **First 100% day** — Empire square glows for 24 h (subtle pulse)
+- **Streak milestones** — 7 / 30 / 100 / 365 days → bespoke shareable card screens
+- **Empty schedule but past noon** — empty state evolves: "It's 3 PM and your day is still empty. Want to add something?"
+- **Easter egg** — long-press the Dharma logo → reveals year heatmap miniature
+- **Templates** ("Monk Mode", "Builder Mode", "Athlete Mode") — Settings → Templates → preview → "Apply to: Today / This week / Range". Custom: save current day as template. Probable milestone: M5 or later — TBD.
+
+### § 0.9 — Data model rules (locked)
+
+These three rules govern every milestone's schema. Per ADR-034 + ADR-035.
+
+1. **Block = always timed.** `start: HH:MM` required. `end: HH:MM` optional. Lives at a fixed slot on the daily timeline. Can be empty (zero bricks); empty blocks score as a tick (did I do this ritual? yes/no).
+2. **Brick = never timed.** No scheduled time of its own. A "Time"-type brick has a *target duration* (`durationMin: number`) — that is a goal, not a schedule. The block determines *when*.
+3. **Bricks can be inside a block OR standalone.** Same schema either way; difference is `parentBlockId: string | null`. Standalone bricks live in the "Loose Bricks" tray.
+
+**Brick types (locked since pre-pivot):**
+
+```ts
+type Brick =
+  | { id: string; type: 'tick';  name: string; category: string; parentBlockId: string | null }
+  | { id: string; type: 'goal';  name: string; category: string; parentBlockId: string | null; target: number; unit: string }
+  | { id: string; type: 'time';  name: string; category: string; parentBlockId: string | null; durationMin: number };
+```
+
+**Categories**: user-defined, unlimited count (per ADR-032). Stored in user state (not enumerated in code). Each block AND each standalone brick has a `category: string` field. Categories are color-picked at creation time.
+
+**Scoring (replaces older spec § "Scoring (math)"):**
+
+- Tick brick → `0` or `1`
+- Goal brick → `min(count / target, 1)`
+- Time brick → `min(minutesDone / durationMin, 1)`
+- Empty block → `0` or `1` (boolean tick)
+- Block (with bricks) → average of bricks' progress
+- **Day score = average across all top-level units** (blocks + standalone bricks)
+- Per-category day score = same average, filtered to that category
+
+### § 0.10 — Haptics
+
+Per existing `lib/haptics.ts`. iOS PWA limited to 17.4+; Android uses `navigator.vibrate`. Graceful no-op for unsupported.
+
+| Trigger          | Haptic        |
+| ---------------- | ------------- |
+| Brick tap        | light tap     |
+| Block complete   | success       |
+| Day reaches 100% | notification  |
+| Drag start       | medium impact |
+| Voice mic press  | strong impact |
+
+### § 0.11 — Open design questions (lock before the milestone they block)
+
+| Question                                                                    | Blocks milestone | My recommendation                                  |
+| --------------------------------------------------------------------------- | ---------------- | -------------------------------------------------- |
+| Loose Bricks tray location: pinned above dock / bottom of timeline / top    | M2               | Pinned above dock (always reachable)               |
+| Pinch-to-zoom across views: primary or fallback?                            | M9               | Dock primary; pinch as bonus on Android/desktop    |
+| Templates ("Monk Mode" etc.) — ship in M5 or defer to M11+                  | M5               | Defer; ship custom-template-from-current-day first |
+| Streak milestone numbers (7 / 30 / 100 / 365 vs others)                     | M7               | The four listed; bespoke per-screen                |
+| Empire view export — auto-yearly only, or anytime                           | M9               | Anytime; auto-prompt at year-end                   |
+
+### § 0.12 — What this stack beats
+
+| Competitor              | Dharma wins because                                            |
+| ----------------------- | -------------------------------------------------------------- |
+| Apple / Google Calendar | They show plans. Dharma shows proof.                           |
+| Notion / Things 3       | They list tasks. Dharma scores identity.                       |
+| Streaks / Habitica      | They track habits in isolation. Dharma weaves them into a day. |
+| Sunsama                 | $20/mo, no scoring, no Empire view.                            |
+| Motion                  | AI moves things. Users hate that. Dharma shows; doesn't move.  |
+| Finch                   | Childish. Dharma is grown-up gamification.                     |
+| Strava                  | Sports only. Dharma = entire life.                             |
+
+### § 0.13 — Locked decisions index
+
+For ADR navigation:
+
+- **ADR-032** — Categories: user-defined, unlimited count
+- **ADR-033** — Hero is single-% ring + per-category bar chart (not 3 rings)
+- **ADR-034** — Blocks always timed; bricks never timed
+- **ADR-035** — Bricks can be inside a block OR standalone (Loose Bricks tray)
+- **ADR-036** — Add Block sheet uses plain forms in M2; inline parsing arrives in M7
+- **ADR-037** — Voice mic ships in M10 (late, not early)
+- **ADR-038** — Forgiveness model: missed days = gray, never red
+
+---
+
 <!-- Paste full Dharma spec here. -->
 
 ## UX Spec — Phase 1 Toolkit
+
+> ⚠️ **Partially superseded by § 0 — Design Pillars (above).** Where the two conflict, § 0 wins. Specifically: § Categories (closed-set) is replaced by ADR-032 (user-defined). § Scoring (math) is replaced by § 0.9 (handles standalone bricks + empty blocks). § Voice Log "Phase 1.5" timing is replaced by ADR-037 (M10). All other sections below remain valid as historical drafting notes for milestones M2–M10.
 
 ### Mental Model
 

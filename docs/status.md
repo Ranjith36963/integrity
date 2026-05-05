@@ -45,7 +45,8 @@
 - **Hero `data-testid="building-counter"` missing (N3).** `C-bld-040` uses a brittle class-name container query; add the testid in a future polish chunk (likely M7).
 - **DST off-by-one in `dayNumber()` (N4).** Fix lands in M8 with proper `programStart` math + DST fixtures.
 - **`harness.md` MCP rows still MISSING for Vercel + Context7 + Playwright** — wired in user's Claude account, not loaded into this session.
-- **M1 PLANNER must inherit ADR-028..031** (`aria-checked` on `role="switch"`, `devIndicators: false` for touch-target tests, `/design` route (no underscore), `Button sm` keeps `min-h-[44px]`). Also: `components/ui/README.md:23` claims `h-9` but implementation uses `min-h-[44px]` — stale size-table, defer to M1 or a focused chore commit.
+- **M1+ PLANNER must inherit ADR-028..038** (M0 quartet 028–031 plus the design-pillar lock 032–038: user-defined N categories, single-% ring + bar chart, blocks-always-timed, bricks-inside-or-standalone, plain forms in M2, voice in M10, gray missed days). Also: `components/ui/README.md:23` claims `h-9` but implementation uses `min-h-[44px]` — stale size-table, defer to M1 or a focused chore commit.
+- **Loose Bricks tray location (TBD).** Three options on the table (pinned above dock / bottom of timeline / top of timeline). Per `spec.md § 0.11`, must lock before M2 PLANNER dispatch. Does NOT block M1 SPEC drafting.
 
 ## Spec gaps
 
@@ -66,4 +67,6 @@
 
 ## Next intended action
 
-**Author the M1 SPEC entry** in `/docs/spec.md` (Intent / Inputs / Outputs / Edge cases / Acceptance criteria), then invoke `/feature m1`. M1 is **Empty Building Shell** — page renders with empty state, no hardcoded blocks. PLANNER must inherit ADRs 028–031.
+**Design pillars are now authored in `spec.md § 0`** (2026-05-05) — competitive wedge, inspiration matrix, visual identity, motion vocabulary, interaction primitives, calendar hierarchy, forgiveness model, data-model rules, haptics. Seven new ADRs (032–038) lock the foundational decisions. PLANNER reads § 0 first on every M1+ dispatch.
+
+**Next:** answer the open Loose Bricks tray location (A pinned-above-dock / B bottom-of-timeline / C top-of-timeline; § 0.11), then **author the M1 SPEC entry** in `/docs/spec.md` (Intent / Inputs / Outputs / Edge cases / Acceptance criteria) citing the relevant pillars, then invoke `/feature m1`. M1 is **Empty Building Shell** — spatial timeline rendered with empty state, faded time labels, the amber now-line, and a placeholder hero ring. No interactive `+` yet (M2 wires Add Block).
