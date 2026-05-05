@@ -15,25 +15,71 @@ Users build their day brick by brick. Bricks → Blocks → Buildings (days) →
 - Vercel (deploy)
 - Future: Capacitor for iOS + Android app stores
 
-## Methodology
+## Methodology: The Loop (SDD outside, TDD inside)
 
-### Outer loop: Spec-Driven Development (SDD)
-- /docs/spec.md is the source of truth
-- Every feature traces back to a spec line
-- No code without a spec
-- Spec changes = explicit decision, never silent
+Every feature follows this exact sequence. We name it **The Loop** so any prompt, ADR, or commit can reference it without re-stating the contract. Codified by ADR-025; gating refined by ADR-026; commit prefixes by ADR-027.
 
-### Inner loop: Test-Driven Development (TDD)
-- Inside SDD, every feature is built test-first
-- Red → Green → Refactor
-- Write failing test → minimum code to pass → clean up
-- Tests are the proof the spec is met
-
-### How they nest
 SPEC defines WHAT.
-TESTS prove the WHAT is met.
+PLAN defines HOW.
+TESTS prove HOW will satisfy WHAT.
 CODE makes tests green.
-TDD lives inside SDD.
+EVAL proves the green is real.
+SHIP puts it in front of the user.
+
+### Phase 1 — SPEC (user owns)
+- User authors the feature entry in `/docs/spec.md`.
+- Required sections: Intent · Inputs · Outputs · Edge cases · Acceptance criteria.
+- This is the only phase where new requirements enter the system.
+- (Precondition to The Loop, not a Loop step. No agent gate.)
+
+### Phase 2 — PLAN (PLANNER `mode: PLAN`)
+- PLANNER reads `/docs/spec.md` and emits the feature's `/docs/plan.md` entry: file structure, data models, components, design tokens, decisions to honor.
+- Commits as `docs(plan-<feature>): …`.
+- Auto-chains to Phase 3. No user gate.
+
+### Phase 3 — TESTS (PLANNER `mode: TESTS`) → Gate #1
+- Separate PLANNER dispatch. Derives GIVEN/WHEN/THEN tests from the just-written `plan.md`.
+- Covers success, failure, and edge cases.
+- Output: `/docs/tests.md` entry for the feature.
+- Commits as `docs(tests-<feature>): …`.
+- **STOP. User reviews `plan.md` AND `tests.md` together.** Approve, amend, or reject. This is the single planning gate (ADR-026).
+
+### Phase 4 — IMPL (BUILDER owns, TDD inner loop)
+- For each test in `tests.md`: Red → Green → Refactor → Commit.
+- Red commit: `test(<feature>): …`. Green/refactor commit: `feat(<feature>): …` or `fix(<feature>): …`.
+- No phase exit until every `tests.md` ID for this feature is green.
+- Auto-chains to Phase 5. No user gate.
+
+### Phase 5 — EVAL (EVALUATOR owns)
+- Runs `npm run eval` (lint + typecheck + vitest + e2e + a11y) plus spec-coverage and test-integrity review.
+- Eval-driven follow-up commits: `docs(eval-<feature>): …` or `chore(eval-<feature>): …`.
+- PASS → auto-chain to Phase 6.
+- FAIL → auto-chain back to BUILDER with gap list (capped at 3 retries per ADR-024). No user gate inside the FAIL loop.
+
+### Phase 6 — SHIP (SHIPPER owns) → Gate #2
+- Updates README + CHANGELOG + `docs/status.md` (status update is **mandatory** — every ship commit includes it). Pushes to the deploy branch (Vercel auto-deploys preview).
+- Commits as `chore(ship-<feature>): …` and/or `docs(ship-<feature>): …`.
+- **STOP. User taps the preview, reacts.** Reaction feeds the next `/feature` invocation.
+
+### Why two gates, not three
+- Gate #1 (after PLAN+TESTS) catches design AND test→spec drift when no code is written. Both files reviewed together; one interruption.
+- Gate #2 (after SHIP) is the only gate that judges live behavior.
+- Phases 4 + 5 run unattended because by then, the upstream gate has certified that "green tests = correct feature." If that contract is broken, fix it at Gate #1, not by inserting more gates downstream.
+
+### Commit-prefix convention (ADR-027)
+
+Layered on Conventional Commits. `<feature>` is the slug used in `plan.md` / `tests.md` (e.g., `m0`, `m3`, `add-block`):
+
+| Phase             | Prefix                                            |
+| ----------------- | ------------------------------------------------- |
+| 2. PLAN           | `docs(plan-<feature>): …`                         |
+| 3. TESTS          | `docs(tests-<feature>): …`                        |
+| 4. IMPL — red     | `test(<feature>): …`                              |
+| 4. IMPL — green   | `feat(<feature>): …` or `fix(<feature>): …`       |
+| 5. EVAL follow-up | `docs(eval-<feature>): …` / `chore(eval-…): …`    |
+| 6. SHIP           | `chore(ship-<feature>): …` / `docs(ship-…): …`    |
+
+Out-of-Loop harness commits (ADRs, slash commands, agent definitions) continue as `docs(harness): …`.
 
 ## The 4 Agents
 
@@ -93,28 +139,31 @@ Hands off to: Main Claude
 
 ## Orchestration Flow (permanent)
 
-This is how every feature is shipped. Steps 1–2 are the user's. Steps 3–7 are Main Claude's, run end-to-end without asking.
+This is how every feature is shipped, post ADR-025/026/027. Steps 3 and 10 are the user's gates. Everything else runs unattended.
 
-**The user's role: plan and approve, then react to a live preview.**
-**Main Claude's role: drive 3 → 7 automatically, one feature at a time.**
+**The user's role: approve plan+tests, then react to a live preview. Two check-ins per feature.**
+**Main Claude's role: drive 1 → 2 → 4 → 5 → 6 → 7 → 8 → 9 automatically, one feature at a time.**
 
-  1. **PLANNER** — Main Claude dispatches. Reads `/docs/spec.md`. Writes `/docs/plan.md` and `/docs/tests.md`. Tests are grouped by **feature** with explicit feature names. Spec gaps surface as questions for the user.
-  2. **User approves** the plan and resolves spec gaps. This is the only approval gate per page.
-  3. **BUILDER** — Main Claude dispatches. Picks **one feature**. Goes test by test: red → green → refactor → commit. Commits one logical change at a time; the user can watch files appear.
-  4. **BUILDER → EVALUATOR (automatic).** When that one feature is green, BUILDER stops and hands off. Main Claude does not pause for confirmation.
-  5. **EVALUATOR** — runs Playwright, axe, lint, typecheck, full test suite, optional Lighthouse. Returns PASS or FAIL.
-     - **FAIL → back to BUILDER, automatic.** Loop until PASS. No user check-in between iterations unless the loop hits the same gap twice.
+  1. **PLANNER (`mode: PLAN`)** — Main Claude dispatches. Reads `/docs/spec.md`. Writes `/docs/plan.md` entry for the named feature only. Commits as `docs(plan-<feature>):`. Auto-chains to step 2 (no user gate per ADR-026).
+  2. **PLANNER (`mode: TESTS`)** — Main Claude dispatches a second time. Reads the just-written `plan.md`. Writes `/docs/tests.md` entry for the named feature only (G/W/T IDs). Commits as `docs(tests-<feature>):`.
+  3. **User approves** `plan.md` and `tests.md` together. This is **Gate #1, the planning gate** (per ADR-026). One approval before any code is written.
+  4. **BUILDER** — Main Claude dispatches. Picks **one feature**. Goes test by test: red → green → refactor → commit. Red commits as `test(<feature>):`; green/refactor as `feat(<feature>):` or `fix(<feature>):` (per ADR-027).
+  5. **BUILDER → EVALUATOR (automatic).** When the feature is green, BUILDER stops. Main Claude does not pause.
+  6. **EVALUATOR** — runs `npm run eval` (lint + typecheck + vitest + e2e + a11y) plus spec-coverage and test-integrity review. Returns PASS or FAIL.
+     - **FAIL → back to BUILDER, automatic.** Up to 3 retries (per ADR-024); then escalate.
      - **PASS → SHIPPER, automatic.**
-  6. **SHIPPER** — pushes to the deploy branch (Vercel auto-deploys preview). Updates README + CHANGELOG. Returns the live preview URL.
-  7. **Main Claude reports back to the user** with the preview URL and a one-line summary of what landed.
-  8. **User opens the preview, taps, feels, reacts.** Tells Main Claude what's off. Main Claude feeds that back to the harness — usually as a new spec entry (loop returns to step 1) or a follow-up test ID against the existing plan (loop returns to step 3).
-  9. **Next feature → repeat from step 3** until every feature in the plan has shipped a preview.
+  7. **SHIPPER** — pushes to the deploy branch (Vercel auto-deploys preview). Updates README + CHANGELOG + **`docs/status.md` (mandatory, every ship, per ADR-026)**. Commits as `chore(ship-<feature>):` and/or `docs(ship-<feature>):`.
+  8. **Main Claude reports back** with the preview URL and a one-line summary.
+  9. (Awaiting Gate #2 — see step 10.)
+ 10. **User opens the preview, taps, reacts.** This is **Gate #2, the preview gate** (per ADR-026). Reaction feeds the next `/feature` invocation — usually a new spec entry (loop returns to step 1) or a follow-up test ID against the existing plan (loop returns to step 4).
+ 11. **Next feature → repeat from step 1.**
 
 **Boundary rules**
 - The user only talks to Main Claude. Never to sub-agents.
 - Each sub-agent has isolated context. They exchange files (plan.md, tests.md, commits, the PASS/FAIL report), never reasoning.
+- PLANNER runs **twice per feature** (mode: PLAN, mode: TESTS) — never both files in one dispatch.
 - BUILDER stops after **one feature**, never bundles multiple features into one run.
-- Main Claude does not ask "should I run the evaluator?" — that's automatic. The only times Main Claude pauses for user input are: after PLANNER (approval), after SHIPPER (preview review), or when an agent reports a real ambiguity it can't resolve from its inputs.
+- Main Claude does not ask "should I run the evaluator?" — that's automatic. The only times Main Claude pauses for user input are: after PLANNER's TESTS dispatch returns (Gate #1), after SHIPPER deploys (Gate #2), or when an agent reports a real ambiguity it can't resolve from its inputs.
 
 User only talks to Main Claude. Never to sub-agents directly.
 

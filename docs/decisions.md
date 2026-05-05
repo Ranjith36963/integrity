@@ -80,13 +80,15 @@
 
 ## ADR-007 — Time-brick logging is a stepper, not a timer
 
-**Status:** Accepted · 2026-04-29 · resolves SG-bld-02
+**Status:** Superseded by ADR-017 · 2026-04-29 · resolves SG-bld-02
 
 **Context.** Spec says "start/stop timer OR manual input" for time bricks.
 
-**Decision.** Phase 1 uses a `+/-` stepper. No real timer. Same component handles Goal and Time bricks.
+**Decision (original).** Phase 1 uses a `+/-` stepper. No real timer. Same component handles Goal and Time bricks.
 
 **Consequences.** A real start/stop timer is a future feature, separate ADR when introduced.
+
+**Why superseded.** The empty-toolkit pivot (2026-04-29) elevates time-brick logging UX. Users want a real start/stop timer for sessions of meditation, focus work, etc. ADR-017 captures the new decision.
 
 ---
 
@@ -212,3 +214,353 @@
 **Decision.** Tick bricks construct `aria-label` as `"<name> done"` or `"<name> —"` (`components/Brick.tsx:41-42`). The visible text remains just the name — only the accessible name is enriched.
 
 **Consequences.** Screen-reader users hear _which_ brick they're toggling. `U-bld-019` still tests the canonical `brickLabel()` strings (`"done"` / `"—"`); the aria-label augmentation lives in the component layer, not the utility.
+
+---
+
+## ADR-017 — Time bricks use a real timer (BrickTimer)
+
+**Status:** Accepted · 2026-04-29 · supersedes ADR-007
+
+**Context.** The empty-toolkit pivot puts user-created routines at the center. Time bricks (e.g. "meditate 10 min", "deep work 90 min") need a real start/stop experience, not a `+/-` stepper. The spec § Logging Bricks (View Mode) explicitly says "Time → start/stop timer OR manual input".
+
+**Decision.** Phase 1 implements a real timer:
+
+- New component `components/BrickTimer.tsx`, sibling to `BrickStepper`. Goal bricks continue to use `BrickStepper`; tick bricks continue to toggle.
+- Timer state is **timestamp-based** (`{ runningSince: epochMs | null, accumulatedSec: number }`), persisted to localStorage so a refresh or sleep doesn't lose the session.
+- Display: `mm:ss` live counter. Controls: play / pause / reset, plus a manual override input that commits a value directly without running the timer (covers the spec's "OR manual input" branch).
+- Only one timer can be running at a time across the app; starting a new timer pauses any other.
+
+**Consequences.**
+
+- Test IDs related to time-brick logging change shape: instead of asserting stepper increments, tests assert the timer commits accumulated seconds when paused. PLANNER will rewrite the relevant IDs.
+- localStorage schema must include a `timers` map keyed by `${blockId}:${brickId}`.
+- ADR-007's `+/-` stepper is retained for goal bricks only.
+
+---
+
+## ADR-018 — Phase-1 persistence is `localStorage` under `dharma:v1`
+
+**Status:** Accepted · 2026-04-29
+
+**Context.** No backend yet. The product needs to remember the user's blocks, bricks, completion logs, program-start date, and timer state across page loads.
+
+**Decision.** A single localStorage key `dharma:v1` holds the entire `AppState` JSON. The state is loaded after first paint (two-pass render) so SSR HTML matches the empty-state default. A new module `lib/persist.ts` exposes `loadState()`, `saveState(state)`, and `usePersistedState()`.
+
+**Schema (versioned, evolvable):**
+
+```ts
+type AppState = {
+  schemaVersion: 1;
+  programStart: string; // ISO date, set on first run
+  blocks: Block[]; // template blocks (with recurrence)
+  logs: Record<string, BrickLog>; // keyed by `${yyyy-mm-dd}:${blockId}:${brickId}`
+  timers: Record<string, TimerState>; // keyed by `${blockId}:${brickId}`
+  deletions: Record<string, true>; // per-day "just today" overrides, key `${yyyy-mm-dd}:${blockId}`
+};
+```
+
+**Consequences.**
+
+- All mutations route through `saveState()` after `setState`. We accept the small write overhead in exchange for guaranteed durability.
+- Future migration is a `schemaVersion` bump + a small migrator function in `persist.ts`.
+- Tests can pre-seed `localStorage` directly to set up scenarios; e2e tests should clear `localStorage` between cases.
+
+---
+
+## ADR-019 — Recurrence is an enum + optional payload, not iCal RRULE
+
+**Status:** Accepted · 2026-04-29
+
+**Context.** The spec lists four recurrence options: just-today, every-weekday, every-day, custom range. iCal-grade RRULE is overkill for Phase 1.
+
+**Decision.**
+
+```ts
+type Recurrence =
+  | { kind: "just-today"; date: string } // ISO date
+  | { kind: "every-weekday" } // Mon–Fri
+  | { kind: "every-day" } // every day
+  | {
+      kind: "custom-range";
+      from: string;
+      to: string; // ISO dates inclusive
+      weekdays?: number[];
+    }; // 0=Sun..6=Sat; omitted = all
+```
+
+`appliesOn(recurrence, date)` is a pure function in `lib/recurrence.ts`. `currentDayBlocks(today, state)` filters templates by this rule and applies `deletions` overrides.
+
+**Consequences.**
+
+- "This event only / following / all" recurrence-edit semantics from the spec are deferred — Phase 1 only supports the simpler "just today / all recurrences" delete prompt.
+- If we ever need RRULE (alarms, calendar export), introduce it as ADR-NNN superseding this. Today, simpler is better.
+
+---
+
+## ADR-020 — `now`, `today`, and `dayNumber` are derived live, not constants
+
+**Status:** Accepted · 2026-04-29
+
+**Context.** The hardcoded demo used `NOW = "11:47"`, `DAY_NUMBER = 119`, `TOTAL_DAYS = 365`, `TODAY_LABEL = "Wed, Apr 29"`. None of those should be constants in a real product.
+
+**Decision.**
+
+- `useNow()` (new in `lib/useNow.ts`) returns an `HH:MM` string from `new Date()`, ticking every 60s. Client-only.
+- `today()` returns the local-date ISO string (`YYYY-MM-DD`). Used as a key into `logs` and `deletions` and as an input to `appliesOn`.
+- `programStart` is persisted in `AppState` and seeded on first run (the day the user installs).
+- `dayNumber = floor((today - programStart) / 1d) + 1` (1-based). Hero shows `Building N of 365` once `programStart` exists; otherwise the Hero hides the day-counter line.
+- `dateLabel = formatLocale(today, "Wed, Apr 29")` style, derived live.
+
+**Consequences.**
+
+- `lib/data.ts` is reduced to a `defaultState()` factory; no hardcoded constants remain.
+- Tests must inject a controlled clock (a `now` parameter on the relevant helpers, or `vi.setSystemTime`). The `useNow` hook should be mockable in component tests.
+- E2E tests can override `Date.now` via Playwright's `page.addInitScript` or rely on the `useNow` injection seam.
+
+---
+
+## ADR-021 — Main Claude may author plan.md / tests.md when PLANNER repeatedly times out
+
+**Status:** Accepted · 2026-04-29
+
+**Context.** During the empty-toolkit pivot re-plan, the PLANNER subagent timed out twice in a row on the same task (idle-timeout, partial output, 245 s and 125 s). Two retries with progressively tighter scope did not converge. The user (orchestrator gate #1) explicitly authorized Main Claude to author `/docs/plan.md` and `/docs/tests.md` directly to unblock the harness ("go option 2").
+
+**Decision.** This is an **explicit, user-authorized override** of the agent boundaries documented in `CLAUDE.md` and ADR-013. Main Claude may author `/docs/plan.md` and `/docs/tests.md` for a single re-plan when:
+
+1. The PLANNER subagent has failed (idle-timeout, partial output, or explicit error) at least **twice** consecutively on the same dispatch.
+2. The user has been informed of the failure and has explicitly authorized the override (a one-word "go option 2" or equivalent counts; silent override does not).
+3. The override is recorded in this ADR with the SHA of the commit that lands the authored files.
+
+**Consequences.**
+
+- The EVALUATOR remains independent. It still reads `decisions.md`, `spec.md`, and `tests.md`, runs the gates, and judges. It does **not** receive any "Main Claude wrote this" hint, preserving the audit pattern.
+- Future re-plans default to the PLANNER subagent. This ADR is a fallback, not a new norm.
+- If the underlying PLANNER timeout pattern recurs, that's a harness-level bug worth fixing (e.g., dispatch the PLANNER with even smaller per-dispatch scope) rather than normalizing the override.
+- Commit landing the authored files: filled in below once committed.
+
+---
+
+## ADR-022 — PLANNER authors one feature per dispatch
+
+**Status:** Accepted · 2026-04-29
+
+**Context.** Four consecutive timeouts on the empty-toolkit pivot re-plan (three PLANNER subagent runs + one Main Claude direct Write). Root cause: any single tool call generating more than ~200 tokens of output is unsafe when upstream LLM latency is degraded — both subagents and Main Claude are subject to the same stream-idle threshold. ADR-013 already mandates one-feature-per-dispatch for BUILDER; this extends the rule to PLANNER and (where applicable) Main Claude.
+
+**Decision.**
+
+- A single PLANNER dispatch authors exactly ONE named feature group. The orchestrator names the feature in the prompt; the agent appends ~50–80 lines to `/docs/plan.md` and ~50–80 lines to `/docs/tests.md` for that feature only.
+- A multi-feature prompt is a planner gap — the agent rejects it and asks the orchestrator to name a single feature.
+- Same constraint applies to Main Claude when authoring plan/tests directly (per ADR-021): one feature subsection per Edit/Write call, commit after each.
+- Plan and tests files grow **incrementally**. They are never re-authored monolithically.
+
+**Consequences.**
+
+- User approves at Gate #1 per feature, not per page. Page 1 is now ~8 plan-cycle iterations instead of one.
+- Each feature follows the full per-feature loop (PLANNER → user approves → BUILDER → EVALUATOR → SHIPPER → preview → user reacts) before the next is planned. ADR-013 step 9 ("next feature → repeat from step 3") becomes "next feature → repeat from step 1" when the plan itself is incremental.
+- `.claude/agents/planner.md` is updated to enforce the constraint at the agent level.
+- Total wall-clock time for a multi-feature page is longer but resilient. Recovery from a timeout is at most one feature's worth of work, never a full page rewrite.
+
+---
+
+## ADR-023 — `useNow()` paints the server clock on first render
+
+**Status:** Accepted · 2026-05-01 · proposed by EVALUATOR on live-clock PASS
+
+**Context.** The `useNow()` hook (`lib/useNow.ts`) initializes via `useState(() => formatHHMM(new Date()))`. On SSR, `new Date()` is the server's clock; on client first paint, it may differ slightly from the user's clock (network-roundtrip-bounded skew, typically < 2 s). Two options were available: (a) return `""` on SSR and update post-mount, eliminating the skew at the cost of a one-frame layout flash; (b) format the server-side clock and accept the small skew, avoiding the flash.
+
+**Decision.** Use option (b). Server-side `Date()` formats to a placeholder `HH:MM`; the next `setInterval` tick (within 60 s) reconciles to the client clock. Acceptable for a single-user PWA where skew is bounded by network latency and the value is informational only (it doesn't drive math).
+
+**Consequences.**
+
+- No CLS flash on first paint.
+- For up to one minute after first paint, the displayed time can be off by a few seconds vs. the user's wall clock. Imperceptible in practice.
+- If the BlueprintBar's NOW pin ever drives time-critical UX (e.g. snapping animations to the minute boundary), revisit this — the wired component already accepts `now` as a string, so the seam is clean.
+- Future ADR could move to option (a) under a strict-CLS design system; this ADR is the active default.
+
+`lib/useNow.ts` carries a one-line comment referencing this ADR so future readers find the decision quickly.
+
+---
+
+## ADR-024 — Auto-FAIL → BUILDER loop policy
+
+**Status:** Accepted · 2026-05-01
+
+**Context.** EVALUATOR FAIL today triggers a manual re-dispatch by Main Claude. The harness goal is to close the loop without user intervention until quality gates pass. But unbounded auto-retries risk burning compute and masking real issues (e.g. a BUILDER consistently failing to address a gap because it doesn't understand it).
+
+**Decision.**
+
+- On EVALUATOR FAIL, the orchestrator **automatically re-dispatches BUILDER** with the gap list (G1..Gn) as the only IDs to address. No user gate between FAIL and re-spawn.
+- After **3 consecutive FAILs on the same feature**, the loop **stops** and the orchestrator escalates to the user with the EVALUATOR's last gap list verbatim. The user decides: relax a gate, narrow scope, or fix manually.
+- BUILDER's "FAIL retry" mode: the agent receives the gap list, addresses ONLY those gaps, and does not introduce new functionality or new test IDs.
+- EVALUATOR runs are independent — each FAIL produces its own report; the orchestrator does not aggregate gap lists across iterations.
+
+**Consequences.**
+
+- Loop closes itself in the common case (one FAIL, one fix, PASS).
+- Pathological cases bounded by the 3-retry cap.
+- `.claude/commands/feature.md` step 4 implements this policy.
+- If a user wants a higher cap for a specific feature, they invoke `/feature <name> --max-fails=5` (slash command interprets the override; this ADR is the default).
+
+---
+
+## ADR-025 — "The Loop": named SDD-outside / TDD-inside contract
+
+**Status:** Accepted · 2026-05-01 · refines ADR-013 + ADR-022 · **gate count refined by ADR-026 (see banner below)**
+
+> ⚠️ **Refined by ADR-026.** This ADR originally codified **three** human gates (after PLAN, after TESTS, after SHIP). ADR-026 collapses Gate #1 + Gate #2 into a single planning gate that fires after BOTH PLANNER dispatches return. The two-dispatch architecture (PLAN dispatch then TESTS dispatch) is **preserved**. Read the table below as the historical decision; the current contract is two gates per ADR-026.
+
+**Context.** The orchestration flow in `CLAUDE.md` and the pipeline in `.claude/commands/feature.md` already encode SDD-outside / TDD-inside, but the contract was implicit. Two specific weaknesses surfaced:
+
+1. The pattern had no name, so prompts had to re-state it every time ("plan first, then test, then build, then eval, then ship…").
+2. PLANNER produced `plan.md` and `tests.md` in a single dispatch with **one** user approval gate after both. This bundled two distinct review questions ("does the design match my intent?" and "do the tests prove the design?") into one decision and made spec-vs-test drift expensive to catch — once the user said "approve," the BUILDER would close 90+ test IDs against a possibly-misaligned tests.md.
+
+**Decision.**
+
+- Name the pattern **The Loop**. Any prompt, ADR, or commit may reference "run The Loop on X" and the contract below applies.
+- The Loop has **six phases** and **three human gates**, mapped to this project's existing knowledge files and agent ownership:
+
+  | #   | Phase | Owner     | Output                                        | Gate after?                                    |
+  | --- | ----- | --------- | --------------------------------------------- | ---------------------------------------------- |
+  | 1   | SPEC  | user      | `/docs/spec.md` entry                         | n/a (precondition)                             |
+  | 2   | PLAN  | PLANNER   | `/docs/plan.md` entry                         | **Gate #1** — user approves design             |
+  | 3   | TESTS | PLANNER   | `/docs/tests.md` entry                        | **Gate #2** — user approves test→spec coverage |
+  | 4   | IMPL  | BUILDER   | code + commits (TDD)                          | none (auto-chain)                              |
+  | 5   | EVAL  | EVALUATOR | PASS/FAIL report                              | none (auto-chain; FAIL → BUILDER per ADR-024)  |
+  | 6   | SHIP  | SHIPPER   | preview URL + README/CHANGELOG/status updates | **Gate #3** — user taps preview                |
+
+- **Phase 2 and Phase 3 are two separate PLANNER dispatches**, not one. This refines ADR-022's "one feature per dispatch" further: within a feature, plan and tests are also separate dispatches. Smaller scope per dispatch reduces timeouts (root cause of ADR-021/022) and gives the user a chance to course-correct before tests crystallise the design.
+- This project's "SPEC" phase is **user-owned** (per ADR-014's knowledge-file ownership table), which diverges from the generic 4-step SDD-TDD pattern where the planner owns spec. Honored here so we don't break the existing CLAUDE.md contract.
+
+**Consequences.**
+
+- `CLAUDE.md` § Methodology replaced with the named "The Loop" contract.
+- `.claude/commands/feature.md` Step 1 split into Step 1 (PLAN + Gate #1) and Step 2 (TESTS + Gate #2). Subsequent steps renumbered.
+- ADR-013 step 2 ("user approves the plan and resolves spec gaps") now means "user approves Gate #1 AND Gate #2" — both gates must pass before BUILDER dispatches.
+- Existing `phase1plan.md` milestones already use this rhythm informally (the M0 → M10 build order assumes a plan-then-tests pause); ADR-025 just makes it enforceable.
+- No backwards-compat shim needed: the next `/feature m0` invocation runs The Loop with both gates from the start.
+- Spec drift is now caught at Gate #1 (cheap to fix); test→spec drift caught at Gate #2 (still cheap); code drift would surface at EVAL (expensive to fix), which is why both upstream gates exist.
+
+> **Refined by ADR-026.** Gate #1 and Gate #2 are collapsed into a single planning gate after both PLANNER dispatches return. The two-dispatch architecture is preserved.
+
+---
+
+## ADR-026 — Two user gates, not three (refines ADR-025)
+
+**Status:** Accepted · 2026-05-01 · refines ADR-025
+
+**Context.** ADR-025 codified The Loop with three human gates — after PLAN, after TESTS, after SHIP. In practice, the user prefers two gate points: one when the planner phase is fully done, one when the preview is live. The two-PLANNER-dispatch architecture (PLAN dispatch then TESTS dispatch) was correct for timeout resilience per ADR-022, but bracketing each dispatch with its own user-approval check added friction without commensurate benefit. The user reads `plan.md` and `tests.md` together as one design artifact; splitting the review across two interruptions doesn't catch more drift than reviewing both at once.
+
+**Decision.**
+
+- The Loop has **two human gates**, not three:
+  - **Gate #1 — Planning gate.** Fires after the PLANNER's `mode: TESTS` dispatch returns (i.e., once both `plan.md` AND `tests.md` exist for the feature). User reviews both files together and approves, amends, or rejects.
+  - **Gate #2 — Preview gate.** Fires after SHIPPER deploys and surfaces a preview URL. User taps the preview and reacts.
+- The PLAN dispatch and TESTS dispatch from ADR-025 are **preserved** (two separate dispatches for timeout resilience per ADR-022). Main Claude **auto-chains** PLAN → TESTS without pausing. Only after TESTS returns does the user check fire.
+- Phase numbering in The Loop is unchanged: Phase 1 SPEC → Phase 2 PLAN → Phase 3 TESTS → Phase 4 IMPL → Phase 5 EVAL → Phase 6 SHIP. The phase boundaries remain; only the gating between Phase 2 and Phase 3 collapses.
+
+**Consequences.**
+
+- `CLAUDE.md` § Methodology updated to describe two gates with revised "why two" rationale.
+- `.claude/commands/feature.md`: PLAN step auto-chains to TESTS step without user pause. Single planning gate fires after TESTS returns.
+- `.claude/agents/planner.md` handoff section updated: after `mode: PLAN`, orchestrator does NOT pause; after `mode: TESTS`, orchestrator surfaces BOTH files for the single planning gate.
+- Trade-off acknowledged: if the plan is misaligned, the tests get written against the misaligned plan and the user catches drift only at Gate #1. Acceptable cost — minimal interruptions matter more, and a redo of plan + tests is still cheaper than catching code drift at EVAL.
+- ADR-025 stays Accepted; this ADR refines its gate count without superseding the dispatch architecture.
+
+---
+
+## ADR-027 — Commit-prefix convention per Loop phase
+
+**Status:** Accepted · 2026-05-01
+
+**Context.** Each Loop phase produces commits, but there has been no convention to identify which phase a commit came from. After months of work, `git log` becomes opaque — you cannot filter "show me every PLAN commit on M3" or "how long did the IMPL phase take on M0." A consistent prefix per phase makes the log navigable and audit-friendly.
+
+**Decision.**
+
+Commit prefixes per Loop phase, layered on top of Conventional Commits (commitlint config unchanged — scopes are free-form):
+
+| Phase             | Prefix template                                             | Example                                                       |
+| ----------------- | ----------------------------------------------------------- | ------------------------------------------------------------- |
+| 2. PLAN           | `docs(plan-<feature>): …`                                   | `docs(plan-m0): design system tokens`                         |
+| 3. TESTS          | `docs(tests-<feature>): …`                                  | `docs(tests-m0): u/c/e/a ids 001..030`                        |
+| 4. IMPL — TDD red | `test(<feature>): …`                                        | `test(m0): button primitive red`                              |
+| 4. IMPL — green   | `feat(<feature>): …` or `fix(<feature>): …`                 | `feat(m0): button primitive green`                            |
+| 5. EVAL follow-up | `docs(eval-<feature>): …` or `chore(eval-<feature>): …`     | `docs(eval-m0): m0 pass report notes`                         |
+| 6. SHIP           | `chore(ship-<feature>): …` and/or `docs(ship-<feature>): …` | `chore(ship-m0): release notes`, `docs(ship-m0): status snap` |
+
+- `<feature>` is the feature slug, matching the heading in `plan.md` / `tests.md` (e.g., `m0`, `m3`, `add-block`).
+- Out-of-Loop harness commits (ADRs, slash commands, agent definitions, harness audits) continue to use `docs(harness): …` or other existing scopes.
+- Subjects remain lowercase per existing commitlint config.
+- Existing types (feat / fix / docs / chore / test / refactor / perf / build / ci / revert) are sufficient — no new types are added.
+
+**Consequences.**
+
+- `git log --grep='^docs(plan-m0)'` reconstructs the PLAN-phase history of M0; analogous greps for any phase.
+- `git log --grep='^chore(ship-' --oneline` lists every SHIP across the project.
+- `CLAUDE.md` § Methodology gains a commit-prefix table the agents read at session start.
+- PLANNER agent definition references `docs(plan-…)` and `docs(tests-…)`; SHIPPER references `chore(ship-…)` and `docs(ship-…)`.
+- BUILDER continues `feat(<feature>):` / `fix(<feature>):` / `test(<feature>):` per existing TDD discipline; ADR-027 just formalizes that the scope == feature slug.
+- No commitlint config change required.
+
+---
+
+## ADR-028 — `<Toggle>` uses `role="switch"` + `aria-checked` (not `aria-pressed`)
+
+**Status:** Accepted · 2026-05-02 · resolves M0 EVALUATOR proposal
+
+**Context.** `docs/tests.md` C-m0-014 was loose ("`role="switch"` (or `<button aria-pressed>`)"). The two patterns are not equivalent: ARIA APG specifies `aria-checked` as the state attribute for `role="switch"`, while `aria-pressed` is for `role="button"` toggle pattern. Mixing them is invalid.
+
+**Decision.** `<Toggle>` uses `role="switch"` + `aria-checked={boolean}`. `aria-pressed` is reserved for future toggle-buttons that are NOT switches (none in M0). C-m0-014 was updated during the M0 build to assert `aria-checked`.
+
+**Consequences.**
+
+- Future PLANNER must specify `aria-checked` for switch components and `aria-pressed` for button-style toggles. Never both, never the wrong one.
+- The "or" branch in C-m0-014's spec text is retired; future test IDs must commit to one ARIA pattern.
+- No code change going forward — the pattern is set.
+
+---
+
+## ADR-029 — `next.config.ts` sets `devIndicators: false` to keep dev toolbar out of touch-target tests
+
+**Status:** Accepted · 2026-05-02 · resolves M0 EVALUATOR proposal
+
+**Context.** Next.js 16 dev mode injects a small floating "dev toolbar" UI into the rendered DOM. Several elements in that toolbar fall below the 44 px touch-target threshold mandated by spec.md M0 § Edge cases. The Playwright test E-m0-003 (touch-target sizing) measured every visible interactive element on `/design` and would fail in dev because of the framework's injected UI, even though no Dharma component was at fault.
+
+**Decision.** `next.config.ts` sets `devIndicators: false`. This is a **dev-only** setting — production builds are unaffected (the toolbar never ships).
+
+**Consequences.**
+
+- E-m0-003 only sees Dharma's primitives, not framework UI.
+- Future test authors don't need to filter dev-toolbar selectors out of touch-target queries.
+- If a future Next.js version moves the toolbar into a different mechanism, this ADR may need a follow-up.
+
+---
+
+## ADR-030 — Design-system harness lives at `/design` (no underscore)
+
+**Status:** Accepted · 2026-05-02 · resolves M0 EVALUATOR proposal
+
+**Context.** `phase1plan.md` and `docs/plan.md` § M0 specified the harness route as `/app/_design/page.tsx`, on the assumption that an underscore-prefixed directory is private/non-routable in Next.js. That convention is for the **Pages Router**. The **App Router** (which this project uses per ADR-001) treats `_`-prefixed directories as private folders that produce **no route at all** — so `/_design` would 404.
+
+**Decision.** The harness route is `/app/design/page.tsx`, exposed at `/design`. Privacy from production nav is enforced by **absence of any link to it** (the route exists but no UI references it), not by directory name.
+
+**Consequences.**
+
+- Future PLANNER dispatches must NOT prefix harness/private-route directories with `_` in App Router projects.
+- If a future need arises to truly hide the route from build output, use a `route.ts` with conditional 404 in production, OR a separate `dev`-only entrypoint, OR move it under `(dev)/` route group with a guard. Don't rely on directory naming.
+- Dev-only fences should be enforced at the route handler level, not via folder naming.
+
+---
+
+## ADR-031 — Button `size="sm"` keeps `min-h-[44px]` for touch-target compliance
+
+**Status:** Accepted · 2026-05-02 · resolves M0 EVALUATOR proposal
+
+**Context.** `docs/plan.md:311` cva snapshot specified `sm: "h-9 px-3 ..."` (36 px high), but `docs/spec.md` M0 § Edge cases mandates touch targets ≥ 44 px on mobile. BUILDER honored the spec by setting `min-h-[44px]` on `sm` (and tightened C-m0-002's size→height table accordingly).
+
+**Decision.** `<Button size="sm">` uses smaller padding/font (per cva visual spec) but enforces `min-h-[44px]` so the rendered control still meets the touch-target floor. The visual `sm` is "compact" in horizontal density only.
+
+**Consequences.**
+
+- Plan vs. spec drift was resolved spec-wins. Future plan.md cva snapshots that contradict spec acceptance criteria default to spec.
+- `components/ui/Button.tsx` and the C-m0-002 test reflect the floor; the `components/ui/README.md` size table (currently shows `h-9` etc.) must be updated by SHIPPER or in an early M1 follow-up.
+- If a future spec relaxes the 44 px floor (e.g., for a dense desktop view), it must be a deliberate spec amendment, not a silent plan change.

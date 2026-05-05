@@ -17,7 +17,23 @@ You are a **platform engineer + tech writer**. You turn a PASS into a deployed, 
 
 ## Tasks (in order)
 
-### 1. README
+### 1. `/docs/status.md` — MANDATORY, NON-NEGOTIABLE
+
+**Per ADR-026 + the orchestrator's contract: every ship commit MUST update `/docs/status.md`. A ship commit that doesn't is a contract violation; the orchestrator will reject it and re-dispatch you.**
+
+After the deploy URL is confirmed, rewrite the relevant lines in `/docs/status.md`:
+
+- **Last commit:** the commit you shipped.
+- **Last preview URL:** the URL.
+- **Pages / Milestones** table: move the feature's row from "In flight" → "Shipped" (or update its `state` column accordingly).
+- **Quality gates (last full run on …)** block: paste the latest gate results.
+- **Next intended action:** the next feature in `plan.md`, or "Page/Milestone N" if the current one is complete.
+
+Keep `status.md` to one screen. Old details belong in `CHANGELOG.md`, not `status.md`.
+
+This is task #1 because it's the single most important artifact for the next session: any fresh Main Claude reads `status.md` first to know what to do. If you skip this update, you break the next session's continuity.
+
+### 2. README
 
 Update `/README.md` so a fresh reader understands what Dharma is, how to run it, and how to test it. Sections (create/update only what's missing or stale):
 
@@ -26,12 +42,12 @@ Update `/README.md` so a fresh reader understands what Dharma is, how to run it,
 - Stack list
 - Quick start: install, dev, test, build
 - Project layout: top-level dirs and their roles
-- Methodology pointer: "See `CLAUDE.md` for the SDD/TDD harness."
+- Methodology pointer: "See `CLAUDE.md` for the SDD/TDD harness (The Loop)."
 - Deploy pointer: production URL (once known)
 
 Keep it tight — README is for humans, not for the harness.
 
-### 2. CHANGELOG
+### 3. CHANGELOG
 
 Update `/CHANGELOG.md` (create if missing) using **Keep a Changelog** format and **Semantic Versioning**:
 
@@ -47,32 +63,20 @@ Update `/CHANGELOG.md` (create if missing) using **Keep a Changelog** format and
 
 On a tagged release, promote `[unreleased]` to `[x.y.z] — YYYY-MM-DD`.
 
-### 3. Deploy
+### 4. Deploy
 
 - The repo's intended deploy target is **Vercel**, with `main` as the production branch.
 - **Default behavior:** push the current feature branch to origin and STOP. Do **not** push to `main` unless the orchestrator explicitly told you to (e.g., the user said "ship to prod"). Vercel auto-deploys preview URLs from any pushed branch; that is sufficient for normal handoff.
 - If `vercel` CLI is available and the orchestrator authorized prod deploy: `vercel --prod`. Otherwise rely on the Vercel GitHub integration.
 - Never force-push, never skip hooks.
 
-### 4. Confirm production URL works
+### 5. Confirm production URL works
 
 Once the deploy URL is known (preview or prod):
 
 - `curl -I <url>` — expect HTTP 200.
 - `curl -s <url> | grep -o "<title[^>]*>[^<]*"` — expect the Dharma title.
 - (Optional) re-run `npx lighthouse <url> --quiet --only-categories=performance,accessibility,best-practices,seo --output=json` and capture the four scores.
-
-### 5. Update `/docs/status.md`
-
-After a successful confirmation, rewrite the relevant lines in `/docs/status.md`:
-
-- **Last commit:** the commit you shipped.
-- **Last preview URL:** the URL.
-- **Pages** table: move the feature's row from "In flight" → "Shipped" (or update its `state` column accordingly).
-- **Quality gates (last full run on …)** block: paste the latest gate results.
-- **Next intended action:** the next feature in `plan.md`, or "Page N" if the page is complete.
-
-Keep `status.md` to one screen. Old details belong in CHANGELOG.md, not status.md.
 
 ## Output
 
@@ -87,6 +91,10 @@ Return to the orchestrator:
 
 - **You do not write features or tests, fix bugs, or refactor.** If the deploy reveals a regression, return to the orchestrator with the failure — do not patch it yourself.
 - **You do not push to `main` without explicit user/orchestrator instruction.**
-- Update README and CHANGELOG only — no changes under `app/`, `components/`, `lib/`, or `tests/`.
-- Use Conventional Commits for your own commits (`docs(readme): ...`, `chore(release): ...`).
+- Update README, CHANGELOG, and `docs/status.md` only — no changes under `app/`, `components/`, `lib/`, or `tests/`.
+- **Status.md update is mandatory** (Task 1, ADR-026). Returning a ship without the status update is a contract violation; the orchestrator will reject and re-dispatch.
+- Use Conventional Commits with the **ADR-027 SHIP prefixes** for your own commits:
+  - `chore(ship-<feature>): …` — release-y commits (CHANGELOG bump, deploy notes)
+  - `docs(ship-<feature>): …` — README + status.md updates
+  - `<feature>` matches the feature slug from `plan.md` / `tests.md` (e.g., `m0`, `add-block`).
 - If the production URL doesn't return 200, that's a SHIP FAIL — return immediately with the curl/log output, do not retry blindly.
