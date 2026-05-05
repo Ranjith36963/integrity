@@ -246,6 +246,43 @@ For ADR navigation:
 - **ADR-037** — Voice mic ships in M10 (late, not early)
 - **ADR-038** — Forgiveness model: missed days = gray, never red
 
+### § 0.14 — Explicit antipatterns (what we reject)
+
+These are design moves that exist in **prior Dharma builds** (production surface at `integrity-pink.vercel.app`, captured 2026-04-29) that the new model deliberately rejects. Reproduced here as a *learning aid only* — **do NOT use the prior build's visual or structural treatment as implementation guidance**. PLANNER must avoid recreating these patterns.
+
+#### Antipattern 1 — "Everything is a block"
+
+The prior build forced every routine, including single-action ones, into a timed block. Examples observed in the captured surface:
+
+| Block (prior build)         | Scheduled window | Bricks inside           |
+| --------------------------- | ---------------- | ----------------------- |
+| "Walk to bus"               | 07:50–08:00      | `walk`                  |
+| "Commute home"              | 17:15–18:30      | `decompress`            |
+| "Face wash"                 | 21:30–21:40      | `face wash` · `brush`   |
+| "Journal"                   | 21:40–21:50      | `write`                 |
+| "Meditation"                | 21:50–22:00      | `meditate 0/10m`        |
+
+This makes the day model feel rigid and verbose. A ten-minute "block" containing one atomic action is just a brick wearing a costume — it asks the user to defend a calendar slot for something that doesn't need one.
+
+**The new rule (per § 0.9 + ADR-035):** blocks are for *bigger rituals worth defending on the calendar* — multi-brick groupings, or genuinely time-bound stretches. Single atomic actions go in the Loose Bricks tray. A healthy day mixes both:
+
+- **3–5 timed blocks** — e.g., morning ritual, work block, evening wind-down (each contains 2+ bricks)
+- **5–15 standalone bricks** — e.g., drink water, stretch, write, take vitamin, face wash, brush teeth, journal
+
+If a routine has only one brick in it, it should probably *be* a brick.
+
+#### Antipattern 2 — Hardcoded four-category palette
+
+The prior build shipped four fixed categories — Health / Mind / Career / Passive — with hardcoded colors. ADR-032 supersedes this: categories are user-defined, unlimited, user-picked colors. The earlier "UX Spec — Phase 1 Toolkit" section in this file is also superseded for the same reason (see § 0 banner).
+
+#### Antipattern 3 — Implicit "Passive" catch-all category
+
+The prior build leaned heavily on a generic "Passive" category for things like commuting, sleep, walking — moves that don't fit Health/Mind/Career. Under user-defined categories (ADR-032), users can be specific ("Transit", "Sleep", "Movement") or just leave a routine uncategorized. We do NOT ship a default "Passive" bucket; the absence of a category is itself meaningful and should be allowed.
+
+#### Note on the prior build's hero treatment
+
+The prior build's hero showed a "DAY BLUEPRINT" horizontal stacked bar with category-colored segments and a "NOW" highlighted block. While this is *adjacent* to the new model (§ 0.3 specifies a single-% ring above a per-category bar chart), the prior treatment is **not** a reference for the new implementation. M3 will design the ring + bar chart from § 0.3 directly; PLANNER must not pull pixel-level cues from the prior build's hero.
+
 ---
 
 <!-- Paste full Dharma spec here. -->
