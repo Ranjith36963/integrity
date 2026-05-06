@@ -1091,7 +1091,7 @@ User approved all 10 gaps as proposed by the planner on 2026-04-29. Builder must
   Proves: plan.md § Edge cases — Now-line at the very top (00:00) or bottom (23:59)
   GIVEN `timeToOffsetPx` from `lib/timeOffset.ts`
   WHEN called with `("23:59", 64)`
-  THEN it returns a number in the open range `(1535, 1536)` (specifically `23 * 64 + (59/60) * 64 ≈ 1535.0667`), and the value is strictly less than `24 * 64` (1536).
+  THEN it returns a number in the open range `(1534, 1536)` (specifically `23 * 64 + (59/60) * 64 = 1472 + 62.933 ≈ 1534.933`), and the value is strictly less than `24 * 64` (1536).
   Tested by: `lib/timeOffset.test.ts`
 
 - ID: U-m1-008
@@ -1563,7 +1563,7 @@ User approved all 10 gaps as proposed by the planner on 2026-04-29. Builder must
   GIVEN the EVAL phase runs `npm run typecheck` and `npm run lint` on the M1 diff
   WHEN those commands exit
   THEN both exit with code `0` (zero TypeScript errors, zero ESLint warnings).
-  AND no rule disable-comment (`// eslint-disable-next-line`) is added to the M1 diff (asserted by a grep regression test on the diff).
+  AND no `eslint-disable-next-line` comment is added to the M1 diff EXCEPT where plan.md § "Decisions captured" explicitly justifies one (e.g., `components/Timeline.tsx` auto-scroll-on-mount must run only once and is documented to disable `react-hooks/exhaustive-deps`).
   Tested by: `npm run eval` (composite gate) — this ID exists to make the SPEC AC #22 + #23 lint/typecheck contract auditable from `tests.md`; no separate test file authored.
 
 ### Spec gaps
