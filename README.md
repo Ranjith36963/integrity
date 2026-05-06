@@ -48,13 +48,14 @@ npm run test:e2e:install
 
 ## Status
 
-| Milestone | State |
-| --------- | ----- |
-| M0 — Design System | Shipped + tap-tested |
-| M1 — Empty Building Shell | Shipped to preview — awaiting Gate #2 tap-test |
-| M2 — Add Block Flow | Not started — next up |
+| Milestone                     | State                                          |
+| ----------------------------- | ---------------------------------------------- |
+| M0 — Design System            | Shipped + tap-tested                           |
+| M1 — Empty Building Shell     | Shipped + tap-tested                           |
+| M2 — Add Block Flow           | Shipped to preview — awaiting Gate #2 tap-test |
+| M3 — Add Brick + Live Scoring | Not started — next up                          |
 
-Preview: `https://integrity-ic9qqaiue-rahulranjith369-5644s-projects.vercel.app` (branch `claude/verify-m0-deployment-s4XRy` at `c6fb331`, Vercel Deployment Protection — open in browser while signed in to Vercel).
+Latest preview: branch `claude/verify-m0-deployment-s4XRy` at `4c236c5` (M2 ship). Vercel Deployment Protection active — open in browser while signed in to Vercel.
 
 ## Project layout
 
@@ -65,12 +66,17 @@ app/                 Next.js App Router — pages, layouts, manifest
   design/            M0 design-system harness page (all primitives in every state)
 components/          Shared UI components + unit tests
   NowLine.tsx        Amber now-line, consumes useNow() (ADR-023)
-  Timeline.tsx       24-hour vertical grid with NowLine + auto-scroll
-  BlueprintBar.tsx   Day Blueprint bar — empty-outline placeholder in M1
-  BottomBar.tsx      Floating dock — Voice disabled, + no-op until M2
+  Timeline.tsx       24-hour vertical grid with NowLine, TimelineBlock cards, SlotTapTargets
+  TimelineBlock.tsx  Block card rendering (height proportional to duration; no-end = 5px marker)
+  BlueprintBar.tsx   Day Blueprint bar — segments aggregated by categoryId (M2+)
+  BottomBar.tsx      Floating dock — + button opens AddBlockSheet (M2+)
+  AddBlockSheet.tsx  Full add-block flow: title, time, recurrence, category, validation
+  CategoryPicker.tsx Category selector chip row with inline NewCategoryForm sub-view
 lib/                 Domain logic: types, data, scoring, utilities
   dayOfYear.ts       Pure day-of-year helper (leap-year aware)
   timeOffset.ts      Exports HOUR_HEIGHT_PX — single source of truth for timeline geometry
+  blockValidation.ts Pure validators (empty title, end ≤ start, end overflow, zero-weekdays, overlap)
+  uuid.ts            crypto.randomUUID() mockable seam
 tests/
   e2e/               Playwright specs (e2e + a11y)
 docs/
