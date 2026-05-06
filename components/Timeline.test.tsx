@@ -86,7 +86,8 @@ describe("C-m1-011: Timeline auto-scroll on mount", () => {
         originalScrollTop,
       );
     } else {
-      delete (HTMLElement.prototype as Record<string, unknown>).scrollTop;
+      const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
+      delete proto.scrollTop;
     }
   });
 

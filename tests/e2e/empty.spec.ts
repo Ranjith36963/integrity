@@ -1,10 +1,14 @@
 import { test, expect } from "@playwright/test";
 
-// E-bld-022: Fresh page load shows EmptyBlocks copy
-test("E-bld-022: fresh page load shows EmptyBlocks copy", async ({ page }) => {
+// E-bld-022 (re-authored M1): Fresh page load shows locked SPEC EmptyBlocks copy
+// Note: empty-state copy changed from "No blocks yet. Tap + to add your first block."
+// to "Tap any slot to lay your first block." per plan.md migration table.
+test("E-bld-022 (re-authored M1): fresh page load shows locked SPEC empty-state copy", async ({
+  page,
+}) => {
   await page.goto("/");
   await expect(
-    page.getByText("No blocks yet. Tap + to add your first block."),
+    page.getByText("Tap any slot to lay your first block."),
   ).toBeVisible();
 });
 
