@@ -1,7 +1,16 @@
 "use client";
 import { useState } from "react";
 import { X } from "lucide-react";
-import { Brick as BrickT, CATEGORY_COLOR, Category } from "@/lib/types";
+// [obsolete: not-imported-in-M2] — stays on disk for M3+ revisit.
+import { Brick as BrickT } from "@/lib/types";
+import type { Category } from "@/components/ui/types";
+
+const CATEGORY_COLOR: Record<Category, string> = {
+  health: "#34d399",
+  mind: "#c4b5fd",
+  career: "#fbbf24",
+  passive: "#64748b",
+};
 import { brickPct, brickLabel } from "@/lib/dharma";
 import { BrickStepper } from "./BrickStepper";
 

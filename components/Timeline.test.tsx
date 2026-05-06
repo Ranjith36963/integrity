@@ -1,20 +1,24 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Timeline } from "./Timeline";
 import { HOUR_HEIGHT_PX } from "@/lib/timeOffset";
+import type { Block } from "@/lib/types";
 
-// Previous C-bld-016 test is re-authored for M1 — see below.
-// The old test asserted "No blocks yet. Tap + to add your first block." copy,
-// which changes to the locked SPEC copy in M1.
+// Default props for M2 Timeline (re-authored to add categories + onSlotTap)
+const defaultProps = {
+  blocks: [] as Block[],
+  categories: [],
+  now: "08:00",
+  onSlotTap: vi.fn(),
+};
 
-// C-m1-009: 24 hour labels in document order, font-ui, color ink-dim
-describe("C-m1-009: Timeline renders exactly 24 hour labels", () => {
+// C-m1-009: 24 hour labels in document order, font-ui, color ink-dim (re-authored M2)
+describe("C-m1-009: Timeline renders exactly 24 hour labels (re-authored M2)", () => {
   it("renders 24 [data-testid=hour-label] elements from 00:00 to 23:00", () => {
-    render(<Timeline blocks={[]} now="08:00" />);
+    render(<Timeline {...defaultProps} />);
     const labels = document.querySelectorAll('[data-testid="hour-label"]');
     expect(labels).toHaveLength(24);
-
-    // Verify document order: 00:00, 01:00, ..., 23:00
     const texts = Array.from(labels).map((el) => el.textContent);
     expect(texts[0]).toBe("00:00");
     expect(texts[12]).toBe("12:00");
@@ -22,16 +26,16 @@ describe("C-m1-009: Timeline renders exactly 24 hour labels", () => {
   });
 
   it("has a single [data-testid=hour-grid] container wrapping the hour rows", () => {
-    const { container } = render(<Timeline blocks={[]} now="08:00" />);
+    const { container } = render(<Timeline {...defaultProps} />);
     const hourGrid = container.querySelector('[data-testid="hour-grid"]');
     expect(hourGrid).not.toBeNull();
   });
 });
 
-// C-m1-010 (Timeline): NowLine element has correct top at 08:00
-describe("C-m1-010 (Timeline): NowLine pixel position via Timeline", () => {
+// C-m1-010 (Timeline): NowLine element has correct top at 08:00 (re-authored M2)
+describe("C-m1-010 (Timeline): NowLine pixel position via Timeline (re-authored M2)", () => {
   it("now-line has top=512px for now=08:00 (8 * HOUR_HEIGHT_PX)", () => {
-    const { container } = render(<Timeline blocks={[]} now="08:00" />);
+    const { container } = render(<Timeline {...defaultProps} now="08:00" />);
     const nowLine = container.querySelector('[data-testid="now-line"]');
     expect(nowLine).not.toBeNull();
     const style = (nowLine as HTMLElement).getAttribute("style") ?? "";
@@ -39,21 +43,21 @@ describe("C-m1-010 (Timeline): NowLine pixel position via Timeline", () => {
   });
 
   it("now-line has background referencing --accent", () => {
-    const { container } = render(<Timeline blocks={[]} now="08:00" />);
+    const { container } = render(<Timeline {...defaultProps} now="08:00" />);
     const nowLine = container.querySelector('[data-testid="now-line"]');
     const style = (nowLine as HTMLElement).getAttribute("style") ?? "";
     expect(style).toContain("var(--accent)");
   });
 
   it("now-line top=0px for now=00:00", () => {
-    const { container } = render(<Timeline blocks={[]} now="00:00" />);
+    const { container } = render(<Timeline {...defaultProps} now="00:00" />);
     const nowLine = container.querySelector('[data-testid="now-line"]');
     const style = (nowLine as HTMLElement).getAttribute("style") ?? "";
     expect(style).toContain("0px");
   });
 
   it("now-line top is in [1534, 1536) for now=23:59", () => {
-    const { container } = render(<Timeline blocks={[]} now="23:59" />);
+    const { container } = render(<Timeline {...defaultProps} now="23:59" />);
     const nowLine = container.querySelector('[data-testid="now-line"]');
     const style = (nowLine as HTMLElement).getAttribute("style") ?? "";
     const match = style.match(/top:\s*([\d.]+)px/);
@@ -64,11 +68,8 @@ describe("C-m1-010 (Timeline): NowLine pixel position via Timeline", () => {
   });
 });
 
-// C-m1-011: Auto-scroll on mount (SSR-safe)
-// Note: Testing Library's render() wraps in act(), so useEffect fires synchronously.
-// The test verifies: (1) auto-scroll is implemented inside useEffect (not render),
-// (2) the scroll position is computed correctly, (3) no SSR errors occur.
-describe("C-m1-011: Timeline auto-scroll on mount", () => {
+// C-m1-011: Auto-scroll on mount (SSR-safe, re-authored M2)
+describe("C-m1-011: Timeline auto-scroll on mount (re-authored M2)", () => {
   let originalScrollTop: PropertyDescriptor | undefined;
 
   beforeEach(() => {
@@ -104,17 +105,14 @@ describe("C-m1-011: Timeline auto-scroll on mount", () => {
     });
 
     await act(async () => {
-      render(<Timeline blocks={[]} now="12:00" />);
+      render(<Timeline {...defaultProps} now="12:00" />);
     });
 
-    // After effects run, scrollTop should have been set exactly once (on mount)
     expect(scrollTopValues).toHaveLength(1);
-    // 12:00 → offset = 12 * 64 = 768; Math.max(0, 768 - viewportHeight/2)
-    // In jsdom clientHeight = 0, so Math.max(0, 768 - 0) = 768
     expect(scrollTopValues[0]).toBe(768);
   });
 
-  it("does NOT fire auto-scroll a second time on prop re-render (scroll-once behavior)", async () => {
+  it("does NOT fire auto-scroll a second time on prop re-render", async () => {
     const scrollTopValues: number[] = [];
     Object.defineProperty(HTMLElement.prototype, "scrollTop", {
       set(v: number) {
@@ -128,26 +126,24 @@ describe("C-m1-011: Timeline auto-scroll on mount", () => {
 
     let rerender!: ReturnType<typeof render>["rerender"];
     await act(async () => {
-      const result = render(<Timeline blocks={[]} now="12:00" />);
+      const result = render(<Timeline {...defaultProps} now="12:00" />);
       rerender = result.rerender;
     });
 
     const countAfterMount = scrollTopValues.length;
-
-    // Re-render with same now — auto-scroll should NOT fire again
     await act(async () => {
-      rerender(<Timeline blocks={[]} now="12:00" />);
+      rerender(<Timeline {...defaultProps} now="12:00" />);
     });
 
     expect(scrollTopValues.length).toBe(countAfterMount);
   });
 });
 
-// C-m1-012 (Timeline): NowLine re-renders on useNow tick
-describe("C-m1-012 (Timeline): NowLine re-renders when now prop changes", () => {
+// C-m1-012 (Timeline): NowLine re-renders on now prop changes (re-authored M2)
+describe("C-m1-012 (Timeline): NowLine re-renders when now prop changes (re-authored M2)", () => {
   it("updates now-line top when now changes from 08:00 to 08:01", () => {
     const { container, rerender } = render(
-      <Timeline blocks={[]} now="08:00" />,
+      <Timeline {...defaultProps} now="08:00" />,
     );
     const nowLine = container.querySelector('[data-testid="now-line"]');
     const style1 = (nowLine as HTMLElement).getAttribute("style") ?? "";
@@ -155,59 +151,129 @@ describe("C-m1-012 (Timeline): NowLine re-renders when now prop changes", () => 
     const top1 = parseFloat(match1![1]);
     expect(top1).toBeCloseTo(8 * HOUR_HEIGHT_PX, 0);
 
-    rerender(<Timeline blocks={[]} now="08:01" />);
+    rerender(<Timeline {...defaultProps} now="08:01" />);
     const style2 = (nowLine as HTMLElement).getAttribute("style") ?? "";
     const match2 = style2.match(/top:\s*([\d.]+)px/);
     const top2 = parseFloat(match2![1]);
-    // 8*64 + (1/60)*64 ≈ 513.067
     expect(top2).toBeGreaterThan(top1);
-    expect(Math.abs(top2 - (8 * HOUR_HEIGHT_PX + (1 / 60) * HOUR_HEIGHT_PX))).toBeLessThan(0.1);
+    expect(
+      Math.abs(top2 - (8 * HOUR_HEIGHT_PX + (1 / 60) * HOUR_HEIGHT_PX)),
+    ).toBeLessThan(0.1);
   });
 });
 
-// C-m1-013 (Timeline): No transition on NowLine
-describe("C-m1-013 (Timeline): NowLine has no transition on top", () => {
+// C-m1-013 (Timeline): No transition on NowLine (re-authored M2)
+describe("C-m1-013 (Timeline): NowLine has no transition on top (re-authored M2)", () => {
   it("NowLine element has no CSS transition style", () => {
-    const { container } = render(<Timeline blocks={[]} now="12:00" />);
+    const { container } = render(<Timeline {...defaultProps} now="12:00" />);
     const nowLine = container.querySelector('[data-testid="now-line"]');
     const style = (nowLine as HTMLElement).getAttribute("style") ?? "";
     expect(style).not.toContain("transition");
   });
 });
 
-// C-m1-014 (Timeline part): EmptyBlocks card with locked SPEC copy inside timeline
-describe("C-m1-014 (Timeline): EmptyBlocks card inside timeline column", () => {
+// C-m1-014 (Timeline part): EmptyBlocks card with locked SPEC copy (re-authored M2)
+describe("C-m1-014 (Timeline): EmptyBlocks card inside timeline column (re-authored M2)", () => {
   it("renders the locked SPEC copy inside the timeline when blocks is empty", () => {
-    render(<Timeline blocks={[]} now="12:00" />);
+    render(<Timeline {...defaultProps} now="12:00" />);
     expect(
       screen.getByText("Tap any slot to lay your first block."),
     ).toBeInTheDocument();
   });
 
   it("EmptyBlocks uses the M0 <EmptyState> primitive (data-testid=empty-state)", () => {
-    const { container } = render(<Timeline blocks={[]} now="12:00" />);
+    const { container } = render(<Timeline {...defaultProps} now="12:00" />);
     const emptyState = container.querySelector('[data-testid="empty-state"]');
     expect(emptyState).not.toBeNull();
   });
 
   it("EmptyBlocks is positioned inside the timeline column, not the page background", () => {
-    const { container } = render(<Timeline blocks={[]} now="12:00" />);
+    const { container } = render(<Timeline {...defaultProps} now="12:00" />);
     const hourGrid = container.querySelector('[data-testid="hour-grid"]');
     const emptyState = container.querySelector('[data-testid="empty-state"]');
-    // emptyState should be a descendant of hourGrid
     expect(hourGrid?.contains(emptyState)).toBe(true);
   });
 });
 
-// C-bld-016 (re-authored M1): Timeline empty state now shows locked SPEC copy
-describe("C-bld-016 (re-authored M1): Timeline renders locked SPEC empty-state copy", () => {
+// C-bld-016 (re-authored M2): Timeline empty state shows locked SPEC copy
+describe("C-bld-016 (re-authored M2): Timeline renders locked SPEC empty-state copy", () => {
   it("shows 'Tap any slot to lay your first block.' and no timeline-block elements", () => {
-    render(<Timeline blocks={[]} now="11:47" />);
+    render(<Timeline {...defaultProps} now="11:47" />);
     expect(
       screen.getByText("Tap any slot to lay your first block."),
     ).toBeInTheDocument();
     expect(
-      document.querySelectorAll("[data-testid='timeline-block']"),
+      document.querySelectorAll('[data-component="timeline-block"]'),
     ).toHaveLength(0);
+  });
+});
+
+// C-m2-019: Timeline composes SlotTapTargets + TimelineBlock + NowLine layers (re-authored M2)
+describe("C-m2-019: Timeline layered structure (re-authored M2)", () => {
+  const block: Block = {
+    id: "b1",
+    name: "Foo",
+    start: "09:00",
+    end: "10:00",
+    recurrence: { kind: "just-today", date: "2026-05-06" },
+    categoryId: null,
+    bricks: [],
+  };
+
+  it("renders hour-grid, SlotTapTargets (24 buttons), TimelineBlock, and NowLine", () => {
+    const mockSlotTap = vi.fn();
+    const { container } = render(
+      <Timeline
+        blocks={[block]}
+        categories={[]}
+        now="08:00"
+        onSlotTap={mockSlotTap}
+      />,
+    );
+    // Hour grid exists
+    expect(container.querySelector('[data-testid="hour-grid"]')).not.toBeNull();
+    // 24 slot tap buttons
+    const slotBtns = screen.getAllByRole("button", {
+      name: /Add block at/,
+    });
+    expect(slotBtns).toHaveLength(24);
+    // One timeline block
+    const tlBlocks = container.querySelectorAll(
+      '[data-component="timeline-block"]',
+    );
+    expect(tlBlocks).toHaveLength(1);
+    // NowLine exists
+    expect(container.querySelector('[data-testid="now-line"]')).not.toBeNull();
+  });
+
+  it("EmptyBlocks NOT in DOM when blocks.length > 0", () => {
+    render(
+      <Timeline
+        blocks={[block]}
+        categories={[]}
+        now="08:00"
+        onSlotTap={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByText("Tap any slot to lay your first block."),
+    ).toBeNull();
+  });
+
+  it("clicking 'Add block at 14:00' calls onSlotTap(14)", async () => {
+    const mockSlotTap = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <Timeline
+        blocks={[block]}
+        categories={[]}
+        now="08:00"
+        onSlotTap={mockSlotTap}
+      />,
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Add block at 14:00" }),
+    );
+    expect(mockSlotTap).toHaveBeenCalledWith(14);
   });
 });

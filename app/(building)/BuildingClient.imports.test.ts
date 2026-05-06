@@ -2,15 +2,16 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-// C-m1-022: BuildingClient.tsx does NOT import forbidden M1 components
-// per plan.md § File structure — [obsolete: not-imported-in-M1] migration.
-describe("C-m1-022: BuildingClient.tsx has clean imports (no forbidden M1 dependencies)", () => {
+// C-m1-022 (re-authored M2): BuildingClient.tsx import graph checks
+// M2: TimelineBlock IS now expected (via Timeline import chain)
+// M2: NowCard / Brick / BrickStepper / Scaffold / EmptyBricks still absent
+describe("C-m1-022 (re-authored M2): BuildingClient.tsx has clean imports", () => {
   const rawSource = readFileSync(
     resolve(process.cwd(), "app/(building)/BuildingClient.tsx"),
     "utf-8",
   );
 
-  // Strip comments to avoid false positives from "// - Removed: NowCard" style notes
+  // Strip comments to avoid false positives from comment text
   const source = rawSource
     .replace(/\/\/.*$/gm, "")
     .replace(/\/\*[\s\S]*?\*\//g, "");
@@ -19,12 +20,13 @@ describe("C-m1-022: BuildingClient.tsx has clean imports (no forbidden M1 depend
     expect(source).not.toMatch(/\bNowCard\b/);
   });
 
-  it("does not import TimelineBlock", () => {
-    expect(source).not.toMatch(/\bTimelineBlock\b/);
+  it("does NOT directly import TimelineBlock (via Timeline instead)", () => {
+    // TimelineBlock is in the render path via Timeline.tsx, not directly imported
+    // BuildingClient imports Timeline, not TimelineBlock directly.
+    expect(source).not.toMatch(/from.*components\/TimelineBlock/);
   });
 
   it("does not import Brick component", () => {
-    // Brick type can be imported; the Brick component from components/ must not be
     expect(source).not.toMatch(/from.*components\/Brick/);
   });
 
@@ -40,8 +42,13 @@ describe("C-m1-022: BuildingClient.tsx has clean imports (no forbidden M1 depend
     expect(source).not.toMatch(/\bEmptyBricks\b/);
   });
 
-  it("does not use currentBlockIndex or dayPct (not needed in M1 empty path)", () => {
-    expect(source).not.toMatch(/\bcurrentBlockIndex\b/);
-    expect(source).not.toMatch(/\bdayPct\b/);
+  it("does import reducer and defaultState from lib/data (M2 state management)", () => {
+    expect(source).toMatch(/from.*lib\/data/);
+    expect(source).toMatch(/\breducer\b/);
+    expect(source).toMatch(/\bdefaultState\b/);
+  });
+
+  it("does import AddBlockSheet (M2 new component)", () => {
+    expect(source).toMatch(/\bAddBlockSheet\b/);
   });
 });

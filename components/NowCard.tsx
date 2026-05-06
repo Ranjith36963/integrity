@@ -1,5 +1,20 @@
 "use client";
-import { Block, CATEGORY_COLOR, CATEGORY_LABEL } from "@/lib/types";
+// [obsolete: not-imported-in-M2] — stays on disk for M3/M4 revisit.
+import type { Category } from "@/components/ui/types";
+import type { Block } from "@/lib/types";
+// Local copies of removed constants (Block now uses new schema; this file is obsolete)
+const CATEGORY_COLOR: Record<Category, string> = {
+  health: "#34d399",
+  mind: "#c4b5fd",
+  career: "#fbbf24",
+  passive: "#64748b",
+};
+const CATEGORY_LABEL: Record<Category, string> = {
+  health: "Health",
+  mind: "Mind",
+  career: "Career",
+  passive: "Passive",
+};
 import { blockPct, fmtRange } from "@/lib/dharma";
 import { Brick as BrickComponent } from "./Brick";
 import type { Brick } from "@/lib/types";

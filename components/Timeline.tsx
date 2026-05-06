@@ -1,28 +1,33 @@
 "use client";
-// Timeline — re-authored for M1: 24-hour vertical scroll column with hour labels + NowLine.
-// M2 re-adds the block-card list path (<TimelineBlock>) when blocks become non-empty.
-// Hour-grid rendering: CSS background-image linear-gradient on the right column
-// (SG-m1-03: if gradient antialiases poorly on mobile WebKit, BUILDER falls back to
-//  24 absolutely-positioned <div> hairlines — current implementation uses CSS gradient).
-// NowLine: imported from NowLine.tsx; uses HOUR_HEIGHT_PX (single source of truth).
-// Auto-scroll: fires once on mount in useEffect (SSR-safe per plan.md § Edge cases).
+// Timeline — re-authored for M2 (plan.md § Components — Timeline):
+// - Layered structure: hour-grid (z=0) → SlotTapTargets (z=1) → TimelineBlock cards (z=2) → NowLine (z=3)
+// - EmptyBlocks card when blocks.length === 0
+// - Accepts new props: categories: Category[], onSlotTap: (hour: number) => void
+// - Auto-scroll-to-now from M1 preserved
+// - NowLine always on top (z=3)
+// - M1 hour-grid CSS gradient unchanged
 
 import { useRef, useEffect } from "react";
-import type { Block } from "@/lib/types";
+import type { Block, Category } from "@/lib/types";
 import { HOUR_HEIGHT_PX, timeToOffsetPx } from "@/lib/timeOffset";
 import { NowLine } from "./NowLine";
 import { EmptyBlocks } from "./EmptyBlocks";
+import { SlotTapTargets } from "./SlotTapTargets";
+import { TimelineBlock } from "./TimelineBlock";
 
-const HOURS = Array.from({ length: 24 }, (_, i) =>
-  String(i).padStart(2, "0") + ":00",
+const HOURS = Array.from(
+  { length: 24 },
+  (_, i) => String(i).padStart(2, "0") + ":00",
 );
 
 interface Props {
   blocks: Block[];
+  categories: Category[];
   now: string;
+  onSlotTap: (hour: number) => void;
 }
 
-export function Timeline({ blocks, now }: Props) {
+export function Timeline({ blocks, categories, now, onSlotTap }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll on mount so NowLine is vertically centered in the visible viewport.
@@ -45,7 +50,7 @@ export function Timeline({ blocks, now }: Props) {
   return (
     <div
       ref={scrollRef}
-      className="relative overflow-y-auto overflow-x-hidden"
+      className="relative overflow-x-hidden overflow-y-auto"
       style={{
         // Reserve space for BottomBar (~96px) and above chrome.
         maxHeight: "calc(100dvh - 360px)",
@@ -58,14 +63,14 @@ export function Timeline({ blocks, now }: Props) {
       >
         {/* Left column: hour labels */}
         <div
-          className="absolute left-0 top-0 bottom-0 flex flex-col"
+          className="absolute top-0 bottom-0 left-0 flex flex-col"
           style={{ width: `${labelColumnWidth}px` }}
         >
           {HOURS.map((label) => (
             <div
               key={label}
               data-testid="hour-label"
-              className="flex-shrink-0 select-none px-2 pt-1 text-[10px]"
+              className="flex-shrink-0 px-2 pt-1 text-[10px] select-none"
               style={{
                 height: `${HOUR_HEIGHT_PX}px`,
                 color: "var(--ink-dim)",
@@ -77,29 +82,34 @@ export function Timeline({ blocks, now }: Props) {
           ))}
         </div>
 
-        {/* Right column: schedule region with NowLine and EmptyBlocks */}
+        {/* Right column: schedule region with layered structure */}
         <div
-          className="absolute top-0 bottom-0 right-0"
+          className="absolute top-0 right-0 bottom-0"
           style={{
             left: `${labelColumnWidth}px`,
             // Hour-grid lines via CSS gradient (SG-m1-03 choice: CSS gradient).
             // Each row is HOUR_HEIGHT_PX tall; hairline at top of each row.
-            backgroundImage:
-              `repeating-linear-gradient(to bottom, var(--grid) 0px, var(--grid) 1px, transparent 1px, transparent ${HOUR_HEIGHT_PX}px)`,
+            backgroundImage: `repeating-linear-gradient(to bottom, var(--grid) 0px, var(--grid) 1px, transparent 1px, transparent ${HOUR_HEIGHT_PX}px)`,
+            position: "relative",
           }}
         >
-          {/* NowLine: z-10 keeps it above the EmptyState card (SG-m1-10) */}
-          <NowLine now={now} />
+          {/* Layer 1: Slot tap targets (z=1, above hour-grid, below blocks) */}
+          <SlotTapTargets onSlotTap={onSlotTap} />
 
-          {/* EmptyBlocks card inside the timeline column (C-m1-014) */}
+          {/* Layer 2: Timeline block cards (z=2) */}
+          {blocks.map((b) => (
+            <TimelineBlock key={b.id} block={b} categories={categories} />
+          ))}
+
+          {/* Layer 2 (centered): EmptyBlocks card — only when blocks.length === 0 */}
           {blocks.length === 0 && (
-            <div
-              className="absolute inset-x-4 z-0"
-              style={{ top: "20px" }}
-            >
+            <div className="absolute inset-x-4 z-0" style={{ top: "20px" }}>
               <EmptyBlocks />
             </div>
           )}
+
+          {/* Layer 3: NowLine — always on top */}
+          <NowLine now={now} />
         </div>
       </div>
     </div>
