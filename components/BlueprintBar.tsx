@@ -1,5 +1,14 @@
-import { Block, CATEGORY_COLOR } from "@/lib/types";
-import { duration, nowOffsetPct } from "@/lib/dharma";
+"use client";
+// BlueprintBar — re-authored for M1:
+// - Empty-outline path: renders outlined container with faint CSS gradient grid (SG-m1-02)
+// - Zero category segments when blocks.length === 0 (ADR-032/039)
+// - Legend HIDDEN in M1 (hardcoded categories are the antipattern — ADR-032)
+// - NOW pin uses time-based fallback when blocks.length === 0:
+//   left% = (toMin(now) / (24*60)) * 100  (plan.md § Components — BlueprintBar)
+// - Faint grid: CSS linear-gradient background with hairlines at 25%/50%/75% (SG-m1-02)
+
+import { Block } from "@/lib/types";
+import { toMin } from "@/lib/dharma";
 
 interface Props {
   blocks: Block[];
@@ -7,8 +16,25 @@ interface Props {
 }
 
 export function BlueprintBar({ blocks, now }: Props) {
-  const total = blocks.reduce((s, b) => s + duration(b), 0);
-  const offset = nowOffsetPct(blocks, now);
+  // NOW pin position: time-based fallback when no blocks exist;
+  // otherwise use block-layout-aware offset.
+  // Comment: when blocks.length === 0, position pin at current time within 24h day
+  // so users still see "where we are" in the day without any block data.
+  const nowPct =
+    blocks.length === 0
+      ? (toMin(now) / (24 * 60)) * 100
+      : (() => {
+          const total = blocks.reduce(
+            (s, b) => s + (toMin(b.end) - toMin(b.start)),
+            0,
+          );
+          if (total === 0) return (toMin(now) / (24 * 60)) * 100;
+          // dayOffset-based for non-empty blocks (mirrors original nowOffsetPct logic)
+          const elapsed = toMin(now) - toMin("04:00");
+          const offset = elapsed < 0 ? elapsed + 24 * 60 : elapsed;
+          return (offset / total) * 100;
+        })();
+
   return (
     <section aria-label="Day blueprint" className="px-5 pb-4">
       <div className="mb-2 flex items-center justify-between">
@@ -27,14 +53,30 @@ export function BlueprintBar({ blocks, now }: Props) {
       </div>
       <div
         className="relative h-9 overflow-hidden rounded-md border"
+        data-testid="blueprint-bar-container"
         style={{
           borderColor: "var(--card-edge)",
-          background: "rgba(255,255,255,0.02)",
+          // Faint grid: CSS gradient with hairlines at 25%/50%/75% (SG-m1-02, plan.md § SG-m1-02)
+          // Uses --ink-dim at 12% opacity. Cheaper than SVG/DOM nodes; reduced-motion safe.
+          // Note: backgroundImage replaces background shorthand to avoid CSS shorthand reset.
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.02), rgba(255,255,255,0.02)), " +
+            "linear-gradient(to right, rgba(245,241,232,0.12) 1px, transparent 1px), " +
+            "linear-gradient(to right, rgba(245,241,232,0.12) 1px, transparent 1px), " +
+            "linear-gradient(to right, rgba(245,241,232,0.12) 1px, transparent 1px)",
+          backgroundSize: "100% 100%, 25% 100%, 50% 100%, 75% 100%",
+          backgroundPosition: "0 0, 25% 0, 50% 0, 75% 0",
+          backgroundRepeat: "no-repeat",
         }}
       >
         <div className="flex h-full w-full">
           {blocks.map((b) => {
-            const pct = (duration(b) / total) * 100;
+            const bDuration = toMin(b.end) - toMin(b.start);
+            const total = blocks.reduce(
+              (s, blk) => s + (toMin(blk.end) - toMin(blk.start)),
+              0,
+            );
+            const pct = total > 0 ? (bDuration / total) * 100 : 0;
             return (
               <div
                 key={`${b.start}-${b.name}`}
@@ -42,9 +84,7 @@ export function BlueprintBar({ blocks, now }: Props) {
                 className="h-full"
                 style={{
                   width: `${pct}%`,
-                  background: `linear-gradient(180deg, ${CATEGORY_COLOR[b.category]} 0%, color-mix(in oklab, ${CATEGORY_COLOR[b.category]} 65%, #000) 100%)`,
-                  boxShadow:
-                    "inset 0 1px 0 rgba(255,255,255,0.18), inset -1px 0 0 rgba(0,0,0,0.25)",
+                  background: "var(--accent)",
                 }}
                 title={`${b.start}–${b.end} ${b.name}`}
               />
@@ -56,7 +96,7 @@ export function BlueprintBar({ blocks, now }: Props) {
           role="img"
           aria-label={`Now ${now}`}
           className="absolute top-0 bottom-0"
-          style={{ left: `${offset}%`, transform: "translateX(-50%)" }}
+          style={{ left: `${nowPct}%`, transform: "translateX(-50%)" }}
         >
           <div
             className="h-full w-[2px]"
@@ -74,22 +114,7 @@ export function BlueprintBar({ blocks, now }: Props) {
           />
         </div>
       </div>
-      <div className="mt-2 flex flex-wrap items-center gap-3">
-        {(["health", "mind", "career", "passive"] as const).map((c) => (
-          <div key={c} className="flex items-center gap-1.5">
-            <span
-              className="h-2 w-2 rounded-[2px]"
-              style={{ background: CATEGORY_COLOR[c] }}
-            />
-            <span
-              className="text-[9px] tracking-[0.16em] uppercase"
-              style={{ color: "var(--ink-dim)" }}
-            >
-              {c.toUpperCase()}
-            </span>
-          </div>
-        ))}
-      </div>
+      {/* Legend is hidden in M1: zero categories exist (ADR-032/039). Restored at M3. */}
     </section>
   );
 }
