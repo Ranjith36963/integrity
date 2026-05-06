@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi, act } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { render, screen, act } from "@testing-library/react";
 import { Hero } from "./Hero";
 
 // C-bld-004: Hero renders dateLabel, "Building X of Y", and "DAY COMPLETE"
@@ -17,32 +17,21 @@ describe("C-bld-004: Hero renders all required text", () => {
   });
 });
 
-// C-bld-032: Hero with pct=0 shows 0 and DAY COMPLETE remains visible
-describe("C-bld-032: Hero renders correctly with pct=0", () => {
-  it("shows 0 percent and DAY COMPLETE text remains visible", async () => {
+// C-bld-032 (re-authored M1): Hero with pct=0 shows "0%" and DAY COMPLETE
+describe("C-bld-032 (re-authored M1): Hero renders '0%' and DAY COMPLETE for pct=0", () => {
+  it("shows '0%' synchronously and DAY COMPLETE text remains visible", () => {
     render(
       <Hero dateLabel="Wed, Apr 29" dayNumber={119} totalDays={365} pct={0} />,
     );
-    // AnimatedPercent with value=0 should end at 0
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 50));
-    });
-    // The animated span should render 0
-    // We check DAY COMPLETE is present
+    expect(screen.getByText("0%")).toBeInTheDocument();
     expect(screen.getByText(/day complete/i)).toBeInTheDocument();
   });
 });
 
-// C-bld-033: Hero with pct=100 shows 100 after count-up completes
-describe("C-bld-033: Hero renders 100 after count-up for pct=100", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("visible numeral is 100 after count-up", async () => {
+// C-bld-033 (re-authored M1): Hero with pct=100 shows 100% immediately (no count-up in M1)
+// Count-up returns in M3 when real scoring lands. AnimatedPercent is not imported in M1.
+describe("C-bld-033 (re-authored M1): Hero renders 100% synchronously for pct=100", () => {
+  it("visible numeral is '100%' on first paint", () => {
     render(
       <Hero
         dateLabel="Wed, Apr 29"
@@ -51,26 +40,19 @@ describe("C-bld-033: Hero renders 100 after count-up for pct=100", () => {
         pct={100}
       />,
     );
-    // Advance past 1600ms for AnimatedPercent
-    await act(async () => {
-      vi.advanceTimersByTime(2000);
-    });
-    // The rendered text should include 100
-    expect(screen.getByText("100")).toBeInTheDocument();
+    // Plain span renders "100%" synchronously — no AnimatedPercent tween
+    expect(screen.getByText("100%")).toBeInTheDocument();
   });
 });
 
-// C-bld-037: No blocks → Hero AnimatedPercent target is 0
-describe("C-bld-037: Hero renders with pct=0 when no blocks", () => {
-  it("AnimatedPercent target is 0 when pct prop is 0", async () => {
+// C-bld-037 (re-authored M1): No blocks → Hero renders "0%" immediately (no AnimatedPercent)
+describe("C-bld-037 (re-authored M1): Hero renders 0% immediately for pct=0 with no blocks", () => {
+  it("renders '0%' synchronously and DAY COMPLETE is visible", () => {
     render(<Hero dateLabel="" dayNumber={undefined} totalDays={365} pct={0} />);
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 50));
-    });
     // DAY COMPLETE must still be visible
     expect(screen.getByText(/day complete/i)).toBeInTheDocument();
-    // The animated percent shows 0
-    expect(screen.getByText("0")).toBeInTheDocument();
+    // Plain span renders "0%" synchronously — no AnimatedPercent tween
+    expect(screen.getByText("0%")).toBeInTheDocument();
   });
 });
 

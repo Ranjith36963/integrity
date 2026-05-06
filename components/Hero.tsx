@@ -1,4 +1,7 @@
-import { AnimatedPercent } from "./AnimatedPercent";
+"use client";
+// Hero — re-authored for M1 (SG-m1-08): drop <AnimatedPercent> count-up.
+// M3 re-adds the count-up animation via <AnimatedPercent> once real scoring lands.
+// The AnimatedPercent component file stays on disk; M1 simply does not import it.
 
 interface Props {
   dateLabel: string;
@@ -21,20 +24,18 @@ export function Hero({ dateLabel, dayNumber, totalDays, pct }: Props) {
           className="mt-1 text-[12px] tracking-[0.04em]"
           style={{ color: "var(--ink-dim)" }}
         >
-          Building <span style={{ color: "var(--amber)" }}>{dayNumber}</span> of{" "}
+          Building{" "}
+          <span style={{ color: "var(--amber)" }}>{dayNumber}</span> of{" "}
           {totalDays}
         </div>
       )}
       <div className="mt-3 flex items-end gap-2 leading-none">
-        <AnimatedPercent
-          value={pct}
-          className="font-serif-italic text-[112px] leading-[0.85]"
-        />
+        {/* Plain span replaces <AnimatedPercent> for M1. M3 re-adds count-up. */}
         <span
-          className="font-serif-italic pb-2 text-[40px] leading-[0.9]"
-          style={{ color: "var(--ink-dim)" }}
+          className="font-serif-italic text-[112px] leading-[0.85]"
+          style={{ fontFamily: "var(--font-display)" }}
         >
-          %
+          {pct}%
         </span>
       </div>
       <div
