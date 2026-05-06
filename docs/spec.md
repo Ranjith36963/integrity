@@ -564,3 +564,86 @@ This is what stops Dharma looking like AI slop. Locked aesthetic. Sharp. Distinc
 - All Vitest unit tests for primitives pass
 - All Playwright e2e tests for harness page pass
 - README in `/components/ui/README.md` documents each primitive: props, variants, when to use, when not to use
+
+---
+
+## Milestone 1 — Empty Building Shell
+
+> **Pillars:** § 0.1 (spatial timeline), § 0.3 (visual identity), § 0.4 (motion vocabulary), § 0.6 (calendar hierarchy — Building = 1 day), § 0.9 (data model — blocks array), ADR-039 (ships empty).
+
+### Intent
+
+Render the main day screen — the "Building" — in its empty state. A scrollable 24-hour vertical timeline with faded hour labels, an amber now-line that tracks real time, and a placeholder hero ring at 0%. No blocks. No bricks. No interactive + button. Just the spatial canvas that every future milestone will fill.
+
+This milestone proves the spatial metaphor works on a real iPhone viewport before any interaction logic is wired. It is the skeleton; M2 hangs muscle on it.
+
+**What this is NOT:** a skeleton screen, a loading state, or a demo with seeded blocks. Per ADR-039, the app ships completely empty. The only text visible (beyond labels) is: _"Tap any slot to lay your first block."_
+
+### Inputs
+
+- **Current time** — drives now-line vertical position; updates every 60 seconds.
+- **Empty blocks array** — `blocks: []` from `AppState`. No factory blocks. No seed data (ADR-039).
+- **Design system from M0** — tokens (`globals.css`), motion config (`lib/motion.ts`), primitives (`components/ui/*`), fonts (Instrument Serif Italic + JetBrains Mono).
+- **Viewport** — 430px wide, full-height, dark bg `--bg` (`#07090f`).
+
+### Outputs
+
+| File | Role |
+|---|---|
+| `/app/page.tsx` | Day view root — composes `<Timeline>`, `<NowLine>`, `<HeroRing>`, `<EmptyBuildingState>` |
+| `/components/building/Timeline.tsx` | Scrollable 24-hour column; faded JetBrains Mono hour labels (`00:00`–`23:00`); 60px per hour |
+| `/components/building/NowLine.tsx` | Amber (`--accent`) horizontal rule at current time; subtle pulse animation; updates on a 60s tick |
+| `/components/building/HeroRing.tsx` | 0% completion ring; gray city-silhouette placeholder inside; Instrument Serif Italic "0%" label |
+| `/components/building/EmptyBuildingState.tsx` | Centered ghost card: _"Tap any slot to lay your first block."_ Pulsing per M0 `<EmptyState>` primitive |
+| `/lib/useNow.ts` | Hook: returns current `Date`, refreshes every 60 s via `setInterval` |
+| `/lib/timeToOffset.ts` | Pure fn: `(date: Date, hourHeight: number) => number` — converts time to px offset from midnight |
+
+### Edge cases
+
+- **Now-line before 00:00 / after 23:59** — clamp to timeline boundaries; do not overflow scroll container.
+- **Midnight crossing** — when clock ticks past 23:59, now-line snaps to top of next day (future M9 concern; M1 clamps silently).
+- **Scroll position on mount** — timeline auto-scrolls so the now-line is vertically centered in the viewport (scroll-to current hour minus half viewport height).
+- **prefers-reduced-motion** — now-line pulse collapses to a static amber rule; hero ring has no entrance animation.
+- **Safe-area insets (iOS notch/home bar)** — timeline padded with `env(safe-area-inset-bottom)`; hero ring not clipped by notch.
+- **Viewport height < 600px** — timeline still scrollable; hero ring shrinks to 80px diameter before collapsing.
+- **No blocks** — `EmptyBuildingState` is the only content inside the timeline column; block-card components are not imported or rendered.
+
+### Acceptance criteria
+
+**Timeline**
+1. A vertical column renders with hour labels `00:00` through `23:00` in JetBrains Mono, color `--ink-dim`.
+2. Each hour slot is exactly 60px tall (configurable constant `HOUR_HEIGHT = 60`).
+3. On mount, the timeline scrolls to center the now-line in the visible viewport (±5px tolerance).
+
+**Now-line**
+4. A horizontal amber (`--accent`) rule spans the full timeline width at the pixel offset corresponding to the current time.
+5. The now-line position updates within 60 seconds of the real clock advancing.
+6. Under `prefers-reduced-motion`, the now-line renders as a static rule (no pulse, no glow animation).
+
+**Hero ring**
+7. A circular ring renders at the top of the screen (or sticky above the timeline) showing `0%` in Instrument Serif Italic.
+8. The ring arc is empty (gray background track, no amber fill).
+9. A gray city-silhouette placeholder is visible inside the ring.
+
+**Empty state**
+10. The text _"Tap any slot to lay your first block."_ is visible within the timeline area.
+11. No block cards, no brick chips, and no `+` button are present in the DOM.
+
+**Quality**
+12. Viewport 430px: all content within safe-area; no horizontal overflow.
+13. `axe-core` zero violations on the day view page.
+14. `tsc --noEmit` zero errors.
+15. ESLint zero warnings.
+16. `prefers-reduced-motion` tested via Playwright: now-line has no animation class.
+17. Playwright: timeline visible, now-line visible, hero ring visible, empty-state text visible — all on first paint without interaction.
+
+### Out of scope
+
+- Interactive + button (M2)
+- Any block or brick rendering (M2+)
+- Scrollable block cards (M2+)
+- Category colors on timeline (M2+)
+- Hero ring with real completion % (M3+)
+- Loose Bricks tray (M2+ — tray location TBD per § 0.11)
+- Navigation to Castle / Kingdom / Empire (M9+)
+- Persistence (M8+)
