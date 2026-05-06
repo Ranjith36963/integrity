@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, act } from "@testing-library/react";
+import { describe, it, expect, beforeEach, afterEach, vi, act } from "vitest";
+import { render, screen } from "@testing-library/react";
 import { Hero } from "./Hero";
 
 // C-bld-004: Hero renders dateLabel, "Building X of Y", and "DAY COMPLETE"
@@ -87,5 +87,58 @@ describe("C-bld-038: Hero hides Building N of Y when dayNumber is undefined", ()
     );
     // "Building" text should NOT appear
     expect(screen.queryByText(/building/i)).not.toBeInTheDocument();
+  });
+});
+
+// C-m1-004: Hero renders 0% synchronously on first paint, no AnimatedPercent, no count-up (SG-m1-08)
+describe("C-m1-004: Hero renders pct=0 synchronously with no count-up animation", () => {
+  it("shows '0%' immediately on first paint without AnimatedPercent or requestAnimationFrame tween", () => {
+    vi.useFakeTimers();
+    render(
+      <Hero dateLabel="Wed, May 6" dayNumber={126} totalDays={365} pct={0} />,
+    );
+    // 0% must be visible synchronously (before any timer advance)
+    expect(screen.getByText("0%")).toBeInTheDocument();
+    // No animated-percent marker in DOM
+    expect(
+      document.querySelector('[data-component="animated-percent"]'),
+    ).toBeNull();
+    // After 2 seconds simulated, still shows 0% (no count-up)
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(screen.getByText("0%")).toBeInTheDocument();
+    vi.useRealTimers();
+  });
+});
+
+// C-m1-005: Hero shows dateLabel verbatim (SG-m1-01: comma-separated form)
+describe("C-m1-005: Hero renders dateLabel verbatim", () => {
+  it("renders the dateLabel string as a text node", () => {
+    render(
+      <Hero dateLabel="Wed, May 6" dayNumber={126} totalDays={365} pct={0} />,
+    );
+    expect(screen.getByText("Wed, May 6")).toBeInTheDocument();
+  });
+});
+
+// C-m1-006: Hero renders "Building N of 365|366"
+describe("C-m1-006: Hero renders Building N of 365 and 366", () => {
+  it("renders 'Building 126 of 365'", () => {
+    const { container } = render(
+      <Hero dateLabel="Wed, May 6" dayNumber={126} totalDays={365} pct={0} />,
+    );
+    expect(container.textContent).toContain("Building");
+    expect(container.textContent).toContain("126");
+    expect(container.textContent).toContain("365");
+  });
+
+  it("renders 'Building 60 of 366' for leap year", () => {
+    const { container } = render(
+      <Hero dateLabel="Sat, Feb 29" dayNumber={60} totalDays={366} pct={0} />,
+    );
+    expect(container.textContent).toContain("Building");
+    expect(container.textContent).toContain("60");
+    expect(container.textContent).toContain("366");
   });
 });
