@@ -6,9 +6,9 @@
 
 ## Snapshot
 
-- **Branch:** `claude/build-dharma-pwa-8WVNB` at `2ce4562` · `main` at `c3ef9f1` (feature branch not yet merged)
-- **Last commit:** `2ce4562` — `docs(ship-m0): finalize snapshot — branch tip cfaa048, sha loop closed`
-- **Last preview URL:** `https://integrity-git-claude-buil-f6ede9-rahulranjith369-5644s-projects.vercel.app` — **verified Ready** via the Vercel App's GitHub commit-status on `2ce4562` (state=`success`, "Deployment has completed", inspector `https://vercel.com/rahulranjith369-5644s-projects/integrity/E1G1YuXsSPLtPNqdjKUt73VyHFG3`). User tap-tested on iPad Safari 2026-05-05 — Gate #2 ✓.
+- **Branch:** `claude/verify-m0-deployment-s4XRy` at `5f7719f` · `main` at `c3ef9f1` (feature branch not yet merged)
+- **Last commit:** `5f7719f` — `docs(eval-m1): tests.md cleanup from EVALUATOR PASS`
+- **Last preview URL:** pending Vercel build — check the PR commit-status (`state: success`, `Vercel` context) for the exact hostname. M0 preview was `https://integrity-git-claude-buil-f6ede9-rahulranjith369-5644s-projects.vercel.app` (different branch — do NOT reuse).
 - **Methodology:** The Loop (SDD-outside, TDD-inside) per ADR-025; two human gates per ADR-026; per-phase commit prefixes per ADR-027.
 
 ## Plan in force
@@ -20,9 +20,9 @@
 
 | Milestone                                 | State                                                     | Notes                                                                                                                                                                                                                            |
 | ----------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **M0 — Design System**                    | **Shipped + tap-tested ✓**                                | 10 primitives + tokens. 48 IDs closed (`U-m0-001..012`, `C-m0-001..023`, `E-m0-001..008`, `A-m0-001..005`). New ADRs: 028 (`aria-checked`), 029 (`devIndicators: false`), 030 (`/design` route), 031 (`Button sm min-h-[44px]`). Gate #2 closed 2026-05-05 — preview verified live via GitHub commit-status + user tap-test. |
-| M1 — Empty Building Shell                 | Not started — next up                                     | Page renders with empty state, no hardcoded blocks. PLANNER must inherit ADRs 028–031.                                                                                                                                           |
-| M2 — Add Block Flow                       | Not started                                               | First feature to lock the shared `Block` + `Recurrence` schema (ADR-019).                                                                                                                                                        |
+| **M0 — Design System**                    | **Shipped + tap-tested ✓**                                | 10 primitives + tokens. 48 IDs closed. Gate #2 closed 2026-05-05.                                                                                                                                                                |
+| **M1 — Empty Building Shell**             | **Shipped to preview — awaiting Gate #2 tap-test**        | Spatial 24-hr timeline, amber now-line, hero, top bar, Blueprint Bar, locked empty-state, floating dock. 56 IDs closed (`U-m1-001..011`, `C-m1-001..022`, `E-m1-001..016`, `A-m1-001..007`). 25 SPEC ACs. HEAD `5f7719f`. Playwright + axe deferred to Vercel preview (sandbox `next` corruption). |
+| M2 — Add Block Flow                       | Not started — next up                                     | First feature to lock the shared `Block` + `Recurrence` schema (ADR-019). Loose Bricks tray location must be locked first (§ 0.11).                                                                                             |
 | M3 — Add Brick + Live Scoring             | Not started                                               | Three brick types (tick / goal / time), visual fill, hero count-up.                                                                                                                                                              |
 | M4 — Block Expand + Brick Logging         | Not started                                               | FLIP expand, real timer per ADR-017.                                                                                                                                                                                             |
 | M5 — Edit Mode + Delete                   | Not started                                               | "Just today" delete writes to `deletions[date:blockId]` per locked schema.                                                                                                                                                       |
@@ -32,41 +32,33 @@
 | M9 — Calendar Nav (Castle/Kingdom/Empire) | Not started                                               | Helpers: `appliesOn(rec, date)` and `currentDayBlocks(today, state)`.                                                                                                                                                            |
 | M10 — Voice Log                           | Not started                                               | Claude API round-trip. Failure mode SG-bld-19 unresolved.                                                                                                                                                                        |
 
-## Already shipped (pre-pivot — superseded by phase1plan.md)
-
-- `wipe-demo` and `live-clock` features from the 8-feature empty-toolkit pivot landed at `a33b80b`. Their test IDs and code stay on the feature branch; migration tagging is now complete (done by M0 PLANNER dispatch).
-
 ## Open loops
 
-- **Vercel MCP scope mismatch.** The MCP is loaded but authenticated to a Vercel account that is **not** a member of the `rahulranjith369-5644s-projects` team that owns the `integrity` project (`list_teams → []`, `list_projects` under the user's slug returns `{projects: []}`, `get_deployment → 404` for any hostname under that team). Until SHIPPER's MCP is re-authed under the right account, deploy verification must come from the **GitHub commit-status** posted by the Vercel App (`pull_request_read --method get_status`) or from the **Vercel-bot PR comment**. **Never template the preview URL from the branch name** — Vercel truncates+hashes long branches (e.g., `claude/build-dharma-pwa-8WVNB` collapses to `claude-buil-f6ede9`), so the templated URL silently 404s.
-- **Vercel project connected; main push pending user authorization.** Branch `claude/build-dharma-pwa-8WVNB` ahead of `main`. Preview URL auto-updates with each branch push.
+- **Vercel MCP scope mismatch.** The MCP is loaded but authenticated to a Vercel account that is **not** a member of the `rahulranjith369-5644s-projects` team that owns the `integrity` project (`list_teams → []`, `get_deployment → 404`). Deploy verification must come from the **GitHub commit-status** posted by the Vercel App (`pull_request_read --method get_status`) or the **Vercel-bot PR comment**. Never template the preview URL from the branch name.
+- **Sandbox `next` module corruption** blocks `next dev` and `npm run lint` locally — preview env unaffected. Playwright + axe + ESLint + Lighthouse must be verified on the Vercel preview.
 - **Mobile-Safari (WebKit) Playwright project disabled** per ADR-010. Re-enable when running in an environment with WebKit binaries present.
-- **Lighthouse scores not yet measured.** No prod URL reachable from sandbox. Measure after Vercel MCP loads or after `main` merge.
-- **Hero `data-testid="building-counter"` missing (N3).** `C-bld-040` uses a brittle class-name container query; add the testid in a future polish chunk (likely M7).
+- **Loose Bricks tray location (TBD — blocks M2 PLANNER).** Three options: pinned above dock / bottom of timeline / top of timeline. Must lock before M2 PLANNER dispatch (§ 0.11).
+- **Hero `data-testid="building-counter"` missing (N3).** `C-bld-040` uses a brittle class-name container query; add testid in M7 polish.
 - **DST off-by-one in `dayNumber()` (N4).** Fix lands in M8 with proper `programStart` math + DST fixtures.
-- **`harness.md` MCP rows still MISSING for Vercel + Context7 + Playwright** — wired in user's Claude account, not loaded into this session.
-- **M1+ PLANNER must inherit ADR-028..039** (M0 quartet 028–031 plus the design-pillar lock 032–039: user-defined N categories, single-% ring + bar chart, blocks-always-timed, bricks-inside-or-standalone, plain forms in M2, voice in M10, gray missed days, **and ADR-039: Dharma ships empty — no factory habits, templates, or category defaults**). Also: `components/ui/README.md:23` claims `h-9` but implementation uses `min-h-[44px]` — stale size-table, defer to M1 or a focused chore commit.
-- **Loose Bricks tray location (TBD).** Three options on the table (pinned above dock / bottom of timeline / top of timeline). Per `spec.md § 0.11`, must lock before M2 PLANNER dispatch. Does NOT block M1 SPEC drafting.
+- **`harness.md` MCP rows still MISSING** for Vercel + Context7 + Playwright — wired in user's Claude account, not loaded into this session.
+- **M2+ PLANNER must inherit ADR-028..039** plus the Loose Bricks location once locked.
 
-## Spec gaps
+## Quality gates (last full Evaluator PASS on `5f7719f` — M1)
 
-- `SG-bld-01..11` — closed against the previous pivot; resolutions live in `docs/tests.md` § "Spec gaps — resolved".
-- `SG-bld-13..19` — open, tracked in `phase1plan.md` § "Open Spec Gaps". To be resolved by the milestone they block (not all at once).
-
-## Quality gates (last full Evaluator PASS on `cfc09ad`)
-
-| Gate                       | Result                                            |
-| -------------------------- | ------------------------------------------------- |
-| ESLint                     | clean                                             |
-| `tsc --noEmit`             | clean                                             |
-| Vitest                     | 210/210 passed (28 files)                         |
-| Playwright (mobile-chrome) | 37/37 passed                                      |
-| Playwright (mobile-safari) | not run — WebKit unavailable (ADR-010)            |
-| axe-core                   | 5/5 passed, 0 violations                          |
-| Lighthouse                 | not measured — no prod URL reachable from sandbox |
+| Gate                       | Result                                                                              |
+| -------------------------- | ----------------------------------------------------------------------------------- |
+| ESLint                     | deferred to Vercel preview (sandbox `next` corruption blocks `npm run lint`)        |
+| `tsc --noEmit`             | 0 new errors in M1 files; 5 pre-existing sandbox errors in layout/manifest/config  |
+| Vitest                     | 288/288 passed (35 files)                                                           |
+| Playwright (mobile-chrome) | deferred to Vercel preview — test files exist at `tests/e2e/m1.spec.ts` (16 IDs) + `tests/e2e/m1.a11y.spec.ts` (7 IDs) |
+| Playwright (mobile-safari) | not run — WebKit unavailable (ADR-010)                                              |
+| axe-core                   | deferred to Vercel preview                                                          |
+| Lighthouse                 | not measured — no prod URL reachable from sandbox                                   |
 
 ## Next intended action
 
-**Design pillars are now authored in `spec.md § 0`** (2026-05-05) — competitive wedge, inspiration matrix, visual identity, motion vocabulary, interaction primitives, calendar hierarchy, forgiveness model, data-model rules, haptics. Seven new ADRs (032–038) lock the foundational decisions. PLANNER reads § 0 first on every M1+ dispatch.
+**Gate #2:** user must open the M1 Vercel preview and tap-test the empty Building Shell. Verify: timeline renders, amber now-line visible, hero shows today's date + "Building N of N + 0%", dock renders with Voice disabled, `+` is no-op, empty-state copy "Tap any slot to lay your first block." visible.
 
-**Next:** answer the open Loose Bricks tray location (A pinned-above-dock / B bottom-of-timeline / C top-of-timeline; § 0.11), then **author the M1 SPEC entry** in `/docs/spec.md` (Intent / Inputs / Outputs / Edge cases / Acceptance criteria) citing the relevant pillars, then invoke `/feature m1`. M1 is **Empty Building Shell** — spatial timeline rendered with empty state, faded time labels, the amber now-line, and a placeholder hero ring. No interactive `+` yet (M2 wires Add Block).
+**Before M2 PLANNER dispatch:** lock the Loose Bricks tray location (option A: pinned above dock / B: bottom of timeline / C: top of timeline — § 0.11). This decision must appear in M2's SPEC entry.
+
+**After Gate #2 and tray decision:** author M2 SPEC entry in `/docs/spec.md`, then invoke `/feature m2`.

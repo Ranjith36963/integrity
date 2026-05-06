@@ -12,6 +12,16 @@ The **SHIPPER** agent updates this file on every ship. The user does not edit it
 
 ### Added
 
+- **M1 — Empty Building Shell:** spatial 24-hour timeline with amber now-line, hero (date +
+  Building N of N + 0%), top bar (DHARMA / Edit toggle / Settings), Day Blueprint bar
+  empty-outline placeholder, locked empty-state copy "Tap any slot to lay your first block.",
+  floating dock (Voice disabled until M10; `+` no-op until M2). Closes 56 test IDs
+  (`U-m1-001..011`, `C-m1-001..022`, `E-m1-001..016`, `A-m1-001..007`). 25 SPEC ACs #1..#25.
+- `lib/dayOfYear.ts` — pure day-of-year helper (handles leap year).
+- `lib/timeOffset.ts` — exports `HOUR_HEIGHT_PX` as the single source of truth shared by
+  Timeline + NowLine.
+- `components/NowLine.tsx` — new presentational component consuming `useNow()` (ADR-023).
+
 - **M0 — Design System:** 10 primitive components (`<Button>`, `<Modal>`, `<Sheet>`, `<Chip>`,
   `<Input>`, `<Stepper>`, `<Toggle>`, `<EmptyState>`, `<BlockCard>`, `<BrickChip>`) with cva
   variants; design tokens migrated to `#07090f` warm-dark palette per ADR-011; new `/design`
@@ -66,6 +76,17 @@ The **SHIPPER** agent updates this file on every ship. The user does not edit it
 
 ### Changed
 
+- `components/Hero.tsx` — drops `<AnimatedPercent>` for M1 (no count-up; M3 re-adds).
+- `components/BlueprintBar.tsx` — adds empty-outline path with CSS-gradient grid; renders
+  unconditionally even when `blocks.length === 0`.
+- `components/Timeline.tsx` — adds 24-hour vertical grid, NowLine integration, auto-scroll-to-now
+  on mount. One justified `eslint-disable-next-line react-hooks/exhaustive-deps` at line 39
+  (auto-scroll-on-mount runs once).
+- `components/EmptyBlocks.tsx` — adopts M0 `<EmptyState>` primitive with locked SPEC copy.
+- `components/BottomBar.tsx` — Voice button visibly disabled (`aria-disabled`); `+` button
+  no-op; `safe-area-inset-bottom` honored.
+- `app/(building)/BuildingClient.tsx` — composes the seven M1 regions; drops obsolete-component
+  imports (NowCard, TimelineBlock, Brick, BrickStepper, Scaffold, EmptyBricks).
 - **M0 test migration complete:** the 94 pre-pivot test IDs from `docs/tests.md` have been
   tagged `[survives]`, `[re-author]`, or `[obsolete]` by the M0 PLANNER dispatch, fulfilling
   the `phase1plan.md` § Test Migration Discipline requirement. No IDs were silently dropped.

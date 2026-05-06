@@ -46,14 +46,31 @@ Playwright requires browsers to be installed once:
 npm run test:e2e:install
 ```
 
+## Status
+
+| Milestone | State |
+| --------- | ----- |
+| M0 — Design System | Shipped + tap-tested |
+| M1 — Empty Building Shell | Shipped to preview — awaiting Gate #2 tap-test |
+| M2 — Add Block Flow | Not started — next up |
+
+Preview: pending Vercel build on branch `claude/verify-m0-deployment-s4XRy` at `5f7719f`. See `docs/status.md` for the sourced URL once the Vercel build completes.
+
 ## Project layout
 
 ```
 app/                 Next.js App Router — pages, layouts, manifest
   (building)/        Page 1: Building view (today's routine)
+                       BuildingClient.tsx — composes the seven M1 regions
   design/            M0 design-system harness page (all primitives in every state)
 components/          Shared UI components + unit tests
+  NowLine.tsx        Amber now-line, consumes useNow() (ADR-023)
+  Timeline.tsx       24-hour vertical grid with NowLine + auto-scroll
+  BlueprintBar.tsx   Day Blueprint bar — empty-outline placeholder in M1
+  BottomBar.tsx      Floating dock — Voice disabled, + no-op until M2
 lib/                 Domain logic: types, data, scoring, utilities
+  dayOfYear.ts       Pure day-of-year helper (leap-year aware)
+  timeOffset.ts      Exports HOUR_HEIGHT_PX — single source of truth for timeline geometry
 tests/
   e2e/               Playwright specs (e2e + a11y)
 docs/
