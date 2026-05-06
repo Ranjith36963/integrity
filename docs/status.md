@@ -6,9 +6,9 @@
 
 ## Snapshot
 
-- **Branch:** `claude/verify-m0-deployment-s4XRy` at `5f7719f` · `main` at `c3ef9f1` (feature branch not yet merged)
-- **Last commit:** `5f7719f` — `docs(eval-m1): tests.md cleanup from EVALUATOR PASS`
-- **Last preview URL:** pending Vercel build — check the PR commit-status (`state: success`, `Vercel` context) for the exact hostname. M0 preview was `https://integrity-git-claude-buil-f6ede9-rahulranjith369-5644s-projects.vercel.app` (different branch — do NOT reuse).
+- **Branch:** `claude/verify-m0-deployment-s4XRy` at `26e6fbd` · `main` at `c3ef9f1` (feature branch not yet merged)
+- **Last commit:** `26e6fbd` — `docs(ship-m1): update README, CHANGELOG, and status.md for M1 ship`
+- **Last preview URL:** pending — branch pushed at `26e6fbd`; Vercel build underway. Source actual URL from GitHub commit-status (Vercel App context, `state: success`) or Vercel-bot comment on the PR. Do NOT template from branch name. M0 preview was `https://integrity-git-claude-buil-f6ede9-rahulranjith369-5644s-projects.vercel.app` (different branch).
 - **Methodology:** The Loop (SDD-outside, TDD-inside) per ADR-025; two human gates per ADR-026; per-phase commit prefixes per ADR-027.
 
 ## Plan in force
@@ -21,7 +21,7 @@
 | Milestone                                 | State                                                     | Notes                                                                                                                                                                                                                            |
 | ----------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **M0 — Design System**                    | **Shipped + tap-tested ✓**                                | 10 primitives + tokens. 48 IDs closed. Gate #2 closed 2026-05-05.                                                                                                                                                                |
-| **M1 — Empty Building Shell**             | **Shipped to preview — awaiting Gate #2 tap-test**        | Spatial 24-hr timeline, amber now-line, hero, top bar, Blueprint Bar, locked empty-state, floating dock. 56 IDs closed (`U-m1-001..011`, `C-m1-001..022`, `E-m1-001..016`, `A-m1-001..007`). 25 SPEC ACs. HEAD `5f7719f`. Playwright + axe deferred to Vercel preview (sandbox `next` corruption). |
+| **M1 — Empty Building Shell**             | **Shipped to preview — awaiting Gate #2 tap-test**        | Spatial 24-hr timeline, amber now-line, hero, top bar, Blueprint Bar, locked empty-state, floating dock. 56 IDs closed (`U-m1-001..011`, `C-m1-001..022`, `E-m1-001..016`, `A-m1-001..007`). 25 SPEC ACs. Ship HEAD `26e6fbd`. Playwright + axe deferred to Vercel preview (sandbox `next` corruption). |
 | M2 — Add Block Flow                       | Not started — next up                                     | First feature to lock the shared `Block` + `Recurrence` schema (ADR-019). Loose Bricks tray location must be locked first (§ 0.11).                                                                                             |
 | M3 — Add Brick + Live Scoring             | Not started                                               | Three brick types (tick / goal / time), visual fill, hero count-up.                                                                                                                                                              |
 | M4 — Block Expand + Brick Logging         | Not started                                               | FLIP expand, real timer per ADR-017.                                                                                                                                                                                             |
