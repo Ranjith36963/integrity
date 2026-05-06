@@ -6,9 +6,9 @@
 
 ## Snapshot
 
-- **Branch:** `claude/verify-m0-deployment-s4XRy` at `d8c913c` · `main` at `c3ef9f1` (feature branch not yet merged)
-- **Last commit:** `d8c913c` — `docs(ship-m2): update README, CHANGELOG, and status.md for M2 ship`
-- **Last preview URL:** pending Vercel build on `d8c913c` — GitHub commit-status not reachable from sandbox (GitHub API 403, no gh CLI, Vercel MCP wrong account, no PR for branch). To find URL: open `https://github.com/ranjith36963/integrity/commit/d8c913c` → checks tab → Vercel context → `target_url`. Or open Vercel dashboard for `rahulranjith369-5644s-projects/integrity` → Deployments → branch `claude/verify-m0-deployment-s4XRy` → most recent.
+- **Branch:** `claude/verify-m0-deployment-s4XRy` at `e067cff` · `main` at `c3ef9f1` (feature branch not yet merged)
+- **Last commit:** `e067cff` — `docs(ship-m2): update status.md with ship commit SHA and deploy URL guidance`
+- **Last preview URL:** `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (branch alias; auto-tracks latest deployment for this branch). Latest deployment id `6bqRkhdzk` on `e067cff` — **Ready**. Sandbox `curl -I` returns HTTP 403 `x-deny-reason: host_not_allowed` (Vercel Deployment Protection — same as M0/M1; not a failure; signed-in browser sessions serve normally).
 - **Methodology:** The Loop (SDD-outside, TDD-inside) per ADR-025; two human gates per ADR-026; per-phase commit prefixes per ADR-027.
 
 ## Plan in force
