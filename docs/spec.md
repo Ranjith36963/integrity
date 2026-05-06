@@ -55,33 +55,33 @@ Dharma's right to exist sits at the intersection of six gaps in the routine-trac
 
 We don't invent everything. Each move below is borrowed from a specific app's strongest pattern.
 
-| App                    | What they nailed                            |
-| ---------------------- | ------------------------------------------- |
-| Apple Calendar         | Spatial day view; time-blocks feel real     |
-| Google Calendar        | Color-coding; month overview                |
-| Notion Calendar (Cron) | Smooth motion; keyboard-fast                |
-| Things 3               | Typography; calmness; joy of checking off   |
-| Fantastical            | Natural-language input                      |
-| Sunsama                | Daily ritual; plan-the-day flow             |
-| Apple Fitness rings    | Visual identity; one glance = mood          |
-| Duolingo               | Streaks; dopamine; tree progress            |
-| Strava                 | Year heatmap; public proof                  |
-| GitHub                 | Contribution graph; 365 squares             |
-| Headspace              | Animated calmness; breath-paced motion      |
-| Arc Browser            | Motion as identity                          |
-| Linear                 | Speed; keyboard; sharp                      |
-| Raycast                | Command palette; power-user feel            |
-| Cal.com                | Booking-flow polish                         |
-| BeReal                 | Daily prompt urgency                        |
-| Robinhood              | Visceral chart animation                    |
-| Apple Health           | Year-over-year compare                      |
-| Whoop                  | Recovery score = identity                   |
-| Finch                  | Cute friend that grows                      |
-| Streaks                | Pure habit dopamine                         |
+| App                    | What they nailed                          |
+| ---------------------- | ----------------------------------------- |
+| Apple Calendar         | Spatial day view; time-blocks feel real   |
+| Google Calendar        | Color-coding; month overview              |
+| Notion Calendar (Cron) | Smooth motion; keyboard-fast              |
+| Things 3               | Typography; calmness; joy of checking off |
+| Fantastical            | Natural-language input                    |
+| Sunsama                | Daily ritual; plan-the-day flow           |
+| Apple Fitness rings    | Visual identity; one glance = mood        |
+| Duolingo               | Streaks; dopamine; tree progress          |
+| Strava                 | Year heatmap; public proof                |
+| GitHub                 | Contribution graph; 365 squares           |
+| Headspace              | Animated calmness; breath-paced motion    |
+| Arc Browser            | Motion as identity                        |
+| Linear                 | Speed; keyboard; sharp                    |
+| Raycast                | Command palette; power-user feel          |
+| Cal.com                | Booking-flow polish                       |
+| BeReal                 | Daily prompt urgency                      |
+| Robinhood              | Visceral chart animation                  |
+| Apple Health           | Year-over-year compare                    |
+| Whoop                  | Recovery score = identity                 |
+| Finch                  | Cute friend that grows                    |
+| Streaks                | Pure habit dopamine                       |
 
 ### § 0.3 — Visual identity
 
-> **Operating principle (per ADR-039): the tool ships empty.** Dharma is a setup-it-yourself SaaS — like Notion or Linear, not Headspace or Apple Health. **No factory habits, no pre-baked routines, no default categories, no seed data.** The user opens Dharma on day 1 and builds their day brick by brick. Every example in this spec ("Morning workout", "Drink water", etc.) describes what a user *might* create — never what we ship in code.
+> **Operating principle (per ADR-039): the tool ships empty.** Dharma is a setup-it-yourself SaaS — like Notion or Linear, not Headspace or Apple Health. **No factory habits, no pre-baked routines, no default categories, no seed data.** The user opens Dharma on day 1 and builds their day brick by brick. Every example in this spec ("Morning workout", "Drink water", etc.) describes what a user _might_ create — never what we ship in code.
 
 The Building (today) page is the canonical surface. Every other screen extends it.
 
@@ -101,16 +101,16 @@ The Building (today) page is the canonical surface. Every other screen extends i
 
 One consistent motion language across the app. Framer Motion's `layout` does most of the work for free.
 
-| Action                | Motion                                          |
-| --------------------- | ----------------------------------------------- |
-| Tap                   | Scale 0.96, 100ms ease-out                      |
-| Brick fill            | Width transition 600ms cubic-bezier             |
-| Block complete        | Subtle bloom + chime                            |
-| Modal open            | Slide from bottom, spring physics               |
-| Modal close           | Soft fade + slide                               |
-| Page transition       | FLIP shared element (block → expanded view)     |
-| Long press            | Haptic + scale-up 1.02 + shadow lift            |
-| Empire square land    | Stagger 30ms each, scale-in from 0.7            |
+| Action             | Motion                                      |
+| ------------------ | ------------------------------------------- |
+| Tap                | Scale 0.96, 100ms ease-out                  |
+| Brick fill         | Width transition 600ms cubic-bezier         |
+| Block complete     | Subtle bloom + chime                        |
+| Modal open         | Slide from bottom, spring physics           |
+| Modal close        | Soft fade + slide                           |
+| Page transition    | FLIP shared element (block → expanded view) |
+| Long press         | Haptic + scale-up 1.02 + shadow lift        |
+| Empire square land | Stagger 30ms each, scale-in from 0.7        |
 
 `prefers-reduced-motion: reduce` collapses every entry above to instant transitions. Reduced-motion is not optional; it's the floor.
 
@@ -135,6 +135,7 @@ One consistent motion language across the app. Framer Motion's `layout` does mos
 **Edit Mode (pencil icon)**: enters a deliberate state (not always-on). Blocks gently jiggle (iOS-style). Each block shows: drag handle (M6), pencil (re-open Add Block sheet), × delete. Tap pencil again or "Done" to exit and save.
 
 **Delete prompts** (Apple-Calendar language verbatim):
+
 - "This event only" → adds entry to `deletions[date:blockId]` per ADR-018
 - "All future events" → sets recurrence end-date to yesterday
 - "All events" → removes block entirely (destructive, red)
@@ -157,7 +158,7 @@ Each view has its own visualization vocabulary.
 Per ADR-038. The rest of Dharma is calm-confident; punishment-via-red breaks that tone.
 
 - **Missed days render gray, never red.** No shame, no auto-broken streaks, no compounding penalties.
-- **Streaks are visible to those who want them** (flame icon, days-in-a-row over 50%) but they're a *feature*, not the *spine* of the UI.
+- **Streaks are visible to those who want them** (flame icon, days-in-a-row over 50%) but they're a _feature_, not the _spine_ of the UI.
 - **Identity stats** highlight presence ("Days you ran: 142"), never absence.
 - **Headspace tone**: missed days observed, not punished.
 
@@ -178,16 +179,37 @@ Sparing, intentional, never gratuitous.
 These three rules govern every milestone's schema. Per ADR-034 + ADR-035.
 
 1. **Block = always timed.** `start: HH:MM` required. `end: HH:MM` optional. Lives at a fixed slot on the daily timeline. Can be empty (zero bricks); empty blocks score as a tick (did I do this ritual? yes/no).
-2. **Brick = never timed.** No scheduled time of its own. A "Time"-type brick has a *target duration* (`durationMin: number`) — that is a goal, not a schedule. The block determines *when*.
+2. **Brick = never timed.** No scheduled time of its own. A "Time"-type brick has a _target duration_ (`durationMin: number`) — that is a goal, not a schedule. The block determines _when_.
 3. **Bricks can be inside a block OR standalone.** Same schema either way; difference is `parentBlockId: string | null`. Standalone bricks live in the "Loose Bricks" tray.
 
 **Brick types (locked since pre-pivot):**
 
 ```ts
 type Brick =
-  | { id: string; type: 'tick';  name: string; category: string; parentBlockId: string | null }
-  | { id: string; type: 'goal';  name: string; category: string; parentBlockId: string | null; target: number; unit: string }
-  | { id: string; type: 'time';  name: string; category: string; parentBlockId: string | null; durationMin: number };
+  | {
+      id: string;
+      type: "tick";
+      name: string;
+      category: string;
+      parentBlockId: string | null;
+    }
+  | {
+      id: string;
+      type: "goal";
+      name: string;
+      category: string;
+      parentBlockId: string | null;
+      target: number;
+      unit: string;
+    }
+  | {
+      id: string;
+      type: "time";
+      name: string;
+      category: string;
+      parentBlockId: string | null;
+      durationMin: number;
+    };
 ```
 
 **Categories**: user-defined, unlimited count (per ADR-032). Stored in user state (not enumerated in code). Each block AND each standalone brick has a `category: string` field. Categories are color-picked at creation time.
@@ -216,13 +238,13 @@ Per existing `lib/haptics.ts`. iOS PWA limited to 17.4+; Android uses `navigator
 
 ### § 0.11 — Open design questions (lock before the milestone they block)
 
-| Question                                                                    | Blocks milestone | My recommendation                                  |
-| --------------------------------------------------------------------------- | ---------------- | -------------------------------------------------- |
-| Loose Bricks tray location: pinned above dock / bottom of timeline / top    | M2               | Pinned above dock (always reachable)               |
-| Pinch-to-zoom across views: primary or fallback?                            | M9               | Dock primary; pinch as bonus on Android/desktop    |
-| User-saved templates — ship in M5 or defer to M11+                          | M5               | Defer; v1 ships with no templates at all (ADR-039) |
-| Streak milestone numbers (7 / 30 / 100 / 365 vs others)                     | M7               | The four listed; bespoke per-screen                |
-| Empire view export — auto-yearly only, or anytime                           | M9               | Anytime; auto-prompt at year-end                   |
+| Question                                                                     | Blocks milestone | Status / decision                                                                                                                                                                                                                                                                                                                                           |
+| ---------------------------------------------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ~~Loose Bricks tray location: pinned above dock / bottom of timeline / top~~ | ~~M3~~           | **LOCKED Gate #2 (M2 ship-react)** — Option A: **pinned above dock**, always visible once `blocks.length > 0 \|\| looseBricks.length > 0`, collapsed chip-row default, expand on tap. Reasoning: timeline auto-scrolls to current hour, so neither top nor bottom-of-timeline is reliably visible; sticky-bottom sits in the thumb zone. (See M3 SG-m3-02.) |
+| Pinch-to-zoom across views: primary or fallback?                             | M9               | Dock primary; pinch as bonus on Android/desktop                                                                                                                                                                                                                                                                                                             |
+| User-saved templates — ship in M5 or defer to M11+                           | M5               | Defer; v1 ships with no templates at all (ADR-039)                                                                                                                                                                                                                                                                                                          |
+| Streak milestone numbers (7 / 30 / 100 / 365 vs others)                      | M7               | The four listed; bespoke per-screen                                                                                                                                                                                                                                                                                                                         |
+| Empire view export — auto-yearly only, or anytime                            | M9               | Anytime; auto-prompt at year-end                                                                                                                                                                                                                                                                                                                            |
 
 ### § 0.12 — What this stack beats
 
@@ -251,28 +273,28 @@ For ADR navigation:
 
 ### § 0.14 — Explicit antipatterns (what we reject)
 
-These are design moves that exist in **prior Dharma builds** (production surface at `integrity-pink.vercel.app`, captured 2026-04-29) that the new model deliberately rejects. Reproduced here as a *learning aid only* — **do NOT use the prior build's visual or structural treatment as implementation guidance**. PLANNER must avoid recreating these patterns.
+These are design moves that exist in **prior Dharma builds** (production surface at `integrity-pink.vercel.app`, captured 2026-04-29) that the new model deliberately rejects. Reproduced here as a _learning aid only_ — **do NOT use the prior build's visual or structural treatment as implementation guidance**. PLANNER must avoid recreating these patterns.
 
 #### Antipattern 1 — "Everything is a block"
 
 The prior build forced every routine, including single-action ones, into a timed block. Examples observed in the captured surface:
 
-| Block (prior build)         | Scheduled window | Bricks inside           |
-| --------------------------- | ---------------- | ----------------------- |
-| "Walk to bus"               | 07:50–08:00      | `walk`                  |
-| "Commute home"              | 17:15–18:30      | `decompress`            |
-| "Face wash"                 | 21:30–21:40      | `face wash` · `brush`   |
-| "Journal"                   | 21:40–21:50      | `write`                 |
-| "Meditation"                | 21:50–22:00      | `meditate 0/10m`        |
+| Block (prior build) | Scheduled window | Bricks inside         |
+| ------------------- | ---------------- | --------------------- |
+| "Walk to bus"       | 07:50–08:00      | `walk`                |
+| "Commute home"      | 17:15–18:30      | `decompress`          |
+| "Face wash"         | 21:30–21:40      | `face wash` · `brush` |
+| "Journal"           | 21:40–21:50      | `write`               |
+| "Meditation"        | 21:50–22:00      | `meditate 0/10m`      |
 
 This makes the day model feel rigid and verbose. A ten-minute "block" containing one atomic action is just a brick wearing a costume — it asks the user to defend a calendar slot for something that doesn't need one.
 
-**The new rule (per § 0.9 + ADR-035):** blocks are for *bigger rituals worth defending on the calendar* — multi-brick groupings, or genuinely time-bound stretches. Single atomic actions go in the Loose Bricks tray. A healthy day mixes both. **Illustrative only — not what ships (ADR-039 forbids factory routines):**
+**The new rule (per § 0.9 + ADR-035):** blocks are for _bigger rituals worth defending on the calendar_ — multi-brick groupings, or genuinely time-bound stretches. Single atomic actions go in the Loose Bricks tray. A healthy day mixes both. **Illustrative only — not what ships (ADR-039 forbids factory routines):**
 
 - 3–5 timed blocks — e.g., a morning ritual, a focused work block, an evening wind-down (each containing 2+ bricks)
 - 5–15 standalone bricks — e.g., drink water, stretch, write, take vitamin, face wash, brush teeth, journal
 
-If a routine has only one brick in it, it should probably *be* a brick.
+If a routine has only one brick in it, it should probably _be_ a brick.
 
 #### Antipattern 2 — Hardcoded four-category palette
 
@@ -286,13 +308,13 @@ The prior build leaned heavily on a generic "Passive" category for things like c
 
 Per ADR-039, **Dharma is a setup-it-yourself SaaS tool, not a curated content app.** Earlier drafts mentioned pre-baked templates ("Monk Mode" / "Builder Mode" / "Athlete Mode") as a delight feature; those are obsolete. No factory habits, no factory routines, no factory category palette, no seed data ship in production. The user opens the app on day 1 and builds from zero.
 
-Every example in this spec — "morning workout", "drink water", "face wash", "Building AI", "Wake ritual", any block name, any brick name, any category name — is **illustrative only**. Examples must NOT be transcribed into code as defaults, demo content, or onboarding fixtures. M1's empty state is *literally empty*: a blank timeline + the prompt "Tap any slot to lay your first block."
+Every example in this spec — "morning workout", "drink water", "face wash", "Building AI", "Wake ritual", any block name, any brick name, any category name — is **illustrative only**. Examples must NOT be transcribed into code as defaults, demo content, or onboarding fixtures. M1's empty state is _literally empty_: a blank timeline + the prompt "Tap any slot to lay your first block."
 
 User-saved templates ("save current day, re-apply later") remain a possible feature in M5+, but only as user-content. They never ship pre-populated.
 
 #### Note on the prior build's hero treatment
 
-The prior build's hero showed a "DAY BLUEPRINT" horizontal stacked bar with category-colored segments and a "NOW" highlighted block. While this is *adjacent* to the new model (§ 0.3 specifies a single-% ring above a per-category bar chart), the prior treatment is **not** a reference for the new implementation. M3 will design the ring + bar chart from § 0.3 directly; PLANNER must not pull pixel-level cues from the prior build's hero.
+The prior build's hero showed a "DAY BLUEPRINT" horizontal stacked bar with category-colored segments and a "NOW" highlighted block. While this is _adjacent_ to the new model (§ 0.3 specifies a single-% ring above a per-category bar chart), the prior treatment is **not** a reference for the new implementation. M3 will design the ring + bar chart from § 0.3 directly; PLANNER must not pull pixel-level cues from the prior build's hero.
 
 ---
 
@@ -591,15 +613,15 @@ This milestone proves the spatial metaphor and chrome layout work on a real iPho
 
 The Building day view exposes seven user-visible regions. PLANNER decides exact file paths and whether to refactor existing prior-pivot components (`components/TopBar.tsx`, `components/Hero.tsx`, `components/BlueprintBar.tsx`, `components/Timeline.tsx`, `components/EmptyBlocks.tsx`, `components/BottomBar.tsx`, `components/NowCard.tsx`) under the milestone-tagged migration policy from `phase1plan.md`. SPEC fixes WHAT renders, not file layout.
 
-| Region | Role in M1 |
-|---|---|
-| **Top bar** | DHARMA wordmark + amber logo tile · `<Toggle>` Edit-mode pencil (renders, no-op until M5) · Settings gear icon (renders, no-op until later milestone) |
-| **Hero** | Today's date label · "Building N of 365" line (N = day-of-year, see below) · giant Instrument Serif Italic `0%` · "day complete" caption |
-| **Day Blueprint bar** | Empty outlined container with faint grid; zero category segments (no categories exist yet) |
+| Region                | Role in M1                                                                                                                                                                                                                                    |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Top bar**           | DHARMA wordmark + amber logo tile · `<Toggle>` Edit-mode pencil (renders, no-op until M5) · Settings gear icon (renders, no-op until later milestone)                                                                                         |
+| **Hero**              | Today's date label · "Building N of 365" line (N = day-of-year, see below) · giant Instrument Serif Italic `0%` · "day complete" caption                                                                                                      |
+| **Day Blueprint bar** | Empty outlined container with faint grid; zero category segments (no categories exist yet)                                                                                                                                                    |
 | **Schedule timeline** | Scrollable 24-hour vertical column; faded JetBrains Mono hour labels `00:00`–`23:00` down the left margin; amber now-line at current `useNow()` position; zero block cards; the NowCard (active-block card) is hidden because no blocks exist |
-| **Empty-state card** | Pulsing card inside the timeline area with copy: _"Tap any slot to lay your first block."_ Built atop M0's `<EmptyState>` primitive. |
-| **Floating dock** | Voice Log button (amber primary, visibly disabled, no-op until M10) · `+` button (secondary, visible, no-op until M2). Bottom-anchored, respects `env(safe-area-inset-bottom)`. |
-| **Page composition** | The Building day view at the app root (`app/page.tsx`) composes the above into a single mobile-viewport surface. |
+| **Empty-state card**  | Pulsing card inside the timeline area with copy: _"Tap any slot to lay your first block."_ Built atop M0's `<EmptyState>` primitive.                                                                                                          |
+| **Floating dock**     | Voice Log button (amber primary, visibly disabled, no-op until M10) · `+` button (secondary, visible, no-op until M2). Bottom-anchored, respects `env(safe-area-inset-bottom)`.                                                               |
+| **Page composition**  | The Building day view at the app root (`app/page.tsx`) composes the above into a single mobile-viewport surface.                                                                                                                              |
 
 **dayNumber semantics in M1.** Persistence + `programStart` arrive in M8. Until then, M1 computes `dayNumber` as the **calendar day-of-year from `new Date()`** (today = 2026-05-06 → 126 of 365; leap years → 366). This is honest data — no false "1 of 365" hardcode, no missing element. M8 will replace the day-of-year computation with the user's `programStart`-relative day number.
 
@@ -618,43 +640,22 @@ The Building day view exposes seven user-visible regions. PLANNER decides exact 
 ### Acceptance criteria
 
 **Top bar**
+
 1. A header renders at the top of the page containing: DHARMA wordmark + amber logo tile, an Edit-mode toggle button, and a Settings button.
 2. The Edit-mode toggle is rendered with `aria-pressed="false"` initially; tapping it does not throw, and may toggle internal state (edit-mode behavior itself ships in M5).
 3. The Settings button is rendered with `aria-label="Settings"` and is keyboard-focusable; tapping it is a no-op in M1.
 
-**Hero**
-4. The hero region displays today's date in human-readable form (e.g., "Wed · May 6").
-5. The hero displays a "Building N of 365" line where N = today's calendar day-of-year (366 in leap years).
-6. The hero displays `0%` rendered in Instrument Serif Italic at the spec'd display type scale.
-7. The "0%" numeral does not animate on mount (no count-up — count-up arrives in M3 with real scoring).
+**Hero** 4. The hero region displays today's date in human-readable form (e.g., "Wed · May 6"). 5. The hero displays a "Building N of 365" line where N = today's calendar day-of-year (366 in leap years). 6. The hero displays `0%` rendered in Instrument Serif Italic at the spec'd display type scale. 7. The "0%" numeral does not animate on mount (no count-up — count-up arrives in M3 with real scoring).
 
-**Day Blueprint bar**
-8. The Day Blueprint bar renders as an outlined container with a faint grid background and zero category segments inside it.
+**Day Blueprint bar** 8. The Day Blueprint bar renders as an outlined container with a faint grid background and zero category segments inside it.
 
-**Schedule timeline**
-9. A vertical 24-hour column renders with hour labels `00:00` through `23:00` in JetBrains Mono, color `--ink-dim`.
-10. An amber (`--accent`) horizontal rule (the "now-line") spans the timeline at the vertical position corresponding to the current time as returned by `useNow()`.
-11. The now-line's vertical position updates within ~60 s of the real clock advancing (driven by `useNow()`'s existing tick).
-12. The timeline is mounted such that the now-line is within the visible viewport on first paint (no manual scroll required).
-13. The NowCard component (active-block card) is NOT rendered (no blocks exist).
-14. No block cards, no brick chips are rendered.
+**Schedule timeline** 9. A vertical 24-hour column renders with hour labels `00:00` through `23:00` in JetBrains Mono, color `--ink-dim`. 10. An amber (`--accent`) horizontal rule (the "now-line") spans the timeline at the vertical position corresponding to the current time as returned by `useNow()`. 11. The now-line's vertical position updates within ~60 s of the real clock advancing (driven by `useNow()`'s existing tick). 12. The timeline is mounted such that the now-line is within the visible viewport on first paint (no manual scroll required). 13. The NowCard component (active-block card) is NOT rendered (no blocks exist). 14. No block cards, no brick chips are rendered.
 
-**Empty-state card**
-15. A single pulsing card is visible inside the timeline area with the exact copy: _"Tap any slot to lay your first block."_
-16. Under `prefers-reduced-motion: reduce`, the card renders without pulse animation.
+**Empty-state card** 15. A single pulsing card is visible inside the timeline area with the exact copy: _"Tap any slot to lay your first block."_ 16. Under `prefers-reduced-motion: reduce`, the card renders without pulse animation.
 
-**Floating dock**
-17. A floating dock is bottom-anchored containing a Voice Log button (amber primary, visibly disabled, `aria-disabled="true"`, tooltip or label indicating it arrives later) and a `+` button (secondary, enabled, no-op).
-18. The dock respects `env(safe-area-inset-bottom)` on iOS PWA.
-19. Tapping the `+` button does not throw and does not open any sheet (Add Block sheet ships in M2).
+**Floating dock** 17. A floating dock is bottom-anchored containing a Voice Log button (amber primary, visibly disabled, `aria-disabled="true"`, tooltip or label indicating it arrives later) and a `+` button (secondary, enabled, no-op). 18. The dock respects `env(safe-area-inset-bottom)` on iOS PWA. 19. Tapping the `+` button does not throw and does not open any sheet (Add Block sheet ships in M2).
 
-**Quality**
-20. At a 430px viewport, all chrome is within the safe-area and there is no horizontal overflow.
-21. `axe-core`: zero violations on the day view page.
-22. `tsc --noEmit`: zero errors.
-23. ESLint: zero warnings.
-24. `prefers-reduced-motion` honored across every animated element on the page (Playwright snapshot test).
-25. Playwright: top bar visible, hero with date + dayNumber + 0% visible, Day Blueprint bar visible (empty outline), 24-hour timeline visible, now-line visible at the correct vertical position, empty-state card with the locked copy visible, dock with disabled Voice + enabled-but-inert `+` visible — all on first paint, no interaction required.
+**Quality** 20. At a 430px viewport, all chrome is within the safe-area and there is no horizontal overflow. 21. `axe-core`: zero violations on the day view page. 22. `tsc --noEmit`: zero errors. 23. ESLint: zero warnings. 24. `prefers-reduced-motion` honored across every animated element on the page (Playwright snapshot test). 25. Playwright: top bar visible, hero with date + dayNumber + 0% visible, Day Blueprint bar visible (empty outline), 24-hour timeline visible, now-line visible at the correct vertical position, empty-state card with the locked copy visible, dock with disabled Voice + enabled-but-inert `+` visible — all on first paint, no interaction required.
 
 ### Out of scope
 
@@ -699,42 +700,46 @@ This milestone **locks the `Block` and `Category` schemas** for the rest of Phas
 
 ### Outputs (regions and behaviors)
 
-| Region | Role in M2 | Sync with M0 / M1 |
-|---|---|---|
-| Floating `+` button | Tappable. Opens the Add Block sheet with `start` defaulted to the current hour (rounded down) and `recurrence` defaulted to `just-today`. | M1 left it no-op; M2 wires the `onClick`. M0 `<Button>` primary amber unchanged. |
-| Empty-slot tap target | Tapping any empty timeline hour-row opens the Add Block sheet with `start` pre-filled to that row's hour. | New behavior. M1's Timeline grid stays the same; M2 attaches `onClick` to each empty row. |
-| Add Block sheet | Bottom-sheet built on M0 `<Sheet>`. Form: Title (required, autofocus), Start (required, time picker), End (optional, time picker), Recurrence (4 single-select `<Chip>`s), Category (`<Chip>` group of existing categories + "+ New" + "Skip"), Save (sticky bottom amber), Cancel (X top-left). | First real consumer of `<Sheet>`, `<Input>`, `<Chip>`. |
-| New-category inline form | When "+ New" is tapped, the sheet expands to: Name `<Input>` + 12-color palette picker (`<Chip>` grid). "Done" returns to the block sheet with the new category selected and persisted to `AppState.categories`. | New surface. Category creation is a side-effect of needing one — there is no separate "Manage Categories" screen in M2. |
-| Block card on the timeline | After Save: card enters at the `start` row (height ∝ duration; or fixed marker if no End). Displays title, time range, and a category color dot (if categorized). Tapping is a **no-op** in M2 (M4 wires FLIP expand). | Re-introduces the existing `components/TimelineBlock.tsx` (M1 tagged it `[obsolete: not-imported-in-M1]`). Migration tag flips to `[re-author]` for M2. |
-| Day Blueprint bar | Once a categorized block exists, the bar gains a colored segment with width ∝ block duration / day duration and color = category color. Uncategorized blocks are excluded from the bar (per SG-m2-02). | M1's empty-outline path stays as the zero-blocks fallback. Non-empty path is new in M2. |
-| Empty-state card | Disappears as soon as `blocks.length > 0`. Reappears if the last block is removed (M5+ surface). | M1's locked copy `"Tap any slot to lay your first block."` unchanged. |
+| Region                     | Role in M2                                                                                                                                                                                                                                                                                       | Sync with M0 / M1                                                                                                                                       |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Floating `+` button        | Tappable. Opens the Add Block sheet with `start` defaulted to the current hour (rounded down) and `recurrence` defaulted to `just-today`.                                                                                                                                                        | M1 left it no-op; M2 wires the `onClick`. M0 `<Button>` primary amber unchanged.                                                                        |
+| Empty-slot tap target      | Tapping any empty timeline hour-row opens the Add Block sheet with `start` pre-filled to that row's hour.                                                                                                                                                                                        | New behavior. M1's Timeline grid stays the same; M2 attaches `onClick` to each empty row.                                                               |
+| Add Block sheet            | Bottom-sheet built on M0 `<Sheet>`. Form: Title (required, autofocus), Start (required, time picker), End (optional, time picker), Recurrence (4 single-select `<Chip>`s), Category (`<Chip>` group of existing categories + "+ New" + "Skip"), Save (sticky bottom amber), Cancel (X top-left). | First real consumer of `<Sheet>`, `<Input>`, `<Chip>`.                                                                                                  |
+| New-category inline form   | When "+ New" is tapped, the sheet expands to: Name `<Input>` + 12-color palette picker (`<Chip>` grid). "Done" returns to the block sheet with the new category selected and persisted to `AppState.categories`.                                                                                 | New surface. Category creation is a side-effect of needing one — there is no separate "Manage Categories" screen in M2.                                 |
+| Block card on the timeline | After Save: card enters at the `start` row (height ∝ duration; or fixed marker if no End). Displays title, time range, and a category color dot (if categorized). Tapping is a **no-op** in M2 (M4 wires FLIP expand).                                                                           | Re-introduces the existing `components/TimelineBlock.tsx` (M1 tagged it `[obsolete: not-imported-in-M1]`). Migration tag flips to `[re-author]` for M2. |
+| Day Blueprint bar          | Once a categorized block exists, the bar gains a colored segment with width ∝ block duration / day duration and color = category color. Uncategorized blocks are excluded from the bar (per SG-m2-02).                                                                                           | M1's empty-outline path stays as the zero-blocks fallback. Non-empty path is new in M2.                                                                 |
+| Empty-state card           | Disappears as soon as `blocks.length > 0`. Reappears if the last block is removed (M5+ surface).                                                                                                                                                                                                 | M1's locked copy `"Tap any slot to lay your first block."` unchanged.                                                                                   |
 
 ### Locked schemas (this milestone fixes them)
 
 ```ts
 // lib/types.ts — replaces M1's tagged-soft-deprecated `Category` enum
 
-type Recurrence =                                          // ADR-019
-  | { kind: 'just-today'; date: string }                   // ISO YYYY-MM-DD
-  | { kind: 'every-weekday' }                              // Mon–Fri
-  | { kind: 'every-day' }
-  | { kind: 'custom-range'; start: string; end: string;    // ISO YYYY-MM-DD
-      weekdays: number[] };                                // 0=Sun..6=Sat
+type Recurrence = // ADR-019
+  | { kind: "just-today"; date: string } // ISO YYYY-MM-DD
+  | { kind: "every-weekday" } // Mon–Fri
+  | { kind: "every-day" }
+  | {
+      kind: "custom-range";
+      start: string;
+      end: string; // ISO YYYY-MM-DD
+      weekdays: number[];
+    }; // 0=Sun..6=Sat
 
 type Block = {
-  id: string;            // uuid (crypto.randomUUID)
+  id: string; // uuid (crypto.randomUUID)
   name: string;
-  start: string;         // "HH:MM"
-  end?: string;          // "HH:MM" — half-open [start, end) per ADR-006
+  start: string; // "HH:MM"
+  end?: string; // "HH:MM" — half-open [start, end) per ADR-006
   recurrence: Recurrence;
-  categoryId: string | null;   // FK into AppState.categories; null = uncategorized
-  bricks: Brick[];       // always [] in M2; M3 lands brick adding
+  categoryId: string | null; // FK into AppState.categories; null = uncategorized
+  bricks: Brick[]; // always [] in M2; M3 lands brick adding
 };
 
 type Category = {
-  id: string;            // uuid
-  name: string;          // user-typed; not unique
-  color: string;         // hex from the curated 12-color palette (SG-m2-01)
+  id: string; // uuid
+  name: string; // user-typed; not unique
+  color: string; // hex from the curated 12-color palette (SG-m2-01)
 };
 ```
 
@@ -761,52 +766,20 @@ The four legacy CSS vars (`--cat-health` / `--cat-mind` / `--cat-career` / `--ca
 ### Acceptance criteria
 
 **Add paths**
+
 1. Tapping the floating `+` button opens the Add Block sheet with `start` = current hour rounded down, `recurrence` = `just-today`, `categoryId` = `null`.
 2. Tapping any empty timeline hour-row opens the Add Block sheet with `start` pre-filled to that row's hour.
 3. The `+` button uses the M0 `<Button>` primary amber variant; the sheet uses the M0 `<Sheet>` primitive.
 
-**Sheet form**
-4. Title is a required `<Input>` with autofocus on open.
-5. Start is a required time picker, pre-filled per the trigger.
-6. End is an optional time picker; clearing it returns the block to "no End" state.
-7. Recurrence renders four `<Chip>`s (single-select): _Just today_ / _Every weekday_ / _Every day_ / _Custom range_. Default = _Just today_.
-8. The Custom-range chip, when selected, reveals start-date / end-date inputs and a 7-day weekday picker.
-9. Category renders existing `AppState.categories` as `<Chip>`s plus a "+ New" chip and a "Skip" affordance. With zero categories, only "+ New" and "Skip" are visible.
-10. New-category inline form has a Name `<Input>` and a 12-color palette picker (`<Chip>` 4×3 grid).
-11. Save button is `<Button>` primary amber, sticky bottom; disabled until Title is non-blank, Start is valid, and any sub-form errors are clear.
-12. Cancel is an `<X>` icon top-left; tapping discards sheet state and closes.
-13. Sheet dismiss via swipe-down on iOS Safari is equivalent to Cancel.
+**Sheet form** 4. Title is a required `<Input>` with autofocus on open. 5. Start is a required time picker, pre-filled per the trigger. 6. End is an optional time picker; clearing it returns the block to "no End" state. 7. Recurrence renders four `<Chip>`s (single-select): _Just today_ / _Every weekday_ / _Every day_ / _Custom range_. Default = _Just today_. 8. The Custom-range chip, when selected, reveals start-date / end-date inputs and a 7-day weekday picker. 9. Category renders existing `AppState.categories` as `<Chip>`s plus a "+ New" chip and a "Skip" affordance. With zero categories, only "+ New" and "Skip" are visible. 10. New-category inline form has a Name `<Input>` and a 12-color palette picker (`<Chip>` 4×3 grid). 11. Save button is `<Button>` primary amber, sticky bottom; disabled until Title is non-blank, Start is valid, and any sub-form errors are clear. 12. Cancel is an `<X>` icon top-left; tapping discards sheet state and closes. 13. Sheet dismiss via swipe-down on iOS Safari is equivalent to Cancel.
 
-**Block creation behavior**
-14. On Save: a new `Block` is appended to `AppState.blocks` with a `crypto.randomUUID()` id.
-15. The sheet slides down (M0 `modalOut` motion); reduced-motion collapses to instant.
-16. The new block enters the timeline at its `start` row with a stagger fade-in (M0 stagger 30 ms).
-17. The block card displays title, time range (e.g., `09:00–10:00`), and a category color dot when `categoryId !== null`.
-18. The Day Blueprint bar updates to include the new block's segment (categorized blocks only — SG-m2-02).
-19. The empty-state card unmounts as soon as `blocks.length > 0`.
-20. The hero's `0%` does not change in M2 (scoring is M3).
-21. The saved block matches the locked `Block` schema (Vitest schema test).
+**Block creation behavior** 14. On Save: a new `Block` is appended to `AppState.blocks` with a `crypto.randomUUID()` id. 15. The sheet slides down (M0 `modalOut` motion); reduced-motion collapses to instant. 16. The new block enters the timeline at its `start` row with a stagger fade-in (M0 stagger 30 ms). 17. The block card displays title, time range (e.g., `09:00–10:00`), and a category color dot when `categoryId !== null`. 18. The Day Blueprint bar updates to include the new block's segment (categorized blocks only — SG-m2-02). 19. The empty-state card unmounts as soon as `blocks.length > 0`. 20. The hero's `0%` does not change in M2 (scoring is M3). 21. The saved block matches the locked `Block` schema (Vitest schema test).
 
-**Validation**
-22. Empty Title → Save disabled with inline message.
-23. End ≤ Start (when End is set) → inline error; Save disabled.
-24. End past `23:59` → inline error; Save disabled.
-25. Custom-range with zero weekdays selected → inline error; Save disabled.
-26. Times overlap an existing block → soft inline warning naming the block; Save still allowed.
+**Validation** 22. Empty Title → Save disabled with inline message. 23. End ≤ Start (when End is set) → inline error; Save disabled. 24. End past `23:59` → inline error; Save disabled. 25. Custom-range with zero weekdays selected → inline error; Save disabled. 26. Times overlap an existing block → soft inline warning naming the block; Save still allowed.
 
-**Categories**
-27. With zero categories, Save with `categoryId: null` is allowed; block renders without a color dot.
-28. New-category form persists the new `Category` to `AppState.categories` immediately on "Done", even if the block is then Cancelled.
-29. Newly created categories appear as `<Chip>`s in any subsequent Add Block sheet within the session.
-30. Two categories with identical Name are allowed (no de-dup).
+**Categories** 27. With zero categories, Save with `categoryId: null` is allowed; block renders without a color dot. 28. New-category form persists the new `Category` to `AppState.categories` immediately on "Done", even if the block is then Cancelled. 29. Newly created categories appear as `<Chip>`s in any subsequent Add Block sheet within the session. 30. Two categories with identical Name are allowed (no de-dup).
 
-**A11y / quality**
-31. All interactive elements ≥ 44px (ADR-031). Tab order matches visual order. Sheet has `role="dialog"` with a focus trap.
-32. axe-core: zero violations on the day view AND on the open sheet.
-33. `tsc --noEmit`: zero new errors.
-34. ESLint: zero new warnings.
-35. `prefers-reduced-motion`: sheet open and new-block stagger collapse to instant.
-36. Playwright: add via `+` → block appears at default Start; add via slot-tap → block appears at slot's hour; Cancel → no block added; mobile viewport 430px; no horizontal overflow when sheet is open.
+**A11y / quality** 31. All interactive elements ≥ 44px (ADR-031). Tab order matches visual order. Sheet has `role="dialog"` with a focus trap. 32. axe-core: zero violations on the day view AND on the open sheet. 33. `tsc --noEmit`: zero new errors. 34. ESLint: zero new warnings. 35. `prefers-reduced-motion`: sheet open and new-block stagger collapse to instant. 36. Playwright: add via `+` → block appears at default Start; add via slot-tap → block appears at slot's hour; Cancel → no block added; mobile viewport 430px; no horizontal overflow when sheet is open.
 
 ### Out of scope
 
@@ -839,3 +812,186 @@ The four legacy CSS vars (`--cat-health` / `--cat-mind` / `--cat-career` / `--ca
 - **SG-m2-06 — Sheet swipe-down with dirty form.** Recommendation: silent discard (matches Apple Reminders); add an undo toast in M7. Alternative: confirm "Discard?".
 - **SG-m2-07 — `categoryId` FK vs inline `category: { name, color }`.** Recommendation: **FK** (cleaner for renaming categories in a later milestone). Schema above reflects this; flag here for ratification.
 - **SG-m2-08 — Empty timeline row tap target.** M1's Timeline renders an hour grid via CSS gradient. Each row is currently not individually tappable. M2 needs to attach a click handler per hour. Approach: 24 absolutely-positioned transparent buttons over the grid, each spanning one `HOUR_HEIGHT_PX` row. PLANNER decides exact technique; flag here so the choice is conscious.
+
+---
+
+## Milestone 3 — Add Brick Flow + Live Scoring + Visual Fill
+
+> **Pillars:** § 0.1 (the wedge — Dharma scores proof, not plans), § 0.3 (visual identity — hero ring is the dopamine surface), § 0.5 (interaction primitives — three brick types: tick / goal / time), § 0.9 (data model — bricks never timed; bricks live inside a block OR standalone in the Loose Bricks tray; brick category is independent of parent block), § 0.11 (Loose Bricks tray now LOCKED — Option A pinned above dock), § 0.14 (no factory bricks, no factory categories, no seed data), ADR-019 (recurrence stays untouched in M3), ADR-032 (categories user-defined), ADR-034 (blocks always timed), ADR-035 (bricks can be standalone), ADR-039 (ships empty).
+
+### Intent
+
+Wire the second and third interactive verbs and the dopamine layer all in one milestone:
+
+1. **Add Brick (inside a block)** — tap a block → it expands → "+ Add brick" → AddBrickSheet.
+2. **Add Brick (standalone)** — Loose Bricks tray (pinned above dock, always visible once at least one block or one loose brick exists) has a "+ Brick" pill → AddBrickSheet with `parentBlockId: null`.
+3. **Live scoring engine** — `lib/scoring.ts` with pure functions: `tickProgress` / `goalProgress` / `timeProgress` / `brickProgress` / `blockProgress` / `dayProgress` / `categoryDayProgress`. The math runs every render; a brick added at 0% leaves the day at 0%, but the pipe is now wired and observable in the DOM (data attributes + computed styles).
+4. **Visual fill primitives** — brick chips fill with category-color gradient (left→right by progress), block scaffold left-bar fills bottom-up (height = block %), hero ring stroke-dashoffset animates with the day %, BlueprintBar segment opacity = `0.3 + (block% × 0.7)`, block 100% triggers bloom + chime, day 100% triggers fireworks (Empire square deferred to M9).
+
+This milestone **locks the `Brick` schema** (discriminated union over `tick` / `goal` / `time`) and **extends `AppState`** to add `looseBricks: Brick[]`. Each Block's existing `bricks: Brick[]` field (M2 placeholder; always `[]`) now gets populated.
+
+**What this is NOT:** logging bricks (tick toggle / goal stepper / timer ticks) — M4. Block edit / delete — M5. Drag reorder — M6. Polish layer (the cinematic stagger / count-up / hidden Easter eggs) — M7. Persistence — M8. Calendar navigation — M9. Voice mic — M10. Per ADR-039, no factory bricks ship — the user creates each brick.
+
+### Inputs
+
+- The day-with-blocks surface from M2 — top bar, hero (`0%`, but now backed by a real `<HeroRing>` component instead of a static numeral), BlueprintBar (renders categorized segments at full opacity in M2; M3 modulates segment opacity by block %), 24-hour timeline with block cards, dock with `+`, AddBlockSheet, `<EditModeProvider>`, `<SlotTapTargets>`.
+- M0 primitives — `<Sheet>`, `<Input>`, `<Chip>`, `<Button>`, `<EmptyState>`. M2's `<CategoryPicker>` and `<NewCategoryForm>` are reused as-is inside AddBrickSheet.
+- M0 motion tokens — `modalIn` / `modalOut` for AddBrickSheet, stagger for new-brick fade-in inside an expanded block, `bloom` (NEW) for block 100% celebration, `fireworks` (NEW) for day 100%.
+- M0 haptics — `light` on chip-select; `success` on Save and on block 100%; `medium` on validation error and on day 100% (`notification` per § 0.10).
+- M2 helpers — `validateTitle`, `lib/uuid.ts`, `lib/data.ts` reducer (extend with `ADD_BRICK`), `lib/dharma.ts` (unchanged).
+- The locked `Block` and `Category` schemas from M2.
+- In-memory `AppState`: `blocks` (M2), `categories` (M2), **new** `looseBricks: Brick[]` (initial `[]`).
+
+### Outputs (regions and behaviors)
+
+| Region                       | Role in M3                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Sync with M0 / M1 / M2                                                                                                                                                                 |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hero ring                    | Replaces M0/M1's static `0%` numeral with a `<HeroRing>`: SVG circle, stroke-dashoffset = `(1 − dayProgress) × circumference`, animated 600 ms eased on change. Numeral inside the ring stays the existing `Math.round(dayProgress × 100)%`. M2's `0%` literal stays correct because zero bricks → `dayProgress = 0`.                                                                                                                                                                            | New surface. The numeral text node from M1 stays as the inner content.                                                                                                                 |
+| BlueprintBar segment opacity | Each categorized segment's opacity = `0.3 + (block% × 0.7)`. Uncategorized blocks remain excluded (SG-m2-02).                                                                                                                                                                                                                                                                                                                                                                                    | M2 path is preserved; M3 adds the per-segment opacity modulation.                                                                                                                      |
+| Block card (collapsed)       | Adds left vertical scaffold bar 4px wide, full card height. Filled bottom-up by block %; color = category color (or `--text-dim` when `categoryId === null`). Tap behavior changes from no-op (M2) to "expand".                                                                                                                                                                                                                                                                                  | Re-author of `<TimelineBlock>` from M2; M2 had a static color dot — M3 keeps the dot AND adds the scaffold.                                                                            |
+| Block card (expanded)        | After tap-to-expand: card grows in height (max-height transition, 200 ms eased; reduced-motion → instant). Reveals: vertical list of `<BrickChip>`s, then a "+ Add brick" `<Button>` ghost variant at the bottom. Re-tap collapses.                                                                                                                                                                                                                                                              | New surface. Layout is plain (FLIP magic is M7). Edit-mode interactions are M5 — M3's expanded view is view-mode only.                                                                 |
+| AddBrickSheet                | Bottom-sheet built on M0 `<Sheet>`. Form: Title (required, autofocus), Type selector (3 large `<Chip>` cards: Tick / Goal / Time, default = Tick), per-type fields (Goal: target + unit; Time: target minutes), Category (`<CategoryPicker>` reused; default pre-fills to parent block's category for inside-block bricks, blank for standalone), Save (sticky bottom amber), Cancel (X top-left).                                                                                               | First reuse of M2's `<CategoryPicker>` + `<NewCategoryForm>` outside `<AddBlockSheet>`. The single-`<Sheet>`-instance pattern from M2 carries over (view: `'brick' \| 'newCategory'`). |
+| `<BrickChip>`                | Rounded-rect chip ~44px tall (touch target, ADR-031). Background = category color at 12% alpha (or `--surface-2` when uncategorized). Foreground gradient overlay = category color at 60% alpha, width = `progress × 100%`, animated 400 ms eased on change. Title left-aligned. Type-specific badge right-aligned: Tick → `☐` / `✓`; Goal → `count/target unit`; Time → `mmDone/durationMin m ▶`. Tap surface in M3 = no-op (M4 wires logging).                                                 | New component. Lives inside expanded blocks AND inside the Loose Bricks tray.                                                                                                          |
+| `<LooseBricksTray>`          | Pinned above `<BottomBar>`. Renders iff `state.blocks.length > 0 \|\| state.looseBricks.length > 0`. Two states: **Collapsed** (default, max-height 56 px) — single horizontal scroll row of small `<BrickChip>`s, with a trailing "+ Brick" pill; tap chevron-up to expand. **Expanded** (max-height ≈ 40 vh) — vertical list of full-size `<BrickChip>`s + "+ Brick" ghost button at top; tap chevron-down to collapse. When zero loose bricks, collapsed state shows only the "+ Brick" pill. | New component. Renders ABOVE M1's `<BottomBar>`. The `+` button in BottomBar still adds a Block (M2 verb preserved); standalone-brick creation lives only inside the tray.             |
+| Empty-state card             | Now appears iff `state.blocks.length === 0 && state.looseBricks.length === 0`. Copy unchanged from M1: `"Tap any slot to lay your first block."` (Loose Bricks tray is hidden in this exact state, matching M1's "literal empty" promise.)                                                                                                                                                                                                                                                       | M2 disappeared the card on first block; M3 widens the visibility predicate to also account for loose bricks.                                                                           |
+| 100% block celebration       | When `blockProgress` crosses from `<1` to `1`, the block card fires a one-shot bloom (radial CSS gradient expand, 800 ms) + a soft chime (`Audio` API, single-shot, mute-respecting) + `success` haptic. Reduced-motion → bloom-suppressed; chime still fires (audio is not motion).                                                                                                                                                                                                             | Wires the trigger in M3; the only path that fires it in M3 is test-injected state (M4 wires user-driven logging).                                                                      |
+| 100% day celebration         | When `dayProgress` crosses from `<1` to `1`, fireworks particle burst plays for 1.6 s + `notification` haptic. Empire square light-up is M9. Reduced-motion → fireworks-suppressed.                                                                                                                                                                                                                                                                                                              | Same wiring story as block 100%.                                                                                                                                                       |
+
+### Locked schemas (this milestone fixes them)
+
+```ts
+// lib/types.ts — adds Brick discriminated union; extends AppState.
+
+type BrickBase = {
+  id: string;                  // crypto.randomUUID
+  name: string;
+  categoryId: string | null;   // FK to AppState.categories; null = uncategorized
+  parentBlockId: string | null;// FK to AppState.blocks; null = standalone (loose)
+};
+
+type Brick =
+  | (BrickBase & { type: 'tick';  done: boolean })
+  | (BrickBase & { type: 'goal';  target: number; unit: string; count: number })
+  | (BrickBase & { type: 'time';  durationMin: number; minutesDone: number });
+
+type AppState = {
+  blocks: Block[];           // M2; each Block.bricks gets populated in M3
+  categories: Category[];    // M2
+  looseBricks: Brick[];      // M3 — bricks with parentBlockId === null
+};
+
+// Reducer additions (extend M2's discriminated Action union)
+type Action =
+  | /* M2 actions */
+  | { type: 'ADD_BRICK'; brick: Brick };  // routed by brick.parentBlockId
+
+// Pure scoring helpers (lib/scoring.ts)
+function tickProgress(b: Brick & { type: 'tick' }): number;          // 0 | 1
+function goalProgress(b: Brick & { type: 'goal' }): number;          // min(count/target, 1)
+function timeProgress(b: Brick & { type: 'time' }): number;          // min(minutesDone/durationMin, 1)
+function brickProgress(b: Brick): number;                             // dispatches by type
+function blockProgress(block: Block): number;                         // 0 if bricks=[]; else avg(brickProgress)
+function dayProgress(state: AppState): number;                        // avg over (blocks + looseBricks)
+function categoryDayProgress(state: AppState, categoryId: string): number; // avg filtered by categoryId
+```
+
+**Schema rules (locked):**
+
+- A new `tick` brick saves with `done: false` → progress 0.
+- A new `goal` brick saves with `count: 0` → progress 0.
+- A new `time` brick saves with `minutesDone: 0` → progress 0.
+- `target` and `durationMin` are integers `> 0` (validation enforced).
+- `unit` is a free-text string, may be blank (e.g., "100" with no unit).
+- `categoryId` for inside-block bricks **defaults to** the parent block's `categoryId`, but the user can override (including to `null`).
+- A block with `bricks: []` has `blockProgress = 0` in M3 (the "empty block tickable as 0/1" rule from § 0.9 is M4 behavior — wired only when M4 ships the tap-to-tick UX).
+- `dayProgress` averages over the union of `state.blocks` (each contributing one entry — its own `blockProgress`) and `state.looseBricks` (each contributing one entry — its own `brickProgress`). Empty state (zero blocks, zero loose bricks) → `dayProgress = 0` (no division by zero).
+
+### Edge cases
+
+- **Block with zero bricks** → `blockProgress = 0` (until M4 wires empty-block tick).
+- **Adding the first brick to an empty block** → block keeps showing 0% (new brick defaults to 0%). The scaffold bar stays empty; this is correct — the dopamine arrives in M4 when logging fires.
+- **`goal` brick with `target = 0`** → save disabled (validation).
+- **`time` brick with `durationMin = 0`** → save disabled (validation).
+- **`goal` `count > target`** → progress capped at 1 (`min(count/target, 1)`). M3 has no UX path to `count > target` (count starts at 0; M4 wires the stepper); this is a math invariant for M4 and persistence migrations.
+- **`time` `minutesDone > durationMin`** → progress capped at 1 (same math). M3 has no UX path to push minutesDone above zero; this guards M4 + persistence.
+- **Brick inside a block, brick category ≠ block category** → allowed. Per-category day score correctly attributes the brick to ITS category, not the block's.
+- **Standalone brick with `categoryId: null`** → counted in `dayProgress` (it's a unit), excluded from `categoryDayProgress(any)` (no category to attribute to).
+- **Hero ring at 0%** → stroke-dashoffset = circumference (empty arc). Numeral reads `0%`.
+- **Hero ring on first state change** → animates from previous % to new % over 600 ms. Reduced-motion → instant.
+- **BlueprintBar segment opacity at 0%** → 0.3 (the floor). At 100% → 1.0.
+- **Block crosses 100% but immediately drops below** (M4 stepper down) → the bloom is a one-shot; it does not retrigger until the block has been below 100% AND crossed up again. Detection lives in `useEffect` watching `blockProgress`.
+- **Day crosses 100% then drops** → same one-shot rule for fireworks.
+- **`prefers-reduced-motion: reduce`** → ring stroke animation collapses to instant; brick-chip fill collapses to instant; bloom and fireworks suppressed (CSS-driven, not haptic-driven). Haptics + chime audio still fire (motion ≠ haptics ≠ audio per M0 conventions).
+- **AddBrickSheet swipe-down with dirty form** → silent discard (matches M2 SG-m2-06).
+- **Sheet nesting** — single `<Sheet>` instance with `view: 'brick' \| 'newCategory'` (matches M2's `<AddBlockSheet>` pattern).
+- **Block-tap to expand: tap target** — entire block card is the tap surface. Tapping the category dot or scaffold bar inside the card also expands (no nested click-eaters). The category-color dot's `data-testid="category-dot"` (M2 SG-m2-13) stays.
+- **Block expanded, user taps "+ Add brick"** → AddBrickSheet opens with `parentBlockId` pre-set to this block AND `categoryId` pre-set to this block's `categoryId` (overrideable in the sheet).
+- **Tray "+ Brick" tapped** → AddBrickSheet opens with `parentBlockId: null`, `categoryId: null` (no parent block to inherit from).
+- **Tray expand/collapse during AddBrickSheet open** → sheet is full-screen and traps focus; tray interactions are blocked behind it.
+- **Page refresh** → all state lost (no persistence until M8). Same as M2.
+- **Brick name length** — long names truncate with ellipsis on the chip; full name visible only after M4's edit surface (M5 actually — M3 has no brick edit). Acceptable for M3.
+- **Two bricks with identical Name inside the same block** → allowed (no de-dup; matches M2's category rule).
+- **`<HeroRing>` SSR/CSR mismatch** — the ring is SVG with computed stroke-dashoffset. Server renders 0%; client hydrates to actual day % using the same two-pass pattern from M1's auto-scroll (the `mounted` flag).
+
+### Acceptance criteria
+
+**Add paths (inside a block)**
+
+1. Tapping a block card in view mode toggles its expanded state (collapsed ↔ expanded).
+2. Expanded block reveals: vertical list of `<BrickChip>`s (one per `block.bricks[]`) + "+ Add brick" ghost button.
+3. Tapping "+ Add brick" opens AddBrickSheet with `parentBlockId` = this block's id and `categoryId` pre-filled to the block's `categoryId`.
+4. On Save: a new `Brick` is appended to that block's `bricks[]` with `crypto.randomUUID()` id and `parentBlockId` set; the brick chip enters the expanded view with stagger fade-in.
+
+**Add paths (standalone via tray)** 5. The Loose Bricks tray renders iff `state.blocks.length > 0 || state.looseBricks.length > 0`. In the literal-empty state (both zero), the tray is hidden and M1's empty-state card is visible. 6. The tray renders pinned above the BottomBar dock. Default state when at least one criterion in #5 holds = collapsed (max-height 56 px). 7. The tray's "+ Brick" pill (always visible while the tray is rendered) opens AddBrickSheet with `parentBlockId: null` and `categoryId: null`. 8. On Save with `parentBlockId: null`: a new `Brick` is appended to `state.looseBricks[]` with `crypto.randomUUID()` id; the brick chip enters the tray with stagger fade-in. 9. Tap the tray's chevron toggle to expand → tray grows to max-height ≈ 40 vh, vertical list of full-size chips. Tap chevron again → collapses. State persists for the session (resets on refresh — no M8 yet).
+
+**AddBrickSheet form** 10. Title is a required `<Input>` with autofocus on open. 11. Type selector renders 3 large `<Chip>` cards (Tick / Goal / Time) as a single-select group; default = Tick. 12. Selecting Goal reveals: target (number `<Input>`, integer `≥ 1`) + unit (text `<Input>`, optional). Both fields disappear when type ≠ Goal. 13. Selecting Time reveals: target minutes (number `<Input>`, integer `≥ 1`). Field disappears when type ≠ Time. 14. Category renders M2's `<CategoryPicker>` (existing categories + "+ New" + "Skip"). Inside-block: pre-filled to parent block's `categoryId` (or "Skip" when block is uncategorized). Standalone: no pre-fill. 15. Save button is `<Button>` primary amber, sticky bottom; disabled until validation clears (Title non-blank AND per-type fields valid). 16. Cancel is an `<X>` icon top-left; tapping discards sheet state and closes. 17. New-category creation works identically to M2 (single `<Sheet>` instance, `view: 'newCategory'`, the new category persists immediately on Done). 18. Sheet swipe-down on iOS Safari = silent discard (matches M2).
+
+**Brick creation behavior** 19. On Save: a new `Brick` matching the locked schema is appended to the appropriate slot (`block.bricks[]` for inside-block, `state.looseBricks[]` for standalone). 20. The sheet slides down (M0 `modalOut`); reduced-motion → instant. 21. The new chip renders with progress = 0 (empty fill). Stagger fade-in = M0 `30 ms` between siblings; reduced-motion → instant. 22. The chip displays title, type-badge, and category color (background tint + foreground gradient placeholder). Uncategorized chips use `--surface-2` background. 23. The saved brick matches the locked `Brick` discriminated union (Vitest schema test per type).
+
+**Visual fill (math + render)** 24. `<HeroRing>` renders as SVG with stroke-dashoffset reflecting `1 − dayProgress(state)`. At `dayProgress = 0` the arc is empty; at `1` the arc is full. Stroke = `--accent` (amber). 25. Hero numeral text node = `${Math.round(dayProgress × 100)}%`. Updates synchronously with the ring. 26. Block scaffold left-bar height = `blockProgress(block) × cardHeight`. Color = category color or `--text-dim`. 27. BrickChip foreground gradient width = `brickProgress(brick) × 100%`. Animated 400 ms on change; reduced-motion → instant. 28. BlueprintBar categorized segment opacity = `0.3 + (blockProgress × 0.7)` (clamp `[0.3, 1]`). Uncategorized blocks remain excluded. 29. State changes (adding a brick) re-render every dependent view in the same React tick; no flash of stale 0%.
+
+**Scoring (math)** 30. `tickProgress({ done: false }) === 0` and `tickProgress({ done: true }) === 1`. 31. `goalProgress({ target: 100, count: 50 }) === 0.5`; `count: 100` → `1`; `count: 200` → capped at `1`; `count: 0` → `0`. 32. `timeProgress({ durationMin: 30, minutesDone: 15 }) === 0.5`; `minutesDone: 60` → capped at `1`; `0` → `0`. 33. `blockProgress({ bricks: [] })` → `0`. With bricks → `avg(brickProgress)`. 34. `dayProgress({ blocks: [], looseBricks: [] })` → `0`. With one block at `1` and zero loose bricks → `1`. With one block at `1` and one loose brick at `0` → `0.5`. 35. `categoryDayProgress(state, "cat-x")` averages only the bricks AND blocks attributed to `cat-x`. Bricks inside a block contribute to THEIR own category, not the block's. Standalone bricks with `categoryId: null` are excluded from any category-filtered query but still count in `dayProgress`.
+
+**100% celebrations (wired but injection-tested in M3)** 36. When `blockProgress(block)` crosses from `<1` to `1`, a `bloom` CSS animation plays once on that block card (CSS keyframes; class added on the cross transition, removed after `animationend`). A `success` haptic fires. 37. When `dayProgress(state)` crosses from `<1` to `1`, a `fireworks` overlay plays for ~1.6 s (Framer Motion or canvas; bounded particle count so the work doesn't leak into the next render). A `notification` haptic fires. 38. Both celebrations are one-shot per crossing: dropping back below 1 and re-crossing fires again. Test via state injection (M3 has no user path to logging). 39. Reduced-motion → bloom and fireworks visuals suppressed (no animation classes added). Haptics still fire. Audio (chime) still fires unless OS-muted.
+
+**Edit mode (no-op in M3)** 40. With Edit Mode toggled ON (M5 mechanism is already wired in M2's `<EditModeProvider>`), block tap-to-expand and the Loose Bricks tray "+ Brick" pill remain functional. Edit-mode-specific affordances (jiggle, ×, drag handles) are M5; M3 ships nothing edit-specific. **`<SlotTapTargets>` continues to pass through edit mode (returns null when `editMode === true`, per M2 C-m2-013).**
+
+**A11y / quality** 41. All interactive elements ≥ 44 px (ADR-031). Tab order matches visual order. AddBrickSheet has `role="dialog"` with focus trap. 42. `<HeroRing>` has `role="img"` and `aria-label="Day score: ${pct}%"`. Updates live with `aria-live="polite"`. 43. `<BrickChip>` has accessible name `"${title}, ${type}, ${progressPercent}% complete"`. Type-specific suffix: Goal → `, ${count} of ${target} ${unit}`; Time → `, ${minutesDone} of ${durationMin} minutes`. 44. `<LooseBricksTray>` has `role="region"`, `aria-label="Loose bricks"`, `aria-expanded={open}`. Chevron toggle has `aria-controls` pointing at the list region. 45. Expanded block card sets `aria-expanded="true"` on the block-card button; collapsed = `false`. The list of bricks inside has `role="list"`. 46. axe-core: zero violations on day view, on open AddBrickSheet, on expanded block, AND on expanded Loose Bricks tray. 47. `tsc --noEmit`: zero new errors. 48. ESLint: zero new warnings. 49. `prefers-reduced-motion`: ring animation, chip fill animation, bloom, and fireworks all collapse to instant / suppressed. 50. Playwright: add brick inside block via expand → "+ Add brick" → Save → chip appears at 0%; add standalone brick via tray "+ Brick" → Save → chip appears in tray at 0%; mobile viewport 430 px; no horizontal overflow when sheet is open; tray chevron toggle expands and collapses; HeroRing renders (visible) and is `0%` at session start.
+
+### Out of scope
+
+- Logging bricks: tick toggle, goal +/- stepper, time start/stop timer, manual time entry — **M4**
+- Block edit (rename, retime), brick edit (rename, retype, retarget) — **M5**
+- Block delete and brick delete with "Just today / All recurrences" prompts — **M5**
+- Drag-reorder for blocks AND for bricks within a block — **M6**
+- The full polish layer: stagger on first paint, count-up animation on hero, "now" line glow, NOW tag, "Your Empire begins." card, brand-mark Easter egg, skeleton loaders, toasts — **M7**
+- Persistence (`dharma:v1` localStorage, schema migrations, multi-tab last-writer-wins) — **M8**
+- Calendar navigation (week strip, Castle / Kingdom / Empire), `appliesOn(rec, date)` resolver — **M9** (M3 still renders only today; recurrence kinds stored on Block from M2 are inert until M9)
+- Voice mic — **M10**
+- Multi-day blocks crossing midnight — **never (or much later)**
+- "Empty block tickable as 0/1" UX — **M4** (the math is wired with a `0` floor in M3; M4 adds the tap-to-tick gesture that flips it to 1)
+- Empire square light-up on day 100% — **M9** (M3 fires only the fireworks overlay locally on the Building view)
+- "+ Block" via long-press menu / brick-and-block chooser — **never** (M3 keeps M2's `+` = New Block; standalone-brick creation lives only inside the tray)
+- Block-detail surface as a separate route or sheet — **never** (block expand stays inline per § 0.5)
+- Lighthouse measurement from sandbox — pending Vercel access (carries over from M2)
+
+### Open spec gaps (lock at Gate #1)
+
+- **SG-m3-01 — Brick category FK vs inline.** Recommendation: `categoryId: string | null` (FK), matching M2's SG-m2-07 ratification. Schema above reflects this.
+- **SG-m3-02 — Loose Bricks tray location.** **LOCKED Gate #2 (M2 ship-react)** — Option A: pinned above the dock, always visible once `blocks.length > 0 \|\| looseBricks.length > 0`, collapsed chip-row default with chevron-up to expand. Hidden in the literal-empty state to preserve M1's empty-state contract. Recorded in § 0.11.
+- **SG-m3-03 — Bricks: embedded under blocks vs flat array.** Recommendation: **embedded** for inside-block bricks (`block.bricks[]` — M2's locked field, populated in M3) AND flat for standalone (`state.looseBricks[]` — new in M3). This matches M8's persistence shape (block templates carry their bricks; standalone bricks are a peer collection).
+- **SG-m3-04 — Inside-block brick category default.** Recommendation: pre-fill brick `categoryId` to the parent block's `categoryId` (overrideable). Alternative: always blank.
+- **SG-m3-05 — 100% bloom / chime / fireworks: ship in M3 or defer.** Recommendation: **ship the wiring in M3** (component + cross-detection effect + tests via state injection). M3 has no user path to logging — but M4 needs the celebrations primed when its first stepper tick lands. Deferring to M4 means M4 ships TWO surfaces (logging + celebrations) which dilutes the M3 / M4 boundary.
+- **SG-m3-06 — Block expand mechanism.** Recommendation: tap-to-expand in view mode; max-height transition 200 ms; re-tap collapses. No FLIP magic in M3 (that's M7). Carry the simplest implementation that lets brick-adding flow through.
+- **SG-m3-07 — Hero ring component.** Recommendation: introduce `<HeroRing>` now as SVG with `stroke-dasharray` / `stroke-dashoffset`. Replaces the static numeral M0/M1 shipped. Numeral text node lives inside the ring.
+- **SG-m3-08 — Where the "+ Brick" verb lives.** Recommendation: ONLY inside the Loose Bricks tray (when tray is rendered). The BottomBar `+` keeps M2's verb (New Block). No long-press menu, no chooser modal. Trade-off: in the literal-empty state (no blocks, no loose bricks), there is no path to add a standalone brick first. Resolution: the user must create their first block before the tray appears; if a user wants a single atomic action, they tap a slot, name it, and skip End — that's a no-end block, which is closer to a brick semantically. (Acceptable per § 0.14 antipattern 1: a single atomic action probably IS a brick, but in the literal-empty state Dharma still asks the user to "lay your first block" — the brick path opens up immediately after.)
+- **SG-m3-09 — Empty-block scoring in M3.** Recommendation: `blockProgress({ bricks: [] }) → 0` in M3. § 0.9's "empty block → 0 or 1 (boolean tick)" is a M4 feature; the math floor in M3 is `0` until M4 adds the per-block tick state. Document this so M4 doesn't have to renegotiate.
+- **SG-m3-10 — Day score with zero bricks.** Recommendation: `dayProgress({ blocks: [...], looseBricks: [] }) = avg(blockProgress)` when at least one block exists; `dayProgress({ blocks: [], looseBricks: [] }) = 0` for the literal-empty case (no division by zero). Average is taken over the union of (blocks + looseBricks) treating each as one unit per § 0.9's "Day score = average across all top-level units".
+- **SG-m3-11 — Bloom + chime + fireworks reduced-motion behavior.** Recommendation: bloom and fireworks are visuals → suppressed under `prefers-reduced-motion`. Chime is audio → still plays unless OS-muted (audio is not motion). Haptics still fire (haptics are not motion either; they're tactile).
+- **SG-m3-12 — Audio asset for the chime.** Recommendation: ship a single small (< 30 KB) chime as a static asset under `public/sounds/chime.mp3`. Loaded on app boot via `new Audio()`. No external dependency. Mute respect: check `navigator.mediaSession` or fall back to a UA-mute check; M3 ships the simplest path (let the OS handle mute) and revisits in M7.
+- **SG-m3-13 — Brick chip touch target during expanded block.** Recommendation: 44 px minimum height per ADR-031. Chips do not double-purpose as logging surfaces in M3 (tap = no-op until M4). M3 still keeps the tap target compliant so M4 doesn't have to resize.
+- **SG-m3-14 — `<LooseBricksTray>` z-index relative to AddBrickSheet.** Recommendation: tray z-index < AddBrickSheet z-index. The sheet's full-screen overlay covers the tray. M2's `<AddBlockSheet>` already has the right z-index — reuse it.
+- **SG-m3-15 — Brick add via tray when tray is collapsed.** Recommendation: the "+ Brick" pill is always present in the collapsed row (rightmost position, after any chips). User does NOT need to expand the tray to add a brick. Expand is only for browsing existing bricks.
+- **SG-m3-16 — `Block.bricks` ordering in expanded view.** Recommendation: render in insertion order (the order they appear in `block.bricks[]`). M6 wires drag-reorder. Tests assert order matches array order.
+- **SG-m3-17 — `<HeroRing>` SSR.** Recommendation: server renders the ring at `0%` (full empty arc). Client hydrates to actual day score with a 600 ms ease-in. This avoids hydration mismatch warnings even when the user has session state by the time of hydration. (Once M8 ships, persistence rehydrates state on mount — M3 has no persistence, so this is a forward-compatible default.)
+- **SG-m3-18 — Stagger fade-in on new chip insert.** Recommendation: 30 ms between chips on first render of an expanded block; `0 ms` (no stagger) when adding ONE chip after the fact (single-element insert doesn't need a stagger sequence). Reduced-motion → instant in either case.
