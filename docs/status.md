@@ -8,7 +8,7 @@
 
 - **Branch:** `claude/verify-m0-deployment-s4XRy` at `26e6fbd` · `main` at `c3ef9f1` (feature branch not yet merged)
 - **Last commit:** `26e6fbd` — `docs(ship-m1): update README, CHANGELOG, and status.md for M1 ship`
-- **Last preview URL:** pending — branch pushed at `26e6fbd`; Vercel build underway. Source actual URL from GitHub commit-status (Vercel App context, `state: success`) or Vercel-bot comment on the PR. Do NOT template from branch name. M0 preview was `https://integrity-git-claude-buil-f6ede9-rahulranjith369-5644s-projects.vercel.app` (different branch).
+- **Last preview URL:** `https://integrity-ic9qqaiue-rahulranjith369-5644s-projects.vercel.app` — Vercel deployment `2zg8umtgyLzzpuedk44FxMJk671Z` on commit `c6fb331` (`state=success`, `Deployment has completed`). Returns HTTP 403 `host_not_allowed` from sandbox/curl — Vercel Deployment Protection requires browser auth (same behavior as M0 preview). User must open in browser while signed in to Vercel.
 - **Methodology:** The Loop (SDD-outside, TDD-inside) per ADR-025; two human gates per ADR-026; per-phase commit prefixes per ADR-027.
 
 ## Plan in force

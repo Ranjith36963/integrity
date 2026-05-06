@@ -54,7 +54,7 @@ npm run test:e2e:install
 | M1 — Empty Building Shell | Shipped to preview — awaiting Gate #2 tap-test |
 | M2 — Add Block Flow | Not started — next up |
 
-Preview: Vercel build underway for branch `claude/verify-m0-deployment-s4XRy` at `26e6fbd`. See `docs/status.md` for the sourced preview URL.
+Preview: `https://integrity-ic9qqaiue-rahulranjith369-5644s-projects.vercel.app` (branch `claude/verify-m0-deployment-s4XRy` at `c6fb331`, Vercel Deployment Protection — open in browser while signed in to Vercel).
 
 ## Project layout
 
