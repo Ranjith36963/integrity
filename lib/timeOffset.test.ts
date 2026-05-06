@@ -16,10 +16,16 @@ describe("U-m1-006: timeToOffsetPx returns 768 for 12:00", () => {
 });
 
 // U-m1-007: near-bottom 23:59
-describe("U-m1-007: timeToOffsetPx for 23:59 is in (1535, 1536)", () => {
-  it("returns a value strictly between 1535 and 1536 for 23:59", () => {
+// Note: tests.md says "open range (1535, 1536)" but the actual math gives
+// 23 * 64 + (59/60) * 64 = 1472 + 62.933... = 1534.933. The spec's "1535.0667"
+// figure is a calculation error in tests.md. Implementing the correct range
+// (1534, 1536) to match the actual math while honoring the intent (near-but-below 1536).
+// This discrepancy is surfaced to the orchestrator as tests.md gap U-m1-007.
+describe("U-m1-007: timeToOffsetPx for 23:59 is near (but strictly less than) 1536", () => {
+  it("returns a value strictly between 1534 and 1536 for 23:59", () => {
     const result = timeToOffsetPx("23:59", 64);
-    expect(result).toBeGreaterThan(1535);
+    // Actual: 23*64 + (59/60)*64 = 1472 + 62.933... = 1534.933
+    expect(result).toBeGreaterThan(1534);
     expect(result).toBeLessThan(1536);
   });
 });
