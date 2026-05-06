@@ -64,14 +64,44 @@ describe("U-m0-001: globals.css :root declares M0 color tokens", () => {
     checkToken(root, "--accent", "#fbbf24"));
   it("declares --accent-deep: #d97706", () =>
     checkToken(root, "--accent-deep", "#d97706"));
-  it("declares --cat-health: #34d399", () =>
-    checkToken(root, "--cat-health", "#34d399"));
-  it("declares --cat-mind: #c4b5fd", () =>
-    checkToken(root, "--cat-mind", "#c4b5fd"));
-  it("declares --cat-career: #fbbf24", () =>
-    checkToken(root, "--cat-career", "#fbbf24"));
-  it("declares --cat-passive: #64748b", () =>
-    checkToken(root, "--cat-passive", "#64748b"));
+  // M2: replaced 4 closed-set --cat-health/mind/career/passive with 12-color palette (SG-m2-01)
+  it("does NOT declare --cat-health (removed in M2)", () => {
+    expect(root).not.toMatch(/--cat-health/);
+  });
+  it("does NOT declare --cat-mind (removed in M2)", () => {
+    expect(root).not.toMatch(/--cat-mind/);
+  });
+  it("does NOT declare --cat-career (removed in M2)", () => {
+    expect(root).not.toMatch(/--cat-career/);
+  });
+  it("does NOT declare --cat-passive (removed in M2)", () => {
+    expect(root).not.toMatch(/--cat-passive/);
+  });
+  // 12-color palette (SG-m2-01) — re-authored M2
+  it("declares --cat-1: #34d399 (emerald)", () =>
+    checkToken(root, "--cat-1", "#34d399"));
+  it("declares --cat-2: #c4b5fd (lavender)", () =>
+    checkToken(root, "--cat-2", "#c4b5fd"));
+  it("declares --cat-3: #fbbf24 (amber)", () =>
+    checkToken(root, "--cat-3", "#fbbf24"));
+  it("declares --cat-4: #94a3b8 (slate, lightened for AA)", () =>
+    checkToken(root, "--cat-4", "#94a3b8"));
+  it("declares --cat-5: #fb7185 (rose)", () =>
+    checkToken(root, "--cat-5", "#fb7185"));
+  it("declares --cat-6: #fb923c (orange)", () =>
+    checkToken(root, "--cat-6", "#fb923c"));
+  it("declares --cat-7: #a3e635 (lime)", () =>
+    checkToken(root, "--cat-7", "#a3e635"));
+  it("declares --cat-8: #2dd4bf (teal)", () =>
+    checkToken(root, "--cat-8", "#2dd4bf"));
+  it("declares --cat-9: #38bdf8 (sky)", () =>
+    checkToken(root, "--cat-9", "#38bdf8"));
+  it("declares --cat-10: #818cf8 (indigo)", () =>
+    checkToken(root, "--cat-10", "#818cf8"));
+  it("declares --cat-11: #e879f9 (fuchsia)", () =>
+    checkToken(root, "--cat-11", "#e879f9"));
+  it("declares --cat-12: #d4a373 (warm-neutral)", () =>
+    checkToken(root, "--cat-12", "#d4a373"));
 });
 
 // U-m0-002: Typography tokens

@@ -75,7 +75,14 @@ export function brickLabel(b: Brick): string {
   return `${b.current}/${b.target}${b.unit ? " " + b.unit : ""}`;
 }
 
-export function fmtRange(block: Block): string {
+/**
+ * Formats the time range for a block as "HH:MM–HH:MM" (en-dash).
+ * SG-m2-10: widened to accept end?: string | undefined.
+ * When end is undefined (no-end block), returns just "HH:MM" with no en-dash.
+ * Single source of truth for time range formatting across TimelineBlock and NowCard.
+ */
+export function fmtRange(block: Pick<Block, "start" | "end">): string {
+  if (!block.end) return block.start;
   return `${block.start}–${block.end}`;
 }
 

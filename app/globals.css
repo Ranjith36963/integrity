@@ -14,10 +14,23 @@
   --ink-dim: rgba(245, 241, 232, 0.5);
   --accent: #fbbf24;
   --accent-deep: #d97706;
-  --cat-health: #34d399;
-  --cat-mind: #c4b5fd;
-  --cat-career: #fbbf24;
-  --cat-passive: #64748b;
+
+  /* Category palette — user picks one per category they create.
+     No category names live in code; see ADR-032/039.
+     All 12 colors checked for WCAG AA contrast against --bg (#07090f).
+     --cat-4 lightened from #64748b to #94a3b8 to clear the AA threshold. */
+  --cat-1: #34d399; /* emerald */
+  --cat-2: #c4b5fd; /* lavender */
+  --cat-3: #fbbf24; /* amber */
+  --cat-4: #94a3b8; /* slate (lightened from #64748b for AA) */
+  --cat-5: #fb7185; /* rose */
+  --cat-6: #fb923c; /* orange */
+  --cat-7: #a3e635; /* lime */
+  --cat-8: #2dd4bf; /* teal */
+  --cat-9: #38bdf8; /* sky */
+  --cat-10: #818cf8; /* indigo */
+  --cat-11: #e879f9; /* fuchsia */
+  --cat-12: #d4a373; /* warm-neutral */
 
   /* ── M0 Typography ───────────────────────────────────── */
   --font-display: var(--font-instrument-serif);
