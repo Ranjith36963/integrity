@@ -2,28 +2,27 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { BuildingClient } from "./BuildingClient";
 
-// C-bld-034: BuildingClient mounts with blocks=[] and EmptyBlocks copy is visible
-describe("C-bld-034: BuildingClient initializes with empty blocks", () => {
-  it("renders EmptyBlocks copy when no blocks are present", () => {
+// C-bld-034 (re-authored M1): BuildingClient mounts with blocks=[] and shows locked SPEC copy
+describe("C-bld-034 (re-authored M1): BuildingClient initializes with empty blocks", () => {
+  it("renders locked SPEC empty-state copy when no blocks are present", () => {
     render(<BuildingClient />);
     expect(
-      screen.getByText("No blocks yet. Tap + to add your first block."),
+      screen.getByText("Tap any slot to lay your first block."),
     ).toBeInTheDocument();
   });
 });
 
-// C-bld-035: No blocks → BlueprintBar is NOT in the DOM
-describe("C-bld-035: BlueprintBar absent when blocks is empty", () => {
-  it("BlueprintBar is not in the DOM with empty blocks", () => {
+// C-bld-035 (re-authored M1): BlueprintBar IS in the DOM (unconditional in M1)
+// Note: Previously tested BlueprintBar was absent. M1 makes it unconditional per SPEC AC #8.
+describe("C-bld-035 (re-authored M1): BlueprintBar always present even with empty blocks", () => {
+  it("BlueprintBar section (aria-label='Day blueprint') is in the DOM with empty blocks", () => {
     const { container } = render(<BuildingClient />);
-    const segments = container.querySelectorAll(
-      "[data-testid='blueprint-segment']",
-    );
-    expect(segments).toHaveLength(0);
+    const blueprint = container.querySelector('[aria-label="Day blueprint"]');
+    expect(blueprint).not.toBeNull();
   });
 });
 
-// C-bld-036: No blocks → NowCard is NOT in the DOM
+// C-bld-036: NowCard is NOT in the DOM (confirmed via now-glow check)
 describe("C-bld-036: NowCard absent when blocks is empty", () => {
   it("NowCard now-glow element is not in the DOM with empty blocks", () => {
     const { container } = render(<BuildingClient />);
@@ -32,48 +31,81 @@ describe("C-bld-036: NowCard absent when blocks is empty", () => {
   });
 });
 
-// C-bld-039: BuildingClient uses live clock — dateLabel and BlueprintBar now-pin
-// reflect system time, not the wipe-demo placeholders ("" / "00:00").
-// Note: BlueprintBar is conditionally rendered (blocks.length > 0), so the
-// now-pin assertion renders a single minimal block to bring BlueprintBar into
-// the DOM — verifying the live `now` prop flows from useNow().
+// C-bld-039: BuildingClient uses live clock
 describe("C-bld-039: BuildingClient shows live dateLabel and now pin", () => {
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it("renders live dateLabel 'Wed, Apr 29' (not the wipe-demo placeholder '')", () => {
+  it("renders live dateLabel 'Wed, May 6' (not the wipe-demo placeholder '')", () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-04-29T11:47:00"));
+    vi.setSystemTime(new Date("2026-05-06T08:30:00"));
     render(<BuildingClient />);
-    // Hero must show the live dateLabel, not the wipe-demo placeholder ""
-    expect(screen.getByText("Wed, Apr 29")).toBeInTheDocument();
-    // The now-pin renders inside BlueprintBar which requires blocks; its
-    // aria-label is verified in the BlueprintBar component test (C-bld-010).
-    // Here we confirm live time is NOT the placeholder "00:00" by checking
-    // there is no element labelled "Now 00:00" in the DOM.
+    expect(screen.getByText("Wed, May 6")).toBeInTheDocument();
     expect(screen.queryByLabelText("Now 00:00")).not.toBeInTheDocument();
   });
 });
 
-// C-bld-040: BuildingClient with placeholder programStart = today() shows "Building 1 of 365"
-// The Hero renders "Building N of 365" split across elements (N is an amber span).
-// We use a container query to verify the full composed text.
-describe("C-bld-040: BuildingClient shows 'Building 1 of 365' with placeholder programStart", () => {
+// C-bld-040 (re-authored M1): BuildingClient shows 'Building 126 of 365' for May 6, 2026
+// M1 uses dayOfYear(new Date()) instead of dayNumber(programStart, today).
+describe("C-bld-040 (re-authored M1): BuildingClient shows 'Building 126 of 365' on May 6, 2026", () => {
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it("Hero renders 'Building 1 of 365' when programStart equals today", () => {
+  it("Hero renders 'Building 126 of 365' for dayOfYear on May 6, 2026", () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-04-29T11:47:00"));
+    vi.setSystemTime(new Date("2026-05-06T08:30:00"));
     const { container } = render(<BuildingClient />);
-    // programStart === today() → dayNumber === 1 → "Building 1 of 365"
-    // The number is in an amber <span>; use textContent on the parent div
-    const dayCounter = container.querySelector("section .mt-1.text-\\[12px\\]");
+    // M1 uses dayOfYear: May 6, 2026 = day 126 of 365
+    const dayCounter = container.querySelector("section .mt-1");
     expect(dayCounter).not.toBeNull();
-    expect(dayCounter?.textContent?.replace(/\s+/g, " ").trim()).toBe(
-      "Building 1 of 365",
-    );
+    const text = dayCounter?.textContent?.replace(/\s+/g, " ").trim();
+    expect(text).toBe("Building 126 of 365");
+  });
+});
+
+// C-m1-019: NowCard NOT in DOM (no import, no data-component)
+describe("C-m1-019: BuildingClient does not render NowCard", () => {
+  it("no element with data-component='now-card' is in the DOM", () => {
+    const { container } = render(<BuildingClient />);
+    expect(
+      container.querySelector('[data-component="now-card"]'),
+    ).toBeNull();
+  });
+});
+
+// C-m1-020: No block cards or brick chips in DOM
+describe("C-m1-020: BuildingClient renders no block cards or brick chips", () => {
+  it("has zero timeline-block, block-card, and brick-chip elements", () => {
+    const { container } = render(<BuildingClient />);
+    expect(
+      container.querySelectorAll('[data-component="timeline-block"]'),
+    ).toHaveLength(0);
+    expect(
+      container.querySelectorAll('[data-component="brick-chip"]'),
+    ).toHaveLength(0);
+    expect(
+      container.querySelectorAll('[data-component="block-card"]'),
+    ).toHaveLength(0);
+  });
+
+  it("timeline column contains only hour-grid, NowLine, and EmptyBlocks card", () => {
+    const { container } = render(<BuildingClient />);
+    // Hour grid is present
+    expect(container.querySelector('[data-testid="hour-grid"]')).not.toBeNull();
+    // NowLine is present
+    expect(container.querySelector('[data-testid="now-line"]')).not.toBeNull();
+    // EmptyState card is present
+    expect(container.querySelector('[data-testid="empty-state"]')).not.toBeNull();
+  });
+});
+
+// C-m1-021: BlueprintBar always rendered (unconditional in M1)
+describe("C-m1-021: BlueprintBar is rendered unconditionally with empty blocks", () => {
+  it("exactly one element with aria-label='Day blueprint' is in the DOM", () => {
+    const { container } = render(<BuildingClient />);
+    const blueprints = container.querySelectorAll('[aria-label="Day blueprint"]');
+    expect(blueprints).toHaveLength(1);
   });
 });

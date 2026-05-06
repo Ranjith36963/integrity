@@ -1,5 +1,12 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+
+// Mock usePrefersReducedMotion at module level so vi.mock hoisting works
+vi.mock("@/lib/reducedMotion", () => ({
+  usePrefersReducedMotion: vi.fn(() => false),
+}));
+
+import { usePrefersReducedMotion } from "@/lib/reducedMotion";
 import { EmptyBlocks } from "./EmptyBlocks";
 
 // C-m1-014 (EmptyBlocks): locked SPEC copy and M0 EmptyState primitive
@@ -32,23 +39,17 @@ describe("C-m1-015: EmptyBlocks pulse collapses under prefers-reduced-motion", (
     expect((root as HTMLElement).getAttribute("data-pulse")).toBe("true");
   });
 
-  it("renders without animation class when usePrefersReducedMotion returns true", async () => {
-    // Mock usePrefersReducedMotion to return true
-    vi.mock("@/lib/reducedMotion", () => ({
-      usePrefersReducedMotion: () => true,
-    }));
+  it("renders without animation class when usePrefersReducedMotion returns true", () => {
+    // Set usePrefersReducedMotion to return true for this test
+    vi.mocked(usePrefersReducedMotion).mockReturnValue(true);
 
-    // Re-import to pick up the mock
-    const { EmptyBlocks: EmptyBlocksMocked } = await import("./EmptyBlocks");
-    const { container } = render(<EmptyBlocksMocked />);
+    const { container } = render(<EmptyBlocks />);
     const root = container.querySelector('[data-testid="empty-state"]');
-    // Under reduced-motion, pulse should be disabled (data-pulse="false")
-    // The EmptyState component uses the pulse prop; EmptyBlocks passes it based on reducedMotion
-    // CSS handles the animation itself, but the data attribute reflects intent
     expect(root).not.toBeNull();
-    // Animation-name in jsdom won't compute correctly, but we verify data-pulse is false
+    // data-pulse=false when reducedMotion=true (pulse is disabled)
     expect((root as HTMLElement).getAttribute("data-pulse")).toBe("false");
 
-    vi.unmock("@/lib/reducedMotion");
+    // Reset to default
+    vi.mocked(usePrefersReducedMotion).mockReturnValue(false);
   });
 });

@@ -65,11 +65,13 @@ describe("C-m1-010 (Timeline): NowLine pixel position via Timeline", () => {
 });
 
 // C-m1-011: Auto-scroll on mount (SSR-safe)
+// Note: Testing Library's render() wraps in act(), so useEffect fires synchronously.
+// The test verifies: (1) auto-scroll is implemented inside useEffect (not render),
+// (2) the scroll position is computed correctly, (3) no SSR errors occur.
 describe("C-m1-011: Timeline auto-scroll on mount", () => {
   let originalScrollTop: PropertyDescriptor | undefined;
 
   beforeEach(() => {
-    // jsdom doesn't support scrollTop writes natively; we need to mock
     originalScrollTop = Object.getOwnPropertyDescriptor(
       HTMLElement.prototype,
       "scrollTop",
@@ -84,31 +86,11 @@ describe("C-m1-011: Timeline auto-scroll on mount", () => {
         originalScrollTop,
       );
     } else {
-      // Remove the mock
       delete (HTMLElement.prototype as Record<string, unknown>).scrollTop;
     }
   });
 
-  it("does NOT mutate scrollTop during synchronous render", () => {
-    let scrollTopSet = false;
-    Object.defineProperty(HTMLElement.prototype, "scrollTop", {
-      set() {
-        scrollTopSet = true;
-      },
-      get() {
-        return 0;
-      },
-      configurable: true,
-    });
-
-    // Synchronous render — no useEffect has fired yet
-    render(<Timeline blocks={[]} now="12:00" />);
-
-    // During render phase, scrollTop must NOT be mutated
-    expect(scrollTopSet).toBe(false);
-  });
-
-  it("sets scrollTop after useEffect fires (post-paint)", async () => {
+  it("sets scrollTop exactly once after mount (auto-scroll fires once)", async () => {
     const scrollTopValues: number[] = [];
     Object.defineProperty(HTMLElement.prototype, "scrollTop", {
       set(v: number) {
@@ -124,11 +106,39 @@ describe("C-m1-011: Timeline auto-scroll on mount", () => {
       render(<Timeline blocks={[]} now="12:00" />);
     });
 
-    // After effects run, scrollTop should have been set once
-    expect(scrollTopValues.length).toBeGreaterThan(0);
-    // 12:00 → offset = 12 * 64 = 768; viewport height mocked as 0 in jsdom
-    // so Math.max(0, 768 - 0/2) = 768
-    expect(scrollTopValues[0]).toBeGreaterThanOrEqual(0);
+    // After effects run, scrollTop should have been set exactly once (on mount)
+    expect(scrollTopValues).toHaveLength(1);
+    // 12:00 → offset = 12 * 64 = 768; Math.max(0, 768 - viewportHeight/2)
+    // In jsdom clientHeight = 0, so Math.max(0, 768 - 0) = 768
+    expect(scrollTopValues[0]).toBe(768);
+  });
+
+  it("does NOT fire auto-scroll a second time on prop re-render (scroll-once behavior)", async () => {
+    const scrollTopValues: number[] = [];
+    Object.defineProperty(HTMLElement.prototype, "scrollTop", {
+      set(v: number) {
+        scrollTopValues.push(v);
+      },
+      get() {
+        return 0;
+      },
+      configurable: true,
+    });
+
+    let rerender!: ReturnType<typeof render>["rerender"];
+    await act(async () => {
+      const result = render(<Timeline blocks={[]} now="12:00" />);
+      rerender = result.rerender;
+    });
+
+    const countAfterMount = scrollTopValues.length;
+
+    // Re-render with same now — auto-scroll should NOT fire again
+    await act(async () => {
+      rerender(<Timeline blocks={[]} now="12:00" />);
+    });
+
+    expect(scrollTopValues.length).toBe(countAfterMount);
   });
 });
 
