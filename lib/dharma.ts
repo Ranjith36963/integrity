@@ -16,6 +16,8 @@ export function dayOffset(hhmm: string): number {
 
 export function duration(block: Block): number {
   const a = toMin(block.start);
+  // M2: end is optional (no-end blocks have no duration — return 0)
+  if (!block.end) return 0;
   const b = toMin(block.end);
   const d = b - a;
   return d <= 0 ? d + DAY_LEN : d;

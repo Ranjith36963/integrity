@@ -15,6 +15,18 @@ import {
 } from "./dharma";
 import type { Block } from "./types";
 
+// Minimal M2-compatible Block factory for tests that only care about bricks/start/end
+function makeBlock(
+  overrides: Partial<Block> & Pick<Block, "start" | "name" | "bricks">,
+): Block {
+  return {
+    id: "test-id",
+    recurrence: { kind: "just-today", date: "2026-05-06" },
+    categoryId: null,
+    ...overrides,
+  };
+}
+
 describe("dharma utilities (harness smoke test)", () => {
   it("toMin parses HH:MM into minutes since 00:00", () => {
     expect(toMin("00:00")).toBe(0);
@@ -29,13 +41,12 @@ describe("dharma utilities (harness smoke test)", () => {
   });
 
   it("duration handles midnight-wrapping blocks (sleep 22:00→04:00 = 360m)", () => {
-    const sleep: Block = {
+    const sleep = makeBlock({
       start: "22:00",
       end: "04:00",
       name: "Sleep",
-      category: "passive",
       bricks: [],
-    };
+    });
     expect(duration(sleep)).toBe(360);
   });
 
@@ -51,17 +62,16 @@ describe("dharma utilities (harness smoke test)", () => {
   });
 
   it("blockPct averages brick percentages", () => {
-    const block: Block = {
+    const block = makeBlock({
       start: "06:00",
       end: "07:00",
       name: "Fitness",
-      category: "health",
       bricks: [
         { kind: "goal", name: "pushups", current: 80, target: 100 },
         { kind: "time", name: "run", current: 30, target: 30 },
         { kind: "tick", name: "stretch", done: true },
       ],
-    };
+    });
     expect(blockPct(block)).toBeCloseTo((80 + 100 + 100) / 3);
   });
 });
@@ -110,29 +120,27 @@ it("U-bld-007: brickPct returns 0 for target <= 0", () => {
 
 // U-bld-008: block with bricks [goal 80, time 100, tick 100] → blockPct ≈ 93.33
 it("U-bld-008: blockPct averages [80, 100, 100] to ~93.33", () => {
-  const block: Block = {
+  const block = makeBlock({
     start: "06:00",
     end: "07:00",
     name: "Fitness",
-    category: "health",
     bricks: [
       { kind: "goal", name: "pushups", current: 80, target: 100 },
       { kind: "time", name: "run", current: 30, target: 30 },
       { kind: "tick", name: "stretch", done: true },
     ],
-  };
+  });
   expect(blockPct(block)).toBeCloseTo((80 + 100 + 100) / 3);
 });
 
 // U-bld-009: block with bricks:[] → blockPct = 0
 it("U-bld-009: blockPct returns 0 for empty bricks array", () => {
-  const block: Block = {
+  const block = makeBlock({
     start: "06:00",
     end: "07:00",
     name: "Empty",
-    category: "health",
     bricks: [],
-  };
+  });
   expect(blockPct(block)).toBe(0);
 });
 
@@ -143,13 +151,12 @@ it("U-bld-013: toMin returns 707 for 11:47", () => {
 
 // U-bld-014: duration of sleep block 22:00→04:00 = 360
 it("U-bld-014: duration handles midnight wrap (22:00→04:00 = 360)", () => {
-  const sleep: Block = {
+  const sleep = makeBlock({
     start: "22:00",
     end: "04:00",
     name: "Sleep",
-    category: "passive",
     bricks: [],
-  };
+  });
   expect(duration(sleep)).toBe(360);
 });
 
@@ -190,27 +197,9 @@ it("U-bld-021: brickLabel returns correct string for time brick", () => {
 
 // currentBlockIndex + nowOffsetPct + blockStatus — inline fixtures (no BLOCKS import)
 const inlineBlocks: Block[] = [
-  {
-    start: "04:00",
-    end: "08:45",
-    name: "Morning",
-    category: "health",
-    bricks: [],
-  },
-  {
-    start: "08:45",
-    end: "17:15",
-    name: "Work block",
-    category: "passive",
-    bricks: [],
-  },
-  {
-    start: "17:15",
-    end: "04:00",
-    name: "Evening",
-    category: "mind",
-    bricks: [],
-  },
+  makeBlock({ start: "04:00", end: "08:45", name: "Morning", bricks: [] }),
+  makeBlock({ start: "08:45", end: "17:15", name: "Work block", bricks: [] }),
+  makeBlock({ start: "17:15", end: "04:00", name: "Evening", bricks: [] }),
 ];
 
 it("currentBlockIndex returns correct index for inline fixture at 11:47", () => {

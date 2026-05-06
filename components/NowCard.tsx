@@ -1,7 +1,7 @@
 "use client";
 // [obsolete: not-imported-in-M2] — stays on disk for M3/M4 revisit.
+// Uses a local LegacyBlock type to avoid depending on the new Block schema.
 import type { Category } from "@/components/ui/types";
-import type { Block } from "@/lib/types";
 // Local copies of removed constants (Block now uses new schema; this file is obsolete)
 const CATEGORY_COLOR: Record<Category, string> = {
   health: "#34d399",
@@ -19,13 +19,25 @@ import { blockPct, fmtRange } from "@/lib/dharma";
 import { Brick as BrickComponent } from "./Brick";
 import type { Brick } from "@/lib/types";
 
+// Local legacy block type — M2 Block no longer has `category` or `end` required.
+interface LegacyBlock {
+  id: string;
+  name: string;
+  start: string;
+  end: string;
+  category: Category;
+  bricks: Brick[];
+}
+
 interface Props {
-  block: Block;
+  block: LegacyBlock;
   onLogBrick: (index: number, updated: Brick) => void;
 }
 
 export function NowCard({ block, onLogBrick }: Props) {
-  const pct = Math.round(blockPct(block));
+  const pct = Math.round(
+    blockPct(block as unknown as Parameters<typeof blockPct>[0]),
+  );
   const color = CATEGORY_COLOR[block.category];
   return (
     <section className="px-5 pb-5">
@@ -64,7 +76,7 @@ export function NowCard({ block, onLogBrick }: Props) {
             className="text-[10px] tracking-[0.16em] uppercase"
             style={{ color: "var(--ink-dim)" }}
           >
-            {fmtRange(block)}
+            {fmtRange(block as Parameters<typeof fmtRange>[0])}
           </div>
         </div>
 

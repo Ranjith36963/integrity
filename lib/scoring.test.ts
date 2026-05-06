@@ -2,25 +2,35 @@ import { describe, it, expect } from "vitest";
 import { dayPct, buildingPct, blockPct } from "./scoring";
 import type { Block } from "./types";
 
+// Minimal M2-compatible Block factory for scoring tests
+function makeBlock(
+  overrides: Partial<Block> & Pick<Block, "start" | "name" | "bricks">,
+): Block {
+  return {
+    id: "test-id",
+    recurrence: { kind: "just-today", date: "2026-05-06" },
+    categoryId: null,
+    ...overrides,
+  };
+}
+
 // U-bld-010: Two blocks of unequal duration with percentages 50 and 100
 // → equal-weighted average = 75 (NOT duration-weighted)
 describe("U-bld-010: dayPct uses equal-weighted averaging", () => {
   it("returns 75 for two blocks with pcts [50, 100] regardless of duration", () => {
     const blocks: Block[] = [
-      {
+      makeBlock({
         start: "04:00",
         end: "05:00", // 60 min
         name: "Short block",
-        category: "health",
-        bricks: [{ kind: "tick", name: "x", done: false }], // 0% → 0 per brick
-      },
-      {
+        bricks: [{ kind: "tick", name: "x", done: false }], // 0%
+      }),
+      makeBlock({
         start: "05:00",
         end: "09:00", // 240 min — 4x longer
         name: "Long block",
-        category: "mind",
         bricks: [{ kind: "tick", name: "y", done: true }], // 100%
-      },
+      }),
     ];
     // Force block pcts to 0 and 100 respectively
     expect(blockPct(blocks[0])).toBe(0);
@@ -29,23 +39,21 @@ describe("U-bld-010: dayPct uses equal-weighted averaging", () => {
     expect(dayPct(blocks)).toBe(50);
 
     const blocks2: Block[] = [
-      {
+      makeBlock({
         start: "04:00",
         end: "05:00", // 60 min
         name: "Half block",
-        category: "health",
         bricks: [
           { kind: "tick", name: "a", done: true },
           { kind: "tick", name: "b", done: false },
         ], // 50%
-      },
-      {
+      }),
+      makeBlock({
         start: "05:00",
         end: "09:00", // 240 min — 4x longer
         name: "Full block",
-        category: "mind",
         bricks: [{ kind: "tick", name: "c", done: true }], // 100%
-      },
+      }),
     ];
     expect(blockPct(blocks2[0])).toBe(50);
     expect(blockPct(blocks2[1])).toBe(100);
@@ -60,30 +68,27 @@ describe("U-bld-010: dayPct uses equal-weighted averaging", () => {
 describe("U-bld-011 (inline fixture): dayPct equals equal-weighted mean", () => {
   it("matches manual equal-weighted calculation over inline fixture", () => {
     const blocks: Block[] = [
-      {
+      makeBlock({
         start: "04:00",
         end: "05:00",
         name: "A",
-        category: "health",
         bricks: [
           { kind: "tick", name: "x", done: true },
           { kind: "tick", name: "y", done: false },
         ], // 50%
-      },
-      {
+      }),
+      makeBlock({
         start: "05:00",
         end: "06:00",
         name: "B",
-        category: "career",
         bricks: [{ kind: "goal", name: "z", current: 3, target: 4 }], // 75%
-      },
-      {
+      }),
+      makeBlock({
         start: "06:00",
         end: "07:00",
         name: "C",
-        category: "mind",
         bricks: [{ kind: "tick", name: "w", done: true }], // 100%
-      },
+      }),
     ];
     const expected =
       blocks.reduce((s, b) => s + blockPct(b), 0) / blocks.length;
@@ -106,13 +111,12 @@ describe("buildingPct is an alias for dayPct", () => {
 
   it("buildingPct with inline fixture === dayPct with same fixture", () => {
     const blocks: Block[] = [
-      {
+      makeBlock({
         start: "04:00",
         end: "05:00",
         name: "A",
-        category: "health",
         bricks: [{ kind: "tick", name: "x", done: true }],
-      },
+      }),
     ];
     expect(buildingPct(blocks)).toBe(dayPct(blocks));
   });

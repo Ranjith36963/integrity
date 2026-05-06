@@ -1,14 +1,11 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 // All M2 e2e run on mobile-chrome (Pixel 7) at 430×900 viewport.
 // Base URL: http://localhost:3000. Route under test: /.
 // Each test that needs a stable clock uses addInitScript to fix Date.now.
 
 // Helper: add a block via the + button
-async function addBlock(
-  page: Parameters<Parameters<typeof test>[1]>[0]["page"],
-  title: string,
-) {
+async function addBlock(page: Page, title: string) {
   await page.getByRole("button", { name: "Add" }).click();
   await page.getByLabel(/Title/i).fill(title);
   await page.getByRole("button", { name: /Save/i }).click();
