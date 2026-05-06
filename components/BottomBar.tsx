@@ -1,16 +1,20 @@
 "use client";
-// BottomBar — re-authored for M1 (plan.md § Components — Floating dock):
-// - Voice button: aria-disabled="true" + locked SPEC label (SG-m1-04)
+// BottomBar — re-authored for M2 (plan.md § Components — Floating dock):
+// - Add (+) button: onClick wired to new onAddPress prop (M2)
+// - Voice button: aria-disabled="true" + locked SPEC label (SG-m1-04, M1 unchanged)
 //   Stays as <button> (NOT <div>) so SR users hear the disabled state.
 //   No native `disabled` attribute (must remain focusable for screen readers).
 //   Visual: opacity-50 + cursor-not-allowed.
 //   Click handler: preventDefault() to defang without removing from tab order.
-// - Add (+) button: aria-label="Add", stays enabled, no-op click (M2 wires sheet).
 // - Outer wrapper: paddingBottom calc(20px + var(--safe-bottom)) for iOS home-indicator.
 
 import { Mic, Plus } from "lucide-react";
 
-export function BottomBar() {
+interface Props {
+  onAddPress?: () => void;
+}
+
+export function BottomBar({ onAddPress }: Props) {
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20">
       <div
@@ -38,7 +42,7 @@ export function BottomBar() {
             <Mic size={16} />
             Voice Log
           </button>
-          {/* Add button: enabled, no-op in M1. M2 wires the Add Block sheet. */}
+          {/* Add button: M2 wires onAddPress. M0 primary amber, 44×44, aria-label="Add". */}
           <button
             aria-label="Add"
             className="grid h-12 w-12 place-items-center rounded-full"
@@ -47,6 +51,7 @@ export function BottomBar() {
               border: "1px solid var(--card-edge)",
               color: "var(--ink)",
             }}
+            onClick={onAddPress}
           >
             <Plus size={18} />
           </button>

@@ -1,39 +1,60 @@
 "use client";
-// BlueprintBar — re-authored for M1:
-// - Empty-outline path: renders outlined container with faint CSS gradient grid (SG-m1-02)
-// - Zero category segments when blocks.length === 0 (ADR-032/039)
-// - Legend HIDDEN in M1 (hardcoded categories are the antipattern — ADR-032)
-// - NOW pin uses time-based fallback when blocks.length === 0:
-//   left% = (toMin(now) / (24*60)) * 100  (plan.md § Components — BlueprintBar)
-// - Faint grid: CSS linear-gradient background with hairlines at 25%/50%/75% (SG-m1-02)
+// BlueprintBar — re-authored for M2 (plan.md § Components — Day Blueprint bar):
+// - Aggregates blocks by categoryId, renders colored segments (M2 non-empty path)
+// - Uncategorized blocks (categoryId=null) excluded per SG-m2-02
+// - Blocks without end excluded from aggregation
+// - Segments sorted by categoryId for determinism
+// - M1 empty-outline path preserved when zero categorized blocks
+// - Legend hidden in M2 (M3 reintroduces with real per-category percentages)
 
-import { Block } from "@/lib/types";
+import type { Block, Category } from "@/lib/types";
 import { toMin } from "@/lib/dharma";
 
 interface Props {
   blocks: Block[];
+  categories: Category[];
   now: string;
 }
 
-export function BlueprintBar({ blocks, now }: Props) {
-  // NOW pin position: time-based fallback when no blocks exist;
-  // otherwise use block-layout-aware offset.
-  // Comment: when blocks.length === 0, position pin at current time within 24h day
-  // so users still see "where we are" in the day without any block data.
-  const nowPct =
-    blocks.length === 0
-      ? (toMin(now) / (24 * 60)) * 100
-      : (() => {
-          const total = blocks.reduce(
-            (s, b) => s + (toMin(b.end) - toMin(b.start)),
-            0,
-          );
-          if (total === 0) return (toMin(now) / (24 * 60)) * 100;
-          // dayOffset-based for non-empty blocks (mirrors original nowOffsetPct logic)
-          const elapsed = toMin(now) - toMin("04:00");
-          const offset = elapsed < 0 ? elapsed + 24 * 60 : elapsed;
-          return (offset / total) * 100;
-        })();
+/**
+ * Aggregates categorized block durations by categoryId.
+ * Returns entries sorted by categoryId for determinism.
+ * Excludes: categoryId===null, blocks without end.
+ * Exported for U-m2-011 unit test.
+ */
+export function aggregateCategoryMinutes(
+  blocks: Block[],
+): { categoryId: string; minutes: number }[] {
+  const map = new Map<string, number>();
+  for (const b of blocks) {
+    if (b.categoryId === null || b.end === undefined) continue;
+    const mins = toMin(b.end) - toMin(b.start);
+    if (mins <= 0) continue;
+    map.set(b.categoryId, (map.get(b.categoryId) ?? 0) + mins);
+  }
+  return [...map.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([categoryId, minutes]) => ({ categoryId, minutes }));
+}
+
+export function BlueprintBar({ blocks, categories, now }: Props) {
+  const aggregated = aggregateCategoryMinutes(blocks);
+  const totalMinutes = aggregated.reduce((s, e) => s + e.minutes, 0);
+  const hasSegments = aggregated.length > 0 && totalMinutes > 0;
+
+  // NOW pin position: time-based fallback when no categorized blocks
+  const nowPct = (toMin(now) / (24 * 60)) * 100;
+
+  const faintGrid = {
+    backgroundImage:
+      "linear-gradient(rgba(255,255,255,0.02), rgba(255,255,255,0.02)), " +
+      "linear-gradient(to right, rgba(245,241,232,0.12) 1px, transparent 1px), " +
+      "linear-gradient(to right, rgba(245,241,232,0.12) 1px, transparent 1px), " +
+      "linear-gradient(to right, rgba(245,241,232,0.12) 1px, transparent 1px)",
+    backgroundSize: "100% 100%, 25% 100%, 50% 100%, 75% 100%",
+    backgroundPosition: "0 0, 25% 0, 50% 0, 75% 0",
+    backgroundRepeat: "no-repeat" as const,
+  };
 
   return (
     <section aria-label="Day blueprint" className="px-5 pb-4">
@@ -56,41 +77,30 @@ export function BlueprintBar({ blocks, now }: Props) {
         data-testid="blueprint-bar-container"
         style={{
           borderColor: "var(--card-edge)",
-          // Faint grid: CSS gradient with hairlines at 25%/50%/75% (SG-m1-02, plan.md § SG-m1-02)
-          // Uses --ink-dim at 12% opacity. Cheaper than SVG/DOM nodes; reduced-motion safe.
-          // Note: backgroundImage replaces background shorthand to avoid CSS shorthand reset.
-          backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.02), rgba(255,255,255,0.02)), " +
-            "linear-gradient(to right, rgba(245,241,232,0.12) 1px, transparent 1px), " +
-            "linear-gradient(to right, rgba(245,241,232,0.12) 1px, transparent 1px), " +
-            "linear-gradient(to right, rgba(245,241,232,0.12) 1px, transparent 1px)",
-          backgroundSize: "100% 100%, 25% 100%, 50% 100%, 75% 100%",
-          backgroundPosition: "0 0, 25% 0, 50% 0, 75% 0",
-          backgroundRepeat: "no-repeat",
+          ...faintGrid,
         }}
       >
         <div className="flex h-full w-full">
-          {blocks.map((b) => {
-            const bDuration = toMin(b.end) - toMin(b.start);
-            const total = blocks.reduce(
-              (s, blk) => s + (toMin(blk.end) - toMin(blk.start)),
-              0,
-            );
-            const pct = total > 0 ? (bDuration / total) * 100 : 0;
-            return (
-              <div
-                key={`${b.start}-${b.name}`}
-                data-testid="blueprint-segment"
-                className="h-full"
-                style={{
-                  width: `${pct}%`,
-                  background: "var(--accent)",
-                }}
-                title={`${b.start}–${b.end} ${b.name}`}
-              />
-            );
-          })}
+          {hasSegments &&
+            aggregated.map(({ categoryId, minutes }) => {
+              const cat = categories.find((c) => c.id === categoryId);
+              const pct = (minutes / totalMinutes) * 100;
+              return (
+                <div
+                  key={categoryId}
+                  data-testid="blueprint-segment"
+                  data-category-id={categoryId}
+                  className="h-full"
+                  style={{
+                    width: `${pct}%`,
+                    background: cat?.color ?? "var(--accent)",
+                  }}
+                />
+              );
+            })}
         </div>
+
+        {/* NOW pin */}
         <div
           data-testid="now-pin"
           role="img"
@@ -114,7 +124,7 @@ export function BlueprintBar({ blocks, now }: Props) {
           />
         </div>
       </div>
-      {/* Legend is hidden in M1: zero categories exist (ADR-032/039). Restored at M3. */}
+      {/* Legend hidden in M2 — M3 reintroduces with real per-category percentages */}
     </section>
   );
 }

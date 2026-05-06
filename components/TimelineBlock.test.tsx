@@ -1,103 +1,111 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { TimelineBlock } from "./TimelineBlock";
-import { blockPct } from "@/lib/dharma";
-import { EditModeProvider, useEditMode } from "./EditModeProvider";
-import userEvent from "@testing-library/user-event";
-import type { Block } from "@/lib/types";
+import type { Block, Category } from "@/lib/types";
+import { HOUR_HEIGHT_PX } from "@/lib/timeOffset";
 
-const fitnessBlock: Block = {
-  start: "06:00",
-  end: "07:00",
-  name: "Fitness",
-  category: "health",
-  bricks: [
-    { kind: "goal", name: "pushups", current: 80, target: 100 },
-    { kind: "time", name: "run", current: 30, target: 30 },
-    { kind: "tick", name: "stretch", done: true },
-  ],
-};
+// C-m2-014: TimelineBlock — re-authored M2
+// Consumes new Block schema, positions absolutely, height ∝ duration
+describe("C-m2-014: TimelineBlock new schema, absolute position, height", () => {
+  const block: Block = {
+    id: "b1",
+    name: "Foo",
+    start: "09:00",
+    end: "10:30",
+    recurrence: { kind: "just-today", date: "2026-05-06" },
+    categoryId: "c1",
+    bricks: [],
+  };
+  const categories: Category[] = [
+    { id: "c1", name: "Health", color: "#34d399" },
+  ];
 
-const emptyBlock: Block = {
-  start: "09:00",
-  end: "10:00",
-  name: "Empty block",
-  category: "mind",
-  bricks: [],
-};
-
-function renderBlock(
-  block: Block,
-  status: "past" | "current" | "future" = "current",
-) {
-  return render(
-    <EditModeProvider>
-      <TimelineBlock block={block} status={status} onLogBrick={vi.fn()} />
-    </EditModeProvider>,
-  );
-}
-
-// Helper component to test edit mode scenarios
-function TimelineBlockWithEditToggle({ block }: { block: Block }) {
-  const { toggle } = useEditMode();
-  return (
-    <>
-      <button aria-label="Toggle edit" onClick={toggle} />
-      <TimelineBlock block={block} status="current" onLogBrick={vi.fn()} />
-    </>
-  );
-}
-
-// C-bld-017: TimelineBlock shows start, end, name, category dot, and pct
-describe("C-bld-017: TimelineBlock renders start/end/name/category/pct", () => {
-  it("shows 06:00, 07:00, Fitness, health dot, and pct numeral", () => {
-    renderBlock(fitnessBlock, "current");
-    expect(screen.getByText("06:00")).toBeInTheDocument();
-    expect(screen.getByText("07:00")).toBeInTheDocument();
-    expect(screen.getByText("Fitness")).toBeInTheDocument();
-    const pct = Math.round(blockPct(fitnessBlock));
-    expect(screen.getByText(String(pct))).toBeInTheDocument();
-  });
-});
-
-// C-bld-018: past status → wrapper has opacity: 0.55
-describe("C-bld-018: past block has opacity 0.55", () => {
-  it("wrapper style has opacity 0.55 for status='past'", () => {
-    const { container } = renderBlock(fitnessBlock, "past");
-    const wrapper = container.querySelector(
-      "[data-testid='timeline-block']",
-    ) as HTMLElement;
-    expect(wrapper.style.opacity).toBe("0.55");
-  });
-});
-
-// C-bld-019: block with empty bricks shows empty state copy
-describe("C-bld-019: TimelineBlock shows empty state for empty bricks", () => {
-  it("shows 'No bricks yet. Tap + to add a brick.'", () => {
-    renderBlock(emptyBlock, "current");
-    expect(
-      screen.getByText("No bricks yet. Tap + to add a brick."),
-    ).toBeInTheDocument();
-  });
-});
-
-// C-bld-028: TimelineBlock in edit mode shows Delete block button
-describe("C-bld-028: TimelineBlock in edit mode shows delete affordance", () => {
-  it("shows × button with aria-label='Delete block' when edit mode is on", async () => {
-    const user = userEvent.setup();
-    render(
-      <EditModeProvider>
-        <TimelineBlockWithEditToggle block={fitnessBlock} />
-      </EditModeProvider>,
+  it("renders with position absolute, top 576px (9*64), height 96px ((10.5-9)*64)", () => {
+    const { container: c } = render(
+      <TimelineBlock block={block} categories={categories} />,
     );
-    // Initially no delete block button
-    expect(
-      screen.queryByRole("button", { name: "Delete block" }),
-    ).not.toBeInTheDocument();
-    // Toggle edit mode
-    await user.click(screen.getByRole("button", { name: /toggle edit/i }));
-    expect(
-      screen.getByRole("button", { name: "Delete block" }),
-    ).toBeInTheDocument();
+    const el = c.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    expect(el).not.toBeNull();
+    expect(el.style.position).toBe("absolute");
+    expect(el.style.top).toBe(`${9 * HOUR_HEIGHT_PX}px`); // 576px
+    expect(el.style.height).toBe(`${1.5 * HOUR_HEIGHT_PX}px`); // 96px
+  });
+
+  it("renders title 'Foo' with single-line ellipsis CSS", () => {
+    render(<TimelineBlock block={block} categories={categories} />);
+    const title = screen.getByText("Foo");
+    const style = (title as HTMLElement).style;
+    expect(style.overflow).toBe("hidden");
+    expect(style.whiteSpace).toBe("nowrap");
+    expect(style.textOverflow).toBe("ellipsis");
+  });
+
+  it("renders time-range label '09:00–10:30' (en-dash)", () => {
+    render(<TimelineBlock block={block} categories={categories} />);
+    expect(screen.getByText("09:00–10:30")).toBeInTheDocument();
+  });
+
+  it("renders category color dot with background matching #34d399", () => {
+    const { container } = render(
+      <TimelineBlock block={block} categories={categories} />,
+    );
+    const dot = container.querySelector(
+      '[data-testid="category-dot"]',
+    ) as HTMLElement;
+    expect(dot).not.toBeNull();
+    // JSDOM normalizes hex to rgb(); accept either form
+    const bg = dot.style.background;
+    expect(bg === "#34d399" || bg === "rgb(52, 211, 153)").toBe(true);
+  });
+
+  it("clicking does not throw (no-op onClick)", () => {
+    const { container } = render(
+      <TimelineBlock block={block} categories={categories} />,
+    );
+    const el = container.querySelector('[data-component="timeline-block"]');
+    expect(() => (el as HTMLElement).click()).not.toThrow();
+  });
+});
+
+// C-m2-015: TimelineBlock — re-authored M2
+// End not set: height = HOUR_HEIGHT_PX/12, no en-dash, no category dot
+describe("C-m2-015: TimelineBlock with no end field", () => {
+  const block: Block = {
+    id: "b1",
+    name: "Foo",
+    start: "09:00",
+    recurrence: { kind: "just-today", date: "2026-05-06" },
+    categoryId: null,
+    bricks: [],
+  };
+
+  it("renders top=576px (9*64) and height≈5.33px (64/12)", () => {
+    const { container } = render(
+      <TimelineBlock block={block} categories={[]} />,
+    );
+    const el = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    expect(el).not.toBeNull();
+    expect(el.style.top).toBe(`${9 * HOUR_HEIGHT_PX}px`);
+    const h = parseFloat(el.style.height);
+    expect(Math.abs(h - HOUR_HEIGHT_PX / 12)).toBeLessThan(0.5);
+  });
+
+  it("renders just '09:00' (no en-dash) when end is not set", () => {
+    render(<TimelineBlock block={block} categories={[]} />);
+    expect(screen.getByText("09:00")).toBeInTheDocument();
+    // en-dash should NOT appear in the time label
+    const all = screen.queryAllByText(/09:00[–]/);
+    expect(all).toHaveLength(0);
+  });
+
+  it("does NOT render category dot when categoryId is null", () => {
+    const { container } = render(
+      <TimelineBlock block={block} categories={[]} />,
+    );
+    expect(container.querySelector('[data-testid="category-dot"]')).toBeNull();
   });
 });
