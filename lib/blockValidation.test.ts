@@ -5,6 +5,8 @@ import {
   endAfterStart,
   overlapsExistingBlock,
   isValidCustomRange,
+  isValidBrickGoal,
+  isValidBrickTime,
 } from "./blockValidation";
 import type { Block } from "./types";
 
@@ -174,5 +176,39 @@ describe("U-m2-006: isValidCustomRange validates custom-range recurrence", () =>
 
   it("returns true for every-day", () => {
     expect(isValidCustomRange({ kind: "every-day" })).toBe(true);
+  });
+});
+
+// ─── U-m3-013: isValidBrickGoal (integer ≥ 1) ─────────────────────────────────
+
+describe("U-m3-013: isValidBrickGoal validates target is integer ≥ 1", () => {
+  it("returns true for 1, 100, 9999", () => {
+    expect(isValidBrickGoal(1)).toBe(true);
+    expect(isValidBrickGoal(100)).toBe(true);
+    expect(isValidBrickGoal(9999)).toBe(true);
+  });
+
+  it("returns false for 0, negative, non-integer, NaN", () => {
+    expect(isValidBrickGoal(0)).toBe(false);
+    expect(isValidBrickGoal(-1)).toBe(false);
+    expect(isValidBrickGoal(1.5)).toBe(false);
+    expect(isValidBrickGoal(NaN)).toBe(false);
+  });
+});
+
+// ─── U-m3-014: isValidBrickTime (integer ≥ 1) ─────────────────────────────────
+
+describe("U-m3-014: isValidBrickTime validates durationMin is integer ≥ 1", () => {
+  it("returns true for 1, 30, 1440", () => {
+    expect(isValidBrickTime(1)).toBe(true);
+    expect(isValidBrickTime(30)).toBe(true);
+    expect(isValidBrickTime(1440)).toBe(true);
+  });
+
+  it("returns false for 0, negative, non-integer, NaN", () => {
+    expect(isValidBrickTime(0)).toBe(false);
+    expect(isValidBrickTime(-5)).toBe(false);
+    expect(isValidBrickTime(2.5)).toBe(false);
+    expect(isValidBrickTime(NaN)).toBe(false);
   });
 });

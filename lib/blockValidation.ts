@@ -71,3 +71,19 @@ export function isValidCustomRange(rec: Recurrence): boolean {
   if (rec.weekdays.length === 0) return false;
   return rec.start <= rec.end;
 }
+
+/**
+ * M3: Validates brick goal target — integer ≥ 1.
+ * Returns false for 0, negative, non-integer, and NaN.
+ */
+export function isValidBrickGoal(target: number): boolean {
+  return Number.isInteger(target) && target >= 1;
+}
+
+/**
+ * M3: Validates brick time durationMin — integer ≥ 1.
+ * Returns false for 0, negative, non-integer, and NaN.
+ */
+export function isValidBrickTime(durationMin: number): boolean {
+  return Number.isInteger(durationMin) && durationMin >= 1;
+}
