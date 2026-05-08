@@ -1,18 +1,19 @@
-// lib/types.ts — re-authored for M2 (plan.md § Data model).
-// DELETED: type Category = "health" | "mind" | "career" | "passive"
-// DELETED: CATEGORY_COLOR, CATEGORY_LABEL (all four exports)
-// ADDED: Recurrence union (ADR-019), Category object (ADR-032), widened Block, AppState, Action, assertNever
+// lib/types.ts — re-authored for M3 (plan.md § Data model).
+// M2: Brick stub with old field names (current/target) replaced.
+// M3: Full Brick discriminated union with id/categoryId/parentBlockId per locked schema.
+
+// Brick — REPLACES M2's stub. Adds id/categoryId/parentBlockId; renames goal/time progress fields.
+type BrickBase = {
+  id: string; // crypto.randomUUID via lib/uuid.ts
+  name: string;
+  categoryId: string | null; // FK to AppState.categories; null = uncategorized
+  parentBlockId: string | null; // FK to AppState.blocks; null = standalone (loose)
+};
 
 export type Brick =
-  | { kind: "tick"; name: string; done: boolean }
-  | {
-      kind: "goal";
-      name: string;
-      current: number;
-      target: number;
-      unit?: string;
-    }
-  | { kind: "time"; name: string; current: number; target: number };
+  | (BrickBase & { kind: "tick"; done: boolean })
+  | (BrickBase & { kind: "goal"; target: number; unit: string; count: number })
+  | (BrickBase & { kind: "time"; durationMin: number; minutesDone: number });
 
 // Recurrence discriminated union — locked by ADR-019.
 // custom-range weekdays: 0=Sun..6=Sat.
@@ -37,14 +38,21 @@ export type Block = {
   end?: string; // "HH:MM" — half-open [start, end) per ADR-006
   recurrence: Recurrence;
   categoryId: string | null; // FK; null = uncategorized (SG-m2-07)
-  bricks: Brick[]; // always [] in M2; M3 lands brick adding
+  bricks: Brick[]; // populated in M3 via ADD_BRICK action
 };
 
-export type AppState = { blocks: Block[]; categories: Category[] };
+// AppState — extends M2's shape with looseBricks (M3)
+export type AppState = {
+  blocks: Block[];
+  categories: Category[];
+  looseBricks: Brick[]; // M3 — bricks with parentBlockId === null
+};
 
+// Action — extends M2's discriminated union with ADD_BRICK (M3)
 export type Action =
   | { type: "ADD_BLOCK"; block: Block }
-  | { type: "ADD_CATEGORY"; category: Category };
+  | { type: "ADD_CATEGORY"; category: Category }
+  | { type: "ADD_BRICK"; brick: Brick }; // M3 — routed by brick.parentBlockId
 
 export function assertNever(x: never): never {
   throw new Error(`unhandled ${JSON.stringify(x)}`);

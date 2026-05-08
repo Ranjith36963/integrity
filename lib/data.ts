@@ -1,22 +1,19 @@
 /**
- * lib/data.ts — Re-authored for M2 (plan.md § Data model).
+ * lib/data.ts — Re-authored for M3 (plan.md § Data model).
  *
  * defaultState() returns the empty AppState per ADR-039 (no factory data).
- * reducer implements ADD_BLOCK + ADD_CATEGORY with assertNever exhaustiveness.
+ * M3: adds looseBricks: [] to defaultState and ADD_BRICK case to reducer.
+ * Reducer implements ADD_BLOCK + ADD_CATEGORY + ADD_BRICK with assertNever exhaustiveness.
  *
- * Future actions (DELETE_BLOCK M5, LOG_BRICK M3, RESOLVE_RECURRENCE M9) extend
- * the Action union in lib/types.ts AND add a case here — assertNever ensures the
- * omission is a compile-time error, not a silent runtime bug.
- *
- * No persistence in M2. Page refresh clears state. M8 lands localStorage rehydration
- * via this same reducer (the Action log replays to rebuild state).
+ * ADD_BRICK routing: parentBlockId === null → looseBricks[]; else → matching block.bricks[].
+ * No persistence in M3. Page refresh clears state. M8 lands localStorage rehydration.
  */
 
 import type { AppState, Action } from "./types";
 import { assertNever } from "./types";
 
 export function defaultState(): AppState {
-  return { blocks: [], categories: [] };
+  return { blocks: [], categories: [], looseBricks: [] };
 }
 
 /**
@@ -30,6 +27,23 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, blocks: [...state.blocks, action.block] };
     case "ADD_CATEGORY":
       return { ...state, categories: [...state.categories, action.category] };
+    case "ADD_BRICK":
+      if (action.brick.parentBlockId === null) {
+        // Standalone brick → looseBricks
+        return {
+          ...state,
+          looseBricks: [...state.looseBricks, action.brick],
+        };
+      }
+      // Inside-block brick → find block by id and append to its bricks[]
+      return {
+        ...state,
+        blocks: state.blocks.map((b) =>
+          b.id === action.brick.parentBlockId
+            ? { ...b, bricks: [...b.bricks, action.brick] }
+            : b,
+        ),
+      };
     default:
       return assertNever(action);
   }

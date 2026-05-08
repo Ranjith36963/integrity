@@ -1,4 +1,4 @@
-import { Block, Brick } from "./types";
+import { Block, Brick, AppState } from "./types";
 
 export function toMin(hhmm: string): number {
   const [h, m] = hhmm.split(":").map(Number);
@@ -23,10 +23,21 @@ export function duration(block: Block): number {
   return d <= 0 ? d + DAY_LEN : d;
 }
 
+/**
+ * brickPct — M3 updated to use new Brick schema field names.
+ * tick: done ? 100 : 0
+ * goal: Math.min(count / target, 1) * 100  (zero-target guard)
+ * time: Math.min(minutesDone / durationMin, 1) * 100  (zero-duration guard)
+ */
 export function brickPct(b: Brick): number {
   if (b.kind === "tick") return b.done ? 100 : 0;
-  if (b.target <= 0) return 0;
-  return Math.min(100, (b.current / b.target) * 100);
+  if (b.kind === "goal") {
+    if (b.target <= 0) return 0;
+    return Math.min(b.count / b.target, 1) * 100;
+  }
+  // time
+  if (b.durationMin <= 0) return 0;
+  return Math.min(b.minutesDone / b.durationMin, 1) * 100;
 }
 
 export function blockPct(block: Block): number {
@@ -35,12 +46,56 @@ export function blockPct(block: Block): number {
   return sum / block.bricks.length;
 }
 
-// Equal-weighted average of blockPct (spec §Scoring: "All equal weight").
-// Previously duration-weighted — fixed per SG-bld-08.
-export function dayPct(blocks: Block[]): number {
-  if (blocks.length === 0) return 0;
-  const sum = blocks.reduce((s, b) => s + blockPct(b), 0);
-  return sum / blocks.length;
+/**
+ * dayPct — M3: REPLACES dayPct(blocks: Block[]) with dayPct(state: AppState).
+ * Averages over state.blocks (each contributing blockPct) and state.looseBricks
+ * (each contributing brickPct). Empty state → 0 (no divide-by-zero).
+ */
+export function dayPct(state: AppState): number {
+  const total = state.blocks.length + state.looseBricks.length;
+  if (total === 0) return 0;
+  const blockSum = state.blocks.reduce((s, b) => s + blockPct(b), 0);
+  const brickSum = state.looseBricks.reduce((s, b) => s + brickPct(b), 0);
+  return (blockSum + brickSum) / total;
+}
+
+/**
+ * categoryDayPct — NEW in M3.
+ * Averages over:
+ *   (a) Every Block whose block.categoryId === categoryId → contributes blockPct(block)
+ *       (but only when block.categoryId matches; bricks inside contribute to THEIR own category).
+ *   (b) Every Brick (inside-block + standalone) whose brick.categoryId === categoryId.
+ *
+ * NOTE: The spec/plan says "block's own contribution is included only when block.categoryId === categoryId".
+ * Bricks inside a block attribute to THEIR OWN category FK, not the parent block's category.
+ * Standalone bricks with categoryId: null are excluded from category-filtered queries.
+ * Empty matches → 0.
+ */
+export function categoryDayPct(state: AppState, categoryId: string): number {
+  const units: number[] = [];
+
+  for (const block of state.blocks) {
+    // Include block's own contribution if its categoryId matches
+    if (block.categoryId === categoryId) {
+      units.push(blockPct(block));
+    }
+    // Include bricks inside the block that match the category
+    for (const brick of block.bricks) {
+      if (brick.categoryId === categoryId) {
+        units.push(brickPct(brick));
+      }
+    }
+  }
+
+  // Include loose bricks with matching categoryId (null excluded)
+  for (const brick of state.looseBricks) {
+    if (brick.categoryId === categoryId) {
+      units.push(brickPct(brick));
+    }
+  }
+
+  if (units.length === 0) return 0;
+  return units.reduce((s, v) => s + v, 0) / units.length;
 }
 
 export function currentBlockIndex(blocks: Block[], now: string): number {
@@ -73,8 +128,8 @@ export function blockStatus(
 
 export function brickLabel(b: Brick): string {
   if (b.kind === "tick") return b.done ? "done" : "—";
-  if (b.kind === "time") return `${b.current}/${b.target} min`;
-  return `${b.current}/${b.target}${b.unit ? " " + b.unit : ""}`;
+  if (b.kind === "time") return `${b.minutesDone}/${b.durationMin} min`;
+  return `${b.count}/${b.target}${b.unit ? " " + b.unit : ""}`;
 }
 
 /**
