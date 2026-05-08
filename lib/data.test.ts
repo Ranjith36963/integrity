@@ -471,3 +471,51 @@ describe("U-m4a-007: assertNever fires for unknown action shape (exhaustiveness)
     expect(() => reducer(state, { type: "__never__" } as never)).toThrow();
   });
 });
+
+// ─── U-m4b-001: LOG_GOAL_BRICK increments count by 1 ─────────────────────────
+
+/** Narrow a Brick to the goal variant. Throws if kind !== "goal". */
+function asGoal(b: Brick): Extract<Brick, { kind: "goal" }> {
+  if (b.kind !== "goal") throw new Error(`expected goal brick, got ${b.kind}`);
+  return b;
+}
+
+describe("U-m4b-001: LOG_GOAL_BRICK increments count on a goal brick inside a block", () => {
+  it("returned state brick has count === 4; all other fields deep-equal", () => {
+    const state: AppState = {
+      blocks: [
+        {
+          id: "block-1",
+          name: "block 1",
+          start: "09:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: null,
+          bricks: [
+            {
+              id: "g1",
+              name: "pushups",
+              kind: "goal",
+              count: 3,
+              target: 10,
+              unit: "reps",
+              categoryId: null,
+              parentBlockId: "block-1",
+            },
+          ],
+        },
+      ],
+      categories: [],
+      looseBricks: [],
+    };
+    const next = reducer(state, {
+      type: "LOG_GOAL_BRICK",
+      brickId: "g1",
+      delta: 1,
+    });
+    const brick = asGoal(next.blocks[0].bricks[0]);
+    expect(brick.count).toBe(4);
+    expect(brick.target).toBe(10);
+    expect(brick.unit).toBe("reps");
+    expect(brick.name).toBe("pushups");
+  });
+});
