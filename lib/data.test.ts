@@ -748,3 +748,41 @@ describe("U-m4b-007: LOG_GOAL_BRICK is a no-op when id matches a tick brick (kin
     }
   });
 });
+
+// ─── U-m4b-008: LOG_GOAL_BRICK no-op when kind is time (id matches time brick) ─
+
+describe("U-m4b-008: LOG_GOAL_BRICK is a no-op when id matches a time brick (kind mismatch)", () => {
+  it("returned state is same reference; time brick deep-equal to input", () => {
+    const state: AppState = {
+      blocks: [
+        {
+          id: "block-1",
+          name: "block 1",
+          start: "09:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: null,
+          bricks: [
+            {
+              id: "tm1",
+              name: "timer",
+              kind: "time",
+              minutesDone: 0,
+              durationMin: 600,
+              categoryId: null,
+              parentBlockId: "block-1",
+            },
+          ],
+        },
+      ],
+      categories: [],
+      looseBricks: [],
+    };
+    const next = reducer(state, {
+      type: "LOG_GOAL_BRICK",
+      brickId: "tm1",
+      delta: 1,
+    });
+    expect(next).toBe(state);
+    expect(next.blocks[0].bricks[0].kind).toBe("time");
+  });
+});
