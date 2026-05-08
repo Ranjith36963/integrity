@@ -292,3 +292,16 @@ describe("C-m4a-003: time chip click is no-op — no onTickToggle, no haptics.li
     expect(haptics.light).not.toHaveBeenCalled();
   });
 });
+
+// ─── C-m4a-004: aria-label + aria-pressed for tick done:false ────────────────
+
+describe("C-m4a-004: tick chip done:false has correct aria-pressed and aria-label", () => {
+  it("button has aria-pressed=false and aria-label includes 'not done, tap to toggle'", () => {
+    render(<BrickChip brick={makeTick(false)} categories={[cat1]} />);
+    const btn = screen.getByRole("button");
+    expect(btn.getAttribute("aria-pressed")).toBe("false");
+    expect(btn.getAttribute("aria-label")).toBe(
+      "brick A, not done, tap to toggle",
+    );
+  });
+});
