@@ -6,8 +6,8 @@
 
 ## Snapshot
 
-- **Branch:** `claude/verify-m0-deployment-s4XRy` at `[ship-m4a commit — see below]` · `main` at `c3ef9f1` (feature branch not yet merged)
-- **Last commit:** ship commit for M4a (docs: CHANGELOG + README + status.md). Implementation HEAD: `23662cf`.
+- **Branch:** `claude/verify-m0-deployment-s4XRy` at `d6ede95` · `main` at `c3ef9f1` (feature branch not yet merged)
+- **Last commit:** `d6ede95` — M4a ship (docs: CHANGELOG + README + status.md). Implementation HEAD: `23662cf`.
 - **Last preview URL:** `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (stable branch alias; auto-tracks latest deployment for this branch). Sandbox `curl -I` returns HTTP 403 `x-deny-reason: host_not_allowed` (Vercel Deployment Protection — same as M0/M1/M2/M3; not a failure; signed-in browser sessions serve normally).
 - **Methodology:** The Loop (SDD-outside, TDD-inside) per ADR-025; **single human gate** (preview tap-test only) per ADR-041 — the VERIFIER agent now replaces the planning gate; per-phase commit prefixes per ADR-027.
 
