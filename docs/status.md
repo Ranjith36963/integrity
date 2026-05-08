@@ -6,8 +6,8 @@
 
 ## Snapshot
 
-- **Branch:** `claude/verify-m0-deployment-s4XRy` at `4f5175d` · `main` at `c3ef9f1` (feature branch not yet merged)
-- **Last commit:** `4f5175d` — `docs(ship-m3): record ship commit SHA in status.md` (ship pair: `073a137` + `4f5175d` stacked on `5eac7ca`)
+- **Branch:** `claude/verify-m0-deployment-s4XRy` at `8a0baaa` · `main` at `c3ef9f1` (feature branch not yet merged)
+- **Last commit:** `8a0baaa` — M3 ship (docs: CHANGELOG + README + status.md). Implementation HEAD: `5eac7ca`.
 - **Last preview URL:** `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (stable branch alias; auto-tracks latest deployment for this branch). Sandbox `curl -I` returns HTTP 403 `x-deny-reason: host_not_allowed` (Vercel Deployment Protection — same as M0/M1/M2; not a failure; signed-in browser sessions serve normally).
 - **Methodology:** The Loop (SDD-outside, TDD-inside) per ADR-025; two human gates per ADR-026; per-phase commit prefixes per ADR-027.
 
