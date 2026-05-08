@@ -324,3 +324,16 @@ describe("C-m4a-005: tick chip done:true has correct aria-pressed, aria-label, a
     expect(svgs.length).toBeGreaterThan(0);
   });
 });
+
+// ─── C-m4a-006: 44 px tap target (ADR-031) ───────────────────────────────────
+
+describe("C-m4a-006: tick chip button has minHeight >= 44px (ADR-031)", () => {
+  it("getComputedStyle or inline style shows minHeight 44px", () => {
+    const { container } = render(
+      <BrickChip brick={makeTick(false)} categories={[cat1]} />,
+    );
+    const btn = container.querySelector("button") as HTMLElement;
+    // Inline style is set on the button — check minHeight attribute
+    expect(btn.style.minHeight).toBe("44px");
+  });
+});
