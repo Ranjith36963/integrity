@@ -1,28 +1,38 @@
 "use client";
-// TimelineBlock — re-authored for M3 (plan.md § Components — Block card on the timeline):
-// - M2 features preserved: absolute position, height, category dot, time range, fade-in
-// - M3 NEW: scaffold left-bar (fill = blockPct), tap-to-expand, BrickChip list, + Add brick button
-// - M3 NEW: onAddBrick prop (optional for backward compat)
-// - M3 NEW: aria-expanded on card; role="list" on bricks list
-// - data-testid="scaffold-fill" for test assertions
+// TimelineBlock — M4a extended from M3:
+// - M3 features preserved: absolute position, height, category dot, time range,
+//   fade-in, scaffold left-bar, tap-to-expand, BrickChip list, Add brick button.
+// - M4a NEW: onTickToggle prop threaded to each BrickChip.
+// - M4a NEW: useCrossUpEffect wired for block-100% bloom + chime + haptics.success.
+// - M4a NEW: bloom visual (motion.div) keyed on bloomKey; suppressed under reduced-motion.
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { useState, useCallback } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { Plus } from "lucide-react";
 import type { Block, Category } from "@/lib/types";
 import { HOUR_HEIGHT_PX, timeToOffsetPx } from "@/lib/timeOffset";
 import { fmtRange, blockPct } from "@/lib/dharma";
-import { useReducedMotion } from "motion/react";
+import { useCrossUpEffect } from "@/lib/celebrations";
+import { haptics } from "@/lib/haptics";
+import { playChime } from "@/lib/audio";
+import { springConfigs } from "@/lib/motion";
 import { BrickChip } from "./BrickChip";
 
 interface Props {
   block: Block;
   categories: Category[];
   onAddBrick?: (parentBlockId: string) => void;
+  onTickToggle?: (brickId: string) => void;
 }
 
-export function TimelineBlock({ block, categories, onAddBrick }: Props) {
+export function TimelineBlock({
+  block,
+  categories,
+  onAddBrick,
+  onTickToggle,
+}: Props) {
   const [expanded, setExpanded] = useState(false);
+  const [bloomKey, setBloomKey] = useState(0);
   const prefersReducedMotion = useReducedMotion();
 
   const category =
@@ -40,9 +50,24 @@ export function TimelineBlock({ block, categories, onAddBrick }: Props) {
   const pct = blockPct(block);
   const scaffoldColor = category?.color ?? "var(--text-dim)";
 
+  // M4a: block-100% cross-up — fires bloom + chime + success haptic once per crossing
+  const fireBlockComplete = useCallback(() => {
+    haptics.success();
+    playChime();
+    setBloomKey((k) => k + 1);
+  }, []);
+
+  useCrossUpEffect(pct, 100, fireBlockComplete);
+
   const variants = {
     hidden: { opacity: 0, y: 4 },
     visible: { opacity: 1, y: 0 },
+  };
+
+  const bloomVariants = {
+    initial: { scale: 1, opacity: 0 },
+    animate: { scale: 1.04, opacity: 1 },
+    exit: { scale: 1, opacity: 0 },
   };
 
   function handleCardClick() {
@@ -116,6 +141,30 @@ export function TimelineBlock({ block, categories, onAddBrick }: Props) {
           />
         </div>
 
+        {/* M4a: bloom overlay — only renders when not reduced-motion and bloomKey > 0 */}
+        {!prefersReducedMotion && bloomKey > 0 && (
+          <motion.div
+            key={bloomKey}
+            data-testid="bloom-overlay"
+            aria-hidden="true"
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            variants={bloomVariants}
+            transition={springConfigs.bloom}
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: "6px",
+              background: category?.color
+                ? `${category.color}33`
+                : "var(--accent)33",
+              pointerEvents: "none",
+              zIndex: 3,
+            }}
+          />
+        )}
+
         {/* Category color dot — 8px circle, only when categoryId !== null */}
         {category !== null && (
           <span
@@ -186,6 +235,7 @@ export function TimelineBlock({ block, categories, onAddBrick }: Props) {
                         brick={brick}
                         categories={categories}
                         size="md"
+                        onTickToggle={onTickToggle}
                       />
                     </li>
                   ))}
