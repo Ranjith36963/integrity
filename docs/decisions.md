@@ -336,7 +336,9 @@ type Recurrence =
 - The EVALUATOR remains independent. It still reads `decisions.md`, `spec.md`, and `tests.md`, runs the gates, and judges. It does **not** receive any "Main Claude wrote this" hint, preserving the audit pattern.
 - Future re-plans default to the PLANNER subagent. This ADR is a fallback, not a new norm.
 - If the underlying PLANNER timeout pattern recurs, that's a harness-level bug worth fixing (e.g., dispatch the PLANNER with even smaller per-dispatch scope) rather than normalizing the override.
-- Commit landing the authored files: filled in below once committed.
+- Commits landing authored files under this ADR:
+  - `2026-04-29` — initial empty-toolkit pivot re-plan (`plan.md` + `tests.md`).
+  - `df6024c` (2026-05-08) — M3 `tests.md` entry. PLANNER TESTS hit two idle timeouts on the same M3 dispatch (14 tool uses / 7.5 min, then 8 tool uses / 32 min). Root cause: decision-density failure — 50 spec ACs × per-item GIVEN/WHEN/THEN design exceeds the streaming-budget per dispatch. Mitigation codified in ADR-040.
 
 ---
 
@@ -606,7 +608,7 @@ Commit prefixes per Loop phase, layered on top of Conventional Commits (commitli
 
 **Status:** Accepted · 2026-05-05 · clarifies M2 data model · supersedes `spec.md` "UX Spec — Phase 1 Toolkit § Add a Block" implicit "anytime block" affordance
 
-**Context.** Earlier discussion explored "anytime blocks" (a block that has no scheduled time and lives in a separate tray). The 2026-05-05 design-pillar synthesis collapses this: every block has a time. Bricks never have a time of their own — a "Time"-type brick has a target *duration*, not a *schedule*.
+**Context.** Earlier discussion explored "anytime blocks" (a block that has no scheduled time and lives in a separate tray). The 2026-05-05 design-pillar synthesis collapses this: every block has a time. Bricks never have a time of their own — a "Time"-type brick has a target _duration_, not a _schedule_.
 
 **Decision.** Block schema requires `start: string` ("HH:MM"), `end: string | null` ("HH:MM" or null). Brick schema has no time fields at all. The "Time"-type brick's `durationMin: number` is a target, not a clock-position; the brick's parent block (or the Loose Bricks tray) determines when.
 
@@ -676,7 +678,7 @@ Commit prefixes per Loop phase, layered on top of Conventional Commits (commitli
 
 **Context.** Three forgiveness models considered for missed days: (a) Duolingo's streak-freeze (one free skip per week, use-or-lose), (b) Headspace's gentle gray (missed days observed, never punished), (c) Dharma-native compound forgiveness (break a streak → next 3 days at 50%+ rebuilds it; harder break = harder rebuild). The rest of Dharma's tone is calm-confident; punishment-via-red breaks that tone. Most competitors get this wrong (see § 0.1 wedge point 6).
 
-**Decision.** Missed days render **gray, never red** across all calendar views (Castle / Kingdom / Empire). Streaks are visible to those who want them (flame icon, days-in-a-row over 50%) but they're a *feature*, not the spine of the UI. No auto-broken streaks, no compounding penalties. Identity stats highlight presence ("Days you ran: 142"), never absence.
+**Decision.** Missed days render **gray, never red** across all calendar views (Castle / Kingdom / Empire). Streaks are visible to those who want them (flame icon, days-in-a-row over 50%) but they're a _feature_, not the spine of the UI. No auto-broken streaks, no compounding penalties. Identity stats highlight presence ("Days you ran: 142"), never absence.
 
 **Consequences.**
 
@@ -699,7 +701,7 @@ Commit prefixes per Loop phase, layered on top of Conventional Commits (commitli
 2. **No factory templates.** "Monk Mode" / "Builder Mode" / "Athlete Mode" and any other named pre-bakes are forbidden. User-saved templates ("save current day, re-apply later") remain on the table as a M5+ feature, but only as user-content — never factory-shipped.
 3. **No factory category palette.** Already locked by ADR-032 (categories are user-defined). This ADR reinforces: the app does not seed any starter categories, including no "Passive" / "General" / "Other" catch-all.
 4. **No seed data in production builds.** Test fixtures live only in `*.test.ts`, Playwright fixtures, and Storybook-style harness pages (e.g., `/design`). They must NOT leak into the production bundle.
-5. **Every example in `spec.md` is illustrative only.** "Morning workout", "drink water", "face wash", "Building AI", any block name, brick name, or category name in the spec is a *reader-aid*, not a code default. PLANNER and BUILDER must not transcribe spec examples into demo content.
+5. **Every example in `spec.md` is illustrative only.** "Morning workout", "drink water", "face wash", "Building AI", any block name, brick name, or category name in the spec is a _reader-aid_, not a code default. PLANNER and BUILDER must not transcribe spec examples into demo content.
 
 **Consequences.**
 
@@ -709,3 +711,42 @@ Commit prefixes per Loop phase, layered on top of Conventional Commits (commitli
 - M5's Settings → Templates tab (if it ships) starts empty: "You haven't saved any templates yet."
 - This is explicit positioning vs Habitica (factory habits), Streaks.app (10 default tracks), Finch (preset journeys). Dharma = blank canvas. The marketing one-liner: "Dharma doesn't tell you how to live. You build your day, brick by brick."
 - Antipattern 4 in `spec.md § 0.14` codifies this for PLANNER discipline.
+
+---
+
+## ADR-040 — PLANNER TESTS auto-splits when decision density exceeds the streaming-budget ceiling
+
+**Status:** Accepted · 2026-05-08
+
+**Context.** During M3 PLANNER (`mode: TESTS`), two consecutive dispatches hit timeouts on the same task: attempt 1 — 14 tool uses, 7.5 min, idle timeout, partial response; attempt 2 — 8 tool uses, **32 min**, request timeout. Telemetry signal: tokens-per-minute fell to ~50 in attempt 2 (healthy generation rates are 4–10k/min). The agent was reasoning, not crashing — but never committed output the orchestration framework could see, so stream-idle fired server-side.
+
+Diagnosis (root cause): **decision-density failure**, not a content-size problem. The TESTS deliverable for M3 is ~50 GIVEN/WHEN/THEN entries derived from 50 spec ACs. Each entry is an independent design micro-decision (ID number, layer, target file, GIVEN/WHEN/THEN composition). At 50 micro-decisions × per-item deliberation cost, the per-call compute budget is exhausted before the model can stream output. PLAN succeeded in retry because its deliverable is structural (~10 high-level sections), not item-dense.
+
+Comparison: M2 PLANNER TESTS worked (36 ACs, 8 open spec gaps). M3 broke (50 ACs, 18 open spec gaps, full Brick schema rewrite, scoring engine extension). The implicit ceiling lay between them.
+
+**Decision.** PLANNER (`mode: TESTS`) auto-splits when **either** trigger fires:
+
+1. Spec AC count for the milestone is `> 35`, OR
+2. The milestone introduces a new locked schema (discriminated-union rewrite, top-level `AppState` extension, or equivalent type-level breaking change).
+
+When triggered, the orchestrator dispatches PLANNER (`mode: TESTS`) **twice**, each producing a sub-section of the milestone's `tests.md` entry:
+
+- Dispatch A: **Unit + Component** — the design-heavy, fixture-dense layers. Roughly half the IDs.
+- Dispatch B: **E2E + A11y** — the user-flow + accessibility layers. The other half.
+
+Both dispatches share the same milestone scope (one feature, per ADR-022). Each sub-dispatch handles ~25 IDs — well within the empirical ceiling.
+
+Each sub-dispatch is committed independently with prefix `docs(tests-<feature>-uc): …` and `docs(tests-<feature>-ea): …`. Squash before merge if a single commit per phase is preferred.
+
+**Consequences.**
+
+- M3 itself was unblocked under ADR-021 (Main Claude authored `tests.md` directly). ADR-040 prevents recurrence on M4..M10 without requiring ADR-021 invocation.
+- Slight overhead: one extra PLANNER dispatch per affected milestone (~5–10 min per dispatch). Acceptable trade-off for deterministic completion.
+- **Compatibility:** Milestones below the trigger thresholds run a single PLANNER TESTS dispatch (the M0–M2 path, unchanged).
+- The orchestrator (Main Claude or `/feature` slash command) is responsible for evaluating the triggers at dispatch time and choosing single-vs-split. The choice is recorded in the tests-commit message body.
+- This ADR is silently revisitable if the underlying model's effective throughput improves enough that 50+-decision dispatches become reliable. Until then, splitting is the conservative default.
+
+**Out of scope (for ADR-040, addressable in future ADRs):**
+
+- A telemetry watchdog that auto-bails PLANNER if tokens-per-minute < 500 for 60 s (would convert 32-min failures to 90-s failures). Worth doing; defer until evidence of recurrence.
+- Pre-writing test skeletons in PLAN dispatch (just IDs + targets) so TESTS only fills GIVEN/WHEN/THEN. Would decouple structure from layer; non-trivial to retrofit. Defer.
