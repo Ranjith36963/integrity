@@ -771,7 +771,7 @@ VERIFIER specification (codified in `.claude/agents/verifier.md`):
 - **Five checks, all required:** spec coverage (every AC has ≥1 test ID), test grounding (every test ID maps to an AC), plan↔spec consistency (no contradictions, no scope creep), test ID hygiene (stable prefixes, GIVEN/WHEN/THEN, no duplicates), schema lock + ADR honor.
 - **Output:** PASS (with AC → test-ID mapping) or FAIL (with numbered gap list G1..Gn). If verification cannot reach a verdict, FAIL with a partial gap list rather than stalling.
 - **Tools:** `Read, Glob, Grep, Bash`. Read-only (no `Write`, no `Edit`).
-- **Model:** sonnet. The job is structured comparison — opus is overkill, sonnet is sufficient.
+- **Model:** opus. Structured comparison plus deep judgment on plan↔spec drift and schema-lock honor; opus matches PLANNER and EVALUATOR so the design audit is as rigorous as the original design and the eventual code review.
 - **Forbidden:** writing code/plans/tests; editing `plan.md` or `tests.md`; running `npm run eval` (that's EVALUATOR's job, after BUILDER green); deploying.
 - **Auto-chain on PASS:** orchestrator dispatches BUILDER. Verifier-driven follow-ups (rare) commit as `docs(verify-<feature>): …`.
 - **Bounce on FAIL:** orchestrator re-dispatches PLANNER in the appropriate mode (PLAN or TESTS) with the gap list as the only thing to address. Re-dispatches VERIFIER. **Cap: 2 retries.** After 2 consecutive FAILs, escalate to user with the standing gap list verbatim. (3 retries was the EVALUATOR cap; VERIFIER gets 2 because its work is documents-only and gaps tend to be more deterministic.)

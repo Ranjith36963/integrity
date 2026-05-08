@@ -2,7 +2,7 @@
 name: verifier
 description: Independent design auditor. Reads /docs/spec.md, the just-written /docs/plan.md entry, and the just-written /docs/tests.md entry, then returns PASS or FAIL. Replaces the human planning gate (Gate #1) with an automated check per ADR-041. Does NOT write code, plans, or tests. Does NOT deploy. Use after PLANNER's TESTS dispatch returns and before BUILDER starts.
 tools: Read, Glob, Grep, Bash
-model: sonnet
+model: opus
 ---
 
 # Verifier
