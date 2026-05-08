@@ -305,3 +305,22 @@ describe("C-m4a-004: tick chip done:false has correct aria-pressed and aria-labe
     );
   });
 });
+
+// ─── C-m4a-005: aria-label + aria-pressed for tick done:true + Check glyph ───
+
+describe("C-m4a-005: tick chip done:true has correct aria-pressed, aria-label, and Check glyph", () => {
+  it("button has aria-pressed=true and aria-label says 'done, tap to toggle'", () => {
+    render(<BrickChip brick={makeTick(true)} categories={[cat1]} />);
+    const btn = screen.getByRole("button");
+    expect(btn.getAttribute("aria-pressed")).toBe("true");
+    expect(btn.getAttribute("aria-label")).toBe("brick A, done, tap to toggle");
+  });
+
+  it("Check icon is rendered (svg with aria-hidden) when done:true", () => {
+    const { container } = render(
+      <BrickChip brick={makeTick(true)} categories={[cat1]} />,
+    );
+    const svgs = container.querySelectorAll("svg[aria-hidden='true']");
+    expect(svgs.length).toBeGreaterThan(0);
+  });
+});
