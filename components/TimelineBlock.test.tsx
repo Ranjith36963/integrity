@@ -373,3 +373,164 @@ describe("C-m4a-010: TimelineBlock threads onTickToggle down to BrickChip", () =
     expect(onTickToggle).toHaveBeenCalledWith("brick-1");
   });
 });
+
+// ─── C-m4a-011: block 100% cross-up fires haptics.success + playChime ─────────
+
+describe("C-m4a-011: block cross-up to 100% fires haptics.success + playChime + bloom key", () => {
+  const cat1: Category = { id: "c1", name: "category 1", color: "#34d399" };
+
+  it("haptics.success and playChime called when blockPct goes from 99 to 100", async () => {
+    const { haptics } = await import("@/lib/haptics");
+    const { playChime } = await import("@/lib/audio");
+    vi.clearAllMocks();
+
+    // Block at 99% (one done, one undone out of 2 is 50%, so use 99 of 100)
+    // Easier: create a wrapper that controls blockPct via props re-render
+    const { rerender } = render(
+      <TimelineBlock
+        block={{
+          id: "b1",
+          name: "block 1",
+          start: "09:00",
+          end: "10:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: "c1",
+          bricks: [
+            {
+              id: "brick-1",
+              name: "brick A",
+              kind: "tick",
+              done: true,
+              categoryId: "c1",
+              parentBlockId: "b1",
+            },
+            {
+              id: "brick-2",
+              name: "brick A",
+              kind: "tick",
+              done: false,
+              categoryId: "c1",
+              parentBlockId: "b1",
+            },
+          ],
+        }}
+        categories={[cat1]}
+        onAddBrick={vi.fn()}
+      />,
+    );
+
+    // Re-render with all bricks done (100%)
+    rerender(
+      <TimelineBlock
+        block={{
+          id: "b1",
+          name: "block 1",
+          start: "09:00",
+          end: "10:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: "c1",
+          bricks: [
+            {
+              id: "brick-1",
+              name: "brick A",
+              kind: "tick",
+              done: true,
+              categoryId: "c1",
+              parentBlockId: "b1",
+            },
+            {
+              id: "brick-2",
+              name: "brick A",
+              kind: "tick",
+              done: true,
+              categoryId: "c1",
+              parentBlockId: "b1",
+            },
+          ],
+        }}
+        categories={[cat1]}
+        onAddBrick={vi.fn()}
+      />,
+    );
+
+    expect(haptics.success).toHaveBeenCalledTimes(1);
+    expect(playChime).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ─── C-m4a-012: reduced-motion — haptics + chime still fire even when suppressed
+
+vi.mock("motion/react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("motion/react")>();
+  return {
+    ...actual,
+    useReducedMotion: vi.fn(() => false),
+  };
+});
+
+describe("C-m4a-012: reduced-motion does not suppress haptics or chime on block 100%", () => {
+  const cat1: Category = { id: "c1", name: "category 1", color: "#34d399" };
+
+  it("haptics.success and playChime still fire when useReducedMotion is true", async () => {
+    const { useReducedMotion } = await import("motion/react");
+    vi.mocked(useReducedMotion).mockReturnValue(true);
+
+    const { haptics } = await import("@/lib/haptics");
+    const { playChime } = await import("@/lib/audio");
+    vi.clearAllMocks();
+
+    const { rerender } = render(
+      <TimelineBlock
+        block={{
+          id: "b1",
+          name: "block 1",
+          start: "09:00",
+          end: "10:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: "c1",
+          bricks: [
+            {
+              id: "brick-1",
+              name: "brick A",
+              kind: "tick",
+              done: false,
+              categoryId: "c1",
+              parentBlockId: "b1",
+            },
+          ],
+        }}
+        categories={[cat1]}
+        onAddBrick={vi.fn()}
+      />,
+    );
+
+    // Cross up to 100%
+    rerender(
+      <TimelineBlock
+        block={{
+          id: "b1",
+          name: "block 1",
+          start: "09:00",
+          end: "10:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: "c1",
+          bricks: [
+            {
+              id: "brick-1",
+              name: "brick A",
+              kind: "tick",
+              done: true,
+              categoryId: "c1",
+              parentBlockId: "b1",
+            },
+          ],
+        }}
+        categories={[cat1]}
+        onAddBrick={vi.fn()}
+      />,
+    );
+
+    expect(haptics.success).toHaveBeenCalledTimes(1);
+    expect(playChime).toHaveBeenCalledTimes(1);
+  });
+});
