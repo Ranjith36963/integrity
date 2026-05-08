@@ -31,7 +31,7 @@ You are Main Claude, the orchestrator. Honor `CLAUDE.md` § Methodology (The Loo
 
 ### Step 3 — VERIFY (VERIFIER, auto)
 
-- Dispatch the `verifier` subagent for **$ARGUMENTS only** (per ADR-041). Pass: feature name, spec section to read, the just-written `plan.md` entry, the just-written `tests.md` entry. Time-boxed to 5 minutes.
+- Dispatch the `verifier` subagent for **$ARGUMENTS only** (per ADR-041). Pass: feature name, spec section to read, the just-written `plan.md` entry, the just-written `tests.md` entry.
 - VERIFIER returns either **PASS** (with AC → test-ID mapping) or **FAIL** (with a numbered gap list G1..Gn).
 - On **PASS** → commit any verifier-driven follow-up (rare — usually nothing) using prefix `docs(verify-<feature>): …`. Auto-chain to Step 4.
 - On **FAIL** → re-dispatch PLANNER (correct mode based on which file the gap lives in: `mode: PLAN` for plan gaps, `mode: TESTS` for test gaps). PLANNER amends the file. Re-dispatch VERIFIER. **Cap: 2 retries.** After 2 consecutive FAILs, stop and escalate to the user with the standing gap list verbatim.

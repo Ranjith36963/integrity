@@ -642,13 +642,13 @@ Commit prefixes per Loop phase, layered on top of Conventional Commits (commitli
 
 **Status:** Accepted · 2026-05-05 · resolves design-pillar Q3
 
-**Context.** Three input methods for adding a block: tap timeline slot, floating `+`, voice (M10). The Fantastical-style inline natural-language parsing ("Run 6-7am daily" → form auto-fills as you type) is desirable but adds ~1 week of scope to M2 (regex grammar over time tokens, real-time parsing UX). M2's existing scope (sheet UI + recurrence picker + brick adder + category picker + 3 brick types) is already large.
+**Context.** Three input methods for adding a block: tap timeline slot, floating `+`, voice (M10). The Fantastical-style inline natural-language parsing ("Run 6-7am daily" → form auto-fills as you type) is desirable but adds substantial scope to M2 (regex grammar over time tokens, real-time parsing UX). M2's existing scope (sheet UI + recurrence picker + brick adder + category picker + 3 brick types) is already large.
 
 **Decision.** M2 ships explicit form fields only — Title, Start, End (optional), Recurrence picker, Brick adder, Category. Inline natural-language parsing is layered on in **M7 Polish** (regex grammar over time/recurrence tokens; no LLM). LLM-based parsing remains exclusive to M10 voice; not used for typed input ever.
 
 **Consequences.**
 
-- M2 stays a ~1-week milestone instead of swelling to ~3 weeks.
+- M2 stays focused instead of swelling.
 - M7 polish gains a meaningful UX upgrade (the magic-typing experience).
 - Voice (M10) keeps the LLM round-trip; typed input never depends on a network call.
 - If users in the M2-M6 window beg for the magic-typing flow, it stays a feature ship in M7, not a re-prioritization.
@@ -741,14 +741,14 @@ Each sub-dispatch is committed independently with prefix `docs(tests-<feature>-u
 **Consequences.**
 
 - M3 itself was unblocked under ADR-021 (Main Claude authored `tests.md` directly). ADR-040 prevents recurrence on M4..M10 without requiring ADR-021 invocation.
-- Slight overhead: one extra PLANNER dispatch per affected milestone (~5–10 min per dispatch). Acceptable trade-off for deterministic completion.
+- Slight overhead: one extra PLANNER dispatch per affected milestone. Acceptable trade-off for deterministic completion.
 - **Compatibility:** Milestones below the trigger thresholds run a single PLANNER TESTS dispatch (the M0–M2 path, unchanged).
 - The orchestrator (Main Claude or `/feature` slash command) is responsible for evaluating the triggers at dispatch time and choosing single-vs-split. The choice is recorded in the tests-commit message body.
 - This ADR is silently revisitable if the underlying model's effective throughput improves enough that 50+-decision dispatches become reliable. Until then, splitting is the conservative default.
 
 **Out of scope (for ADR-040, addressable in future ADRs):**
 
-- A telemetry watchdog that auto-bails PLANNER if tokens-per-minute < 500 for 60 s (would convert 32-min failures to 90-s failures). Worth doing; defer until evidence of recurrence.
+- A telemetry watchdog that auto-bails PLANNER when tokens-per-minute drops below a healthy floor for a sustained window (would convert long-tail timeouts into fast bails). Worth doing; defer until evidence of recurrence.
 - Pre-writing test skeletons in PLAN dispatch (just IDs + targets) so TESTS only fills GIVEN/WHEN/THEN. Would decouple structure from layer; non-trivial to retrofit. Defer.
 
 ---
@@ -757,7 +757,7 @@ Each sub-dispatch is committed independently with prefix `docs(tests-<feature>-u
 
 **Status:** Accepted · 2026-05-08 · Supersedes ADR-026's two-gate model.
 
-**Context.** ADR-026 specified two human gates per feature: Gate #1 (after PLANNER's TESTS dispatch — user reads `plan.md` + `tests.md` together) and Gate #2 (after SHIPPER — user taps the preview). Through M0..M3, Gate #1 fired every feature and was treated seriously, but in practice it surfaced almost no design drift the existing PLANNER prompts hadn't already prevented. The user's reaction at Gate #1 was almost always "approve" with minor copy edits. Meanwhile each Gate #1 cost a human context-switch and 5–15 minutes of reading dense GIVEN/WHEN/THEN tables — exactly the work an LLM is good at and a human is slow at.
+**Context.** ADR-026 specified two human gates per feature: Gate #1 (after PLANNER's TESTS dispatch — user reads `plan.md` + `tests.md` together) and Gate #2 (after SHIPPER — user taps the preview). Through M0..M3, Gate #1 fired every feature and was treated seriously, but in practice it surfaced almost no design drift the existing PLANNER prompts hadn't already prevented. The user's reaction at Gate #1 was almost always "approve" with minor copy edits. Meanwhile each Gate #1 cost a human context-switch and required reading dense GIVEN/WHEN/THEN tables — exactly the work an LLM is good at and a human is slow at.
 
 User feedback at end of M3: "I want to get rid of Gate #1. I'll trust the system. Only the preview matters." The request is well-grounded: live behavior is the only thing a human meaningfully evaluates faster than an automated check. Plan-vs-spec coverage is structured comparison work an agent can do reliably.
 
@@ -769,8 +769,7 @@ VERIFIER specification (codified in `.claude/agents/verifier.md`):
 
 - **Inputs:** `/docs/spec.md` (named feature only), the just-written `plan.md` entry, the just-written `tests.md` entry, `/docs/decisions.md`, `/docs/status.md`.
 - **Five checks, all required:** spec coverage (every AC has ≥1 test ID), test grounding (every test ID maps to an AC), plan↔spec consistency (no contradictions, no scope creep), test ID hygiene (stable prefixes, GIVEN/WHEN/THEN, no duplicates), schema lock + ADR honor.
-- **Output:** PASS (with AC → test-ID mapping) or FAIL (with numbered gap list G1..Gn).
-- **Time-box:** 5 minutes max. If verification cannot reach a verdict, FAIL with a partial gap list.
+- **Output:** PASS (with AC → test-ID mapping) or FAIL (with numbered gap list G1..Gn). If verification cannot reach a verdict, FAIL with a partial gap list rather than stalling.
 - **Tools:** `Read, Glob, Grep, Bash`. Read-only (no `Write`, no `Edit`).
 - **Model:** sonnet. The job is structured comparison — opus is overkill, sonnet is sufficient.
 - **Forbidden:** writing code/plans/tests; editing `plan.md` or `tests.md`; running `npm run eval` (that's EVALUATOR's job, after BUILDER green); deploying.
@@ -781,7 +780,7 @@ The orchestrator (Main Claude or the `/feature` slash command) treats VERIFIER's
 
 **Consequences.**
 
-- **One human check-in per feature instead of two.** Velocity-positive: the Gate #1 cost (5–15 min × N features) goes away entirely. The user's attention is reserved for the preview, which is the only place a human can add value an agent can't.
+- **One human check-in per feature instead of two.** The Gate #1 reading cost goes away entirely. The user's attention is reserved for the preview, which is the only place a human can add value an agent can't.
 - **Trust shifts from human review to VERIFIER design.** The audit job is identical to what the human did at Gate #1; the risk surface is whether VERIFIER's five checks are exhaustive enough. Mitigation: VERIFIER outputs a complete AC → test-ID mapping in every PASS, so any drift it missed becomes visible in the next dispatch's status.md or the eventual EVALUATOR run.
 - **Two retry caps now exist.** EVALUATOR ↔ BUILDER stays at 3 (per ADR-024 — code rework is iterative). VERIFIER ↔ PLANNER caps at 2 (per this ADR — design audits should converge fast or escalate).
 - **Commit-prefix table extended.** Verifier-driven follow-ups commit as `docs(verify-<feature>): …`. Most features won't see one — VERIFIER is read-only.

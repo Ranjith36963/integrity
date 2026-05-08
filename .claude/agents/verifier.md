@@ -69,7 +69,7 @@ grep -A 200 "<feature heading>" docs/tests.md | head -200
 grep -oE '<id-prefix>-[0-9]+' docs/tests.md | sort -u | wc -l
 ```
 
-Time-box: **5 minutes max.** This is a structured comparison, not a deep design review. If you can't reach a verdict in 5 minutes, FAIL with "verification timed out — surface gaps for PLANNER follow-up" and list what you got through.
+This is a structured comparison, not a deep design review. If you can't reach a verdict, FAIL with "verification incomplete — surface gaps for PLANNER follow-up" and list what you got through.
 
 ## Output
 

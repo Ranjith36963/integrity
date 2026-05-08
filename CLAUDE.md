@@ -72,7 +72,7 @@ SHIP puts it in front of the user.
 
 ### Why one gate, not two
 - ADR-026 originally specified two gates: Gate #1 (after PLAN+TESTS) and Gate #2 (after SHIP).
-- ADR-041 collapsed Gate #1 into the VERIFIER agent. The audit job is identical — confirm plan + tests cover spec — but runs in ~60–90 seconds without the user reading anything.
+- ADR-041 collapsed Gate #1 into the VERIFIER agent. The audit job is identical — confirm plan + tests cover spec — but runs without the user reading anything.
 - Gate #2 (preview tap-test) remains. It is the only gate that judges live behavior, and only a human can do it.
 - Phases 4–6 run unattended because VERIFIER's PASS certifies that "green tests = correct feature." If that contract breaks, the fix is to harden VERIFIER, not insert more human gates.
 
