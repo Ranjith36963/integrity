@@ -275,3 +275,35 @@ describe("U-m4a-001: LOG_TICK_BRICK flips done false→true for brick inside a b
     expect(brick.categoryId).toBeNull();
   });
 });
+
+// ─── U-m4a-002: LOG_TICK_BRICK untoggle done true→false ───────────────────────
+
+describe("U-m4a-002: LOG_TICK_BRICK flips done true→false (toggle, not one-way)", () => {
+  it("returns state with brick.done === false when brick was done:true", () => {
+    const state: AppState = {
+      blocks: [
+        {
+          id: "block-1",
+          name: "block 1",
+          start: "09:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: null,
+          bricks: [
+            {
+              id: "b1",
+              name: "brick A",
+              kind: "tick",
+              done: true,
+              categoryId: null,
+              parentBlockId: "block-1",
+            },
+          ],
+        },
+      ],
+      categories: [],
+      looseBricks: [],
+    };
+    const next = reducer(state, { type: "LOG_TICK_BRICK", brickId: "b1" });
+    expect(next.blocks[0].bricks[0].done).toBe(false);
+  });
+});
