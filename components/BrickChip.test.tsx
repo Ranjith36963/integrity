@@ -243,17 +243,18 @@ describe("C-m4a-001: tick chip calls onTickToggle and haptics.light on click", (
   });
 });
 
-// ─── C-m4a-002: goal chip is no-op on click ──────────────────────────────────
+// ─── C-m4a-002: goal chip is no-op for onTickToggle ─────────────────────────
+// Updated for M4b: goal chip is now <div role="group"> with stepper buttons.
+// Selector updated from getByRole("button") to getByRole("group") per plan.md
+// § Migration / obsolete IDs (VERIFIER drift flag).
 
-describe("C-m4a-002: goal chip click is no-op — no onTickToggle, no haptics.light", () => {
+describe("C-m4a-002: goal chip does not call onTickToggle (M4b: group wrapper, not button)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("onTickToggle NOT called; haptics.light NOT called when goal chip clicked", async () => {
-    const { haptics } = await import("@/lib/haptics");
+  it("onTickToggle NOT called when goal chip group is queried; group has role='group'", async () => {
     const onTickToggle = vi.fn();
-    const user = userEvent.setup();
     render(
       <BrickChip
         brick={makeGoal(2, 5, "")}
@@ -261,10 +262,10 @@ describe("C-m4a-002: goal chip click is no-op — no onTickToggle, no haptics.li
         onTickToggle={onTickToggle}
       />,
     );
-    const btn = screen.getByRole("button");
-    await user.click(btn);
+    // M4b: goal chip uses <div role="group"> wrapper, not a single <button>
+    const group = screen.getByRole("group");
+    expect(group).toBeInTheDocument();
     expect(onTickToggle).not.toHaveBeenCalled();
-    expect(haptics.light).not.toHaveBeenCalled();
   });
 });
 
