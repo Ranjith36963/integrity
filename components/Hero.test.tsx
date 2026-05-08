@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import { Hero } from "./Hero";
 
@@ -101,6 +101,54 @@ describe("C-m1-005: Hero renders dateLabel verbatim", () => {
       <Hero dateLabel="Wed, May 6" dayNumber={126} totalDays={365} pct={0} />,
     );
     expect(screen.getByText("Wed, May 6")).toBeInTheDocument();
+  });
+});
+
+// ─── C-m3-020: Hero wraps numeral in <HeroRing>; consumes dayPct(state) ──────
+
+describe("C-m3-020: Hero wraps numeral in HeroRing", () => {
+  it("HeroRing svg is in the tree wrapping the numeral", () => {
+    const { container } = render(
+      <Hero dateLabel="Wed, May 6" dayNumber={126} totalDays={365} pct={42} />,
+    );
+    const svg = container.querySelector("svg[role='img']");
+    expect(svg).toBeTruthy();
+    expect(svg?.getAttribute("aria-label")).toContain("42");
+  });
+
+  it("numeral text reads '42%' (Math.round)", () => {
+    const { container } = render(
+      <Hero dateLabel="Wed, May 6" dayNumber={126} totalDays={365} pct={42} />,
+    );
+    expect(container.textContent).toContain("42%");
+  });
+
+  it("numeral reads '67%' when pct={67.4}", () => {
+    const { container } = render(
+      <Hero
+        dateLabel="Wed, May 6"
+        dayNumber={126}
+        totalDays={365}
+        pct={67.4}
+      />,
+    );
+    expect(container.textContent).toContain("67%");
+  });
+
+  it("numeral reads '0%' and ring's filled arc is empty when pct={0}", () => {
+    const { container } = render(
+      <Hero dateLabel="Wed, May 6" dayNumber={126} totalDays={365} pct={0} />,
+    );
+    expect(container.textContent).toContain("0%");
+    const R = 56;
+    const C = 2 * Math.PI * R;
+    const filled = Array.from(container.querySelectorAll("circle")).find((c) =>
+      c.getAttribute("stroke-dasharray"),
+    ) as SVGCircleElement;
+    const dashoffset = parseFloat(
+      filled?.getAttribute("stroke-dashoffset") ?? "NaN",
+    );
+    expect(dashoffset).toBeCloseTo(C, 2);
   });
 });
 
