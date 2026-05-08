@@ -9,7 +9,7 @@
  * No persistence in M3. Page refresh clears state. M8 lands localStorage rehydration.
  */
 
-import type { AppState, Action } from "./types";
+import type { AppState, Action, Brick } from "./types";
 import { assertNever } from "./types";
 
 export function defaultState(): AppState {
@@ -44,6 +44,21 @@ export function reducer(state: AppState, action: Action): AppState {
             : b,
         ),
       };
+    case "LOG_TICK_BRICK": {
+      // Flip done on the matching tick brick; no-op if id not found or kind !== "tick"
+      const flip = (b: Brick): Brick =>
+        b.id === action.brickId && b.kind === "tick"
+          ? { ...b, done: !b.done }
+          : b;
+      return {
+        ...state,
+        blocks: state.blocks.map((bl) => ({
+          ...bl,
+          bricks: bl.bricks.map(flip),
+        })),
+        looseBricks: state.looseBricks.map(flip),
+      };
+    }
     default:
       return assertNever(action);
   }
