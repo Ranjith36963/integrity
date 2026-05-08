@@ -1,7 +1,7 @@
 // components/BrickChip.test.tsx — M3 component tests for new BrickChip
-// Covers: C-m3-001..005
+// Covers: C-m3-001..005, C-m4a-001..009
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BrickChip } from "./BrickChip";
@@ -196,5 +196,40 @@ describe("C-m3-005: BrickChip touch target and no-op onClick", () => {
     await user.click(btn);
     // No assertion needed; just ensure no error thrown
     expect(btn).toBeInTheDocument();
+  });
+});
+
+// ─── C-m4a-001: tick chip dispatches onTickToggle + haptics.light on tap ───────
+
+vi.mock("@/lib/haptics", () => ({
+  haptics: {
+    light: vi.fn(),
+    medium: vi.fn(),
+    success: vi.fn(),
+    notification: vi.fn(),
+  },
+}));
+
+describe("C-m4a-001: tick chip calls onTickToggle and haptics.light on click", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("onTickToggle called once with brick.id; haptics.light called once", async () => {
+    const { haptics } = await import("@/lib/haptics");
+    const onTickToggle = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <BrickChip
+        brick={makeTick(false)}
+        categories={[cat1]}
+        onTickToggle={onTickToggle}
+      />,
+    );
+    const btn = screen.getByRole("button");
+    await user.click(btn);
+    expect(onTickToggle).toHaveBeenCalledTimes(1);
+    expect(onTickToggle).toHaveBeenCalledWith("r1");
+    expect(haptics.light).toHaveBeenCalledTimes(1);
   });
 });
