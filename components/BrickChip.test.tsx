@@ -116,10 +116,11 @@ describe("C-m3-002: BrickChip goal render", () => {
     expect(fill?.style.width).toBe("50%");
   });
 
-  it("aria-label includes '50 of 100 reps'", () => {
+  it("aria-label includes '50 of 100 reps' (M4b: on group wrapper, not button)", () => {
     render(<BrickChip brick={makeGoal(50, 100, "reps")} categories={[cat1]} />);
-    const btn = screen.getByRole("button");
-    expect(btn.getAttribute("aria-label")).toContain("50 of 100 reps");
+    // M4b: goal chip uses <div role="group"> wrapper; aria-label is on the group
+    const group = screen.getByRole("group");
+    expect(group.getAttribute("aria-label")).toContain("50 of 100 reps");
   });
 
   it("with unit blank, badge renders '50 / 100' (no trailing space)", () => {
