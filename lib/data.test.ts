@@ -639,3 +639,34 @@ describe("U-m4b-004: LOG_GOAL_BRICK returns same state reference when clamped at
     expect(asGoal(next.blocks[0].bricks[0]).count).toBe(0);
   });
 });
+
+// ─── U-m4b-005: LOG_GOAL_BRICK routes to looseBricks ─────────────────────────
+
+describe("U-m4b-005: LOG_GOAL_BRICK increments looseBricks goal brick; state.blocks reference unchanged", () => {
+  it("looseBricks[0].count === 3; state.blocks array reference-equal to input", () => {
+    const existingBlocks: AppState["blocks"] = [];
+    const state: AppState = {
+      blocks: existingBlocks,
+      categories: [],
+      looseBricks: [
+        {
+          id: "lg1",
+          name: "squats",
+          kind: "goal",
+          count: 2,
+          target: 5,
+          unit: "",
+          categoryId: null,
+          parentBlockId: null,
+        },
+      ],
+    };
+    const next = reducer(state, {
+      type: "LOG_GOAL_BRICK",
+      brickId: "lg1",
+      delta: 1,
+    });
+    expect(asGoal(next.looseBricks[0]).count).toBe(3);
+    expect(next.blocks).toBe(existingBlocks);
+  });
+});
