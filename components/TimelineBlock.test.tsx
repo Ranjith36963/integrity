@@ -301,3 +301,75 @@ describe("C-m3-022: TimelineBlock scaffold left-bar height", () => {
     expect(fill?.style.height).toBe("0%");
   });
 });
+
+// ─── C-m4a-010: onTickToggle prop threading ───────────────────────────────────
+
+vi.mock("@/lib/haptics", () => ({
+  haptics: {
+    light: vi.fn(),
+    medium: vi.fn(),
+    success: vi.fn(),
+    notification: vi.fn(),
+  },
+}));
+
+vi.mock("@/lib/audio", () => ({
+  playChime: vi.fn(),
+}));
+
+describe("C-m4a-010: TimelineBlock threads onTickToggle down to BrickChip", () => {
+  const cat1: Category = { id: "c1", name: "category 1", color: "#34d399" };
+  const blockAt50: Block = {
+    id: "b1",
+    name: "block 1",
+    start: "09:00",
+    end: "10:00",
+    recurrence: { kind: "just-today", date: "2026-05-06" },
+    categoryId: "c1",
+    bricks: [
+      {
+        id: "brick-1",
+        name: "brick A",
+        kind: "tick",
+        done: false,
+        categoryId: "c1",
+        parentBlockId: "b1",
+      },
+      {
+        id: "brick-2",
+        name: "brick A",
+        kind: "tick",
+        done: true,
+        categoryId: "c1",
+        parentBlockId: "b1",
+      },
+    ],
+  };
+
+  it("clicking inner tick BrickChip calls onTickToggle with brick.id", async () => {
+    const user = userEvent.setup();
+    const onTickToggle = vi.fn();
+    const { container } = render(
+      <TimelineBlock
+        block={blockAt50}
+        categories={[cat1]}
+        onAddBrick={vi.fn()}
+        onTickToggle={onTickToggle}
+      />,
+    );
+    // Expand the block to show bricks
+    const card = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    await user.click(card);
+
+    // Click first tick chip (brick-1, done:false)
+    const brickBtns = screen.getAllByRole("button");
+    const tickBtn = brickBtns.find(
+      (b) => b.getAttribute("aria-pressed") !== null,
+    );
+    expect(tickBtn).toBeTruthy();
+    await user.click(tickBtn!);
+    expect(onTickToggle).toHaveBeenCalledWith("brick-1");
+  });
+});
