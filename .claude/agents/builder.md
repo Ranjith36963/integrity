@@ -58,6 +58,12 @@ Run `git log --oneline <base>..HEAD` where `<base>` is the commit before your wo
 
 If your commit history doesn't show one-commit-per-ID, you must `git rebase -i` (only on commits in your local working set, never on commits already pushed to a shared branch) and split them. If commits are already pushed, surface the violation in your handoff report rather than rewriting public history.
 
+### Gate D — Typecheck clean
+
+Run `npx tsc --noEmit` (go directly through `tsc`, not `npm run typecheck` or any other wrapper that may suppress output). The output must show **zero new errors**. Pre-existing errors documented in `docs/status.md` open loops (e.g. M0–M3 sandbox `next` corruption affecting `app/layout.tsx` / `app/manifest.ts` / `next.config.ts`) are allowed; net-new errors in any other file are not.
+
+**Vitest passing is NOT a substitute for `tsc --noEmit` passing.** Vitest transpiles via esbuild, which silently strips types — type errors slip through Vitest. SPEC requires `tsc --noEmit` to be clean as a separate gate. If `tsc` reports new errors, fix them before reporting completion. This gate exists because the M4a first-attempt missed 6 type errors that Vitest didn't catch.
+
 ## Quality bar
 
 - TypeScript strict — no `any`, no `// @ts-ignore` without an inline justification.
@@ -84,6 +90,7 @@ Return to the orchestrator:
 - **Gate A result:** the literal output of `git status -sb` (must show clean tree).
 - **Gate B result:** the literal output of `npm run lint` (must show zero new errors). List any new `// eslint-disable-next-line` lines you added with their justifications.
 - **Gate C result:** the literal output of `git log --oneline <base>..HEAD`, with a one-line check that every test ID closed has its own red + green commits.
+- **Gate D result:** the literal output of `npx tsc --noEmit` (must show zero new errors).
 - Anything you noticed that the evaluator should look at (e.g. "I had to widen the type of X — please confirm").
 
 If any gate failed and you could not fix it, **do not claim completion**. Surface the failure verbatim and stop; the orchestrator will decide whether to re-dispatch you or escalate.
