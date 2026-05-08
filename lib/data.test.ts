@@ -561,3 +561,42 @@ describe("U-m4b-002: LOG_GOAL_BRICK decrements count on a goal brick inside a bl
     expect(brick.name).toBe("pushups");
   });
 });
+
+// ─── U-m4b-003: LOG_GOAL_BRICK clamp at top → identity short-circuit ──────────
+
+describe("U-m4b-003: LOG_GOAL_BRICK returns same state reference when clamped at ceiling", () => {
+  it("prevState === nextState when count === target and delta: 1", () => {
+    const state: AppState = {
+      blocks: [
+        {
+          id: "block-1",
+          name: "block 1",
+          start: "09:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: null,
+          bricks: [
+            {
+              id: "g1",
+              name: "pushups",
+              kind: "goal",
+              count: 10,
+              target: 10,
+              unit: "reps",
+              categoryId: null,
+              parentBlockId: "block-1",
+            },
+          ],
+        },
+      ],
+      categories: [],
+      looseBricks: [],
+    };
+    const next = reducer(state, {
+      type: "LOG_GOAL_BRICK",
+      brickId: "g1",
+      delta: 1,
+    });
+    expect(next).toBe(state);
+    expect(asGoal(next.blocks[0].bricks[0]).count).toBe(10);
+  });
+});
