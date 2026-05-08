@@ -72,3 +72,45 @@ describe("U-m4b-013: useLongPressRepeat fires onTick on pointerdown, auto-repeat
     expect(onTick).toHaveBeenCalledTimes(5);
   });
 });
+
+// ─── U-m4b-014: enabled=false stops in-flight auto-repeat ────────────────────
+
+describe("U-m4b-014: useLongPressRepeat stops auto-repeat when enabled flips to false mid-press", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("no further onTick calls after enabled flips false during auto-repeat", () => {
+    const onTick = vi.fn();
+    let enabled = true;
+    const { result, rerender } = renderHook(
+      ({ enabled }: { enabled: boolean }) =>
+        useLongPressRepeat({ onTick, enabled }),
+      { initialProps: { enabled: true } },
+    );
+
+    // Start press and advance past HOLD_MS to enter auto-repeat
+    act(() => {
+      result.current.onPointerDown({} as React.PointerEvent);
+    });
+    act(() => {
+      vi.advanceTimersByTime(700); // past 500ms hold + some interval ticks
+    });
+    const callsBeforeDisable = onTick.mock.calls.length;
+    expect(callsBeforeDisable).toBeGreaterThan(1); // initial + auto-repeat ticks
+
+    // Flip enabled to false
+    enabled = false;
+    rerender({ enabled });
+
+    // Advance 200ms more — no additional ticks should fire
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(onTick).toHaveBeenCalledTimes(callsBeforeDisable);
+  });
+});
