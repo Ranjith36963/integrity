@@ -827,3 +827,12 @@ describe("U-m4b-009: LOG_GOAL_BRICK returns new state reference on real change; 
     expect(asGoal(nextState.blocks[0].bricks[0]).count).toBe(3);
   });
 });
+
+// ─── U-m4b-010: assertNever preserves exhaustiveness with LOG_GOAL_BRICK ───────
+
+describe("U-m4b-010: assertNever fires for unknown action after LOG_GOAL_BRICK added", () => {
+  it("default branch throws for unknown action type", () => {
+    const state: AppState = { blocks: [], categories: [], looseBricks: [] };
+    expect(() => reducer(state, { type: "__never__" } as never)).toThrow();
+  });
+});
