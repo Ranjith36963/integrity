@@ -65,7 +65,10 @@ describe("C-m3-001: BrickChip tick render", () => {
   it("renders unchecked badge when done:false", () => {
     render(<BrickChip brick={makeTick(false)} categories={[cat1]} />);
     const btn = screen.getByRole("button");
-    expect(btn.getAttribute("aria-label")).toBe("brick A, tick, 0% complete");
+    // M4a: tick aria-label changed to enriched format (plan.md SG-m4a-02)
+    expect(btn.getAttribute("aria-label")).toBe(
+      "brick A, not done, tap to toggle",
+    );
   });
 
   it("foreground gradient overlay width is 0% when done:false", () => {
@@ -78,16 +81,19 @@ describe("C-m3-001: BrickChip tick render", () => {
     expect(fill?.style.width).toBe("0%");
   });
 
-  it("outer button has aria-label='brick A, tick, 0% complete' when done:false", () => {
+  it("outer button has enriched aria-label when done:false (M4a SG-m4a-02)", () => {
     render(<BrickChip brick={makeTick(false)} categories={[cat1]} />);
     const btn = screen.getByRole("button");
-    expect(btn.getAttribute("aria-label")).toBe("brick A, tick, 0% complete");
+    expect(btn.getAttribute("aria-label")).toBe(
+      "brick A, not done, tap to toggle",
+    );
   });
 
-  it("when done:true — badge shows check icon and aria-label includes 100%", () => {
+  it("when done:true — badge shows check icon and aria-label says 'done'", () => {
     render(<BrickChip brick={makeTick(true)} categories={[cat1]} />);
     const btn = screen.getByRole("button");
-    expect(btn.getAttribute("aria-label")).toBe("brick A, tick, 100% complete");
+    // M4a: enriched label for tick done:true
+    expect(btn.getAttribute("aria-label")).toBe("brick A, done, tap to toggle");
   });
 });
 
@@ -159,10 +165,13 @@ describe("C-m3-004: BrickChip uncategorized fallback", () => {
     expect(outer?.dataset.uncategorized).toBe("true");
   });
 
-  it("aria-label is 'brick A, tick, 0% complete' with no category errors", () => {
+  it("aria-label uses M4a enriched format with no category errors", () => {
     render(<BrickChip brick={makeTick(false, null)} categories={[]} />);
     const btn = screen.getByRole("button");
-    expect(btn.getAttribute("aria-label")).toBe("brick A, tick, 0% complete");
+    // M4a: tick aria-label changed to enriched format (SG-m4a-02)
+    expect(btn.getAttribute("aria-label")).toBe(
+      "brick A, not done, tap to toggle",
+    );
   });
 });
 

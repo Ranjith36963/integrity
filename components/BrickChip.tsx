@@ -1,16 +1,23 @@
 "use client";
-// BrickChip — M3 re-authored from [obsolete] to [re-author].
-// Built fresh against the locked Brick schema (plan.md § Migration tags).
-// [re-author] per plan.md M3 migration table.
+// BrickChip — M4a extended from M3.
+// M3: static chip rendering for all brick kinds.
+// M4a: tick chips dispatch onTickToggle + haptics.light on tap;
+//       goal/time chips remain no-op with cursor:default.
+//       tick chip gains aria-pressed + enriched aria-label.
+//       chip-fill transition becomes "none" under prefers-reduced-motion.
 
 import { Play, Square, Check } from "lucide-react";
+import { useReducedMotion } from "motion/react";
 import { brickPct } from "@/lib/dharma";
+import { haptics } from "@/lib/haptics";
 import type { Brick, Category } from "@/lib/types";
 
 interface Props {
   brick: Brick;
   categories: Category[];
   size?: "sm" | "md";
+  /** Called with brick.id when a tick brick is tapped (M4a). Not called for goal/time. */
+  onTickToggle?: (brickId: string) => void;
 }
 
 function resolveColor(brick: Brick, categories: Category[]): string | null {
@@ -19,6 +26,11 @@ function resolveColor(brick: Brick, categories: Category[]): string | null {
 }
 
 function buildAriaLabel(brick: Brick, pct: number): string {
+  if (brick.kind === "tick") {
+    // M4a: enriched tick label — replaces M3's generic "brick A, tick, 0% complete"
+    const state = brick.done ? "done" : "not done";
+    return `${brick.name}, ${state}, tap to toggle`;
+  }
   const roundedPct = Math.round(pct);
   const base = `${brick.name}, ${brick.kind}, ${roundedPct}% complete`;
   if (brick.kind === "goal") {
@@ -88,10 +100,16 @@ function TypeBadge({ brick }: { brick: Brick }) {
   );
 }
 
-export function BrickChip({ brick, categories, size = "md" }: Props) {
+export function BrickChip({
+  brick,
+  categories,
+  size = "md",
+  onTickToggle,
+}: Props) {
   const pct = brickPct(brick);
   const color = resolveColor(brick, categories);
   const isUncategorized = color === null;
+  const prefersReducedMotion = useReducedMotion();
 
   // Background: category color at 12% alpha, or --surface-2 for uncategorized
   const bgStyle = isUncategorized ? "var(--surface-2)" : `${color}1f`; // 1f ≈ 12% alpha in hex
@@ -100,6 +118,15 @@ export function BrickChip({ brick, categories, size = "md" }: Props) {
   const fillColor = isUncategorized ? "var(--accent)" : `${color}99`; // 99 ≈ 60% alpha
 
   const ariaLabel = buildAriaLabel(brick, pct);
+
+  // M4a: branch onClick and cursor by brick.kind
+  const isTick = brick.kind === "tick";
+
+  function handleClick() {
+    if (!isTick) return; // goal/time chips are no-op
+    haptics.light();
+    onTickToggle?.(brick.id);
+  }
 
   return (
     <div
@@ -114,7 +141,7 @@ export function BrickChip({ brick, categories, size = "md" }: Props) {
         width: "100%",
       }}
     >
-      {/* Foreground gradient fill — width = brickPct% */}
+      {/* Foreground gradient fill — width = brickPct%; transition respects reduced-motion */}
       <div
         data-testid="brick-fill"
         aria-hidden="true"
@@ -124,17 +151,16 @@ export function BrickChip({ brick, categories, size = "md" }: Props) {
           width: `${pct}%`,
           background: fillColor,
           pointerEvents: "none",
-          transition: "width 600ms ease-in-out",
+          transition: prefersReducedMotion ? "none" : "width 600ms ease-in-out",
         }}
       />
 
-      {/* Chip button — no-op in M3 (M4 wires logging) */}
+      {/* Chip button — tick: dispatches toggle + haptic; goal/time: no-op */}
       <button
         type="button"
         aria-label={ariaLabel}
-        onClick={() => {
-          // no-op in M3 — M4 wires brick logging
-        }}
+        aria-pressed={isTick ? brick.done : undefined}
+        onClick={handleClick}
         style={{
           position: "relative",
           display: "flex",
@@ -146,7 +172,7 @@ export function BrickChip({ brick, categories, size = "md" }: Props) {
           gap: "8px",
           background: "transparent",
           border: "none",
-          cursor: "default",
+          cursor: isTick ? "pointer" : "default",
           fontFamily: "var(--font-ui)",
           fontSize: size === "sm" ? "var(--fs-12)" : "var(--fs-14)",
           color: "var(--ink)",
