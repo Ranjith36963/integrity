@@ -500,3 +500,20 @@ describe("C-m4b-003: goal chip − button is disabled when count === 0", () => {
     expect(plus).not.toBeDisabled();
   });
 });
+
+// ─── C-m4b-004: + disabled at count === target ─────────────────────────────────
+
+describe("C-m4b-004: goal chip + button is disabled when count === target", () => {
+  it("plus button has disabled attribute; minus button does not", () => {
+    render(
+      <BrickChip
+        brick={makeGoalBrick("g1", "pushups", 10, 10)}
+        categories={[cat1]}
+      />,
+    );
+    const minus = screen.getByRole("button", { name: "Decrease pushups" });
+    const plus = screen.getByRole("button", { name: "Increase pushups" });
+    expect(plus).toBeDisabled();
+    expect(minus).not.toBeDisabled();
+  });
+});
