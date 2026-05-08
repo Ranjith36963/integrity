@@ -48,12 +48,13 @@ export type AppState = {
   looseBricks: Brick[]; // M3 — bricks with parentBlockId === null
 };
 
-// Action — extends M3's discriminated union with LOG_TICK_BRICK (M4a)
+// Action — extends M4a's discriminated union with LOG_GOAL_BRICK (M4b)
 export type Action =
   | { type: "ADD_BLOCK"; block: Block }
   | { type: "ADD_CATEGORY"; category: Category }
   | { type: "ADD_BRICK"; brick: Brick } // M3 — routed by brick.parentBlockId
-  | { type: "LOG_TICK_BRICK"; brickId: string }; // M4a — flips `done` on the brick with this id
+  | { type: "LOG_TICK_BRICK"; brickId: string } // M4a — flips `done` on the brick with this id
+  | { type: "LOG_GOAL_BRICK"; brickId: string; delta: 1 | -1 }; // M4b — clamp-increments goal brick count
 
 export function assertNever(x: never): never {
   throw new Error(`unhandled ${JSON.stringify(x)}`);

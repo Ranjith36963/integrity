@@ -708,3 +708,43 @@ describe("U-m4b-006: LOG_GOAL_BRICK is a no-op when brickId does not match any b
     expect(next).toBe(state);
   });
 });
+
+// ─── U-m4b-007: LOG_GOAL_BRICK no-op when kind is tick (id matches tick brick) ─
+
+describe("U-m4b-007: LOG_GOAL_BRICK is a no-op when id matches a tick brick (kind mismatch)", () => {
+  it("returned state is same reference; tick brick done field unchanged", () => {
+    const state: AppState = {
+      blocks: [
+        {
+          id: "block-1",
+          name: "block 1",
+          start: "09:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: null,
+          bricks: [
+            {
+              id: "t1",
+              name: "task",
+              kind: "tick",
+              done: false,
+              categoryId: null,
+              parentBlockId: "block-1",
+            },
+          ],
+        },
+      ],
+      categories: [],
+      looseBricks: [],
+    };
+    const next = reducer(state, {
+      type: "LOG_GOAL_BRICK",
+      brickId: "t1",
+      delta: 1,
+    });
+    expect(next).toBe(state);
+    expect(next.blocks[0].bricks[0].kind).toBe("tick");
+    if (next.blocks[0].bricks[0].kind === "tick") {
+      expect(next.blocks[0].bricks[0].done).toBe(false);
+    }
+  });
+});
