@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { defaultState, reducer } from "./data";
-import type { AppState, Block } from "./types";
+import type { AppState, Block, Brick } from "./types";
+
+/** Narrow a Brick to the tick variant. Throws if kind !== "tick". */
+function asTick(b: Brick): Extract<Brick, { kind: "tick" }> {
+  if (b.kind !== "tick") throw new Error(`expected tick brick, got ${b.kind}`);
+  return b;
+}
 
 const testBlock: Block = {
   id: "b1",
@@ -267,7 +273,7 @@ describe("U-m4a-001: LOG_TICK_BRICK flips done false→true for brick inside a b
     };
     const next = reducer(state, { type: "LOG_TICK_BRICK", brickId: "b1" });
     const brick = next.blocks[0].bricks[0];
-    expect(brick.done).toBe(true);
+    expect(asTick(brick).done).toBe(true);
     // All other fields on the brick are unchanged
     expect(brick.id).toBe("b1");
     expect(brick.name).toBe("brick A");
@@ -304,7 +310,7 @@ describe("U-m4a-002: LOG_TICK_BRICK flips done true→false (toggle, not one-way
       looseBricks: [],
     };
     const next = reducer(state, { type: "LOG_TICK_BRICK", brickId: "b1" });
-    expect(next.blocks[0].bricks[0].done).toBe(false);
+    expect(asTick(next.blocks[0].bricks[0]).done).toBe(false);
   });
 });
 
@@ -327,7 +333,7 @@ describe("U-m4a-003: LOG_TICK_BRICK flips done on looseBricks (no blocks)", () =
       ],
     };
     const next = reducer(state, { type: "LOG_TICK_BRICK", brickId: "lb1" });
-    expect(next.looseBricks[0].done).toBe(true);
+    expect(asTick(next.looseBricks[0]).done).toBe(true);
     expect(next.blocks).toEqual([]);
   });
 });
@@ -371,8 +377,8 @@ describe("U-m4a-004: LOG_TICK_BRICK is a no-op when brickId does not match any b
       type: "LOG_TICK_BRICK",
       brickId: "does-not-exist",
     });
-    expect(next.blocks[0].bricks[0].done).toBe(false);
-    expect(next.blocks[0].bricks[1].done).toBe(false);
+    expect(asTick(next.blocks[0].bricks[0]).done).toBe(false);
+    expect(asTick(next.blocks[0].bricks[1]).done).toBe(false);
   });
 });
 
@@ -450,7 +456,7 @@ describe("U-m4a-006: LOG_TICK_BRICK returns new top-level reference; no in-place
     // New top-level object
     expect(nextState).not.toBe(prevState);
     // Original reference's bricks not mutated — done is still false on the original
-    expect(prevState.blocks[0].bricks[0].done).toBe(false);
+    expect(asTick(prevState.blocks[0].bricks[0]).done).toBe(false);
     // The original blocks array reference itself was not mutated in place
     // (nextState.blocks is a new array since we use .map())
     expect(nextState.blocks).not.toBe(originalBlocks);
