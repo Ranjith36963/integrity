@@ -414,3 +414,45 @@ describe("U-m4a-005: LOG_TICK_BRICK is a no-op when brick kind is not tick", () 
     }
   });
 });
+
+// ─── U-m4a-006: LOG_TICK_BRICK immutability ───────────────────────────────────
+
+describe("U-m4a-006: LOG_TICK_BRICK returns new top-level reference; no in-place mutation", () => {
+  it("prevState !== nextState and prevState.blocks reference is same as before call", () => {
+    const prevState: AppState = {
+      blocks: [
+        {
+          id: "block-1",
+          name: "block 1",
+          start: "09:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: null,
+          bricks: [
+            {
+              id: "b1",
+              name: "brick A",
+              kind: "tick",
+              done: false,
+              categoryId: null,
+              parentBlockId: "block-1",
+            },
+          ],
+        },
+      ],
+      categories: [],
+      looseBricks: [],
+    };
+    const originalBlocks = prevState.blocks;
+    const nextState = reducer(prevState, {
+      type: "LOG_TICK_BRICK",
+      brickId: "b1",
+    });
+    // New top-level object
+    expect(nextState).not.toBe(prevState);
+    // Original reference's bricks not mutated — done is still false on the original
+    expect(prevState.blocks[0].bricks[0].done).toBe(false);
+    // The original blocks array reference itself was not mutated in place
+    // (nextState.blocks is a new array since we use .map())
+    expect(nextState.blocks).not.toBe(originalBlocks);
+  });
+});
