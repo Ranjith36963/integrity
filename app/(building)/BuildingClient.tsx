@@ -1,17 +1,20 @@
 "use client";
-// BuildingClient — re-authored for M3 (plan.md § Components — Page composition):
-// - M2 features preserved: blocks reducer, AddBlockSheet, Timeline, BlueprintBar
-// - M3 NEW: AddBrickSheet wired for onAddBrick (inside-block + standalone)
-// - M3 NEW: LooseBricksTray mounted when blocks.length > 0 || looseBricks.length > 0
-// - M3 NEW: dayPct(state) passed to Hero (M3 signature change)
+// BuildingClient — M4a extended from M3:
+// - M3 features preserved: blocks reducer, AddBlockSheet, Timeline, BlueprintBar,
+//   AddBrickSheet, LooseBricksTray, dayPct passed to Hero.
+// - M4a NEW: handleTickToggle dispatches LOG_TICK_BRICK; threaded to Timeline + LooseBricksTray.
+// - M4a NEW: useCrossUpEffect for day-100% → haptics.notification + playChime + Fireworks.
+// - M4a NEW: <Fireworks active={fireworksActive} /> overlay rendered.
 // - roundDownToHour: 1-line local helper — string slice, no Date math (SG-m2-04)
-// - TimelineBlock IS in import graph in M2 (via Timeline) — BuildingClient.imports.test.ts updated
 
-import { useReducer, useState } from "react";
+import { useReducer, useState, useCallback } from "react";
 import { today, dateLabel, dayPct } from "@/lib/dharma";
 import { dayOfYear, daysInYear } from "@/lib/dayOfYear";
 import { useNow } from "@/lib/useNow";
 import { reducer, defaultState } from "@/lib/data";
+import { useCrossUpEffect } from "@/lib/celebrations";
+import { haptics } from "@/lib/haptics";
+import { playChime } from "@/lib/audio";
 import { EditModeProvider } from "@/components/EditModeProvider";
 import { TopBar } from "@/components/TopBar";
 import { Hero } from "@/components/Hero";
@@ -21,6 +24,7 @@ import { BottomBar } from "@/components/BottomBar";
 import { AddBlockSheet } from "@/components/AddBlockSheet";
 import { AddBrickSheet } from "@/components/AddBrickSheet";
 import { LooseBricksTray } from "@/components/LooseBricksTray";
+import { Fireworks } from "@/components/Fireworks";
 import type { Block, Brick, Category } from "@/lib/types";
 
 /**
@@ -58,6 +62,7 @@ export function BuildingClient() {
     parentBlockId: null,
     defaultCategoryId: null,
   });
+  const [fireworksActive, setFireworksActive] = useState(false);
 
   // Live clock (ADR-023: server-clock paint on SSR, reconciles within 60s)
   const now = useNow();
@@ -71,6 +76,24 @@ export function BuildingClient() {
 
   // M3: dayPct now takes full AppState (blocks + looseBricks)
   const heroPct = dayPct(state);
+
+  // M4a: day-100% cross-up — fires notification haptic + chime + fireworks once per crossing
+  const fireDayComplete = useCallback(() => {
+    haptics.notification();
+    playChime();
+    setFireworksActive(true);
+    window.setTimeout(() => setFireworksActive(false), 1700);
+  }, []);
+
+  useCrossUpEffect(heroPct, 100, fireDayComplete);
+
+  // M4a: dispatch LOG_TICK_BRICK for tick chip taps; threaded to Timeline + LooseBricksTray
+  const handleTickToggle = useCallback(
+    (brickId: string) => {
+      dispatch({ type: "LOG_TICK_BRICK", brickId });
+    },
+    [dispatch],
+  );
 
   function openSheet(defaultStart: string) {
     setSheetState({ open: true, defaultStart });
@@ -138,13 +161,14 @@ export function BuildingClient() {
           categories={state.categories}
           now={now}
         />
-        {/* NowCard: NOT rendered in M2/M3 */}
+        {/* NowCard: NOT rendered in M2/M3/M4a */}
         <Timeline
           blocks={state.blocks}
           categories={state.categories}
           now={now}
           onSlotTap={(hour) => openSheet(hourToHHMM(hour))}
           onAddBrick={handleAddBrickFromBlock}
+          onTickToggle={handleTickToggle}
         />
         {/* LooseBricksTray: pinned above dock, visible when blocks or loose bricks exist */}
         {showTray && (
@@ -152,6 +176,7 @@ export function BuildingClient() {
             looseBricks={state.looseBricks}
             categories={state.categories}
             onAddBrick={handleAddLooseBrick}
+            onTickToggle={handleTickToggle}
           />
         )}
         <BottomBar onAddPress={() => openSheet(roundDownToHour(now))} />
@@ -175,6 +200,8 @@ export function BuildingClient() {
           onCancel={closeBrickSheet}
           onCreateCategory={handleCreateCategory}
         />
+        {/* M4a: Fireworks overlay — day-100% celebration */}
+        <Fireworks active={fireworksActive} />
       </div>
     </EditModeProvider>
   );

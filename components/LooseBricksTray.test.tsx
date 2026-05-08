@@ -86,7 +86,7 @@ describe("C-m3-011: LooseBricksTray chevron toggles expanded", () => {
     const region = screen.getByRole("region", { name: /loose bricks/i });
     // Find chevron toggle button
     const chevron = screen.getByRole("button", {
-      name: /expand|collapse|toggle/i,
+      name: /expand loose bricks|collapse loose bricks/i,
     });
     await user.click(chevron);
     expect(region.getAttribute("aria-expanded")).toBe("true");
@@ -102,7 +102,7 @@ describe("C-m3-011: LooseBricksTray chevron toggles expanded", () => {
       />,
     );
     const chevron = screen.getByRole("button", {
-      name: /expand|collapse|toggle/i,
+      name: /expand loose bricks|collapse loose bricks/i,
     });
     await user.click(chevron);
     // Should have a list role
@@ -121,7 +121,7 @@ describe("C-m3-011: LooseBricksTray chevron toggles expanded", () => {
       />,
     );
     const chevron = screen.getByRole("button", {
-      name: /expand|collapse|toggle/i,
+      name: /expand loose bricks|collapse loose bricks/i,
     });
     await user.click(chevron);
     const addBrickBtns = screen.getAllByRole("button", {
@@ -141,7 +141,7 @@ describe("C-m3-011: LooseBricksTray chevron toggles expanded", () => {
     );
     const region = screen.getByRole("region", { name: /loose bricks/i });
     const chevron = screen.getByRole("button", {
-      name: /expand|collapse|toggle/i,
+      name: /expand loose bricks|collapse loose bricks/i,
     });
     await user.click(chevron);
     expect(region.getAttribute("aria-expanded")).toBe("true");

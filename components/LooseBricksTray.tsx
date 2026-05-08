@@ -16,12 +16,14 @@ interface Props {
   looseBricks: Brick[];
   categories: Category[];
   onAddBrick: () => void;
+  onTickToggle?: (brickId: string) => void;
 }
 
 export function LooseBricksTray({
   looseBricks,
   categories,
   onAddBrick,
+  onTickToggle,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const listId = useId();
@@ -121,7 +123,12 @@ export function LooseBricksTray({
           >
             {looseBricks.map((brick) => (
               <li key={brick.id} role="listitem">
-                <BrickChip brick={brick} categories={categories} size="md" />
+                <BrickChip
+                  brick={brick}
+                  categories={categories}
+                  size="md"
+                  onTickToggle={onTickToggle}
+                />
               </li>
             ))}
           </ul>
@@ -141,7 +148,12 @@ export function LooseBricksTray({
         >
           {looseBricks.map((brick) => (
             <div key={brick.id} style={{ flexShrink: 0, maxWidth: "180px" }}>
-              <BrickChip brick={brick} categories={categories} size="sm" />
+              <BrickChip
+                brick={brick}
+                categories={categories}
+                size="sm"
+                onTickToggle={onTickToggle}
+              />
             </div>
           ))}
 
