@@ -307,3 +307,27 @@ describe("U-m4a-002: LOG_TICK_BRICK flips done true→false (toggle, not one-way
     expect(next.blocks[0].bricks[0].done).toBe(false);
   });
 });
+
+// ─── U-m4a-003: LOG_TICK_BRICK flips done on looseBricks ─────────────────────
+
+describe("U-m4a-003: LOG_TICK_BRICK flips done on looseBricks (no blocks)", () => {
+  it("flips looseBricks[0].done to true; state.blocks unchanged", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [
+        {
+          id: "lb1",
+          name: "brick A",
+          kind: "tick",
+          done: false,
+          categoryId: null,
+          parentBlockId: null,
+        },
+      ],
+    };
+    const next = reducer(state, { type: "LOG_TICK_BRICK", brickId: "lb1" });
+    expect(next.looseBricks[0].done).toBe(true);
+    expect(next.blocks).toEqual([]);
+  });
+});
