@@ -836,3 +836,42 @@ describe("U-m4b-010: assertNever fires for unknown action after LOG_GOAL_BRICK a
     expect(() => reducer(state, { type: "__never__" } as never)).toThrow();
   });
 });
+
+// ─── U-m4b-011: LOG_GOAL_BRICK with target === 0 (degenerate) ────────────────
+
+describe("U-m4b-011: LOG_GOAL_BRICK is a no-op when target === 0 (degenerate case)", () => {
+  it("returned state is same reference; count stays 0", () => {
+    const state: AppState = {
+      blocks: [
+        {
+          id: "block-1",
+          name: "block 1",
+          start: "09:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: null,
+          bricks: [
+            {
+              id: "g1",
+              name: "degenerate",
+              kind: "goal",
+              count: 0,
+              target: 0,
+              unit: "",
+              categoryId: null,
+              parentBlockId: "block-1",
+            },
+          ],
+        },
+      ],
+      categories: [],
+      looseBricks: [],
+    };
+    const next = reducer(state, {
+      type: "LOG_GOAL_BRICK",
+      brickId: "g1",
+      delta: 1,
+    });
+    expect(next).toBe(state);
+    expect(asGoal(next.blocks[0].bricks[0]).count).toBe(0);
+  });
+});
