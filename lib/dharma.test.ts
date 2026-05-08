@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   brickPct,
   blockPct,
+  dayPct,
+  categoryDayPct,
   toMin,
   duration,
   dayOffset,
@@ -13,7 +15,56 @@ import {
   dayNumber,
   dateLabel,
 } from "./dharma";
-import type { Block } from "./types";
+import type { AppState, Block, Brick } from "./types";
+
+// Helper to create a full M3-schema brick
+function makeTick(
+  overrides: Partial<Brick> & { done: boolean },
+): Brick & { kind: "tick" } {
+  return {
+    id: "test-brick",
+    name: "brick",
+    kind: "tick",
+    done: overrides.done,
+    categoryId: overrides.categoryId ?? null,
+    parentBlockId: overrides.parentBlockId ?? null,
+    ...("id" in overrides ? { id: overrides.id as string } : {}),
+    ...("name" in overrides ? { name: overrides.name as string } : {}),
+  } as Brick & { kind: "tick" };
+}
+
+function makeGoal(
+  overrides: { target: number; count: number; unit?: string } & Partial<Brick>,
+): Brick & { kind: "goal" } {
+  return {
+    id: "test-brick",
+    name: "brick",
+    kind: "goal",
+    target: overrides.target,
+    count: overrides.count,
+    unit: overrides.unit ?? "",
+    categoryId: overrides.categoryId ?? null,
+    parentBlockId: overrides.parentBlockId ?? null,
+    ...("id" in overrides ? { id: overrides.id as string } : {}),
+    ...("name" in overrides ? { name: overrides.name as string } : {}),
+  } as Brick & { kind: "goal" };
+}
+
+function makeTime(
+  overrides: { durationMin: number; minutesDone: number } & Partial<Brick>,
+): Brick & { kind: "time" } {
+  return {
+    id: "test-brick",
+    name: "brick",
+    kind: "time",
+    durationMin: overrides.durationMin,
+    minutesDone: overrides.minutesDone,
+    categoryId: overrides.categoryId ?? null,
+    parentBlockId: overrides.parentBlockId ?? null,
+    ...("id" in overrides ? { id: overrides.id as string } : {}),
+    ...("name" in overrides ? { name: overrides.name as string } : {}),
+  } as Brick & { kind: "time" };
+}
 
 // Minimal M2-compatible Block factory for tests that only care about bricks/start/end
 function makeBlock(
@@ -25,6 +76,11 @@ function makeBlock(
     categoryId: null,
     ...overrides,
   };
+}
+
+// Empty state helper
+function emptyState(): AppState {
+  return { blocks: [], categories: [], looseBricks: [] };
 }
 
 describe("dharma utilities (harness smoke test)", () => {
@@ -51,14 +107,10 @@ describe("dharma utilities (harness smoke test)", () => {
   });
 
   it("brickPct is 0 or 100 for tick, capped 0..100 for goal/time", () => {
-    expect(brickPct({ kind: "tick", name: "x", done: true })).toBe(100);
-    expect(brickPct({ kind: "tick", name: "x", done: false })).toBe(0);
-    expect(brickPct({ kind: "goal", name: "x", current: 4, target: 5 })).toBe(
-      80,
-    );
-    expect(
-      brickPct({ kind: "time", name: "x", current: 999, target: 10 }),
-    ).toBe(100);
+    expect(brickPct(makeTick({ done: true }))).toBe(100);
+    expect(brickPct(makeTick({ done: false }))).toBe(0);
+    expect(brickPct(makeGoal({ count: 4, target: 5 }))).toBe(80);
+    expect(brickPct(makeTime({ minutesDone: 999, durationMin: 10 }))).toBe(100);
   });
 
   it("blockPct averages brick percentages", () => {
@@ -67,9 +119,9 @@ describe("dharma utilities (harness smoke test)", () => {
       end: "07:00",
       name: "Fitness",
       bricks: [
-        { kind: "goal", name: "pushups", current: 80, target: 100 },
-        { kind: "time", name: "run", current: 30, target: 30 },
-        { kind: "tick", name: "stretch", done: true },
+        makeGoal({ count: 80, target: 100 }),
+        makeTime({ minutesDone: 30, durationMin: 30 }),
+        makeTick({ done: true }),
       ],
     });
     expect(blockPct(block)).toBeCloseTo((80 + 100 + 100) / 3);
@@ -78,44 +130,38 @@ describe("dharma utilities (harness smoke test)", () => {
 
 // U-bld-001: tick brick done:true → brickPct = 100
 it("U-bld-001: brickPct returns 100 for done tick brick", () => {
-  expect(brickPct({ kind: "tick", name: "x", done: true })).toBe(100);
+  expect(brickPct(makeTick({ done: true }))).toBe(100);
 });
 
 // U-bld-002: tick brick done:false → brickPct = 0
 it("U-bld-002: brickPct returns 0 for undone tick brick", () => {
-  expect(brickPct({ kind: "tick", name: "x", done: false })).toBe(0);
+  expect(brickPct(makeTick({ done: false }))).toBe(0);
 });
 
-// U-bld-003: goal brick current=4, target=5 → brickPct = 80
+// U-bld-003: goal brick count=4, target=5 → brickPct = 80
 it("U-bld-003: brickPct returns 80 for goal brick 4/5", () => {
-  expect(brickPct({ kind: "goal", name: "x", current: 4, target: 5 })).toBe(80);
+  expect(brickPct(makeGoal({ count: 4, target: 5 }))).toBe(80);
 });
 
-// U-bld-004: goal brick current=999, target=10 → brickPct = 100 (capped)
+// U-bld-004: goal brick count=999, target=10 → brickPct = 100 (capped)
 it("U-bld-004: brickPct caps at 100 for goal brick 999/10", () => {
-  expect(brickPct({ kind: "goal", name: "x", current: 999, target: 10 })).toBe(
-    100,
-  );
+  expect(brickPct(makeGoal({ count: 999, target: 10 }))).toBe(100);
 });
 
-// U-bld-005: time brick current=15, target=30 → brickPct = 50
+// U-bld-005: time brick minutesDone=15, durationMin=30 → brickPct = 50
 it("U-bld-005: brickPct returns 50 for time brick 15/30", () => {
-  expect(brickPct({ kind: "time", name: "x", current: 15, target: 30 })).toBe(
-    50,
-  );
+  expect(brickPct(makeTime({ minutesDone: 15, durationMin: 30 }))).toBe(50);
 });
 
-// U-bld-006: time brick current=999, target=10 → brickPct = 100 (capped)
+// U-bld-006: time brick minutesDone=999, durationMin=10 → brickPct = 100 (capped)
 it("U-bld-006: brickPct caps at 100 for time brick 999/10", () => {
-  expect(brickPct({ kind: "time", name: "x", current: 999, target: 10 })).toBe(
-    100,
-  );
+  expect(brickPct(makeTime({ minutesDone: 999, durationMin: 10 }))).toBe(100);
 });
 
 // U-bld-007: brick with target <= 0 → brickPct = 0 (no division by zero)
 it("U-bld-007: brickPct returns 0 for target <= 0", () => {
-  expect(brickPct({ kind: "goal", name: "x", current: 5, target: 0 })).toBe(0);
-  expect(brickPct({ kind: "time", name: "x", current: 5, target: -1 })).toBe(0);
+  expect(brickPct(makeGoal({ count: 5, target: 0 }))).toBe(0);
+  expect(brickPct(makeTime({ minutesDone: 5, durationMin: -1 }))).toBe(0);
 });
 
 // U-bld-008: block with bricks [goal 80, time 100, tick 100] → blockPct ≈ 93.33
@@ -125,9 +171,9 @@ it("U-bld-008: blockPct averages [80, 100, 100] to ~93.33", () => {
     end: "07:00",
     name: "Fitness",
     bricks: [
-      { kind: "goal", name: "pushups", current: 80, target: 100 },
-      { kind: "time", name: "run", current: 30, target: 30 },
-      { kind: "tick", name: "stretch", done: true },
+      makeGoal({ count: 80, target: 100 }),
+      makeTime({ minutesDone: 30, durationMin: 30 }),
+      makeTick({ done: true }),
     ],
   });
   expect(blockPct(block)).toBeCloseTo((80 + 100 + 100) / 3);
@@ -169,30 +215,24 @@ it("U-bld-015: dayOffset returns 1439 for 03:59", () => {
 // Replaced by wipe-demo (see tests.md § Migration of demo-build IDs).
 // These tests required import { BLOCKS } from "./data" which no longer exports BLOCKS.
 
-// U-bld-019: brickLabel for tick bricks
+// U-bld-019: brickLabel for tick bricks (M3: still works with new schema)
 it("U-bld-019: brickLabel returns done/— for tick bricks", () => {
-  expect(brickLabel({ kind: "tick", name: "x", done: true })).toBe("done");
-  expect(brickLabel({ kind: "tick", name: "x", done: false })).toBe("—");
+  expect(brickLabel(makeTick({ done: true }))).toBe("done");
+  expect(brickLabel(makeTick({ done: false }))).toBe("—");
 });
 
 // U-bld-020: brickLabel for goal brick with unit
 it("U-bld-020: brickLabel returns correct string for goal brick with unit", () => {
-  expect(
-    brickLabel({
-      kind: "goal",
-      name: "pushups",
-      current: 4,
-      target: 5,
-      unit: "reps",
-    }),
-  ).toBe("4/5 reps");
+  expect(brickLabel(makeGoal({ count: 4, target: 5, unit: "reps" }))).toBe(
+    "4/5 reps",
+  );
 });
 
 // U-bld-021: brickLabel for time brick
 it("U-bld-021: brickLabel returns correct string for time brick", () => {
-  expect(
-    brickLabel({ kind: "time", name: "meditate", current: 30, target: 45 }),
-  ).toBe("30/45 min");
+  expect(brickLabel(makeTime({ minutesDone: 30, durationMin: 45 }))).toBe(
+    "30/45 min",
+  );
 });
 
 // currentBlockIndex + nowOffsetPct + blockStatus — inline fixtures (no BLOCKS import)
@@ -241,4 +281,167 @@ it("U-bld-025: dateLabel returns short weekday + month + day, en-US", () => {
   expect(dateLabel("2026-04-29")).toBe("Wed, Apr 29");
   // No leading zero on day: January 5 → "Mon, Jan 5"
   expect(dateLabel("2026-01-05")).toBe("Mon, Jan 5");
+});
+
+// ─── U-m3-001: brickPct for tick kind ─────────────────────────────────────────
+
+it("U-m3-001: brickPct tick: done:false → 0, done:true → 100", () => {
+  expect(brickPct(makeTick({ done: false }))).toBe(0);
+  expect(brickPct(makeTick({ done: true }))).toBe(100);
+});
+
+// ─── U-m3-002: brickPct for goal kind ─────────────────────────────────────────
+
+it("U-m3-002: brickPct goal: 50%, 100%, capped, 0, zero-target guard", () => {
+  expect(brickPct(makeGoal({ count: 50, target: 100 }))).toBe(50);
+  expect(brickPct(makeGoal({ count: 100, target: 100 }))).toBe(100);
+  expect(brickPct(makeGoal({ count: 200, target: 100 }))).toBe(100); // capped
+  expect(brickPct(makeGoal({ count: 0, target: 100 }))).toBe(0);
+  expect(brickPct(makeGoal({ count: 5, target: 0 }))).toBe(0); // zero-target guard
+});
+
+// ─── U-m3-003: brickPct for time kind ─────────────────────────────────────────
+
+it("U-m3-003: brickPct time: 50%, capped, 0, zero-duration guard", () => {
+  expect(brickPct(makeTime({ minutesDone: 15, durationMin: 30 }))).toBe(50);
+  expect(brickPct(makeTime({ minutesDone: 60, durationMin: 30 }))).toBe(100); // capped
+  expect(brickPct(makeTime({ minutesDone: 0, durationMin: 30 }))).toBe(0);
+  expect(brickPct(makeTime({ minutesDone: 5, durationMin: 0 }))).toBe(0); // zero-duration guard
+});
+
+// ─── U-m3-004: blockPct empty-bricks floor = 0 ────────────────────────────────
+
+it("U-m3-004: blockPct returns 0 for block with bricks: []", () => {
+  const block = makeBlock({ start: "09:00", name: "block one", bricks: [] });
+  expect(blockPct(block)).toBe(0);
+});
+
+// ─── U-m3-005: blockPct non-empty mean ────────────────────────────────────────
+
+it("U-m3-005: blockPct non-empty: (100+0)/2=50; (80+50)/2=65", () => {
+  const block1 = makeBlock({
+    start: "09:00",
+    name: "block one",
+    bricks: [makeTick({ done: true }), makeTick({ done: false })],
+  });
+  expect(blockPct(block1)).toBe(50);
+
+  const block2 = makeBlock({
+    start: "09:00",
+    name: "block two",
+    bricks: [
+      makeGoal({ count: 80, target: 100 }),
+      makeTime({ minutesDone: 15, durationMin: 30 }),
+    ],
+  });
+  expect(blockPct(block2)).toBe(65);
+});
+
+// ─── U-m3-006: dayPct(state) empty-state floor ─────────────────────────────────
+
+it("U-m3-006: dayPct(state) returns 0 for empty state", () => {
+  expect(dayPct(emptyState())).toBe(0);
+});
+
+// ─── U-m3-007: dayPct(state) averages over (blocks + looseBricks) ─────────────
+
+it("U-m3-007: dayPct(state) averages blocks+looseBricks correctly", () => {
+  // One block at blockPct=100, zero loose bricks → 100
+  const block100 = makeBlock({
+    start: "09:00",
+    name: "b1",
+    bricks: [makeTick({ done: true })],
+  });
+  expect(dayPct({ blocks: [block100], categories: [], looseBricks: [] })).toBe(
+    100,
+  );
+
+  // One block at 100, one loose brick at 0 → 50
+  const looseBrick0 = makeTick({ done: false });
+  expect(
+    dayPct({
+      blocks: [block100],
+      categories: [],
+      looseBricks: [looseBrick0],
+    }),
+  ).toBe(50);
+
+  // Two blocks at 100, one loose brick at 50 → (100+100+50)/3 ≈ 83.33
+  const block100b = makeBlock({
+    start: "10:00",
+    name: "b2",
+    bricks: [makeTick({ done: true })],
+  });
+  const looseBrick50 = makeGoal({ count: 50, target: 100 });
+  expect(
+    dayPct({
+      blocks: [block100, block100b],
+      categories: [],
+      looseBricks: [looseBrick50],
+    }),
+  ).toBeCloseTo((100 + 100 + 50) / 3, 2);
+
+  // Zero blocks, one loose brick at 40 → 40
+  const looseBrick40 = makeGoal({ count: 40, target: 100 });
+  expect(
+    dayPct({ blocks: [], categories: [], looseBricks: [looseBrick40] }),
+  ).toBe(40);
+});
+
+// ─── U-m3-008: categoryDayPct filtering ───────────────────────────────────────
+
+it("U-m3-008: categoryDayPct filters by category; null excluded; non-existent → 0", () => {
+  // Block categoryId='c1' containing:
+  //   - c2 brick (done:true) → 100%
+  //   - c1 brick (done:true) → 100%
+  // Loose bricks:
+  //   - c1 goal (50%)
+  //   - null tick (done:true) → excluded from category queries
+  const c1Block = makeBlock({
+    id: "block1",
+    start: "09:00",
+    name: "block one",
+    categoryId: "c1",
+    bricks: [
+      makeTick({ done: true, categoryId: "c2", parentBlockId: "block1" }),
+      makeTick({ done: true, categoryId: "c1", parentBlockId: "block1" }),
+    ],
+  });
+
+  const looseC1 = makeGoal({
+    count: 5,
+    target: 10,
+    categoryId: "c1",
+    parentBlockId: null,
+  });
+  const looseNull = makeTick({
+    done: true,
+    categoryId: null,
+    parentBlockId: null,
+  });
+
+  const state: AppState = {
+    blocks: [c1Block],
+    categories: [],
+    looseBricks: [looseC1, looseNull],
+  };
+
+  // c1: block (categoryId=c1 → blockPct=50%), c1 brick inside block (100%), loose c1 brick (50%)
+  // blockPct(c1Block) = (100 + 100)/2 = 100 (mean of all bricks in block)
+  // But categoryDayPct for c1:
+  //   - block.categoryId === 'c1' → contributes blockPct(block) = 100
+  //   - c1 brick inside block → contributes brickPct = 100
+  //   - loose c1 brick → contributes brickPct = 50
+  //   avg = (100 + 100 + 50) / 3 ≈ 83.33
+  expect(categoryDayPct(state, "c1")).toBeCloseTo((100 + 100 + 50) / 3, 2);
+
+  // c2: c2 brick inside block (done:true → 100%)
+  //   avg = 100 / 1 = 100
+  expect(categoryDayPct(state, "c2")).toBe(100);
+
+  // non-existent → 0
+  expect(categoryDayPct(state, "c-nonexistent")).toBe(0);
+
+  // null loose brick is excluded from category queries (but counted in dayPct)
+  // (implicitly tested by c1 not including it)
 });

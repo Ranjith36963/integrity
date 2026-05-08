@@ -117,7 +117,7 @@ export function NowCard({ block, onLogBrick }: Props) {
             <BrickComponent
               key={`${block.start}-${b.name}-${b.kind}`}
               brick={b}
-              category={block.category}
+              color={color}
               index={i}
               onLog={(updated) => onLogBrick(i, updated)}
               editMode={false}

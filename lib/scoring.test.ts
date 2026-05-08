@@ -1,6 +1,31 @@
 import { describe, it, expect } from "vitest";
 import { dayPct, buildingPct, blockPct } from "./scoring";
-import type { Block } from "./types";
+import type { AppState, Block, Brick } from "./types";
+
+// Helpers for M3 Brick schema
+function makeTick(done: boolean): Brick {
+  return {
+    id: "t",
+    name: "x",
+    kind: "tick",
+    done,
+    categoryId: null,
+    parentBlockId: null,
+  };
+}
+
+function makeGoal(count: number, target: number): Brick {
+  return {
+    id: "g",
+    name: "x",
+    kind: "goal",
+    count,
+    target,
+    unit: "",
+    categoryId: null,
+    parentBlockId: null,
+  };
+}
 
 // Minimal M2-compatible Block factory for scoring tests
 function makeBlock(
@@ -14,6 +39,10 @@ function makeBlock(
   };
 }
 
+function toState(blocks: Block[]): AppState {
+  return { blocks, categories: [], looseBricks: [] };
+}
+
 // U-bld-010: Two blocks of unequal duration with percentages 50 and 100
 // → equal-weighted average = 75 (NOT duration-weighted)
 describe("U-bld-010: dayPct uses equal-weighted averaging", () => {
@@ -23,42 +52,39 @@ describe("U-bld-010: dayPct uses equal-weighted averaging", () => {
         start: "04:00",
         end: "05:00", // 60 min
         name: "Short block",
-        bricks: [{ kind: "tick", name: "x", done: false }], // 0%
+        bricks: [makeTick(false)], // 0%
       }),
       makeBlock({
         start: "05:00",
         end: "09:00", // 240 min — 4x longer
         name: "Long block",
-        bricks: [{ kind: "tick", name: "y", done: true }], // 100%
+        bricks: [makeTick(true)], // 100%
       }),
     ];
     // Force block pcts to 0 and 100 respectively
     expect(blockPct(blocks[0])).toBe(0);
     expect(blockPct(blocks[1])).toBe(100);
     // Equal-weighted: (0 + 100) / 2 = 50
-    expect(dayPct(blocks)).toBe(50);
+    expect(dayPct(toState(blocks))).toBe(50);
 
     const blocks2: Block[] = [
       makeBlock({
         start: "04:00",
         end: "05:00", // 60 min
         name: "Half block",
-        bricks: [
-          { kind: "tick", name: "a", done: true },
-          { kind: "tick", name: "b", done: false },
-        ], // 50%
+        bricks: [makeTick(true), makeTick(false)], // 50%
       }),
       makeBlock({
         start: "05:00",
         end: "09:00", // 240 min — 4x longer
         name: "Full block",
-        bricks: [{ kind: "tick", name: "c", done: true }], // 100%
+        bricks: [makeTick(true)], // 100%
       }),
     ];
     expect(blockPct(blocks2[0])).toBe(50);
     expect(blockPct(blocks2[1])).toBe(100);
     // Equal-weighted: (50 + 100) / 2 = 75
-    expect(dayPct(blocks2)).toBe(75);
+    expect(dayPct(toState(blocks2))).toBe(75);
   });
 });
 
@@ -72,41 +98,40 @@ describe("U-bld-011 (inline fixture): dayPct equals equal-weighted mean", () => 
         start: "04:00",
         end: "05:00",
         name: "A",
-        bricks: [
-          { kind: "tick", name: "x", done: true },
-          { kind: "tick", name: "y", done: false },
-        ], // 50%
+        bricks: [makeTick(true), makeTick(false)], // 50%
       }),
       makeBlock({
         start: "05:00",
         end: "06:00",
         name: "B",
-        bricks: [{ kind: "goal", name: "z", current: 3, target: 4 }], // 75%
+        bricks: [makeGoal(3, 4)], // 75%
       }),
       makeBlock({
         start: "06:00",
         end: "07:00",
         name: "C",
-        bricks: [{ kind: "tick", name: "w", done: true }], // 100%
+        bricks: [makeTick(true)], // 100%
       }),
     ];
     const expected =
       blocks.reduce((s, b) => s + blockPct(b), 0) / blocks.length;
-    expect(dayPct(blocks)).toBeCloseTo(expected);
+    expect(dayPct(toState(blocks))).toBeCloseTo(expected);
   });
 });
 
-// U-bld-012: dayPct([]) = 0 (no division by zero)
-describe("U-bld-012: dayPct([]) returns 0 without division by zero", () => {
-  it("returns 0 for empty blocks array", () => {
-    expect(dayPct([])).toBe(0);
+// U-bld-012: dayPct(emptyState) = 0 (no division by zero)
+describe("U-bld-012: dayPct(emptyState) returns 0 without division by zero", () => {
+  it("returns 0 for empty state", () => {
+    expect(dayPct({ blocks: [], categories: [], looseBricks: [] })).toBe(0);
   });
 });
 
 // Verify buildingPct alias works the same way
 describe("buildingPct is an alias for dayPct", () => {
-  it("buildingPct([]) === 0", () => {
-    expect(buildingPct([])).toBe(0);
+  it("buildingPct(emptyState) === 0", () => {
+    expect(buildingPct({ blocks: [], categories: [], looseBricks: [] })).toBe(
+      0,
+    );
   });
 
   it("buildingPct with inline fixture === dayPct with same fixture", () => {
@@ -115,9 +140,10 @@ describe("buildingPct is an alias for dayPct", () => {
         start: "04:00",
         end: "05:00",
         name: "A",
-        bricks: [{ kind: "tick", name: "x", done: true }],
+        bricks: [makeTick(true)],
       }),
     ];
-    expect(buildingPct(blocks)).toBe(dayPct(blocks));
+    const state = toState(blocks);
+    expect(buildingPct(state)).toBe(dayPct(state));
   });
 });

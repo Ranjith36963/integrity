@@ -1,31 +1,23 @@
 "use client";
 import { useState } from "react";
 import { X } from "lucide-react";
-// [obsolete: not-imported-in-M2] — stays on disk for M3+ revisit.
+// [obsolete] — not imported in M3. BrickChip replaces this.
+// M3: updated to use new Brick schema field names (count/target/unit for goal; minutesDone/durationMin for time).
 import { Brick as BrickT } from "@/lib/types";
-import type { Category } from "@/components/ui/types";
-
-const CATEGORY_COLOR: Record<Category, string> = {
-  health: "#34d399",
-  mind: "#c4b5fd",
-  career: "#fbbf24",
-  passive: "#64748b",
-};
 import { brickPct, brickLabel } from "@/lib/dharma";
 import { BrickStepper } from "./BrickStepper";
 
 interface Props {
   brick: BrickT;
-  category: Category;
+  color: string;
   index: number;
   onLog: (updated: BrickT) => void;
   editMode: boolean;
 }
 
-export function Brick({ brick, category, index, onLog, editMode }: Props) {
+export function Brick({ brick, color, index, onLog, editMode }: Props) {
   const [stepperOpen, setStepperOpen] = useState(false);
   const pct = brickPct(brick);
-  const color = CATEGORY_COLOR[category];
   const empty = pct === 0;
   const partial = pct > 0 && pct < 100;
   const cls = [
@@ -40,9 +32,9 @@ export function Brick({ brick, category, index, onLog, editMode }: Props) {
   function displayLabel(): string {
     if (brick.kind === "tick") return brick.name;
     if (brick.kind === "time")
-      return `${brick.name} ${brick.current}/${brick.target}m`;
+      return `${brick.name} ${brick.minutesDone}/${brick.durationMin}m`;
     // goal
-    return `${brick.name} ${brick.current}/${brick.target}${brick.unit ? " " + brick.unit : ""}`;
+    return `${brick.name} ${brick.count}/${brick.target}${brick.unit ? " " + brick.unit : ""}`;
   }
 
   const label = displayLabel();
@@ -60,7 +52,11 @@ export function Brick({ brick, category, index, onLog, editMode }: Props) {
   }
 
   function handleStepperCommit(value: number) {
-    onLog({ ...brick, current: value } as BrickT);
+    if (brick.kind === "goal") {
+      onLog({ ...brick, count: value });
+    } else if (brick.kind === "time") {
+      onLog({ ...brick, minutesDone: value });
+    }
   }
 
   if (editMode) {

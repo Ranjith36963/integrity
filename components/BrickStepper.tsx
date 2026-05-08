@@ -2,14 +2,24 @@
 import { useState } from "react";
 import type { Brick } from "@/lib/types";
 
+// [obsolete] — BrickStepper not imported in M3. M4 wires logging via BrickChip.
+// M3: updated field reads: goal → count, time → minutesDone.
+
 interface Props {
   brick: Extract<Brick, { kind: "goal" | "time" }>;
   onCommit: (value: number) => void;
   onClose: () => void;
 }
 
+function getCurrentValue(
+  brick: Extract<Brick, { kind: "goal" | "time" }>,
+): number {
+  if (brick.kind === "goal") return brick.count;
+  return brick.minutesDone;
+}
+
 export function BrickStepper({ brick, onCommit, onClose }: Props) {
-  const [draft, setDraft] = useState(brick.current);
+  const [draft, setDraft] = useState(getCurrentValue(brick));
 
   const decrement = () => {
     const next = Math.max(0, draft - 1);
