@@ -1,6 +1,6 @@
 # Status
 
-> Where Dharma is **right now**. The SHIPPER agent updates this file after every successful ship (mandatory per ADR-026); Main Claude updates the "Feature in flight" line at handoffs.
+> Where Dharma is **right now**. The SHIPPER agent updates this file after every successful ship (mandatory per ADR-041, formerly ADR-026); Main Claude updates the "Feature in flight" line at handoffs.
 >
 > Read this first when starting a fresh session.
 
@@ -9,7 +9,7 @@
 - **Branch:** `claude/verify-m0-deployment-s4XRy` at `8a0baaa` · `main` at `c3ef9f1` (feature branch not yet merged)
 - **Last commit:** `8a0baaa` — M3 ship (docs: CHANGELOG + README + status.md). Implementation HEAD: `5eac7ca`.
 - **Last preview URL:** `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (stable branch alias; auto-tracks latest deployment for this branch). Sandbox `curl -I` returns HTTP 403 `x-deny-reason: host_not_allowed` (Vercel Deployment Protection — same as M0/M1/M2; not a failure; signed-in browser sessions serve normally).
-- **Methodology:** The Loop (SDD-outside, TDD-inside) per ADR-025; two human gates per ADR-026; per-phase commit prefixes per ADR-027.
+- **Methodology:** The Loop (SDD-outside, TDD-inside) per ADR-025; **single human gate** (preview tap-test only) per ADR-041 — the VERIFIER agent now replaces the planning gate; per-phase commit prefixes per ADR-027.
 
 ## Plan in force
 
@@ -44,6 +44,7 @@
 - **2 unsuppressed lint warnings:** `LooseBricksTray.tsx:43` and `TimelineBlock.tsx:62` render `aria-expanded` on `role="region"` / `role="article"` respectively. Both are spec-mandated by AC #44 + AC #45; ESLint reports as warnings, not errors. Intentional.
 - **`harness.md` MCP rows still MISSING** for Vercel + Context7 + Playwright — wired in user's Claude account, not loaded into this session.
 - **`lib/dharma.ts:duration()` returns 0 for no-end blocks** — intentional design; documented in CHANGELOG (pre-M2 `U-bld-014` tests still pass).
+- **The Loop is now single-gate (ADR-041, 2026-05-08).** VERIFIER agent (`.claude/agents/verifier.md`) replaces Gate #1 — automated audit of plan + tests against spec, runs in 5 min, FAIL bounces to PLANNER (cap: 2 retries). Gate #2 (preview tap-test) is the only human gate. Effective from M4 onward; M0..M3 commit history unchanged.
 
 ## Quality gates (last full Evaluator PASS on `5eac7ca` — M3)
 

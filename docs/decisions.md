@@ -750,3 +750,47 @@ Each sub-dispatch is committed independently with prefix `docs(tests-<feature>-u
 
 - A telemetry watchdog that auto-bails PLANNER if tokens-per-minute < 500 for 60 s (would convert 32-min failures to 90-s failures). Worth doing; defer until evidence of recurrence.
 - Pre-writing test skeletons in PLAN dispatch (just IDs + targets) so TESTS only fills GIVEN/WHEN/THEN. Would decouple structure from layer; non-trivial to retrofit. Defer.
+
+---
+
+## ADR-041 — Single-gate Loop: VERIFIER replaces Gate #1
+
+**Status:** Accepted · 2026-05-08 · Supersedes ADR-026's two-gate model.
+
+**Context.** ADR-026 specified two human gates per feature: Gate #1 (after PLANNER's TESTS dispatch — user reads `plan.md` + `tests.md` together) and Gate #2 (after SHIPPER — user taps the preview). Through M0..M3, Gate #1 fired every feature and was treated seriously, but in practice it surfaced almost no design drift the existing PLANNER prompts hadn't already prevented. The user's reaction at Gate #1 was almost always "approve" with minor copy edits. Meanwhile each Gate #1 cost a human context-switch and 5–15 minutes of reading dense GIVEN/WHEN/THEN tables — exactly the work an LLM is good at and a human is slow at.
+
+User feedback at end of M3: "I want to get rid of Gate #1. I'll trust the system. Only the preview matters." The request is well-grounded: live behavior is the only thing a human meaningfully evaluates faster than an automated check. Plan-vs-spec coverage is structured comparison work an agent can do reliably.
+
+**Decision.** Collapse Gate #1 into a new automated agent — **VERIFIER** — that runs after PLANNER's TESTS dispatch and before BUILDER starts. Gate #2 (preview tap-test) remains as the only human gate.
+
+The new Loop: **PLAN → TESTS → VERIFY (auto) → BUILD → EVAL (auto) → SHIP → Gate #2**.
+
+VERIFIER specification (codified in `.claude/agents/verifier.md`):
+
+- **Inputs:** `/docs/spec.md` (named feature only), the just-written `plan.md` entry, the just-written `tests.md` entry, `/docs/decisions.md`, `/docs/status.md`.
+- **Five checks, all required:** spec coverage (every AC has ≥1 test ID), test grounding (every test ID maps to an AC), plan↔spec consistency (no contradictions, no scope creep), test ID hygiene (stable prefixes, GIVEN/WHEN/THEN, no duplicates), schema lock + ADR honor.
+- **Output:** PASS (with AC → test-ID mapping) or FAIL (with numbered gap list G1..Gn).
+- **Time-box:** 5 minutes max. If verification cannot reach a verdict, FAIL with a partial gap list.
+- **Tools:** `Read, Glob, Grep, Bash`. Read-only (no `Write`, no `Edit`).
+- **Model:** sonnet. The job is structured comparison — opus is overkill, sonnet is sufficient.
+- **Forbidden:** writing code/plans/tests; editing `plan.md` or `tests.md`; running `npm run eval` (that's EVALUATOR's job, after BUILDER green); deploying.
+- **Auto-chain on PASS:** orchestrator dispatches BUILDER. Verifier-driven follow-ups (rare) commit as `docs(verify-<feature>): …`.
+- **Bounce on FAIL:** orchestrator re-dispatches PLANNER in the appropriate mode (PLAN or TESTS) with the gap list as the only thing to address. Re-dispatches VERIFIER. **Cap: 2 retries.** After 2 consecutive FAILs, escalate to user with the standing gap list verbatim. (3 retries was the EVALUATOR cap; VERIFIER gets 2 because its work is documents-only and gaps tend to be more deterministic.)
+
+The orchestrator (Main Claude or the `/feature` slash command) treats VERIFIER's PASS as binding. There is **no human gate between TESTS and BUILDER any more** — the user does not see `plan.md` or `tests.md` for review unless VERIFIER escalates after 2 retries.
+
+**Consequences.**
+
+- **One human check-in per feature instead of two.** Velocity-positive: the Gate #1 cost (5–15 min × N features) goes away entirely. The user's attention is reserved for the preview, which is the only place a human can add value an agent can't.
+- **Trust shifts from human review to VERIFIER design.** The audit job is identical to what the human did at Gate #1; the risk surface is whether VERIFIER's five checks are exhaustive enough. Mitigation: VERIFIER outputs a complete AC → test-ID mapping in every PASS, so any drift it missed becomes visible in the next dispatch's status.md or the eventual EVALUATOR run.
+- **Two retry caps now exist.** EVALUATOR ↔ BUILDER stays at 3 (per ADR-024 — code rework is iterative). VERIFIER ↔ PLANNER caps at 2 (per this ADR — design audits should converge fast or escalate).
+- **Commit-prefix table extended.** Verifier-driven follow-ups commit as `docs(verify-<feature>): …`. Most features won't see one — VERIFIER is read-only.
+- **CLAUDE.md, `.claude/commands/feature.md`, and `.claude/agents/` updated in the same harness commit.** Phase numbering shifts (VERIFY becomes Phase 4; IMPL becomes Phase 5; EVAL Phase 6; SHIP Phase 7).
+- **Backwards-compatible.** Already-shipped milestones (M0..M3) used the two-gate model; their commit history is unchanged. M4 onward uses the single-gate Loop.
+- **Reversible.** If VERIFIER misses real drift across multiple features, this ADR can be marked superseded and Gate #1 reinstated. The migration cost would be small — the agent file stays as a quality check, the gate just adds back a `STOP, wait for user approval` step.
+
+**Out of scope (for ADR-041, addressable in future ADRs):**
+
+- Explicit AC numbering inside `spec.md` (currently many ACs are unnumbered prose). VERIFIER works around this by parsing acceptance-criteria blocks heuristically, but a stable numbering scheme would make verification deterministic. Defer until evidence of mis-mappings.
+- A "VERIFY-driven plan-amend" mode where VERIFIER directly edits `plan.md`/`tests.md` rather than bouncing to PLANNER. Faster but breaks the "VERIFIER is read-only" invariant. Defer.
+- Auto-detection of milestone-vs-task scope (when VERIFIER notices a milestone is too large to ship in one cycle, suggest splitting). Useful but separable concern. Defer.
