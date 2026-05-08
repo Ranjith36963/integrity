@@ -786,3 +786,44 @@ describe("U-m4b-008: LOG_GOAL_BRICK is a no-op when id matches a time brick (kin
     expect(next.blocks[0].bricks[0].kind).toBe("time");
   });
 });
+
+// ─── U-m4b-009: LOG_GOAL_BRICK returns new top-level reference on real change ──
+
+describe("U-m4b-009: LOG_GOAL_BRICK returns new state reference on real change; no in-place mutation", () => {
+  it("prevState !== nextState; original brick reference not mutated", () => {
+    const prevState: AppState = {
+      blocks: [
+        {
+          id: "block-1",
+          name: "block 1",
+          start: "09:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: null,
+          bricks: [
+            {
+              id: "g1",
+              name: "pushups",
+              kind: "goal",
+              count: 2,
+              target: 5,
+              unit: "",
+              categoryId: null,
+              parentBlockId: "block-1",
+            },
+          ],
+        },
+      ],
+      categories: [],
+      looseBricks: [],
+    };
+    const originalBrick = prevState.blocks[0].bricks[0];
+    const nextState = reducer(prevState, {
+      type: "LOG_GOAL_BRICK",
+      brickId: "g1",
+      delta: 1,
+    });
+    expect(nextState).not.toBe(prevState);
+    expect(asGoal(originalBrick).count).toBe(2);
+    expect(asGoal(nextState.blocks[0].bricks[0]).count).toBe(3);
+  });
+});
