@@ -377,3 +377,44 @@ describe("C-m4a-008: brick-fill transition is 600ms ease-in-out when useReducedM
     expect(fill.style.transition).toContain("width 600ms ease-in-out");
   });
 });
+
+// ─── C-m4a-009: keyboard Enter/Space activates onTickToggle ──────────────────
+
+describe("C-m4a-009: keyboard Enter and Space activate onTickToggle on tick chip", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("Enter press calls onTickToggle once", async () => {
+    const onTickToggle = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <BrickChip
+        brick={makeTick(false)}
+        categories={[cat1]}
+        onTickToggle={onTickToggle}
+      />,
+    );
+    const btn = screen.getByRole("button");
+    btn.focus();
+    await user.keyboard("{Enter}");
+    expect(onTickToggle).toHaveBeenCalledTimes(1);
+    expect(onTickToggle).toHaveBeenCalledWith("r1");
+  });
+
+  it("Space press calls onTickToggle once", async () => {
+    const onTickToggle = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <BrickChip
+        brick={makeTick(false)}
+        categories={[cat1]}
+        onTickToggle={onTickToggle}
+      />,
+    );
+    const btn = screen.getByRole("button");
+    btn.focus();
+    await user.keyboard(" ");
+    expect(onTickToggle).toHaveBeenCalledTimes(1);
+  });
+});
