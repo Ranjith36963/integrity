@@ -48,13 +48,14 @@ npm run test:e2e:install
 
 ## Status
 
-| Milestone                         | State                                          |
-| --------------------------------- | ---------------------------------------------- |
-| M0 — Design System                | Shipped + tap-tested                           |
-| M1 — Empty Building Shell         | Shipped + tap-tested                           |
-| M2 — Add Block Flow               | Shipped + tap-tested                           |
-| M3 — Add Brick + Live Scoring     | Shipped to preview — awaiting Gate #2 tap-test |
-| M4 — Block Expand + Brick Logging | Not started — next up                          |
+| Milestone                     | State                                          |
+| ----------------------------- | ---------------------------------------------- |
+| M0 — Design System            | Shipped + tap-tested                           |
+| M1 — Empty Building Shell     | Shipped + tap-tested                           |
+| M2 — Add Block Flow           | Shipped + tap-tested                           |
+| M3 — Add Brick + Live Scoring | Shipped + tap-tested                           |
+| M4a — Tick Brick Logging      | Shipped to preview — awaiting Gate #2 tap-test |
+| M4b — Goal Stepper            | Not started — next up                          |
 
 Latest preview: `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (branch alias; auto-tracks `claude/verify-m0-deployment-s4XRy`). Vercel Deployment Protection active — open in browser while signed in to Vercel.
 
@@ -73,12 +74,14 @@ components/          Shared UI components + unit tests
   BottomBar.tsx      Floating dock — + button opens AddBlockSheet (M2+)
   AddBlockSheet.tsx  Full add-block flow: title, time, recurrence, category, validation
   AddBrickSheet.tsx  Add Brick flow: kind picker (tick/goal/time), per-type fields, validation
-  BrickChip.tsx      Brick chip with type-specific render + foreground fill = brickPct%
+  BrickChip.tsx      Brick chip with type-specific render + foreground fill = brickPct%; tick chips are tappable
+  Fireworks.tsx      Day-100% celebration overlay; ≤ 16 particles; ~1.6 s; suppressed under prefers-reduced-motion
   CategoryPicker.tsx Category selector chip row with inline NewCategoryForm sub-view
   HeroRing.tsx       SVG arc around the Hero numeral; stroke tracks dayPct%
   LooseBricksTray    Pinned tray above dock; lists loose bricks + "+ Brick" pill
 lib/                 Domain logic: types, data, scoring, utilities
   celebrations.ts    useCrossUpEffect hook — one-shot cross-up detection for bloom/fireworks
+  audio.ts           playChime() — lazy HTMLAudioElement for /sounds/chime.mp3; SSR + iOS guard
   dayOfYear.ts       Pure day-of-year helper (leap-year aware)
   timeOffset.ts      Exports HOUR_HEIGHT_PX — single source of truth for timeline geometry
   blockValidation.ts Pure validators (title, end time, overflow, recurrence, overlap, brick fields)
