@@ -10,14 +10,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("U-m4a-008: playChime lazily constructs one Audio element and calls .play() twice", () => {
   let mockPlay: ReturnType<typeof vi.fn>;
-  let MockAudio: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.resetModules();
     mockPlay = vi.fn().mockResolvedValue(undefined);
-    MockAudio = vi.fn(() => ({ play: mockPlay }));
-    // Install on globalThis so the SSR guard passes
-    globalThis.Audio = MockAudio as unknown as typeof Audio;
+    // Use a class-style constructor spy so `new Audio(...)` works
+    class MockAudioClass {
+      play = mockPlay;
+    }
+    globalThis.Audio = MockAudioClass as unknown as typeof Audio;
   });
 
   afterEach(() => {
@@ -26,27 +27,29 @@ describe("U-m4a-008: playChime lazily constructs one Audio element and calls .pl
   });
 
   it("Audio constructor called once; .play() called twice when playChime is invoked twice", async () => {
+    const constructorSpy = vi.spyOn(globalThis, "Audio");
     const { playChime } = await import("./audio");
     playChime();
     playChime();
-    expect(MockAudio).toHaveBeenCalledTimes(1);
-    expect(MockAudio).toHaveBeenCalledWith("/sounds/chime.mp3");
+    expect(constructorSpy).toHaveBeenCalledTimes(1);
+    expect(constructorSpy).toHaveBeenCalledWith("/sounds/chime.mp3");
     expect(mockPlay).toHaveBeenCalledTimes(2);
+    constructorSpy.mockRestore();
   });
 });
 
 // ─── U-m4a-009: try/catch swallows play() rejection ─────────────────────────
 
 describe("U-m4a-009: playChime swallows play() rejection silently", () => {
-  let MockAudio: ReturnType<typeof vi.fn>;
-
   beforeEach(() => {
     vi.resetModules();
     const mockPlay = vi
       .fn()
       .mockRejectedValue(new DOMException("blocked", "NotAllowedError"));
-    MockAudio = vi.fn(() => ({ play: mockPlay }));
-    globalThis.Audio = MockAudio as unknown as typeof Audio;
+    class MockAudioClass {
+      play = mockPlay;
+    }
+    globalThis.Audio = MockAudioClass as unknown as typeof Audio;
   });
 
   afterEach(() => {
