@@ -361,3 +361,19 @@ describe("C-m4a-007: reduced-motion suppresses brick-fill transition", () => {
     expect(fill.style.transition).toBe("none");
   });
 });
+
+// ─── C-m4a-008: brick-fill has width 600ms ease-in-out when not reduced-motion ─
+
+describe("C-m4a-008: brick-fill transition is 600ms ease-in-out when useReducedMotion=false", () => {
+  it("brick-fill transition includes 'width 600ms ease-in-out'", async () => {
+    const { useReducedMotion } = await import("motion/react");
+    vi.mocked(useReducedMotion).mockReturnValue(false);
+    const { container } = render(
+      <BrickChip brick={makeTick(false)} categories={[cat1]} />,
+    );
+    const fill = container.querySelector(
+      "[data-testid='brick-fill']",
+    ) as HTMLElement;
+    expect(fill.style.transition).toContain("width 600ms ease-in-out");
+  });
+});
