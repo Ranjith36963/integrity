@@ -456,3 +456,12 @@ describe("U-m4a-006: LOG_TICK_BRICK returns new top-level reference; no in-place
     expect(nextState.blocks).not.toBe(originalBlocks);
   });
 });
+
+// ─── U-m4a-007: assertNever exhaustiveness with LOG_TICK_BRICK in union ───────
+
+describe("U-m4a-007: assertNever fires for unknown action shape (exhaustiveness)", () => {
+  it("default branch throws for unknown action type", () => {
+    const state: AppState = { blocks: [], categories: [], looseBricks: [] };
+    expect(() => reducer(state, { type: "__never__" } as never)).toThrow();
+  });
+});
