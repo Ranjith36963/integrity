@@ -36,6 +36,7 @@ describe("U-m0-005: getMotion returns correct tokens for each Duration", () => {
       "modalOut",
       "longPress",
       "stagger",
+      "fireworks",
     ];
     for (const token of allTokens) {
       const { easing } = getMotion(token, false);
@@ -53,6 +54,7 @@ describe("U-m0-006: getMotion(token, reduced=true) collapses all to 0", () => {
     "modalOut",
     "longPress",
     "stagger",
+    "fireworks",
   ];
 
   it.each(allTokens)("token %s → durationMs=0 and easing=linear", (token) => {
