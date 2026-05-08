@@ -59,6 +59,35 @@ export function reducer(state: AppState, action: Action): AppState {
         looseBricks: state.looseBricks.map(flip),
       };
     }
+    case "LOG_GOAL_BRICK": {
+      // Clamp-increment/decrement count on matching goal brick.
+      // Identity short-circuit: returns original state reference on no-op (clamp or id miss).
+      const apply = (b: Brick): Brick => {
+        if (b.id !== action.brickId || b.kind !== "goal") return b;
+        const next = Math.max(0, Math.min(b.target, b.count + action.delta));
+        if (next === b.count) return b; // clamp no-op — preserve identity
+        return { ...b, count: next };
+      };
+      let changed = false;
+      const blocks = state.blocks.map((bl) => {
+        let blockChanged = false;
+        const bricks = bl.bricks.map((br) => {
+          const out = apply(br);
+          if (out !== br) blockChanged = true;
+          return out;
+        });
+        if (!blockChanged) return bl;
+        changed = true;
+        return { ...bl, bricks };
+      });
+      const looseBricks = state.looseBricks.map((br) => {
+        const out = apply(br);
+        if (out !== br) changed = true;
+        return out;
+      });
+      if (!changed) return state;
+      return { ...state, blocks, looseBricks };
+    }
     default:
       return assertNever(action);
   }
