@@ -464,3 +464,22 @@ describe("C-m4b-001: goal chip renders <div role='group'> with Decrease/Increase
     ).toBeInTheDocument();
   });
 });
+
+// ─── C-m4b-002: stepper buttons meet 44px touch target (ADR-031) ─────────────
+
+describe("C-m4b-002: goal chip stepper buttons have min-width >= 44px and min-height >= 44px", () => {
+  it("each stepper button's inline style shows minWidth and minHeight of 44px", () => {
+    const { container } = render(
+      <BrickChip
+        brick={makeGoalBrick("g1", "pushups", 2, 10, "reps")}
+        categories={[cat1]}
+      />,
+    );
+    const buttons = container.querySelectorAll("button");
+    expect(buttons.length).toBe(2);
+    buttons.forEach((btn) => {
+      expect(btn.style.minWidth).toBe("44px");
+      expect(btn.style.minHeight).toBe("44px");
+    });
+  });
+});
