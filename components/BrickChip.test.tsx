@@ -337,3 +337,27 @@ describe("C-m4a-006: tick chip button has minHeight >= 44px (ADR-031)", () => {
     expect(btn.style.minHeight).toBe("44px");
   });
 });
+
+// ─── C-m4a-007: reduced-motion → brick-fill transition is none ────────────────
+
+vi.mock("motion/react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("motion/react")>();
+  return {
+    ...actual,
+    useReducedMotion: vi.fn(),
+  };
+});
+
+describe("C-m4a-007: reduced-motion suppresses brick-fill transition", () => {
+  it("brick-fill transition is 'none' when useReducedMotion returns true", async () => {
+    const { useReducedMotion } = await import("motion/react");
+    vi.mocked(useReducedMotion).mockReturnValue(true);
+    const { container } = render(
+      <BrickChip brick={makeTick(false)} categories={[cat1]} />,
+    );
+    const fill = container.querySelector(
+      "[data-testid='brick-fill']",
+    ) as HTMLElement;
+    expect(fill.style.transition).toBe("none");
+  });
+});
