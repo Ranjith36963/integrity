@@ -1010,3 +1010,339 @@ type Action =
 - **SG-m3-16 — `Block.bricks` ordering in expanded view.** Recommendation: render in insertion order (the order they appear in `block.bricks[]`). M6 wires drag-reorder. Tests assert order matches array order.
 - **SG-m3-17 — `<HeroRing>` SSR.** Recommendation: server renders the ring at `0%` (full empty arc). Client hydrates to actual day score with a 600 ms ease-in. This avoids hydration mismatch warnings even when the user has session state by the time of hydration. (Once M8 ships, persistence rehydrates state on mount — M3 has no persistence, so this is a forward-compatible default.)
 - **SG-m3-18 — Stagger fade-in on new chip insert.** Recommendation: 30 ms between chips on first render of an expanded block; `0 ms` (no stagger) when adding ONE chip after the fact (single-element insert doesn't need a stagger sequence). Reduced-motion → instant in either case.
+
+---
+
+## Milestone 4a — Tick Brick Logging
+
+> **Pillars:** § 0.1 (the wedge — Dharma scores proof, not plans), § 0.3 (visual identity — every tap is a brick laid), § 0.5 (interaction primitives — the simplest verb: a tick), § 0.9 (data model — `tick` brick is `done: boolean`), § 0.10 (haptics: every tap fires light), ADR-031 (44 px touch targets), ADR-039 (ships empty).
+
+### Intent
+
+Wire the simplest user-driven verb in the entire app: **tap a tick brick to mark it done.** This is the moment Dharma stops being a setup screen and starts being a tracker.
+
+When the user taps a tick brick, four things happen on the same React tick:
+
+1. The brick's `done` flag flips (`false ↔ true`).
+2. The chip's foreground gradient animates from 0% → 100% (or back) via M0's `brickFill` token.
+3. Every dependent score recomputes: that brick's `brickPct`, its containing block's `blockPct` (or the loose-brick aggregate), the day's `dayPct(state)`, and any `categoryDayPct` reads.
+4. Every dependent visual updates: BrickChip fill, block scaffold left-bar height, HeroRing arc length, BlueprintBar segment opacity.
+
+If the flip causes a block to cross to 100%, M3's wired `useCrossUpEffect` fires the bloom + chime for the first time from a real user gesture (M3 only fired it via state injection). If the flip causes the day to cross to 100%, the fireworks overlay plays.
+
+**Goal and time bricks remain inert in M4a** (tap = no-op; chip displays as in M3). They get their verbs in M4b and M4c.
+
+**What this is NOT:** goal stepper (M4b). Time timer (M4c). Block edit / delete (M5). Drag reorder (M6). Polish layer (M7). Persistence (M8). Calendar nav (M9). Voice (M10).
+
+### Inputs
+
+- The full M3 surface — top bar, hero with `<HeroRing>`, BlueprintBar with opacity modulation, 24-hour timeline with `<TimelineBlock>` cards (tap-to-expand wired, scaffold left-bar wired), `<LooseBricksTray>`, dock with `+`, `<AddBrickSheet>`, `<AddBlockSheet>`, `<EditModeProvider>`, `<SlotTapTargets>`, `<BrickChip>` (renders three kinds; tap = no-op in M3).
+- M0 motion tokens — `brickFill` (600 ms easeInOut, M3 already wires it on `<BrickChip>` for chip foreground gradient).
+- M0 haptics — `light` on each tick toggle, `success` on block 100% (already fires inside `useCrossUpEffect`), `notification` on day 100% (same).
+- M0 audio — chime for block 100% and a longer chime for day 100% (M3 deferred the assets; M4a lands `public/sounds/chime.mp3`; see SG-m4a-04).
+- The locked Brick / AppState / Action schemas from M3.
+- `lib/celebrations.ts:useCrossUpEffect` — M3 ships this hook unchanged. M4a wires it to fire on real user gestures, not state injection.
+- `lib/dharma.ts` — `brickPct` already returns 0 / 100 for tick bricks; no math change.
+
+### Outputs (regions and behaviors)
+
+| Region                       | Role in M4a                                                                                                                                                                                                                         | Sync with M3                                                   |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `<BrickChip>` (tick)         | Wraps the chip in a tap-surface (`<button>` or click-handler on the existing chip element). Tap fires `LOG_TICK_BRICK` action. Chip foreground gradient animates 0 ↔ 100 via M0 `brickFill`. ✓ / ☐ glyph swaps via the same render. | M3 chip element is preserved; only the tap target is added.    |
+| `<BrickChip>` (goal, time)   | Tap = no-op (unchanged from M3). Cursor stays default.                                                                                                                                                                              | Untouched.                                                     |
+| Block scaffold left-bar      | Height re-computes from `blockPct(block)` after every tick toggle. Animates via existing M3 transition (600 ms `height` tween).                                                                                                     | M3 path preserved; only the trigger (a real user tick) is new. |
+| `<HeroRing>`                 | Stroke-dashoffset re-computes from `dayPct(state)` after every tick toggle. Animates via M3's existing 600 ms easeInOut.                                                                                                            | Same.                                                          |
+| BlueprintBar segment opacity | Re-computes from `blockPct` on tick.                                                                                                                                                                                                | Same.                                                          |
+| `bloom` celebration          | Fires when a block crosses to 100% from a real tick. Cross-down + cross-up retriggers per M3's one-shot rule.                                                                                                                       | M3 wired; M4a is the first real fire.                          |
+| `fireworks` celebration      | Fires when the day crosses to 100% from a real tick.                                                                                                                                                                                | M3 wired; M4a is the first real fire.                          |
+| Chime audio                  | M4a lands `public/sounds/chime.mp3` (≤ 30 KB). Loaded on app boot via `new Audio()`. Plays on block 100% (and day 100%, same asset). Mute-respecting per OS.                                                                        | M3 deferred this asset to M4 per SG-m3-12. M4a delivers it.    |
+
+### Locked schema additions
+
+```ts
+// lib/data.ts — extend M3's Action union
+type Action =
+  | /* M2 + M3 actions */
+  | { type: 'LOG_TICK_BRICK'; brickId: string };  // routes by id; flips `done` in place
+```
+
+The reducer locates the brick by `id` (search `state.blocks[*].bricks[]` then `state.looseBricks[]`), flips `done`, returns a new `AppState` (immutable update; no in-place mutation; existing M3 reducer pattern). `assertNever` exhaustiveness preserved.
+
+### Edge cases
+
+- **Reduced motion** — chip fill animation collapses to instant; block scaffold + HeroRing animations same; bloom + fireworks visual suppressed; chime + haptics still fire.
+- **Tap during animation** — second tap registers immediately; reducer flips `done` again; the in-flight animation cancels and reverses (Framer Motion handles this natively).
+- **Tap a tick brick with `categoryId: null`** — works the same; uncategorized fill uses category-of-parent or `--surface-2` fallback (matches M3's chip rendering).
+- **Tap a tick brick inside a collapsed block** — block must be expanded for the chip to be visible (M3 collapses by default). Tap on a non-visible chip is impossible by definition.
+- **Tap a tick brick inside the Loose Bricks tray when tray is collapsed** — chips are visible in the collapsed scroll row (per M3 SG-m3-15); tap works directly without expanding the tray.
+- **Block at 99% pre-tick, single tick brick at 0%, user toggles to done** → block hits 100%, bloom fires once, day percentage updates.
+- **Day at 99% pre-tick, single brick brings it to 100%** → fireworks fires once.
+- **Untoggle from 100% back to 99%** → bloom does NOT replay until the block re-crosses up (one-shot per crossing per M3 SG-m3-05).
+- **Audio fails to load** (offline, blocked) — celebration visuals still fire; chime silently skipped (try/catch around `audio.play()`).
+- **Audio blocked by browser** (no user gesture yet) — first chime may be silent on iOS; subsequent chimes work (browser unlocks audio after first user gesture; M4a's first tick IS a user gesture so this is self-resolving by the second tick).
+- **Page refresh after a tick** — state is lost (no persistence until M8). Same as M3.
+
+### Acceptance criteria
+
+**Tap-to-tick (the verb)**
+
+1. The `<BrickChip>` for a `tick` brick is a tappable surface ≥ 44 px (ADR-031). Tap target spans the full chip, not just the glyph.
+2. Tapping a `tick` brick with `done: false` dispatches `LOG_TICK_BRICK` with that brick's id; reducer flips `done` to `true`.
+3. Tapping a `tick` brick with `done: true` flips it back to `false`. (Toggle, not one-way.)
+4. The chip foreground gradient animates from 0% → 100% (on toggle to `done: true`) or 100% → 0% (on toggle to `false`) via M0 `brickFill` (600 ms easeInOut). Reduced-motion → instant.
+5. The check glyph swaps from `☐` to `✓` (or back) on the same render tick as the toggle.
+6. Haptic `light` fires on every tap.
+
+**Goal and time bricks unchanged** 7. Tapping a `goal` brick chip → no-op. No reducer dispatch. No haptic. Chip rendering identical to M3. 8. Tapping a `time` brick chip → no-op. No reducer dispatch. No haptic. Chip rendering identical to M3.
+
+**Cascading visuals** 9. After a tick toggle, the containing block's scaffold left-bar height updates to the new `blockPct`. Animates via M3's existing transition (600 ms). Reduced-motion → instant. 10. After a tick toggle, the BlueprintBar segment for the containing block updates opacity to `0.3 + ((newBlockPct / 100) × 0.7)`. Reduced-motion → instant. 11. After a tick toggle, the `<HeroRing>` stroke-dashoffset updates to reflect the new `dayPct(state)`. Animates over 600 ms. Reduced-motion → instant. 12. After a tick toggle, the hero numeral text node updates to `${Math.round(dayPct(state))}%` synchronously with the ring. 13. All four visual updates (chip / scaffold / BlueprintBar / HeroRing) reflect the same reducer state — no flash of stale percentages.
+
+**Block 100% celebration (first real fire)** 14. When a tick toggle causes `blockPct(block)` to cross from `< 100` to `100`, M3's `useCrossUpEffect` fires the `bloom` spring on that block card (M0 `springConfigs.bloom = { stiffness: 220, damping: 22 }`). 15. On the same crossing, the chime audio plays (`new Audio('/sounds/chime.mp3').play()`; ≤ 30 KB asset). 16. On the same crossing, `success` haptic fires. 17. Crossing back below 100 (untoggle a tick) and re-crossing up fires the celebration again. One-shot per crossing.
+
+**Day 100% celebration (first real fire)** 18. When a tick toggle causes `dayPct(state)` to cross from `< 100` to `100`, the fireworks overlay plays (~1.6 s; bounded particle count). 19. On the same crossing, `notification` haptic fires. 20. On the same crossing, the chime audio plays (same asset as block 100%). 21. Crossing back below 100 and re-crossing up fires fireworks again.
+
+**Audio asset** 22. `public/sounds/chime.mp3` exists, ≤ 30 KB, single short tone. 23. Audio is loaded once on app boot via `new Audio()`. No re-fetch per play. 24. Audio failures (network, codec) are caught silently; visuals still fire.
+
+**Reduced motion + a11y** 25. `prefers-reduced-motion: reduce` → chip fill, block scaffold, HeroRing animations all collapse to instant. Bloom and fireworks suppressed. 26. Reduced-motion does NOT suppress haptics or audio. 27. `<BrickChip>` for `tick` exposes its tap target via accessible name `"${name}, ${done ? 'done' : 'not done'}, tap to toggle"`. 28. `aria-pressed={done}` on the tick chip's tap surface (button semantics). 29. axe-core: zero violations on day view with all three brick kinds rendered. 30. Tab order: tick brick chips are reachable and tappable via keyboard (Enter or Space toggles).
+
+**Quality** 31. `tsc --noEmit`: zero new errors. 32. ESLint: zero new errors. 33. Vitest: all existing tests still pass; new `LOG_TICK_BRICK` reducer tests + chip tap tests added. 34. Playwright: tap a tick brick → chip fills, scaffold grows, HeroRing arc grows, BlueprintBar opacity increases. Mobile viewport 430 px; no horizontal overflow.
+
+### Out of scope (M4a)
+
+- Goal +/- stepper — **M4b**
+- Time timer (start / stop / pause / manual entry) — **M4c**
+- Block edit / brick edit (rename, retype, retarget) — **M5**
+- Block delete / brick delete with "Just today / All recurrences" — **M5**
+- Drag reorder — **M6**
+- FLIP block-expand magic — **M7**
+- Persistence — **M8**
+- Calendar nav — **M9**
+
+### Open spec gaps (resolve at VERIFY)
+
+- **SG-m4a-01 — Tap target shape.** Recommendation: wrap the existing `<BrickChip>` element in a `<button type="button">` for tick bricks ONLY; goal and time bricks keep the M3 non-interactive `<div>` element. Alternative: always render `<button>` and dispatch by `kind` inside the click handler (simpler but means goal/time chips have a dangling tap target that does nothing). Lean toward per-kind branching for cleaner semantics.
+- **SG-m4a-02 — Chip element role.** Recommendation: `role="button"` + `aria-pressed={done}` on the tap surface for tick bricks. Screen readers announce "${name}, pressed/not pressed, button". Goal/time bricks keep their M3 `<div>` (no role).
+- **SG-m4a-03 — Reducer placement.** Recommendation: extend `lib/data.ts` reducer with `LOG_TICK_BRICK` action; route by `brick.parentBlockId` is NOT needed (we already have the brick id; search both arrays). Pattern matches M3's `ADD_BRICK` routing.
+- **SG-m4a-04 — Audio asset format + size.** Recommendation: MP3 (broad codec support), ≤ 30 KB, single short tone (~250 ms). Source from a royalty-free pack or generate via a tone generator. Final asset committed under `public/sounds/chime.mp3`.
+- **SG-m4a-05 — Mute respect.** Recommendation: M4a does NOT implement explicit mute respect (no UI mute toggle). Browser/OS-level mute is honored automatically by `<audio>`. M7 polish layer can add a per-app mute toggle if needed.
+- **SG-m4a-06 — First-tap audio unlock on iOS.** Recommendation: accept that the first chime may be silent on iOS Safari (browser audio unlock requirement); the M4a first tick IS a user gesture, which unlocks audio for the rest of the session. Document in CHANGELOG.
+- **SG-m4a-07 — Test for cross-up firing.** Recommendation: Vitest tests use `useCrossUpEffect`'s state-injection seam (already shipped in M3); Playwright tests assert the celebration class lands on the DOM after a tick that brings block to 100%.
+- **SG-m4a-08 — Chip animation direction on untoggle.** Recommendation: the `brickFill` token animates symmetrically — toggle to `true` plays 0 → 100; toggle to `false` plays 100 → 0. No special-case for "undo" gesture.
+
+---
+
+## Milestone 4b — Goal Brick Stepper
+
+> **Pillars:** § 0.1, § 0.3, § 0.5 (the second verb: a quantitative count), § 0.9 (data model — `goal` brick is `count + target + unit`), § 0.10 (haptic on every increment / decrement), ADR-031 (44 px), ADR-039 (ships empty). Builds on M4a.
+
+### Intent
+
+Wire the **second** user-driven verb: **tap +/- on a goal brick to increment or decrement its count.** Long-press accelerates (~50 ms intervals after the first tick).
+
+When the user taps + or - on a goal brick:
+
+1. The brick's `count` changes (clamped to `[0, target]` — count cannot exceed target; can drop to zero).
+2. The chip's foreground gradient width = `(count / target) × 100%` animates via `brickFill` (600 ms easeInOut).
+3. The numeric badge `count / target unit` updates synchronously.
+4. All M4a cascade visuals (block scaffold, HeroRing, BlueprintBar) update on the same tick.
+5. Block / day 100% celebrations fire on cross-up via the same M3 `useCrossUpEffect` hook M4a uses.
+
+Tick bricks (M4a) and time bricks (M4c) remain unchanged.
+
+**What this is NOT:** time timer (M4c). Editing the brick's `target` or `unit` (M5). Brick delete (M5).
+
+### Inputs
+
+- The full M4a surface — tick bricks tappable, chime asset shipped, all cascade visuals proven.
+- M0 haptics — `light` on each tick / detent.
+- M0 motion — `brickFill` (existing).
+- The locked Brick / AppState / Action schemas from M3 + M4a.
+- `lib/celebrations.ts:useCrossUpEffect` (M3, used in M4a).
+- `lib/dharma.ts:brickPct` for goal — already returns `min(count / target, 1) × 100`; no math change.
+
+### Outputs (regions and behaviors)
+
+| Region                     | Role in M4b                                                                                                                                                                                                                                                                                                                                  | Sync with M4a                                                            |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `<BrickChip>` (goal)       | Renders inline `−` and `+` `<button>` controls flanking the badge. Each ≥ 44 px tap target (may stack vertically on narrow screens). Tap dispatches `LOG_GOAL_BRICK` with `delta: -1 \| +1`. Long-press (≥ 500 ms hold) starts auto-repeat at ~50 ms intervals; release stops. Chip foreground gradient width animates per `count / target`. | M4a chip element is preserved; controls are added. Tick chips unchanged. |
+| `<BrickChip>` (tick, time) | Unchanged from M4a.                                                                                                                                                                                                                                                                                                                          | Same.                                                                    |
+| Cascade visuals            | All update per `blockPct` recompute, same as M4a.                                                                                                                                                                                                                                                                                            | Same.                                                                    |
+| Celebrations               | Block/day 100% bloom + chime + fireworks fire when a goal stepper push crosses the relevant percentage.                                                                                                                                                                                                                                      | Same hook, additional trigger source.                                    |
+
+### Locked schema additions
+
+```ts
+// lib/data.ts — extend the Action union
+type Action =
+  | /* M2 + M3 + M4a actions */
+  | { type: 'LOG_GOAL_BRICK'; brickId: string; delta: 1 | -1 };
+```
+
+Reducer applies `delta` to `count`, clamps to `[0, target]`, returns a new `AppState`. `assertNever` preserved.
+
+### Edge cases
+
+- **Tap + at `count === target`** → no-op (clamp). Haptic fires `medium` (a "you've hit the cap" cue, distinct from `light`). Chip stays at 100% gradient.
+- **Tap - at `count === 0`** → no-op. Haptic fires `medium` (same cap cue).
+- **Long-press at `count === target - 1`** → first auto-repeat tick brings count to `target`; subsequent ticks no-op (clamped). Auto-repeat stops naturally on cap (no infinite tick stream).
+- **Long-press release** → auto-repeat stops within one frame.
+- **Reduced motion** — chip fill animation collapses to instant; long-press visual feedback (cursor pulse, etc.) suppressed; haptics + audio unaffected.
+- **`unit` is empty string** — badge renders just `count / target` with no unit suffix. (M3 SG already covered this; spec just notes the M4b behavior is identical.)
+- **Cross to 100% on a single tap** (count was target - 1, tap +) → bloom + chime fire.
+- **Cross down from 100% via tap -** → no replay-suppression issue; cross-up rule is one-shot per crossing.
+
+### Acceptance criteria
+
+**Stepper UI**
+
+1. Goal `<BrickChip>` renders `−` and `+` `<button>` controls. Each ≥ 44 px tap target.
+2. Controls are positioned so they don't overlap the chip badge or fill gradient at 430 px viewport.
+3. `−` is disabled (visually + `disabled` attribute) when `count === 0`. `+` is disabled when `count === target`.
+
+**Increment / decrement** 4. Tap `+` dispatches `LOG_GOAL_BRICK` with `delta: 1`; reducer increments `count` by 1, clamped to `target`. 5. Tap `−` dispatches `LOG_GOAL_BRICK` with `delta: -1`; reducer decrements `count` by 1, clamped to 0. 6. Chip foreground gradient width animates to `(count / target) × 100%` via `brickFill` (600 ms easeInOut). Reduced-motion → instant. 7. Badge text updates to `${count} / ${target}${unit ? ' ' + unit : ''}` synchronously. 8. Haptic `light` fires on every successful (non-clamped) tick. 9. Haptic `medium` fires when a tap is rejected by the clamp (already at cap).
+
+**Long-press auto-repeat** 10. Press-and-hold `+` for ≥ 500 ms triggers auto-repeat at ~50 ms intervals. 11. Auto-repeat stops on release OR on hitting `count === target`. 12. Same applies to `−` (auto-repeats down to `count === 0`). 13. Each auto-repeat tick fires `light` haptic; clamp tick fires `medium`.
+
+**Cascading visuals + celebrations** 14. Same as M4a's tick cascade — chip / scaffold / BlueprintBar / HeroRing all update on the same render tick. 15. Block 100% celebration fires when a stepper push (single tap or auto-repeat tick) brings `blockPct` to 100 from `< 100`. Bloom + chime + `success` haptic. 16. Day 100% celebration fires when a stepper push brings `dayPct` to 100. Fireworks + chime + `notification` haptic. 17. Cross-down + re-cross-up replays the celebration.
+
+**Tick + time bricks unchanged** 18. Tick bricks render and behave identically to M4a. 19. Time bricks render identically to M3 (still inert; their verb arrives in M4c).
+
+**Reduced motion + a11y** 20. Reduced-motion → fill animation instant; long-press visual feedback suppressed. 21. `−` and `+` buttons have accessible names `"Decrease ${name}"` and `"Increase ${name}"`. 22. Each button is keyboard-focusable; Enter/Space triggers the same dispatch as a tap. 23. axe-core: zero violations.
+
+**Quality** 24. `tsc --noEmit`: zero new errors. 25. ESLint: zero new errors. 26. Vitest: reducer tests for `LOG_GOAL_BRICK` (increment, decrement, clamp top, clamp bottom). Chip tests (controls render, disabled state, dispatch on tap, long-press auto-repeat). 27. Playwright: tap + on a goal brick → chip fills, badge updates; long-press → auto-repeat ticks ~50 ms apart; cross to target fires bloom; mobile viewport 430 px; no overflow.
+
+### Out of scope (M4b)
+
+- Time timer (start / stop / manual entry) — **M4c**
+- Manual `count` entry (e.g. type "50 reps" directly) — **M5 polish or M7**
+- Brick edit (rename, retype, retarget) — **M5**
+- Brick delete — **M5**
+
+### Open spec gaps (resolve at VERIFY)
+
+- **SG-m4b-01 — Stepper position.** Recommendation: `−` on the left edge of the chip (after the title), `+` on the right edge (before the badge), badge centered. Alternative: both on the right side stacked. Lean toward flanking layout for clearer "decrement / increment" mental model.
+- **SG-m4b-02 — Long-press threshold.** Recommendation: 500 ms hold to trigger auto-repeat; auto-repeat interval 50 ms. Both round numbers; can tune in M7 polish.
+- **SG-m4b-03 — Long-press visual feedback.** Recommendation: subtle button-press scale (0.95 → 1.0) on each auto-repeat tick. Reduced-motion → none. Skippable feature; if it adds complexity, drop and add in M7.
+- **SG-m4b-04 — Reducer delta granularity.** Recommendation: `delta: 1 | -1` only. No "set count directly" action in M4b. (M5 may add `SET_BRICK_COUNT` for edit-mode manual entry.)
+- **SG-m4b-05 — Clamp haptic.** Recommendation: `medium` (heavier than `light` so the user feels "blocked"). Distinct from `light` (normal tick) and from `success` (block-100% celebration).
+
+---
+
+## Milestone 4c — Time Brick Timer
+
+> **Pillars:** § 0.1, § 0.3, § 0.5 (the third verb: time elapsed against a target), § 0.9 (data model — `time` brick is `minutesDone + durationMin`), § 0.10 (haptics: light on start/stop, success on complete), ADR-031 (44 px), ADR-039 (ships empty). Completes the M4 brick-logging trilogy.
+
+### Intent
+
+Wire the **third and final** user-driven verb: **tap a time brick to start its timer; tap again to stop.** A long-press opens a manual entry sheet for direct minute input.
+
+When the timer is running:
+
+1. `minutesDone` increments at a rate of 1 per real-world minute (computed from `Date.now()` deltas in a `useEffect` interval).
+2. The chip's foreground gradient width = `(minutesDone / durationMin) × 100%`, animated continuously (re-render every 1 s minimum, 5 s for battery efficiency, see SG-m4c-04).
+3. The chip's ▶/⏸ glyph reflects timer state.
+4. Block scaffold, HeroRing, BlueprintBar all update on the second tick (debounced; see SG-m4c-04).
+5. Block / day 100% celebrations fire on cross-up via M3's `useCrossUpEffect`.
+
+The timer **continues running when the parent block collapses** (per phase1plan.md M4 — "Timer continues running when block collapses"). Only one timer can be running at a time across the entire app. Starting a new timer auto-stops any other running timer.
+
+Tick bricks (M4a) and goal bricks (M4b) remain unchanged.
+
+**What this is NOT:** background-tab timer accuracy (timers pause when the tab is backgrounded — M7 polish may revisit). Multiple concurrent timers (intentionally one-at-a-time per § 0.5). Manual minute editing inside an already-running timer (M5).
+
+### Inputs
+
+- The full M4a + M4b surface — tick logging, goal stepper, chime asset, all cascade visuals, all celebration triggers.
+- M0 haptics — `light` on start/stop, `success` on block 100%, `notification` on day 100%.
+- M0 motion — `brickFill` (existing).
+- The locked Brick / AppState / Action schemas from M3 + M4a + M4b.
+- `lib/celebrations.ts:useCrossUpEffect`.
+- `lib/dharma.ts:brickPct` for time — already `min(minutesDone / durationMin, 1) × 100`.
+- A new `lib/timer.ts` module — owns the `setInterval` lifecycle and `Date.now()` accumulation. One module-level interval; one running brick id at a time.
+
+### Outputs (regions and behaviors)
+
+| Region                       | Role in M4c                                                                                                                                                                                                                                                           | Sync with M4b                                         |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `<BrickChip>` (time)         | Tappable surface (whole chip). Tap dispatches `START_TIMER` (or `STOP_TIMER` if this brick is the running one). ▶ when stopped, ⏸ + subtle pulse when running. Badge: `${minutesDone} / ${durationMin} m`. Long-press (≥ 500 ms hold) opens a manual-entry `<Sheet>`. | M4a/M4b chips unchanged. Time chip gets a tap target. |
+| `<TimerSheet>` (new, simple) | Bottom-sheet with a single number input (minutes), Save, Cancel. Pre-filled with current `minutesDone`. Save dispatches `SET_TIMER_MINUTES` with the new value (clamped to `[0, durationMin]`).                                                                       | M0 `<Sheet>` reused.                                  |
+| Cascade visuals              | Update on each tick of the running timer (1 s effective; 5 s in batched mode per SG-m4c-04). Animates as M4a/M4b.                                                                                                                                                     | Same.                                                 |
+| Celebrations                 | Same as M4a/M4b.                                                                                                                                                                                                                                                      | Same.                                                 |
+| `lib/timer.ts`               | Owns the single `setInterval` (1 s ticks). Tracks `runningBrickId`, `startedAt`, accumulated `minutesDone`. On every tick, dispatches `TICK_TIMER` action. On Stop, captures final `minutesDone`.                                                                     | New file.                                             |
+
+### Locked schema additions
+
+```ts
+// lib/data.ts — extend the Action union
+type Action =
+  | /* M2 + M3 + M4a + M4b actions */
+  | { type: 'START_TIMER'; brickId: string }       // also stops any other running timer
+  | { type: 'STOP_TIMER'; brickId: string }
+  | { type: 'TICK_TIMER'; brickId: string; minutesDone: number }  // dispatched by lib/timer.ts on each setInterval tick
+  | { type: 'SET_TIMER_MINUTES'; brickId: string; minutes: number };  // long-press manual entry
+
+// AppState extension — track which brick is running (single timer invariant)
+type AppState = {
+  blocks: Block[];
+  categories: Category[];
+  looseBricks: Brick[];
+  runningTimerBrickId: string | null;  // null = no timer running
+};
+```
+
+### Edge cases
+
+- **Tap a time brick that's currently running** → `STOP_TIMER`. Final `minutesDone` is captured (rounded to nearest minute or floored — see SG-m4c-03). `runningTimerBrickId` set to `null`.
+- **Tap a time brick when another timer is running** → `START_TIMER` for the new brick. Reducer auto-stops the old one (captures its final `minutesDone`) and sets the new id as running.
+- **Timer reaches `durationMin`** → continues counting (`minutesDone` exceeds `durationMin` is allowed in state but `brickPct` clamps to 100). Block 100% celebration fires once on cross-up. User can stop to "lock in" or keep running for over-target tracking.
+- **Tab backgrounded** — `setInterval` is throttled by the browser to ~1 s minimum (Chrome) or pauses entirely (Safari). On tab-foreground, recompute elapsed via `Date.now() - startedAt` to recover accurate elapsed time. Document: "Timers stay accurate across tab-background within a session, but page refresh loses everything (M8 fixes that)."
+- **Reduced motion** — chip pulse animation suppressed; gradient animation collapses to per-tick (no smooth interpolation between ticks).
+- **Long-press on running timer** — opens TimerSheet. User can manually set minutes (clamped). Save updates `minutesDone` and resumes the timer from the new value (timer keeps running). Cancel discards.
+- **Manual entry exceeds `durationMin`** → clamp to `durationMin`. Haptic `medium` (cap cue, matching M4b).
+- **Page refresh while timer running** — state lost (no persistence until M8). Documented limitation; M8 will persist `runningTimerBrickId` + a `startedAt` timestamp.
+
+### Acceptance criteria
+
+**Tap-to-start / tap-to-stop**
+
+1. Tapping a time brick chip (whole surface, ≥ 44 px) dispatches `START_TIMER` with that brick's id when the brick is not running.
+2. Tapping a running time brick chip dispatches `STOP_TIMER` with that brick's id.
+3. `START_TIMER` reducer sets `state.runningTimerBrickId = brickId`. If another brick was running, reducer also implicitly stops it (sets `state.runningTimerBrickId = brickId`; no separate STOP for the old brick is needed because the invariant is single-running).
+4. `STOP_TIMER` reducer sets `state.runningTimerBrickId = null`.
+
+**Timer lifecycle** 5. `lib/timer.ts` runs a single `setInterval` (1 s tick) when `state.runningTimerBrickId !== null`. Stops the interval when `runningTimerBrickId === null`. 6. Each tick dispatches `TICK_TIMER` with the brick id and the new `minutesDone` (computed as `floor((Date.now() - startedAt) / 60000) + initialMinutesDone`). 7. `TICK_TIMER` reducer updates the brick's `minutesDone` to the new value. 8. The chip foreground gradient width updates to `(minutesDone / durationMin) × 100%` on each render. Reduced-motion → fill jumps per tick rather than animating; default → smooth via `brickFill`. 9. The badge text updates to `${minutesDone} / ${durationMin} m`. Glyph: ▶ when stopped; ⏸ + subtle scale-pulse when running (suppressed under reduced-motion). 10. Haptic `light` fires on Start; `light` fires on Stop.
+
+**Single-timer invariant** 11. Starting timer B while timer A is running auto-stops A (A's final `minutesDone` is preserved at the value captured by the last `TICK_TIMER`). 12. After the auto-stop, A's chip glyph reverts to ▶; B's becomes ⏸.
+
+**Manual-entry sheet (long-press)** 13. Long-press (≥ 500 ms) on a time brick chip opens `<TimerSheet>`. 14. Sheet has a number input pre-filled with the current `minutesDone` and Save / Cancel buttons. 15. Save dispatches `SET_TIMER_MINUTES` with the new value, clamped to `[0, durationMin]`. 16. If the brick was running, it stays running after Save (the new `minutesDone` becomes the new floor; timer continues accumulating from there). 17. Cancel closes the sheet without dispatching. 18. Manual entry > `durationMin` → clamps + `medium` haptic.
+
+**Cascading visuals + celebrations** 19. Block scaffold, BlueprintBar, HeroRing, hero numeral all update on each `TICK_TIMER` (1 s cadence). 20. When a tick crosses `blockPct` to 100, bloom + chime + `success` haptic fire (one-shot per crossing). 21. When a tick crosses `dayPct` to 100, fireworks + chime + `notification` haptic fire.
+
+**Block-collapse independence** 22. Starting a timer, then collapsing the parent block, does NOT stop the timer. `lib/timer.ts` is unaware of expand/collapse state. 23. Re-expanding the block shows the chip with the latest accumulated `minutesDone`.
+
+**Tab-background recovery** 24. After the tab is backgrounded for ≥ 60 s (browser throttles `setInterval`), foregrounding the tab recomputes `minutesDone` from `Date.now() - startedAt + initialMinutesDone` so the displayed value is accurate. (Implemented as a `visibilitychange` listener that dispatches a one-off `TICK_TIMER` with the corrected value.)
+
+**Tick + goal bricks unchanged** 25. Tick bricks behave identically to M4a. 26. Goal bricks behave identically to M4b.
+
+**Reduced motion + a11y** 27. Chip pulse-while-running animation suppressed under `prefers-reduced-motion`. 28. Time brick chip exposes accessible name `"${name}, ${minutesDone} of ${durationMin} minutes, ${running ? 'running, tap to stop' : 'stopped, tap to start'}"`. 29. `aria-pressed={running}` on the tap surface. 30. axe-core: zero violations.
+
+**Quality** 31. `tsc --noEmit`: zero new errors. 32. ESLint: zero new errors. 33. Vitest: reducer tests for `START_TIMER` (incl. auto-stop of prior running), `STOP_TIMER`, `TICK_TIMER`, `SET_TIMER_MINUTES`. `lib/timer.ts` lifecycle tests via fake timers. 34. Playwright: tap a time brick → glyph becomes ⏸, chip pulses, badge updates over time; collapse the block → timer keeps running (verify via 5 s wait + re-expand); start a second timer → first auto-stops; manual entry via long-press → minutes update.
+
+### Out of scope (M4c)
+
+- Page-refresh timer recovery — **M8** (needs persistence)
+- Multiple concurrent timers — **never** (intentional, single-timer invariant)
+- Pomodoro / interval pattern — **never (or M10+)**
+- Timer-driven notifications outside the app — **never (or M10+)**
+- Manual minute editing while NOT running (i.e. inline +/- like the goal stepper) — **M5** (edit mode)
+
+### Open spec gaps (resolve at VERIFY)
+
+- **SG-m4c-01 — `lib/timer.ts` shape.** Recommendation: a single module-level `useTimer()` React hook + an interval driven by a `useEffect` watching `state.runningTimerBrickId`. The hook lives in the root layout (or BuildingClient) so it doesn't unmount when blocks collapse. Alternative: a Zustand-style external store. Lean toward the simpler hook-in-root approach.
+- **SG-m4c-02 — Tick cadence vs render cost.** Recommendation: 1 s tick interval. If render profiling shows jank, batch to dispatching `TICK_TIMER` every 5 s while still tracking accurate elapsed via `Date.now()` (display can update via local component state for the visual at 1 s; reducer state at 5 s). M4c ships 1 s by default; revisit in M7 if needed.
+- **SG-m4c-03 — Rounding when stopping.** Recommendation: capture `minutesDone` as `floor((Date.now() - startedAt) / 60000) + initialMinutesDone`. Don't round up — only "completed" minutes count. Alternative: round to nearest. Lean toward `floor` for accuracy and to avoid premature 100% celebrations.
+- **SG-m4c-04 — Battery / power efficiency.** Recommendation: 1 s tick is acceptable for foreground; browser throttles when backgrounded. M4c does NOT implement explicit battery-aware logic. M7 polish can add `requestAnimationFrame`-based smoother visuals or longer ticks.
+- **SG-m4c-05 — Single-timer invariant enforcement.** Recommendation: enforce in the reducer (`START_TIMER` always sets `runningTimerBrickId`, never appends to a list). UI never tries to display two ⏸ glyphs at once because `running` is derived from `state.runningTimerBrickId === brick.id`.
+- **SG-m4c-06 — Manual-entry sheet location.** Recommendation: bottom sheet via M0 `<Sheet>`, single number input, Save/Cancel. Mirrors AddBrickSheet's view-toggle pattern but simpler (one view, one field).
+- **SG-m4c-07 — Long-press conflict with tap-to-start.** Recommendation: `pointerdown` starts a 500 ms timer; if `pointerup` fires before 500 ms, treat as tap (start/stop); if 500 ms elapses without `pointerup`, treat as long-press (open sheet, cancel the tap). Standard long-press pattern.
+- **SG-m4c-08 — Tab-background recovery.** Recommendation: `visibilitychange` listener in `lib/timer.ts` dispatches a corrective `TICK_TIMER` on `visibilitychange === 'visible'` events when a timer is running.
