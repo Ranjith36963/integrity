@@ -545,3 +545,31 @@ describe("C-m4b-005: single tap on + calls onGoalLog(id, 1) and haptics.light on
     expect(haptics.medium).not.toHaveBeenCalled();
   });
 });
+
+// ─── C-m4b-006: tap − dispatches onGoalLog once with delta:-1 + light haptic ─
+
+describe("C-m4b-006: single tap on - calls onGoalLog(id, -1) and haptics.light once", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("onGoalLog called once with ('g1', -1); haptics.light once; no medium", async () => {
+    const { haptics } = await import("@/lib/haptics");
+    const onGoalLog = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <BrickChip
+        brick={makeGoalBrick("g1", "pushups", 3, 10)}
+        categories={[cat1]}
+        onGoalLog={onGoalLog}
+      />,
+    );
+    const minus = screen.getByRole("button", { name: "Decrease pushups" });
+    await user.pointer({ keys: "[MouseLeft>]", target: minus });
+    await user.pointer({ keys: "[/MouseLeft]", target: minus });
+    expect(onGoalLog).toHaveBeenCalledTimes(1);
+    expect(onGoalLog).toHaveBeenCalledWith("g1", -1);
+    expect(haptics.light).toHaveBeenCalledTimes(1);
+    expect(haptics.medium).not.toHaveBeenCalled();
+  });
+});
