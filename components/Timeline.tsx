@@ -25,9 +25,16 @@ interface Props {
   categories: Category[];
   now: string;
   onSlotTap: (hour: number) => void;
+  onAddBrick?: (parentBlockId: string) => void;
 }
 
-export function Timeline({ blocks, categories, now, onSlotTap }: Props) {
+export function Timeline({
+  blocks,
+  categories,
+  now,
+  onSlotTap,
+  onAddBrick,
+}: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll on mount so NowLine is vertically centered in the visible viewport.
@@ -98,7 +105,12 @@ export function Timeline({ blocks, categories, now, onSlotTap }: Props) {
 
           {/* Layer 2: Timeline block cards (z=2) */}
           {blocks.map((b) => (
-            <TimelineBlock key={b.id} block={b} categories={categories} />
+            <TimelineBlock
+              key={b.id}
+              block={b}
+              categories={categories}
+              onAddBrick={onAddBrick}
+            />
           ))}
 
           {/* Layer 2 (centered): EmptyBlocks card — only when blocks.length === 0 */}

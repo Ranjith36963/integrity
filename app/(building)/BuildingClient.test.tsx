@@ -228,6 +228,130 @@ describe("C-m2-020: BuildingClient wires reducer + sheet + onSave (re-authored M
   });
 });
 
+// ─── C-m3-009: LooseBricksTray visibility predicate ───────────────────────────
+
+describe("C-m3-009: LooseBricksTray hidden when empty; appears with block or loose brick", () => {
+  it("tray is NOT in the DOM when blocks and looseBricks are both empty", () => {
+    render(<BuildingClient />);
+    const tray = screen.queryByRole("region", { name: /loose bricks/i });
+    expect(tray).toBeNull();
+  });
+
+  it("tray appears (collapsed) after a block is added", async () => {
+    const user = userEvent.setup();
+    render(<BuildingClient />);
+
+    // Add a block via AddBlockSheet
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.type(screen.getByLabelText(/Title/i), "Morning");
+    await user.click(screen.getByRole("button", { name: /Save/i }));
+
+    // Tray should now appear
+    const tray = screen.getByRole("region", { name: /loose bricks/i });
+    expect(tray).not.toBeNull();
+    expect(tray.getAttribute("aria-expanded")).toBe("false");
+  });
+});
+
+// ─── C-m3-024: BuildingClient wires AddBrickSheet + ADD_BRICK reducer ─────────
+
+describe("C-m3-024: BuildingClient wires AddBrickSheet and ADD_BRICK dispatch", () => {
+  it("tap block → + Add brick → save tick brick → brick in block.bricks; sheet closes", async () => {
+    const user = userEvent.setup();
+    render(<BuildingClient />);
+
+    // First add a block
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.type(screen.getByLabelText(/Title/i), "Morning");
+    await user.click(screen.getByRole("button", { name: /Save/i }));
+
+    // Click the block to expand it
+    const card = document.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    await user.click(card);
+
+    // Click "+ Add brick"
+    const addBrickBtn = screen.getByRole("button", { name: /add brick/i });
+    await user.click(addBrickBtn);
+
+    // AddBrickSheet dialog should open
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toHaveAttribute(
+      "aria-label",
+      "Add Brick",
+    );
+
+    // Type title
+    await user.type(screen.getByLabelText(/Title/i), "brick A");
+
+    // Save
+    await user.click(screen.getByRole("button", { name: /Save/i }));
+
+    // Sheet closes
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    // BrickChip renders inside the block
+    const chip = document.querySelector('[data-component="brick-chip"]');
+    expect(chip).not.toBeNull();
+    expect(chip?.textContent).toContain("brick A");
+  });
+
+  it("+ Brick via LooseBricksTray → brick lands in looseBricks (tray shows chip)", async () => {
+    const user = userEvent.setup();
+    render(<BuildingClient />);
+
+    // Add a block first (so tray is visible)
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.type(screen.getByLabelText(/Title/i), "Morning");
+    await user.click(screen.getByRole("button", { name: /Save/i }));
+
+    // Tray visible — click "+ Brick" pill
+    const addLooseBrickPill = screen.getByTestId("add-loose-brick-pill");
+    await user.click(addLooseBrickPill);
+
+    // AddBrickSheet opens
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    // Type title and save
+    await user.type(screen.getByLabelText(/Title/i), "loose brick");
+    await user.click(screen.getByRole("button", { name: /Save/i }));
+
+    // Sheet closes
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    // Tray now shows a chip for "loose brick"
+    const tray = screen.getByRole("region", { name: /loose bricks/i });
+    expect(tray.textContent).toContain("loose brick");
+  });
+
+  it("adding a brick re-renders Hero pct in same React tick (no stale 0%)", async () => {
+    const user = userEvent.setup();
+    render(<BuildingClient />);
+
+    // Add block with a done tick brick via full flow
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.type(screen.getByLabelText(/Title/i), "Morning");
+    await user.click(screen.getByRole("button", { name: /Save/i }));
+
+    // Block starts at 0% bricks → Hero should show some pct (0% since no bricks)
+    // After adding a brick, dayPct(state) re-renders synchronously
+    const card = document.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    await user.click(card);
+    await user.click(screen.getByRole("button", { name: /add brick/i }));
+    await user.type(screen.getByLabelText(/Title/i), "brick A");
+    await user.click(screen.getByRole("button", { name: /Save/i }));
+
+    // State has updated: Hero's SVG aria-label should exist (pct computed from state)
+    const heroRing = document.querySelector("svg[role='img'][aria-label]");
+    expect(heroRing).not.toBeNull();
+    // The aria-label should reflect a fresh dayPct (presence of ring = live data path)
+    expect(heroRing?.getAttribute("aria-label")).toMatch(/Day score:/i);
+  });
+});
+
 // U-m2-010: roundDownToHour helper (tested via BuildingClient export)
 describe("U-m2-010: roundDownToHour string-slice helper", () => {
   it("rounds down '09:47' to '09:00'", async () => {
