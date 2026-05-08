@@ -419,3 +419,47 @@ describe("C-m4a-009: keyboard Enter and Space activate onTickToggle on tick chip
     expect(onTickToggle).toHaveBeenCalledTimes(1);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// M4b component tests — goal chip stepper variant
+// ─────────────────────────────────────────────────────────────────────────────
+
+function makeGoalBrick(
+  id: string,
+  name: string,
+  count: number,
+  target: number,
+  unit = "",
+): import("@/lib/types").Brick {
+  return {
+    id,
+    name,
+    kind: "goal",
+    count,
+    target,
+    unit,
+    categoryId: "c1",
+    parentBlockId: "b1",
+  };
+}
+
+// ─── C-m4b-001: goal chip renders group + two stepper buttons ────────────────
+
+describe("C-m4b-001: goal chip renders <div role='group'> with Decrease/Increase buttons", () => {
+  it("outer wrapper is role='group'; exactly two stepper buttons with correct aria-labels", () => {
+    render(
+      <BrickChip
+        brick={makeGoalBrick("g1", "pushups", 2, 10, "reps")}
+        categories={[cat1]}
+      />,
+    );
+    const group = screen.getByRole("group");
+    expect(group).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Decrease pushups" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Increase pushups" }),
+    ).toBeInTheDocument();
+  });
+});
