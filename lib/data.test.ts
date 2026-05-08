@@ -331,3 +331,47 @@ describe("U-m4a-003: LOG_TICK_BRICK flips done on looseBricks (no blocks)", () =
     expect(next.blocks).toEqual([]);
   });
 });
+
+// ─── U-m4a-004: LOG_TICK_BRICK no-op when id not found ───────────────────────
+
+describe("U-m4a-004: LOG_TICK_BRICK is a no-op when brickId does not match any brick", () => {
+  it("bricks deep-equal to input when id is unmatched", () => {
+    const state: AppState = {
+      blocks: [
+        {
+          id: "block-1",
+          name: "block 1",
+          start: "09:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: null,
+          bricks: [
+            {
+              id: "b1",
+              name: "brick A",
+              kind: "tick",
+              done: false,
+              categoryId: null,
+              parentBlockId: "block-1",
+            },
+            {
+              id: "b2",
+              name: "brick A",
+              kind: "tick",
+              done: false,
+              categoryId: null,
+              parentBlockId: "block-1",
+            },
+          ],
+        },
+      ],
+      categories: [],
+      looseBricks: [],
+    };
+    const next = reducer(state, {
+      type: "LOG_TICK_BRICK",
+      brickId: "does-not-exist",
+    });
+    expect(next.blocks[0].bricks[0].done).toBe(false);
+    expect(next.blocks[0].bricks[1].done).toBe(false);
+  });
+});
