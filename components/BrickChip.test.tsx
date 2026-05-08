@@ -267,3 +267,28 @@ describe("C-m4a-002: goal chip click is no-op — no onTickToggle, no haptics.li
     expect(haptics.light).not.toHaveBeenCalled();
   });
 });
+
+// ─── C-m4a-003: time chip is no-op on click ──────────────────────────────────
+
+describe("C-m4a-003: time chip click is no-op — no onTickToggle, no haptics.light", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("onTickToggle NOT called; haptics.light NOT called when time chip clicked", async () => {
+    const { haptics } = await import("@/lib/haptics");
+    const onTickToggle = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <BrickChip
+        brick={makeTime(0, 600000)}
+        categories={[cat1]}
+        onTickToggle={onTickToggle}
+      />,
+    );
+    const btn = screen.getByRole("button");
+    await user.click(btn);
+    expect(onTickToggle).not.toHaveBeenCalled();
+    expect(haptics.light).not.toHaveBeenCalled();
+  });
+});
