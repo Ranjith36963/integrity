@@ -600,3 +600,42 @@ describe("U-m4b-003: LOG_GOAL_BRICK returns same state reference when clamped at
     expect(asGoal(next.blocks[0].bricks[0]).count).toBe(10);
   });
 });
+
+// ─── U-m4b-004: LOG_GOAL_BRICK clamp at bottom → identity short-circuit ────────
+
+describe("U-m4b-004: LOG_GOAL_BRICK returns same state reference when clamped at floor", () => {
+  it("prevState === nextState when count === 0 and delta: -1", () => {
+    const state: AppState = {
+      blocks: [
+        {
+          id: "block-1",
+          name: "block 1",
+          start: "09:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: null,
+          bricks: [
+            {
+              id: "g1",
+              name: "pushups",
+              kind: "goal",
+              count: 0,
+              target: 10,
+              unit: "",
+              categoryId: null,
+              parentBlockId: "block-1",
+            },
+          ],
+        },
+      ],
+      categories: [],
+      looseBricks: [],
+    };
+    const next = reducer(state, {
+      type: "LOG_GOAL_BRICK",
+      brickId: "g1",
+      delta: -1,
+    });
+    expect(next).toBe(state);
+    expect(asGoal(next.blocks[0].bricks[0]).count).toBe(0);
+  });
+});
