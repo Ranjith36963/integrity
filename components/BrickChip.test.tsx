@@ -483,3 +483,20 @@ describe("C-m4b-002: goal chip stepper buttons have min-width >= 44px and min-he
     });
   });
 });
+
+// ─── C-m4b-003: − disabled at count === 0 ─────────────────────────────────────
+
+describe("C-m4b-003: goal chip − button is disabled when count === 0", () => {
+  it("minus button has disabled attribute; plus button does not", () => {
+    render(
+      <BrickChip
+        brick={makeGoalBrick("g1", "pushups", 0, 10)}
+        categories={[cat1]}
+      />,
+    );
+    const minus = screen.getByRole("button", { name: "Decrease pushups" });
+    const plus = screen.getByRole("button", { name: "Increase pushups" });
+    expect(minus).toBeDisabled();
+    expect(plus).not.toBeDisabled();
+  });
+});
