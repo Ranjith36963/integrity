@@ -62,14 +62,15 @@ export function reducer(state: AppState, action: Action): AppState {
     case "LOG_GOAL_BRICK": {
       // Clamp-increment/decrement count on matching goal brick.
       // Identity short-circuit: returns original state reference on no-op (clamp or id miss).
+      // Block-array and loose-array references are preserved when their contents don't change.
       const apply = (b: Brick): Brick => {
         if (b.id !== action.brickId || b.kind !== "goal") return b;
         const next = Math.max(0, Math.min(b.target, b.count + action.delta));
         if (next === b.count) return b; // clamp no-op — preserve identity
         return { ...b, count: next };
       };
-      let changed = false;
-      const blocks = state.blocks.map((bl) => {
+      let blocksChanged = false;
+      const newBlocks = state.blocks.map((bl) => {
         let blockChanged = false;
         const bricks = bl.bricks.map((br) => {
           const out = apply(br);
@@ -77,16 +78,21 @@ export function reducer(state: AppState, action: Action): AppState {
           return out;
         });
         if (!blockChanged) return bl;
-        changed = true;
+        blocksChanged = true;
         return { ...bl, bricks };
       });
-      const looseBricks = state.looseBricks.map((br) => {
+      let looseChanged = false;
+      const newLoose = state.looseBricks.map((br) => {
         const out = apply(br);
-        if (out !== br) changed = true;
+        if (out !== br) looseChanged = true;
         return out;
       });
-      if (!changed) return state;
-      return { ...state, blocks, looseBricks };
+      if (!blocksChanged && !looseChanged) return state;
+      return {
+        ...state,
+        blocks: blocksChanged ? newBlocks : state.blocks,
+        looseBricks: looseChanged ? newLoose : state.looseBricks,
+      };
     }
     default:
       return assertNever(action);
