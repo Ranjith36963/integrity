@@ -519,3 +519,45 @@ describe("U-m4b-001: LOG_GOAL_BRICK increments count on a goal brick inside a bl
     expect(brick.name).toBe("pushups");
   });
 });
+
+// ─── U-m4b-002: LOG_GOAL_BRICK decrements count by 1 ─────────────────────────
+
+describe("U-m4b-002: LOG_GOAL_BRICK decrements count on a goal brick inside a block", () => {
+  it("returned state brick has count === 3; all other fields deep-equal", () => {
+    const state: AppState = {
+      blocks: [
+        {
+          id: "block-1",
+          name: "block 1",
+          start: "09:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: null,
+          bricks: [
+            {
+              id: "g1",
+              name: "pushups",
+              kind: "goal",
+              count: 4,
+              target: 10,
+              unit: "reps",
+              categoryId: null,
+              parentBlockId: "block-1",
+            },
+          ],
+        },
+      ],
+      categories: [],
+      looseBricks: [],
+    };
+    const next = reducer(state, {
+      type: "LOG_GOAL_BRICK",
+      brickId: "g1",
+      delta: -1,
+    });
+    const brick = asGoal(next.blocks[0].bricks[0]);
+    expect(brick.count).toBe(3);
+    expect(brick.target).toBe(10);
+    expect(brick.unit).toBe("reps");
+    expect(brick.name).toBe("pushups");
+  });
+});
