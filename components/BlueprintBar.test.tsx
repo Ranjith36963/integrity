@@ -211,3 +211,81 @@ describe("C-m1-008: BlueprintBar NOW pin position (re-authored M2)", () => {
     expect(nowPin.style.left).not.toContain("NaN");
   });
 });
+
+// C-m3-023: BlueprintBar segment opacity = 0.3 + (blockPct/100 × 0.7)
+describe("C-m3-023: BlueprintBar segment opacity based on blockPct", () => {
+  const categories: Category[] = [
+    { id: "c1", name: "Health", color: "#34d399" },
+    { id: "c2", name: "Mind", color: "#c4b5fd" },
+  ];
+
+  function mkBlockWithBricks(
+    id: string,
+    categoryId: string | null,
+    bricksDone: boolean[],
+  ): Block {
+    return {
+      id,
+      name: id,
+      start: "09:00",
+      end: "10:00",
+      recurrence: { kind: "just-today", date: "2026-05-06" },
+      categoryId,
+      bricks: bricksDone.map((done, i) => ({
+        id: `${id}-r${i}`,
+        name: `brick ${i}`,
+        kind: "tick" as const,
+        done,
+        categoryId,
+        parentBlockId: id,
+      })),
+    };
+  }
+
+  it("segment opacity is 1.0 when blockPct=100 (all bricks done)", () => {
+    const block = mkBlockWithBricks("b1", "c1", [true]);
+    const { container } = render(
+      <BlueprintBar blocks={[block]} categories={categories} now="12:00" />,
+    );
+    const seg = container.querySelector(
+      '[data-testid="blueprint-segment"][data-category-id="c1"]',
+    ) as HTMLElement;
+    expect(seg).not.toBeNull();
+    expect(parseFloat(seg.style.opacity)).toBeCloseTo(1.0, 2);
+  });
+
+  it("segment opacity is 0.65 when blockPct=50 (half done)", () => {
+    const block = mkBlockWithBricks("b1", "c1", [true, false]);
+    const { container } = render(
+      <BlueprintBar blocks={[block]} categories={categories} now="12:00" />,
+    );
+    const seg = container.querySelector(
+      '[data-testid="blueprint-segment"][data-category-id="c1"]',
+    ) as HTMLElement;
+    expect(seg).not.toBeNull();
+    expect(parseFloat(seg.style.opacity)).toBeCloseTo(0.65, 2);
+  });
+
+  it("segment opacity is 0.3 when blockPct=0 (no bricks done / empty bricks)", () => {
+    const block = mkBlockWithBricks("b1", "c1", []);
+    const { container } = render(
+      <BlueprintBar blocks={[block]} categories={categories} now="12:00" />,
+    );
+    const seg = container.querySelector(
+      '[data-testid="blueprint-segment"][data-category-id="c1"]',
+    ) as HTMLElement;
+    expect(seg).not.toBeNull();
+    expect(parseFloat(seg.style.opacity)).toBeCloseTo(0.3, 2);
+  });
+
+  it("uncategorized blocks (categoryId=null) remain excluded (no segment rendered)", () => {
+    const block = mkBlockWithBricks("b1", null, [true]);
+    const { container } = render(
+      <BlueprintBar blocks={[block]} categories={categories} now="12:00" />,
+    );
+    const segs = container.querySelectorAll(
+      '[data-testid="blueprint-segment"]',
+    );
+    expect(segs).toHaveLength(0);
+  });
+});

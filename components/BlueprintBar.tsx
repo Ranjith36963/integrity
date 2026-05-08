@@ -1,14 +1,13 @@
 "use client";
-// BlueprintBar — re-authored for M2 (plan.md § Components — Day Blueprint bar):
-// - Aggregates blocks by categoryId, renders colored segments (M2 non-empty path)
+// BlueprintBar — re-authored for M3 (plan.md § Components — Day Blueprint bar):
+// - M2 features preserved: colored segments by category, NOW pin, empty-outline fallback
+// - M3 NEW: segment opacity = 0.3 + (blockPct/100 × 0.7), clamped [0.3, 1.0]
 // - Uncategorized blocks (categoryId=null) excluded per SG-m2-02
-// - Blocks without end excluded from aggregation
+// - Blocks without end excluded from duration aggregation
 // - Segments sorted by categoryId for determinism
-// - M1 empty-outline path preserved when zero categorized blocks
-// - Legend hidden in M2 (M3 reintroduces with real per-category percentages)
 
 import type { Block, Category } from "@/lib/types";
-import { toMin } from "@/lib/dharma";
+import { toMin, blockPct } from "@/lib/dharma";
 
 interface Props {
   blocks: Block[];
@@ -17,24 +16,42 @@ interface Props {
 }
 
 /**
- * Aggregates categorized block durations by categoryId.
+ * Aggregates categorized block durations and average blockPct by categoryId.
  * Returns entries sorted by categoryId for determinism.
- * Excludes: categoryId===null, blocks without end.
+ * Excludes: categoryId===null, blocks without end (from duration).
  * Exported for U-m2-011 unit test.
  */
 export function aggregateCategoryMinutes(
   blocks: Block[],
-): { categoryId: string; minutes: number }[] {
-  const map = new Map<string, number>();
+): { categoryId: string; minutes: number; avgBlockPct: number }[] {
+  const minuteMap = new Map<string, number>();
+  const pctSumMap = new Map<string, number>();
+  const pctCountMap = new Map<string, number>();
+
   for (const b of blocks) {
-    if (b.categoryId === null || b.end === undefined) continue;
+    if (b.categoryId === null) continue;
+    // Accumulate blockPct for all categorized blocks (with or without end)
+    pctSumMap.set(
+      b.categoryId,
+      (pctSumMap.get(b.categoryId) ?? 0) + blockPct(b),
+    );
+    pctCountMap.set(b.categoryId, (pctCountMap.get(b.categoryId) ?? 0) + 1);
+    // Only accumulate minutes for blocks with a valid end
+    if (b.end === undefined) continue;
     const mins = toMin(b.end) - toMin(b.start);
     if (mins <= 0) continue;
-    map.set(b.categoryId, (map.get(b.categoryId) ?? 0) + mins);
+    minuteMap.set(b.categoryId, (minuteMap.get(b.categoryId) ?? 0) + mins);
   }
-  return [...map.entries()]
+
+  // Build result from categoryIds that have at least some duration (minute entries)
+  return [...minuteMap.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([categoryId, minutes]) => ({ categoryId, minutes }));
+    .map(([categoryId, minutes]) => {
+      const pctCount = pctCountMap.get(categoryId) ?? 1;
+      const pctSum = pctSumMap.get(categoryId) ?? 0;
+      const avgBlockPct = pctSum / pctCount;
+      return { categoryId, minutes, avgBlockPct };
+    });
 }
 
 export function BlueprintBar({ blocks, categories, now }: Props) {
@@ -82,9 +99,14 @@ export function BlueprintBar({ blocks, categories, now }: Props) {
       >
         <div className="flex h-full w-full">
           {hasSegments &&
-            aggregated.map(({ categoryId, minutes }) => {
+            aggregated.map(({ categoryId, minutes, avgBlockPct }) => {
               const cat = categories.find((c) => c.id === categoryId);
               const pct = (minutes / totalMinutes) * 100;
+              // M3: opacity = 0.3 + (blockPct/100 × 0.7), clamped [0.3, 1.0]
+              const opacity = Math.min(
+                1.0,
+                Math.max(0.3, 0.3 + (avgBlockPct / 100) * 0.7),
+              );
               return (
                 <div
                   key={categoryId}
@@ -94,6 +116,7 @@ export function BlueprintBar({ blocks, categories, now }: Props) {
                   style={{
                     width: `${pct}%`,
                     background: cat?.color ?? "var(--accent)",
+                    opacity,
                   }}
                 />
               );
