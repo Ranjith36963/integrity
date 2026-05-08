@@ -12,6 +12,61 @@ The **SHIPPER** agent updates this file on every ship. The user does not edit it
 
 ### Added
 
+- **M3 — Add Brick Flow + Live Scoring + Visual Fill:** first interactive verb on bricks.
+  Add a brick inside a block (tap block → expand → "+ Add brick") OR standalone via the
+  Loose Bricks tray. Three brick kinds — tick / goal / time — with per-type validation.
+  Single-instance `<Sheet>` with `view: 'brick' | 'newCategory'` (mirrors M2's
+  AddBlockSheet pattern). 57 test IDs closed (`U-m3-001..014`, `C-m3-001..024`,
+  `E-m3-001..013`, `A-m3-001..006`); 3 deferred-by-design (AC #38 state injection;
+  AC #47/#48 composite gates).
+- `components/AddBrickSheet.tsx`, `components/BrickChip.tsx` (re-authored from
+  `[obsolete]`), `components/HeroRing.tsx`, `components/LooseBricksTray.tsx` — new.
+- `lib/celebrations.ts` — `useCrossUpEffect` hook for one-shot cross-up detection.
+  Powers block 100% bloom and day 100% fireworks (wired in M3; user-driven trigger
+  arrives with M4 logging).
+- `lib/blockValidation.ts:isValidBrickGoal`, `isValidBrickTime` (integer >= 1
+  validators).
+- Locked Phase-1 Brick discriminated union (`kind` discriminator; `id` / `categoryId` /
+  `parentBlockId` FKs; goal `count`/`target`/`unit`; time `minutesDone`/`durationMin`).
+- `categoryDayPct(state, categoryId)` in `lib/dharma.ts` — bricks attribute to THEIR
+  own category (not parent block's); null-category loose bricks excluded from category
+  queries but counted in `dayPct(state)`.
+
+### Changed (M3)
+
+- `lib/types.ts` — Brick stub from M2 REPLACED with locked discriminated union;
+  `AppState.looseBricks: Brick[]` added; `Action` union extends with `ADD_BRICK`.
+- `lib/data.ts` — `defaultState()` returns `{ blocks:[], categories:[], looseBricks:[] }`.
+  Reducer routes `ADD_BRICK` by `brick.parentBlockId` (null -> looseBricks;
+  non-null -> block.bricks). Immutable updates throughout. `assertNever` preserved.
+- `lib/dharma.ts` — `brickPct` updated for renamed schema. `dayPct(blocks: Block[])`
+  REPLACED by `dayPct(state: AppState)` — averages over `(blocks union looseBricks)`.
+  Empty-state floor `0`. New `categoryDayPct`.
+- `components/Hero.tsx` — wraps the numeral inside `<HeroRing>`. Consumes
+  `dayPct(state)` (new signature).
+- `components/TimelineBlock.tsx` — left scaffold bar (height = blockPct%; color =
+  category or `--text-dim`); tap-to-expand reveals `<BrickChip>` list + "+ Add brick"
+  ghost button; cross-up bloom hook wired (M4 triggers it).
+- `components/BlueprintBar.tsx` — segment opacity = `0.3 + (blockPct/100 x 0.7)`
+  clamped `[0.3, 1]`. Aggregation logic preserved from M2.
+- `app/(building)/BuildingClient.tsx` — wires AddBrickSheet open/close + ADD_BRICK
+  reducer dispatch; mounts `<LooseBricksTray>` between Timeline and BottomBar (gated by
+  visibility predicate); wires day-100 cross-up.
+
+### Notes (M3)
+
+- M3 ships the cross-up hook + bloom wiring + HeroRing visual fill; the `fireworks`
+  motion token + `public/sounds/chime.mp3` chime asset are **deferred to M4** when
+  logging UX arrives to actually drive crossings.
+- Two `aria-expanded` lint warnings (`LooseBricksTray.tsx:43`, `TimelineBlock.tsx:62`)
+  on `role="region"` / `role="article"` are spec-mandated by AC #44 + #45 and
+  intentionally remain as warnings (not suppressed).
+- Playwright + axe-core deferred to Vercel preview (sandbox `next dev` socket bind
+  failure — M1/M2 pattern). Test files at `tests/e2e/m3.spec.ts` (13 IDs) and
+  `tests/e2e/m3.a11y.spec.ts` (6 IDs).
+
+### Added
+
 - **M2 — Add Block Flow:** first interactive verb. Add via floating `+` button (defaults Start to current hour rounded down) or via empty-slot tap (24 absolutely-positioned transparent buttons behind block cards). Single `<Sheet>` instance with `view: 'block' | 'newCategory'` local state; M0 `<Sheet>` primitive untouched. Inline category creation — first category created as side-effect of categorizing first block; new category auto-selected; persists on "Done" even if block is then Cancelled. Validation: empty Title disables Save; End ≤ Start inline error; End past 23:59 inline error; Custom-range zero-weekdays inline error; overlap soft-warning (Save still allowed). Day Blueprint Bar non-empty path: aggregates by `categoryId`, segment width proportional to sum-of-durations / day-total; uncategorized blocks excluded. No-end blocks render as ~5px markers (`HOUR_HEIGHT_PX / 12`). Closes 50 test IDs (`U-m2-001..011`, `C-m2-001..020`, `E-m2-001..013`, `A-m2-001..006`); 33 testable SPEC ACs (3 deferred-by-design). Playwright + axe deferred to Vercel preview (sandbox `next dev` socket bind failure — M1 pattern).
 - `components/AddBlockSheet.tsx`, `RecurrenceChips.tsx`, `CategoryPicker.tsx`, `NewCategoryForm.tsx`, `SlotTapTargets.tsx` — new.
 - `lib/blockValidation.ts` — pure validators (5 helpers): `validateTitle`, `validateEndTime`, `validateEndOverflow`, `validateRecurrenceWeekdays`, `validateOverlap`.

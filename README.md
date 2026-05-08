@@ -48,14 +48,15 @@ npm run test:e2e:install
 
 ## Status
 
-| Milestone                     | State                                          |
-| ----------------------------- | ---------------------------------------------- |
-| M0 — Design System            | Shipped + tap-tested                           |
-| M1 — Empty Building Shell     | Shipped + tap-tested                           |
-| M2 — Add Block Flow           | Shipped to preview — awaiting Gate #2 tap-test |
-| M3 — Add Brick + Live Scoring | Not started — next up                          |
+| Milestone                         | State                                          |
+| --------------------------------- | ---------------------------------------------- |
+| M0 — Design System                | Shipped + tap-tested                           |
+| M1 — Empty Building Shell         | Shipped + tap-tested                           |
+| M2 — Add Block Flow               | Shipped + tap-tested                           |
+| M3 — Add Brick + Live Scoring     | Shipped to preview — awaiting Gate #2 tap-test |
+| M4 — Block Expand + Brick Logging | Not started — next up                          |
 
-Latest preview: branch `claude/verify-m0-deployment-s4XRy` at `4c236c5` (M2 ship). Vercel Deployment Protection active — open in browser while signed in to Vercel.
+Latest preview: `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (branch alias; auto-tracks `claude/verify-m0-deployment-s4XRy`). Vercel Deployment Protection active — open in browser while signed in to Vercel.
 
 ## Project layout
 
@@ -71,11 +72,16 @@ components/          Shared UI components + unit tests
   BlueprintBar.tsx   Day Blueprint bar — segments aggregated by categoryId (M2+)
   BottomBar.tsx      Floating dock — + button opens AddBlockSheet (M2+)
   AddBlockSheet.tsx  Full add-block flow: title, time, recurrence, category, validation
+  AddBrickSheet.tsx  Add Brick flow: kind picker (tick/goal/time), per-type fields, validation
+  BrickChip.tsx      Brick chip with type-specific render + foreground fill = brickPct%
   CategoryPicker.tsx Category selector chip row with inline NewCategoryForm sub-view
+  HeroRing.tsx       SVG arc around the Hero numeral; stroke tracks dayPct%
+  LooseBricksTray    Pinned tray above dock; lists loose bricks + "+ Brick" pill
 lib/                 Domain logic: types, data, scoring, utilities
+  celebrations.ts    useCrossUpEffect hook — one-shot cross-up detection for bloom/fireworks
   dayOfYear.ts       Pure day-of-year helper (leap-year aware)
   timeOffset.ts      Exports HOUR_HEIGHT_PX — single source of truth for timeline geometry
-  blockValidation.ts Pure validators (empty title, end ≤ start, end overflow, zero-weekdays, overlap)
+  blockValidation.ts Pure validators (title, end time, overflow, recurrence, overlap, brick fields)
   uuid.ts            crypto.randomUUID() mockable seam
 tests/
   e2e/               Playwright specs (e2e + a11y)
