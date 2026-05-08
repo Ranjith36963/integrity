@@ -670,3 +670,41 @@ describe("U-m4b-005: LOG_GOAL_BRICK increments looseBricks goal brick; state.blo
     expect(next.blocks).toBe(existingBlocks);
   });
 });
+
+// ─── U-m4b-006: LOG_GOAL_BRICK no-op when id not found ───────────────────────
+
+describe("U-m4b-006: LOG_GOAL_BRICK is a no-op when brickId does not match any brick", () => {
+  it("returned state is same reference when id does not exist", () => {
+    const state: AppState = {
+      blocks: [
+        {
+          id: "block-1",
+          name: "block 1",
+          start: "09:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: null,
+          bricks: [
+            {
+              id: "g1",
+              name: "pushups",
+              kind: "goal",
+              count: 2,
+              target: 5,
+              unit: "",
+              categoryId: null,
+              parentBlockId: "block-1",
+            },
+          ],
+        },
+      ],
+      categories: [],
+      looseBricks: [],
+    };
+    const next = reducer(state, {
+      type: "LOG_GOAL_BRICK",
+      brickId: "does-not-exist",
+      delta: 1,
+    });
+    expect(next).toBe(state);
+  });
+});
