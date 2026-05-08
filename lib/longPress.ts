@@ -83,12 +83,16 @@ export function useLongPressRepeat({
     (e: React.PointerEvent) => {
       if (!enabled) return;
       // Prevent the synthetic click that follows pointer events from double-dispatching.
-      e.preventDefault();
+      // Guard: e.preventDefault may be absent in test harness stubs.
+      if (typeof e.preventDefault === "function") e.preventDefault();
       // Initial tick fires immediately on pointerdown.
       onTick();
       // Schedule hold → auto-repeat.
+      // When hold fires: call onTick() once immediately (auto-repeat start tick),
+      // then start interval for subsequent ticks.
       holdTimerRef.current = setTimeout(() => {
         holdTimerRef.current = null;
+        onTick(); // first auto-repeat tick fires at holdMs
         repeatTimerRef.current = setInterval(() => {
           onTick();
         }, intervalMs);
