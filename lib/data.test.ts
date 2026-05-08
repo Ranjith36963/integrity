@@ -237,3 +237,41 @@ describe("U-m3-011: assertNever exhaustiveness + defaultState looseBricks", () =
     expect(s).toEqual({ blocks: [], categories: [], looseBricks: [] });
   });
 });
+
+// ─── U-m4a-001: LOG_TICK_BRICK flips done false→true in block.bricks ──────────
+
+describe("U-m4a-001: LOG_TICK_BRICK flips done false→true for brick inside a block", () => {
+  it("returns state with brick.done === true; all other fields unchanged", () => {
+    const state: AppState = {
+      blocks: [
+        {
+          id: "block-1",
+          name: "block 1",
+          start: "09:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: null,
+          bricks: [
+            {
+              id: "b1",
+              name: "brick A",
+              kind: "tick",
+              done: false,
+              categoryId: null,
+              parentBlockId: "block-1",
+            },
+          ],
+        },
+      ],
+      categories: [],
+      looseBricks: [],
+    };
+    const next = reducer(state, { type: "LOG_TICK_BRICK", brickId: "b1" });
+    const brick = next.blocks[0].bricks[0];
+    expect(brick.done).toBe(true);
+    // All other fields on the brick are unchanged
+    expect(brick.id).toBe("b1");
+    expect(brick.name).toBe("brick A");
+    expect(brick.kind).toBe("tick");
+    expect(brick.categoryId).toBeNull();
+  });
+});
