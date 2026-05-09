@@ -831,3 +831,52 @@ describe("C-m4b-014: + auto-repeat tick applies transform scale(0.95) for ~80ms"
     fireEvent.pointerUp(plus);
   });
 });
+
+// ─── C-m4b-015: scale-press suppressed under reduced-motion; haptics still ──
+
+describe("C-m4b-015: reduced-motion suppresses scale-press transform; haptics+dispatch unaffected", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("no scale(0.95) on either button at any point; haptics.light+onGoalLog still fire", async () => {
+    const { useReducedMotion } = await import("motion/react");
+    const { haptics } = await import("@/lib/haptics");
+    vi.mocked(useReducedMotion).mockReturnValue(true);
+    const onGoalLog = vi.fn();
+    render(
+      <BrickChip
+        brick={makeGoalBrick("g1", "pushups", 3, 10)}
+        categories={[cat1]}
+        onGoalLog={onGoalLog}
+      />,
+    );
+    const plus = screen.getByRole("button", {
+      name: "Increase pushups",
+    }) as HTMLButtonElement;
+    const minus = screen.getByRole("button", {
+      name: "Decrease pushups",
+    }) as HTMLButtonElement;
+
+    fireEvent.pointerDown(plus);
+    expect(plus.style.transform).toBe("scale(1)");
+    expect(minus.style.transform).toBe("scale(1)");
+
+    act(() => {
+      vi.advanceTimersByTime(500); // HOLD_MS — auto-repeat tick
+    });
+    expect(plus.style.transform).toBe("scale(1)");
+    expect(minus.style.transform).toBe("scale(1)");
+
+    expect(onGoalLog).toHaveBeenCalled();
+    expect(haptics.light).toHaveBeenCalled();
+    expect(haptics.medium).not.toHaveBeenCalled();
+
+    fireEvent.pointerUp(plus);
+  });
+});
