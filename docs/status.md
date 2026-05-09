@@ -6,8 +6,8 @@
 
 ## Snapshot
 
-- **Branch:** `claude/verify-m0-deployment-s4XRy` at `26e74bf` · `main` at `c3ef9f1` (feature branch not yet merged)
-- **Last commit:** `26e74bf` — M4c IMPL HEAD (fix: remove unused imports). Ship commits follow this entry.
+- **Branch:** `claude/verify-m0-deployment-s4XRy` at `c69b94b` · `main` at `c3ef9f1` (feature branch not yet merged)
+- **Last commit:** `c69b94b` — `docs(ship-m4c)`: README + CHANGELOG + status.md for M4c ship.
 - **Last preview URL:** `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (stable branch alias; auto-tracks latest deployment for this branch). Sandbox `curl -I` returns HTTP 403 `x-deny-reason: host_not_allowed` (Vercel Deployment Protection — same as M0–M4d; not a failure; signed-in browser sessions serve normally).
 - **Methodology:** The Loop (SDD-outside, TDD-inside) per ADR-025; **single human gate** (preview tap-test only) per ADR-041 — the VERIFIER agent now replaces the planning gate; per-phase commit prefixes per ADR-027.
 
