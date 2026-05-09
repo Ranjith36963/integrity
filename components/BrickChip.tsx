@@ -1,5 +1,5 @@
 "use client";
-// BrickChip — M4b extended from M4a.
+// BrickChip — M4c extended from M4b.
 // M3: static chip rendering for all brick kinds.
 // M4a: tick chips dispatch onTickToggle + haptics.light on tap;
 //       goal/time chips remain no-op with cursor:default.
@@ -9,14 +9,19 @@
 //       onGoalLog prop added. Long-press auto-repeat via useLongPressRepeat.
 //       Clamp haptic (medium) fires before dispatch when at boundary.
 //       Scale-press visual feedback (0.95 → 1.0, ~80ms) per auto-repeat tick.
-//       Tick + time variants unchanged from M4a.
+//       Tick variant unchanged from M4a.
+// M4c: time chips become interactive — tap START/STOP timer; long-press opens sheet.
+//       New props: running, onTimerToggle, onTimerOpenSheet.
+//       useLongPress (single-fire) drives tap vs long-press routing.
+//       aria-pressed={running}; aria-label per AC#28.
+//       Running-state pulse suppressed under prefers-reduced-motion.
 
 import { useState, useCallback } from "react";
-import { Play, Square, Check, Minus, Plus } from "lucide-react";
+import { Play, Pause, Square, Check, Minus, Plus } from "lucide-react";
 import { useReducedMotion } from "motion/react";
 import { brickPct } from "@/lib/dharma";
 import { haptics } from "@/lib/haptics";
-import { useLongPressRepeat } from "@/lib/longPress";
+import { useLongPressRepeat, useLongPress } from "@/lib/longPress";
 import type { Brick, Category } from "@/lib/types";
 
 interface Props {
@@ -27,6 +32,12 @@ interface Props {
   onTickToggle?: (brickId: string) => void;
   /** Called with (brickId, delta) when a goal brick stepper is used (M4b). */
   onGoalLog?: (brickId: string, delta: 1 | -1) => void;
+  /** M4c: whether this time brick's timer is currently running. */
+  running?: boolean;
+  /** M4c: called when a time brick chip is tapped (parent decides START vs STOP). */
+  onTimerToggle?: (brickId: string) => void;
+  /** M4c: called when a time brick chip is long-pressed (open TimerSheet). */
+  onTimerOpenSheet?: (brickId: string) => void;
 }
 
 function resolveColor(brick: Brick, categories: Category[]): string | null {
@@ -34,7 +45,7 @@ function resolveColor(brick: Brick, categories: Category[]): string | null {
   return categories.find((c) => c.id === brick.categoryId)?.color ?? null;
 }
 
-function buildAriaLabel(brick: Brick, pct: number): string {
+function buildAriaLabel(brick: Brick, pct: number, running?: boolean): string {
   if (brick.kind === "tick") {
     // M4a: enriched tick label — replaces M3's generic "brick A, tick, 0% complete"
     const state = brick.done ? "done" : "not done";
@@ -47,12 +58,14 @@ function buildAriaLabel(brick: Brick, pct: number): string {
     return `${base}, ${brick.count} of ${brick.target}${unitSuffix}`;
   }
   if (brick.kind === "time") {
-    return `${base}, ${brick.minutesDone} of ${brick.durationMin} minutes`;
+    // M4c: enriched time label per AC #28
+    const runState = running ? "running, tap to stop" : "stopped, tap to start";
+    return `${brick.name}, ${brick.minutesDone} of ${brick.durationMin} minutes, ${runState}`;
   }
   return base;
 }
 
-function TypeBadge({ brick }: { brick: Brick }) {
+function TypeBadge({ brick, running }: { brick: Brick; running?: boolean }) {
   if (brick.kind === "tick") {
     return brick.done ? (
       <Check
@@ -85,7 +98,8 @@ function TypeBadge({ brick }: { brick: Brick }) {
       </span>
     );
   }
-  // time
+  // time — M4c: Play when stopped, Pause when running
+  const GlyphIcon = running ? Pause : Play;
   return (
     <span
       aria-hidden="true"
@@ -100,12 +114,120 @@ function TypeBadge({ brick }: { brick: Brick }) {
       }}
     >
       {brick.minutesDone} / {brick.durationMin} m
-      <Play
+      <GlyphIcon
         size={10}
         aria-hidden="true"
         style={{ opacity: 0.4, flexShrink: 0 }}
       />
     </span>
+  );
+}
+
+// ─── Timer chip (M4c) ────────────────────────────────────────────────────────
+
+interface TimerChipProps {
+  brick: Extract<Brick, { kind: "time" }>;
+  size: "sm" | "md";
+  running: boolean;
+  onTimerToggle?: (brickId: string) => void;
+  onTimerOpenSheet?: (brickId: string) => void;
+  fillStyle: React.CSSProperties;
+  bgStyle: string;
+  ariaLabel: string;
+  prefersReducedMotion: boolean | null;
+}
+
+function TimerChip({
+  brick,
+  size,
+  running,
+  onTimerToggle,
+  onTimerOpenSheet,
+  fillStyle,
+  bgStyle,
+  ariaLabel,
+  prefersReducedMotion,
+}: TimerChipProps) {
+  const handleTap = useCallback(() => {
+    haptics.light();
+    onTimerToggle?.(brick.id);
+  }, [brick.id, onTimerToggle]);
+
+  const handleLongPress = useCallback(() => {
+    haptics.medium();
+    onTimerOpenSheet?.(brick.id);
+  }, [brick.id, onTimerOpenSheet]);
+
+  const pressHandlers = useLongPress({
+    holdMs: 500,
+    onTap: handleTap,
+    onLongPress: handleLongPress,
+  });
+
+  // Running-state pulse animation — suppressed under prefers-reduced-motion (AC #27)
+  const pulseStyle: React.CSSProperties =
+    running && !prefersReducedMotion
+      ? {
+          animation: "timer-pulse 1s ease-in-out infinite",
+        }
+      : {};
+
+  return (
+    <div
+      data-component="brick-chip"
+      style={{
+        position: "relative",
+        borderRadius: "12px",
+        overflow: "hidden",
+        background: bgStyle,
+        display: "inline-flex",
+        width: "100%",
+      }}
+    >
+      {/* Foreground gradient fill */}
+      <div data-testid="brick-fill" aria-hidden="true" style={fillStyle} />
+
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        aria-pressed={running}
+        {...pressHandlers}
+        style={{
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          width: "100%",
+          minHeight: "44px",
+          padding: size === "sm" ? "8px 10px" : "10px 12px",
+          gap: "8px",
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          fontFamily: "var(--font-ui)",
+          fontSize: size === "sm" ? "var(--fs-12)" : "var(--fs-14)",
+          color: "var(--ink)",
+          textAlign: "left",
+          ...pulseStyle,
+        }}
+      >
+        {/* Title */}
+        <span
+          style={{
+            overflow: "hidden",
+            whiteSpace: "nowrap",
+            textOverflow: "ellipsis",
+            flex: 1,
+            minWidth: 0,
+          }}
+        >
+          {brick.name}
+        </span>
+
+        {/* Badge with Play/Pause glyph */}
+        <TypeBadge brick={brick} running={running} />
+      </button>
+    </div>
   );
 }
 
@@ -316,6 +438,9 @@ export function BrickChip({
   size = "md",
   onTickToggle,
   onGoalLog,
+  running = false,
+  onTimerToggle,
+  onTimerOpenSheet,
 }: Props) {
   const pct = brickPct(brick);
   const color = resolveColor(brick, categories);
@@ -328,7 +453,7 @@ export function BrickChip({
   // Foreground fill color at 60% alpha
   const fillColor = isUncategorized ? "var(--accent)" : `${color}99`; // 99 ≈ 60% alpha
 
-  const ariaLabel = buildAriaLabel(brick, pct);
+  const ariaLabel = buildAriaLabel(brick, pct, running);
 
   const fillStyle: React.CSSProperties = {
     position: "absolute",
@@ -338,6 +463,23 @@ export function BrickChip({
     pointerEvents: "none",
     transition: prefersReducedMotion ? "none" : "width 600ms ease-in-out",
   };
+
+  // M4c: time chips get their own TimerChip component
+  if (brick.kind === "time") {
+    return (
+      <TimerChip
+        brick={brick}
+        size={size}
+        running={running}
+        onTimerToggle={onTimerToggle}
+        onTimerOpenSheet={onTimerOpenSheet}
+        fillStyle={fillStyle}
+        bgStyle={bgStyle}
+        ariaLabel={ariaLabel}
+        prefersReducedMotion={prefersReducedMotion}
+      />
+    );
+  }
 
   // M4b: goal chips get their own GoalStepperChip component
   if (brick.kind === "goal") {
@@ -354,11 +496,8 @@ export function BrickChip({
     );
   }
 
-  // M4a: branch onClick and cursor by brick.kind
-  const isTick = brick.kind === "tick";
-
+  // M4a: tick chip — onClick fires haptic + toggle
   function handleClick() {
-    if (!isTick) return; // time chips are no-op
     haptics.light();
     onTickToggle?.(brick.id);
   }
@@ -379,11 +518,11 @@ export function BrickChip({
       {/* Foreground gradient fill — width = brickPct%; transition respects reduced-motion */}
       <div data-testid="brick-fill" aria-hidden="true" style={fillStyle} />
 
-      {/* Chip button — tick: dispatches toggle + haptic; time: no-op */}
+      {/* Chip button — tick: dispatches toggle + haptic */}
       <button
         type="button"
         aria-label={ariaLabel}
-        aria-pressed={isTick ? brick.done : undefined}
+        aria-pressed={brick.done}
         onClick={handleClick}
         style={{
           position: "relative",
@@ -396,7 +535,7 @@ export function BrickChip({
           gap: "8px",
           background: "transparent",
           border: "none",
-          cursor: isTick ? "pointer" : "default",
+          cursor: "pointer",
           fontFamily: "var(--font-ui)",
           fontSize: size === "sm" ? "var(--fs-12)" : "var(--fs-14)",
           color: "var(--ink)",
