@@ -880,3 +880,39 @@ describe("C-m4b-015: reduced-motion suppresses scale-press transform; haptics+di
     fireEvent.pointerUp(plus);
   });
 });
+
+// ─── C-m4b-016: keyboard Enter/Space fires once per activation; no auto-repeat ─
+
+describe("C-m4b-016: keyboard Enter/Space on + fires onGoalLog once per press; no auto-repeat", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("Enter and Space each fire one onGoalLog; 2 total; no extra ticks after 2s", async () => {
+    const onGoalLog = vi.fn();
+    render(
+      <BrickChip
+        brick={makeGoalBrick("g1", "pushups", 3, 10)}
+        categories={[cat1]}
+        onGoalLog={onGoalLog}
+      />,
+    );
+    const plus = screen.getByRole("button", { name: "Increase pushups" });
+    plus.focus();
+    // Simulate keyboard click — detail===0 marks it as keyboard-activated
+    fireEvent.click(plus, { detail: 0 });
+    fireEvent.click(plus, { detail: 0 });
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(onGoalLog).toHaveBeenCalledTimes(2);
+    onGoalLog.mock.calls.forEach((args) => {
+      expect(args).toEqual(["g1", 1]);
+    });
+  });
+});
