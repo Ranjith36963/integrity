@@ -123,3 +123,86 @@ export function useLongPressRepeat({
 
   return { onPointerDown, onPointerUp, onPointerCancel, onPointerLeave };
 }
+
+// ─── useLongPress — single-fire tap/long-press hook (M4c) ───────────────────
+//
+// Resolves SG-m4c-07: 500 ms threshold; pointerdown starts a timer;
+// pointerup before holdMs → onTap; holdMs elapses → onLongPress + consumed flag
+// (suppresses eventual onTap). Coexists with useLongPressRepeat; M4b hook unchanged.
+
+interface UseLongPressOptions {
+  /** Called when pointerup fires before holdMs elapses (tap). */
+  onTap: () => void;
+  /** Called when holdMs elapses without pointerup (long-press). */
+  onLongPress: () => void;
+  /** Hold threshold in ms before long-press fires. Default: HOLD_MS (500). */
+  holdMs?: number;
+}
+
+/**
+ * useLongPress — pointer-driven single-fire tap/long-press hook.
+ * Returns stable handler refs. Exported alongside useLongPressRepeat.
+ */
+export function useLongPress({
+  onTap,
+  onLongPress,
+  holdMs = HOLD_MS,
+}: UseLongPressOptions): LongPressHandlers {
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const consumedRef = useRef(false);
+
+  const clearTimer = useCallback(() => {
+    if (holdTimerRef.current !== null) {
+      clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+  }, []);
+
+  // Clear timer on unmount.
+  useEffect(() => {
+    return clearTimer;
+  }, [clearTimer]);
+
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      // Suppress synthetic click so pointer-driven and keyboard paths don't double-fire.
+      if (typeof e.preventDefault === "function") e.preventDefault();
+      consumedRef.current = false;
+      holdTimerRef.current = setTimeout(() => {
+        holdTimerRef.current = null;
+        consumedRef.current = true; // mark gesture as long-press — suppress onTap on pointerup
+        onLongPress();
+      }, holdMs);
+    },
+    [onLongPress, holdMs],
+  );
+
+  const onPointerUp = useCallback(
+    (_e: React.PointerEvent) => {
+      clearTimer();
+      if (!consumedRef.current) {
+        onTap();
+      }
+      consumedRef.current = false;
+    },
+    [clearTimer, onTap],
+  );
+
+  const onPointerCancel = useCallback(
+    (_e: React.PointerEvent) => {
+      clearTimer();
+      consumedRef.current = false;
+    },
+    [clearTimer],
+  );
+
+  const onPointerLeave = useCallback(
+    (_e: React.PointerEvent) => {
+      clearTimer();
+      consumedRef.current = false;
+    },
+    [clearTimer],
+  );
+
+  return { onPointerDown, onPointerUp, onPointerCancel, onPointerLeave };
+}

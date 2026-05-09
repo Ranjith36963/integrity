@@ -3,7 +3,12 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { useLongPressRepeat, HOLD_MS, INTERVAL_MS } from "./longPress";
+import {
+  useLongPressRepeat,
+  useLongPress,
+  HOLD_MS,
+  INTERVAL_MS,
+} from "./longPress";
 
 // ─── U-m4b-012: HOLD_MS and INTERVAL_MS constants ────────────────────────────
 
@@ -112,5 +117,118 @@ describe("U-m4b-014: useLongPressRepeat stops auto-repeat when enabled flips to 
       vi.advanceTimersByTime(200);
     });
     expect(onTick).toHaveBeenCalledTimes(callsBeforeDisable);
+  });
+});
+
+// ─── U-m4c-016: useLongPress single-fire hook ─────────────────────────────────
+
+describe("U-m4c-016: useLongPress single-fire tap/long-press hook", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("short press (< 500 ms): onTap called once; onLongPress NOT called", () => {
+    const onTap = vi.fn();
+    const onLongPress = vi.fn();
+    const { result } = renderHook(() =>
+      useLongPress({ holdMs: 500, onTap, onLongPress }),
+    );
+
+    act(() => {
+      result.current.onPointerDown({} as React.PointerEvent);
+    });
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    act(() => {
+      result.current.onPointerUp({} as React.PointerEvent);
+    });
+
+    expect(onTap).toHaveBeenCalledTimes(1);
+    expect(onLongPress).not.toHaveBeenCalled();
+  });
+
+  it("long press (holdMs elapses without pointerup): onLongPress called once; onTap NOT called", () => {
+    const onTap = vi.fn();
+    const onLongPress = vi.fn();
+    const { result } = renderHook(() =>
+      useLongPress({ holdMs: 500, onTap, onLongPress }),
+    );
+
+    act(() => {
+      result.current.onPointerDown({} as React.PointerEvent);
+    });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(onLongPress).toHaveBeenCalledTimes(1);
+    expect(onTap).not.toHaveBeenCalled();
+  });
+
+  it("after long-press fires, subsequent pointerup does NOT call onTap (consumed-ref guard)", () => {
+    const onTap = vi.fn();
+    const onLongPress = vi.fn();
+    const { result } = renderHook(() =>
+      useLongPress({ holdMs: 500, onTap, onLongPress }),
+    );
+
+    act(() => {
+      result.current.onPointerDown({} as React.PointerEvent);
+    });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    act(() => {
+      result.current.onPointerUp({} as React.PointerEvent);
+    });
+
+    expect(onLongPress).toHaveBeenCalledTimes(1);
+    expect(onTap).not.toHaveBeenCalled();
+  });
+
+  it("pointercancel during press: neither callback fires", () => {
+    const onTap = vi.fn();
+    const onLongPress = vi.fn();
+    const { result } = renderHook(() =>
+      useLongPress({ holdMs: 500, onTap, onLongPress }),
+    );
+
+    act(() => {
+      result.current.onPointerDown({} as React.PointerEvent);
+    });
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    act(() => {
+      result.current.onPointerCancel({} as React.PointerEvent);
+    });
+
+    expect(onTap).not.toHaveBeenCalled();
+    expect(onLongPress).not.toHaveBeenCalled();
+  });
+
+  it("unmount mid-press: no callback fires after unmount (timeout cleared)", () => {
+    const onTap = vi.fn();
+    const onLongPress = vi.fn();
+    const { result, unmount } = renderHook(() =>
+      useLongPress({ holdMs: 500, onTap, onLongPress }),
+    );
+
+    act(() => {
+      result.current.onPointerDown({} as React.PointerEvent);
+    });
+    unmount();
+
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+
+    expect(onTap).not.toHaveBeenCalled();
+    expect(onLongPress).not.toHaveBeenCalled();
   });
 });
