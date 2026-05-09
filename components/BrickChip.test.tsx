@@ -999,3 +999,271 @@ describe("C-m4b-019: time chip remains a single inert <button>; no − or + butt
     expect(onGoalLog).not.toHaveBeenCalled();
   });
 });
+
+// ─── C-m4c-001: time chip stopped — Play glyph, aria-pressed=false ────────────
+
+describe("C-m4c-001: time chip stopped renders Play icon, aria-pressed=false, badge, aria-label", () => {
+  it("single button with aria-pressed=false, Play icon, badge '5 / 25 m', accessible name per AC#28", () => {
+    render(
+      <BrickChip
+        brick={{
+          id: "t1",
+          kind: "time",
+          durationMin: 25,
+          minutesDone: 5,
+          name: "Read",
+          categoryId: null,
+          parentBlockId: null,
+        }}
+        categories={[]}
+        running={false}
+        onTimerToggle={vi.fn()}
+        onTimerOpenSheet={vi.fn()}
+      />,
+    );
+    const btn = screen.getByRole("button");
+    expect(btn).toBeInTheDocument();
+    expect(btn.getAttribute("aria-pressed")).toBe("false");
+    // Badge text
+    expect(screen.getByText(/5\s*\/\s*25\s*m/)).toBeInTheDocument();
+    // Accessible name per AC #28
+    expect(btn.getAttribute("aria-label")).toBe(
+      "Read, 5 of 25 minutes, stopped, tap to start",
+    );
+  });
+});
+
+// ─── C-m4c-002: time chip running — Pause glyph, aria-pressed=true ───────────
+
+describe("C-m4c-002: time chip running renders Pause icon, aria-pressed=true, updated badge", () => {
+  it("aria-pressed=true; badge '12 / 25 m'; accessible name matches running variant", () => {
+    render(
+      <BrickChip
+        brick={{
+          id: "t1",
+          kind: "time",
+          durationMin: 25,
+          minutesDone: 12,
+          name: "Read",
+          categoryId: null,
+          parentBlockId: null,
+        }}
+        categories={[]}
+        running={true}
+        onTimerToggle={vi.fn()}
+        onTimerOpenSheet={vi.fn()}
+      />,
+    );
+    const btn = screen.getByRole("button");
+    expect(btn.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText(/12\s*\/\s*25\s*m/)).toBeInTheDocument();
+    expect(btn.getAttribute("aria-label")).toBe(
+      "Read, 12 of 25 minutes, running, tap to stop",
+    );
+  });
+});
+
+// ─── C-m4c-003: time chip tap fires onTimerToggle + haptics.light ─────────────
+
+describe("C-m4c-003: tap on stopped time chip calls onTimerToggle once; haptics.light once", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("onTimerToggle called with 't1'; onTimerOpenSheet NOT called; haptics.light once", async () => {
+    vi.mock("@/lib/haptics", () => ({
+      haptics: {
+        light: vi.fn(),
+        medium: vi.fn(),
+        success: vi.fn(),
+        notification: vi.fn(),
+      },
+    }));
+    const { haptics } = await import("@/lib/haptics");
+    const onTimerToggle = vi.fn();
+    const onTimerOpenSheet = vi.fn();
+
+    render(
+      <BrickChip
+        brick={{
+          id: "t1",
+          kind: "time",
+          durationMin: 25,
+          minutesDone: 0,
+          name: "Read",
+          categoryId: null,
+          parentBlockId: null,
+        }}
+        categories={[]}
+        running={false}
+        onTimerToggle={onTimerToggle}
+        onTimerOpenSheet={onTimerOpenSheet}
+      />,
+    );
+
+    const btn = screen.getByRole("button");
+    fireEvent.pointerDown(btn);
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    fireEvent.pointerUp(btn);
+
+    expect(onTimerToggle).toHaveBeenCalledTimes(1);
+    expect(onTimerToggle).toHaveBeenCalledWith("t1");
+    expect(onTimerOpenSheet).not.toHaveBeenCalled();
+    expect(haptics.light).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ─── C-m4c-004: running time chip tap fires onTimerToggle ────────────────────
+
+describe("C-m4c-004: tap on running time chip calls onTimerToggle once; haptics.light once", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("running chip: onTimerToggle called with 't1'; haptics.light once", async () => {
+    vi.mock("@/lib/haptics", () => ({
+      haptics: {
+        light: vi.fn(),
+        medium: vi.fn(),
+        success: vi.fn(),
+        notification: vi.fn(),
+      },
+    }));
+    const { haptics } = await import("@/lib/haptics");
+    const onTimerToggle = vi.fn();
+
+    render(
+      <BrickChip
+        brick={{
+          id: "t1",
+          kind: "time",
+          durationMin: 25,
+          minutesDone: 8,
+          name: "Read",
+          categoryId: null,
+          parentBlockId: null,
+        }}
+        categories={[]}
+        running={true}
+        onTimerToggle={onTimerToggle}
+        onTimerOpenSheet={vi.fn()}
+      />,
+    );
+
+    const btn = screen.getByRole("button");
+    fireEvent.pointerDown(btn);
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    fireEvent.pointerUp(btn);
+
+    expect(onTimerToggle).toHaveBeenCalledTimes(1);
+    expect(onTimerToggle).toHaveBeenCalledWith("t1");
+    expect(haptics.light).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ─── C-m4c-005: long-press on time chip opens sheet ──────────────────────────
+
+describe("C-m4c-005: long-press (>=500ms) calls onTimerOpenSheet; onTimerToggle NOT called; haptics.medium once", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("long-press fires onTimerOpenSheet('t1'); haptics.medium once; toggle NOT called", async () => {
+    vi.mock("@/lib/haptics", () => ({
+      haptics: {
+        light: vi.fn(),
+        medium: vi.fn(),
+        success: vi.fn(),
+        notification: vi.fn(),
+      },
+    }));
+    const { haptics } = await import("@/lib/haptics");
+    const onTimerToggle = vi.fn();
+    const onTimerOpenSheet = vi.fn();
+
+    render(
+      <BrickChip
+        brick={{
+          id: "t1",
+          kind: "time",
+          durationMin: 25,
+          minutesDone: 0,
+          name: "Read",
+          categoryId: null,
+          parentBlockId: null,
+        }}
+        categories={[]}
+        running={false}
+        onTimerToggle={onTimerToggle}
+        onTimerOpenSheet={onTimerOpenSheet}
+      />,
+    );
+
+    const btn = screen.getByRole("button");
+    fireEvent.pointerDown(btn);
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    fireEvent.pointerUp(btn);
+
+    expect(onTimerOpenSheet).toHaveBeenCalledTimes(1);
+    expect(onTimerOpenSheet).toHaveBeenCalledWith("t1");
+    expect(onTimerToggle).not.toHaveBeenCalled();
+    expect(haptics.medium).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ─── C-m4c-006: reduced motion suppresses pulse animation ────────────────────
+
+describe("C-m4c-006: reduced motion suppresses chip running-state pulse animation", () => {
+  it("running chip under reduced-motion has no scale transform; badge still updates", () => {
+    // Mock useReducedMotion to return true
+    vi.mock("motion/react", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("motion/react")>();
+      return { ...actual, useReducedMotion: () => true };
+    });
+
+    render(
+      <BrickChip
+        brick={{
+          id: "t1",
+          kind: "time",
+          durationMin: 25,
+          minutesDone: 5,
+          name: "Read",
+          categoryId: null,
+          parentBlockId: null,
+        }}
+        categories={[]}
+        running={true}
+        onTimerToggle={vi.fn()}
+        onTimerOpenSheet={vi.fn()}
+      />,
+    );
+
+    const btn = screen.getByRole("button");
+    // Under reduced motion, no animation class or transform should be present
+    const style = btn.getAttribute("style") ?? "";
+    // The pulse animation should not be applied (no animation style)
+    expect(style).not.toMatch(/animation/);
+    // aria-pressed and badge still work normally
+    expect(btn.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText(/5\s*\/\s*25\s*m/)).toBeInTheDocument();
+  });
+});
