@@ -2,7 +2,7 @@
 // Covers: C-m3-001..005, C-m4a-001..009
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BrickChip } from "./BrickChip";
 import type { Brick, Category } from "@/lib/types";
@@ -786,5 +786,48 @@ describe("C-m4b-013: pointerup mid-burst stops auto-repeat ticks", () => {
 
     expect(onGoalLog).toHaveBeenCalledTimes(dispatchesBeforeRelease);
     expect(haptics.light).toHaveBeenCalledTimes(lightBeforeRelease);
+  });
+});
+
+// ─── C-m4b-014: scale-press visual feedback on active stepper, ~80ms ─────────
+
+describe("C-m4b-014: + auto-repeat tick applies transform scale(0.95) for ~80ms", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("active + transform=scale(0.95) at tick; back to scale(1) after 80ms; − unaffected", async () => {
+    const { useReducedMotion } = await import("motion/react");
+    vi.mocked(useReducedMotion).mockReturnValue(false);
+    render(
+      <BrickChip
+        brick={makeGoalBrick("g1", "pushups", 3, 10)}
+        categories={[cat1]}
+        onGoalLog={vi.fn()}
+      />,
+    );
+    const plus = screen.getByRole("button", {
+      name: "Increase pushups",
+    }) as HTMLButtonElement;
+    const minus = screen.getByRole("button", {
+      name: "Decrease pushups",
+    }) as HTMLButtonElement;
+
+    fireEvent.pointerDown(plus);
+    expect(plus.style.transform).toBe("scale(0.95)");
+    expect(minus.style.transform).toBe("scale(1)");
+
+    act(() => {
+      vi.advanceTimersByTime(80);
+    });
+    expect(plus.style.transform).toBe("scale(1)");
+    expect(minus.style.transform).toBe("scale(1)");
+
+    fireEvent.pointerUp(plus);
   });
 });
