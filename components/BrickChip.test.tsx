@@ -1,7 +1,7 @@
 // components/BrickChip.test.tsx — M3 component tests for new BrickChip
 // Covers: C-m3-001..005, C-m4a-001..009
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BrickChip } from "./BrickChip";
@@ -706,5 +706,45 @@ describe("C-m4b-011: goal brick-fill transition collapses to 'none' when reduced
     ) as HTMLElement;
     expect(fill.style.width).toBe("30%");
     expect(fill.style.transition).toBe("none");
+  });
+});
+
+// ─── C-m4b-012: long-press auto-repeat fires onTick + light haptic per tick ──
+
+describe("C-m4b-012: + long-press fires 1 initial + 1 at HOLD_MS + 4 intervals = 6 ticks", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("onGoalLog called 6 times with ('g1', 1); haptics.light 6×; haptics.medium 0×", async () => {
+    const { haptics } = await import("@/lib/haptics");
+    const onGoalLog = vi.fn();
+    render(
+      <BrickChip
+        brick={makeGoalBrick("g1", "pushups", 3, 10)}
+        categories={[cat1]}
+        onGoalLog={onGoalLog}
+      />,
+    );
+    const plus = screen.getByRole("button", { name: "Increase pushups" });
+    fireEvent.pointerDown(plus);
+    vi.advanceTimersByTime(500); // HOLD_MS — auto-repeat starts (+1 tick)
+    vi.advanceTimersByTime(50);
+    vi.advanceTimersByTime(50);
+    vi.advanceTimersByTime(50);
+    vi.advanceTimersByTime(50);
+    fireEvent.pointerUp(plus);
+
+    expect(onGoalLog).toHaveBeenCalledTimes(6);
+    onGoalLog.mock.calls.forEach((args) => {
+      expect(args).toEqual(["g1", 1]);
+    });
+    expect(haptics.light).toHaveBeenCalledTimes(6);
+    expect(haptics.medium).not.toHaveBeenCalled();
   });
 });
