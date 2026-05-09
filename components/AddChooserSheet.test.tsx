@@ -74,19 +74,19 @@ describe("C-m4d-001: chooser renders role=dialog, two buttons, cancel control", 
 // ─── C-m4d-002: buttons meet ADR-031 44px min touch target ───────────────────
 
 describe("C-m4d-002: Add Block and Add Brick buttons meet ADR-031 44px touch target", () => {
-  it("Add Block button has min-height >= 44px class", () => {
+  it("Add Block button has a 44px touch target (min-h-[44px] or h-11 class)", () => {
     render(<AddChooserSheet open={true} onPick={vi.fn()} onCancel={vi.fn()} />);
     const btn = screen.getByRole("button", { name: "Add Block" });
-    // Check the computed class includes min-h (Button component enforces min-h-[44px])
+    // Button uses either min-h-[44px] (size=sm) or h-11 (44px, size=md) per ADR-031
     const cls = btn.className;
-    expect(cls).toMatch(/min-h/);
+    expect(cls).toMatch(/min-h|h-11/);
   });
 
-  it("Add Brick button has min-height >= 44px class", () => {
+  it("Add Brick button has a 44px touch target (min-h-[44px] or h-11 class)", () => {
     render(<AddChooserSheet open={true} onPick={vi.fn()} onCancel={vi.fn()} />);
     const btn = screen.getByRole("button", { name: "Add Brick" });
     const cls = btn.className;
-    expect(cls).toMatch(/min-h/);
+    expect(cls).toMatch(/min-h|h-11/);
   });
 });
 
@@ -150,11 +150,9 @@ describe("C-m4d-004: Cancel control and backdrop dismiss call onCancel, never on
     const user = userEvent.setup();
     const onPick = vi.fn();
     const onCancel = vi.fn();
-    const { container } = render(
-      <AddChooserSheet open={true} onPick={onPick} onCancel={onCancel} />,
-    );
-    // Backdrop is the first child of the portal (aria-hidden div)
-    const backdrop = container.querySelector('[aria-hidden="true"]');
+    render(<AddChooserSheet open={true} onPick={onPick} onCancel={onCancel} />);
+    // Sheet uses createPortal → dialog renders in document.body, not in container
+    const backdrop = document.body.querySelector('[aria-hidden="true"]');
     if (backdrop) {
       await user.click(backdrop as HTMLElement);
     }
