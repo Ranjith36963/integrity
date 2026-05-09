@@ -180,7 +180,6 @@ test("E-m4d-005: at mobile 430px viewport chooser buttons are ≥ 44px; no horiz
 // ─── E-m4d-006: reduced-motion — chooser appears immediately (no slide-in) ───
 
 test("E-m4d-006: with prefers-reduced-motion:reduce the chooser is visible immediately after tap", async ({
-  page,
   browser,
 }) => {
   // Create context with reduced motion emulation
