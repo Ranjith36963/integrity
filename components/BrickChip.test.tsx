@@ -635,3 +635,36 @@ describe("C-m4b-008: clamp haptic fires medium when − pressed at count===0", (
     expect(haptics.medium).toHaveBeenCalledTimes(1);
   });
 });
+
+// ─── C-m4b-009: badge text format ${count} / ${target}${unit ? ' '+unit : ''} ─
+
+describe("C-m4b-009: goal badge text format honors unit presence/absence", () => {
+  it("renders '3 / 10 reps' when unit is non-empty", () => {
+    const { container } = render(
+      <BrickChip
+        brick={makeGoalBrick("g1", "pushups", 3, 10, "reps")}
+        categories={[cat1]}
+      />,
+    );
+    const badge = container.querySelector(
+      "[role='group'] > div span[aria-hidden='true']",
+    );
+    expect(badge).not.toBeNull();
+    expect(badge!.textContent).toBe("3 / 10 reps");
+  });
+
+  it("renders '3 / 10' with no trailing whitespace when unit is empty", () => {
+    const { container } = render(
+      <BrickChip
+        brick={makeGoalBrick("g1", "pushups", 3, 10, "")}
+        categories={[cat1]}
+      />,
+    );
+    const badge = container.querySelector(
+      "[role='group'] > div span[aria-hidden='true']",
+    );
+    expect(badge).not.toBeNull();
+    expect(badge!.textContent).toBe("3 / 10");
+    expect(badge!.textContent).not.toMatch(/\s$/);
+  });
+});
