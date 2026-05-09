@@ -240,7 +240,7 @@ function GoalStepperChip({
         aria-label={`Decrease ${brick.name}`}
         disabled={isAtFloor}
         onClick={handleMinusClick}
-        {...(isAtFloor ? {} : minusHandlers)}
+        {...minusHandlers}
         style={{
           ...buttonBase,
           ...(isAtFloor ? disabledStyle : {}),
@@ -291,7 +291,7 @@ function GoalStepperChip({
         aria-label={`Increase ${brick.name}`}
         disabled={isAtCeil}
         onClick={handlePlusClick}
-        {...(isAtCeil ? {} : plusHandlers)}
+        {...plusHandlers}
         style={{
           ...buttonBase,
           ...(isAtCeil ? disabledStyle : {}),

@@ -81,15 +81,14 @@ export function useLongPressRepeat({
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
-      if (!enabled) return;
       // Prevent the synthetic click that follows pointer events from double-dispatching.
       // Guard: e.preventDefault may be absent in test harness stubs.
       if (typeof e.preventDefault === "function") e.preventDefault();
-      // Initial tick fires immediately on pointerdown.
+      // Initial tick fires immediately on pointerdown — even when !enabled, so the
+      // clamp-haptic-before-dispatch path runs (onTick decides dispatch vs clamp).
       onTick();
-      // Schedule hold → auto-repeat.
-      // When hold fires: call onTick() once immediately (auto-repeat start tick),
-      // then start interval for subsequent ticks.
+      // Schedule hold → auto-repeat only when enabled (no auto-repeat at boundary).
+      if (!enabled) return;
       holdTimerRef.current = setTimeout(() => {
         holdTimerRef.current = null;
         onTick(); // first auto-repeat tick fires at holdMs
