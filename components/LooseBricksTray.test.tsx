@@ -211,3 +211,113 @@ describe("C-m4b-021: LooseBricksTray threads onGoalLog down to BrickChip", () =>
     expect(onGoalLog).toHaveBeenCalledWith("loose-g1", 1);
   });
 });
+
+// ─── C-m4c-020: LooseBricksTray threads runningTimerBrickId + timer callbacks ──
+
+vi.mock("@/lib/haptics", () => ({
+  haptics: {
+    light: vi.fn(),
+    medium: vi.fn(),
+    success: vi.fn(),
+    notification: vi.fn(),
+  },
+}));
+
+describe("C-m4c-020: LooseBricksTray pass-through of runningTimerBrickId and timer callbacks", () => {
+  const looseTimeBrick: Brick = {
+    id: "t1",
+    name: "Read",
+    kind: "time",
+    durationMin: 25,
+    minutesDone: 5,
+    categoryId: null,
+    parentBlockId: null,
+  };
+
+  const looseTickBrick: Brick = {
+    id: "tick1",
+    name: "Morning stretch",
+    kind: "tick",
+    done: false,
+    categoryId: null,
+    parentBlockId: null,
+  };
+
+  it("time chip receives running=true when runningTimerBrickId matches (expanded view)", async () => {
+    const user = userEvent.setup();
+    render(
+      <LooseBricksTray
+        looseBricks={[looseTimeBrick]}
+        categories={[]}
+        onAddBrick={vi.fn()}
+        runningTimerBrickId="t1"
+        onTimerToggle={vi.fn()}
+        onTimerOpenSheet={vi.fn()}
+      />,
+    );
+    // Expand tray
+    const expand = screen.getByRole("button", {
+      name: /expand loose bricks/i,
+    });
+    await user.click(expand);
+
+    const chip = screen.getByRole("button", {
+      name: /running, tap to stop/,
+    });
+    expect(chip).toBeInTheDocument();
+    expect(chip.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("onTimerToggle spy is called when time chip is tapped (expanded view)", async () => {
+    const user = userEvent.setup();
+    const onTimerToggle = vi.fn();
+    render(
+      <LooseBricksTray
+        looseBricks={[looseTimeBrick]}
+        categories={[]}
+        onAddBrick={vi.fn()}
+        runningTimerBrickId={null}
+        onTimerToggle={onTimerToggle}
+        onTimerOpenSheet={vi.fn()}
+      />,
+    );
+    const expand = screen.getByRole("button", {
+      name: /expand loose bricks/i,
+    });
+    await user.click(expand);
+
+    const chip = screen.getByRole("button", { name: /stopped, tap to start/ });
+    chip.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    chip.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(onTimerToggle).toHaveBeenCalledWith("t1");
+  });
+
+  it("regression: onTickToggle still works for non-time bricks when rendered alongside time brick", async () => {
+    const user = userEvent.setup();
+    const onTickToggle = vi.fn();
+    render(
+      <LooseBricksTray
+        looseBricks={[looseTimeBrick, looseTickBrick]}
+        categories={[]}
+        onAddBrick={vi.fn()}
+        runningTimerBrickId={null}
+        onTimerToggle={vi.fn()}
+        onTimerOpenSheet={vi.fn()}
+        onTickToggle={onTickToggle}
+      />,
+    );
+    const expand = screen.getByRole("button", {
+      name: /expand loose bricks/i,
+    });
+    await user.click(expand);
+
+    // Find the tick chip (aria-pressed without running language)
+    const tickChip = screen.getByRole("button", {
+      name: /Morning stretch/,
+    });
+    await user.click(tickChip);
+    expect(onTickToggle).toHaveBeenCalledWith("tick1");
+  });
+});

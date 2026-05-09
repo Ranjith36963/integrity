@@ -581,3 +581,105 @@ describe("C-m4b-020: TimelineBlock threads onGoalLog down to inner goal BrickChi
     expect(onGoalLog).toHaveBeenCalledWith("g1", 1);
   });
 });
+
+// ─── C-m4c-019: TimelineBlock threads runningTimerBrickId + timer callbacks ────
+
+describe("C-m4c-019: TimelineBlock pass-through of runningTimerBrickId and timer callbacks", () => {
+  const cat1: Category = { id: "c1", name: "category 1", color: "#34d399" };
+  const blockWithTimeBrick: Block = {
+    id: "b1",
+    name: "block 1",
+    start: "09:00",
+    end: "10:00",
+    recurrence: { kind: "just-today", date: "2026-05-06" },
+    categoryId: "c1",
+    bricks: [
+      {
+        id: "t1",
+        name: "Read",
+        kind: "time",
+        durationMin: 25,
+        minutesDone: 5,
+        categoryId: "c1",
+        parentBlockId: "b1",
+      },
+    ],
+  };
+
+  it("chip receives running=true when runningTimerBrickId matches brick.id", async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <TimelineBlock
+        block={blockWithTimeBrick}
+        categories={[cat1]}
+        onAddBrick={vi.fn()}
+        runningTimerBrickId="t1"
+        onTimerToggle={vi.fn()}
+        onTimerOpenSheet={vi.fn()}
+      />,
+    );
+    // Expand to reveal chip
+    const card = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    await user.click(card);
+
+    // Time chip should be aria-pressed="true" (running=true)
+    const chip = screen.getByRole("button", {
+      name: /running, tap to stop/,
+    });
+    expect(chip).toBeInTheDocument();
+    expect(chip.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("chip receives running=false when runningTimerBrickId is different brick", async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <TimelineBlock
+        block={blockWithTimeBrick}
+        categories={[cat1]}
+        onAddBrick={vi.fn()}
+        runningTimerBrickId="t2"
+        onTimerToggle={vi.fn()}
+        onTimerOpenSheet={vi.fn()}
+      />,
+    );
+    const card = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    await user.click(card);
+
+    const chip = screen.getByRole("button", {
+      name: /stopped, tap to start/,
+    });
+    expect(chip).toBeInTheDocument();
+    expect(chip.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("onTimerToggle spy is called with brick id when chip onTimerToggle fires", async () => {
+    const user = userEvent.setup();
+    const onTimerToggle = vi.fn();
+    const { container } = render(
+      <TimelineBlock
+        block={blockWithTimeBrick}
+        categories={[cat1]}
+        onAddBrick={vi.fn()}
+        runningTimerBrickId={null}
+        onTimerToggle={onTimerToggle}
+        onTimerOpenSheet={vi.fn()}
+      />,
+    );
+    const card = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    await user.click(card);
+
+    // Tap the chip (short press)
+    const chip = screen.getByRole("button", { name: /stopped, tap to start/ });
+    chip.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    chip.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(onTimerToggle).toHaveBeenCalledWith("t1");
+  });
+});
