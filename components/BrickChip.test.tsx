@@ -610,3 +610,28 @@ describe("C-m4b-007: clamp haptic fires medium when pressed at count===target", 
     expect(haptics.medium).toHaveBeenCalledTimes(1);
   });
 });
+
+// ─── C-m4b-008: clamp haptic (medium) at floor on −; no dispatch ──────────────
+
+describe("C-m4b-008: clamp haptic fires medium when − pressed at count===0", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("haptics.medium called; onGoalLog NOT called; no light haptic (floor clamp)", async () => {
+    const { haptics } = await import("@/lib/haptics");
+    const onGoalLog = vi.fn();
+    render(
+      <BrickChip
+        brick={makeGoalBrick("g1", "pushups", 0, 10)}
+        categories={[cat1]}
+        onGoalLog={onGoalLog}
+      />,
+    );
+    const minus = screen.getByRole("button", { name: "Decrease pushups" });
+    fireEvent.pointerDown(minus);
+    expect(onGoalLog).not.toHaveBeenCalled();
+    expect(haptics.light).not.toHaveBeenCalled();
+    expect(haptics.medium).toHaveBeenCalledTimes(1);
+  });
+});
