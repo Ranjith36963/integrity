@@ -106,16 +106,22 @@ describe("C-m1-021: BlueprintBar is rendered unconditionally with empty blocks",
 });
 
 // C-m2-012: New category persists even if block is Cancelled (re-authored M2)
+// [M4d migration] dock + now opens AddChooserSheet; must click "Add Block" to reach AddBlockSheet
 describe("C-m2-012: New category persists if block Cancelled (re-authored M2)", () => {
   it("category exists in state after create+cancel, block does not", async () => {
     const user = userEvent.setup();
     render(<BuildingClient />);
 
-    // Open sheet via + button
+    // Open chooser via dock + button (M4d: dock + → chooser first)
     await user.click(screen.getByRole("button", { name: "Add" }));
+    // Walk through chooser to reach AddBlockSheet
+    await user.click(screen.getByRole("button", { name: "Add Block" }));
 
-    // Should see dialog
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    // Should see AddBlockSheet dialog
+    expect(screen.getByRole("dialog")).toHaveAttribute(
+      "aria-label",
+      "Add Block",
+    );
 
     // Type title
     await user.type(screen.getByLabelText(/Title/i), "Test Block");
@@ -145,13 +151,15 @@ describe("C-m2-012: New category persists if block Cancelled (re-authored M2)", 
       screen.getByText("Tap any slot to lay your first block."),
     ).toBeInTheDocument();
 
-    // Open sheet again — Health category chip should appear in CategoryPicker
+    // Open chooser again → Add Block → Health category chip should appear
     await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: "Add Block" }));
     expect(screen.getByRole("radio", { name: /Health/i })).toBeInTheDocument();
   });
 });
 
 // C-m2-016: Empty-state card unmounts when blocks.length > 0 (re-authored M2)
+// [M4d migration] dock + now opens chooser; must click "Add Block" to reach AddBlockSheet
 describe("C-m2-016: Empty-state card unmounts when blocks.length > 0 (re-authored M2)", () => {
   it("EmptyBlocks card disappears after saving a block via AddBlockSheet", async () => {
     const user = userEvent.setup();
@@ -162,8 +170,9 @@ describe("C-m2-016: Empty-state card unmounts when blocks.length > 0 (re-authore
       screen.getByText("Tap any slot to lay your first block."),
     ).toBeInTheDocument();
 
-    // Open sheet, type title, save
+    // Open chooser → Add Block → type title → save (M4d chooser routing)
     await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: "Add Block" }));
     await user.type(screen.getByLabelText(/Title/i), "Foo");
     await user.click(screen.getByRole("button", { name: /Save/i }));
 
@@ -183,14 +192,22 @@ describe("C-m2-016: Empty-state card unmounts when blocks.length > 0 (re-authore
 });
 
 // C-m2-020: BuildingClient wires reducer + sheet + onSave dispatch (re-authored M2)
+// [M4d migration] dock + now opens chooser; must click "Add Block" to reach AddBlockSheet
 describe("C-m2-020: BuildingClient wires reducer + sheet + onSave (re-authored M2)", () => {
   it("saves a block: name='Foo', categoryId=null, bricks=[]", async () => {
     const user = userEvent.setup();
     render(<BuildingClient />);
 
-    // Click + button
+    // Click dock + → chooser opens (M4d routing)
     await user.click(screen.getByRole("button", { name: "Add" }));
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toHaveAttribute("aria-label", "Add");
+
+    // Walk through chooser to AddBlockSheet
+    await user.click(screen.getByRole("button", { name: "Add Block" }));
+    expect(screen.getByRole("dialog")).toHaveAttribute(
+      "aria-label",
+      "Add Block",
+    );
 
     // Type title
     await user.type(screen.getByLabelText(/Title/i), "Foo");
@@ -213,13 +230,15 @@ describe("C-m2-020: BuildingClient wires reducer + sheet + onSave (re-authored M
     expect(localStorage.length).toBe(0);
   });
 
-  it("Add button opens sheet; Cancel closes without adding block", async () => {
+  it("Add button opens chooser; Cancel closes without adding block", async () => {
     const user = userEvent.setup();
     render(<BuildingClient />);
 
     await user.click(screen.getByRole("button", { name: "Add" }));
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    // Chooser dialog is open
+    expect(screen.getByRole("dialog")).toHaveAttribute("aria-label", "Add");
 
+    // Cancel the chooser
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(
@@ -241,8 +260,9 @@ describe("C-m3-009: LooseBricksTray hidden when empty; appears with block or loo
     const user = userEvent.setup();
     render(<BuildingClient />);
 
-    // Add a block via AddBlockSheet
+    // Add a block via chooser → AddBlockSheet (M4d routing)
     await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: "Add Block" }));
     await user.type(screen.getByLabelText(/Title/i), "Morning");
     await user.click(screen.getByRole("button", { name: /Save/i }));
 
@@ -255,13 +275,15 @@ describe("C-m3-009: LooseBricksTray hidden when empty; appears with block or loo
 
 // ─── C-m3-024: BuildingClient wires AddBrickSheet + ADD_BRICK reducer ─────────
 
+// [M4d migration] dock + now opens chooser; must click "Add Block" to reach AddBlockSheet
 describe("C-m3-024: BuildingClient wires AddBrickSheet and ADD_BRICK dispatch", () => {
   it("tap block → + Add brick → save tick brick → brick in block.bricks; sheet closes", async () => {
     const user = userEvent.setup();
     render(<BuildingClient />);
 
-    // First add a block
+    // First add a block via chooser (M4d routing)
     await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: "Add Block" }));
     await user.type(screen.getByLabelText(/Title/i), "Morning");
     await user.click(screen.getByRole("button", { name: /Save/i }));
 
@@ -301,8 +323,9 @@ describe("C-m3-024: BuildingClient wires AddBrickSheet and ADD_BRICK dispatch", 
     const user = userEvent.setup();
     render(<BuildingClient />);
 
-    // Add a block first (so tray is visible)
+    // Add a block first (so tray is visible) via chooser (M4d routing)
     await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: "Add Block" }));
     await user.type(screen.getByLabelText(/Title/i), "Morning");
     await user.click(screen.getByRole("button", { name: /Save/i }));
 
@@ -329,8 +352,9 @@ describe("C-m3-024: BuildingClient wires AddBrickSheet and ADD_BRICK dispatch", 
     const user = userEvent.setup();
     render(<BuildingClient />);
 
-    // Add block with a done tick brick via full flow
+    // Add block with a done tick brick via full flow (M4d: via chooser)
     await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: "Add Block" }));
     await user.type(screen.getByLabelText(/Title/i), "Morning");
     await user.click(screen.getByRole("button", { name: /Save/i }));
 
