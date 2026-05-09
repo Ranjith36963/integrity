@@ -916,3 +916,28 @@ describe("C-m4b-016: keyboard Enter/Space on + fires onGoalLog once per press; n
     });
   });
 });
+
+// ─── C-m4b-017: aria-labels and aria-hidden icons on goal stepper buttons ────
+
+describe("C-m4b-017: stepper button aria-labels and icon aria-hidden are correct", () => {
+  it("- aria-label='Decrease pushups'; + aria-label='Increase pushups'; icons aria-hidden", () => {
+    const { container } = render(
+      <BrickChip
+        brick={makeGoalBrick("g1", "pushups", 3, 10, "reps")}
+        categories={[cat1]}
+      />,
+    );
+    const minus = screen.getByRole("button", { name: "Decrease pushups" });
+    const plus = screen.getByRole("button", { name: "Increase pushups" });
+    expect(minus.getAttribute("aria-label")).toBe("Decrease pushups");
+    expect(plus.getAttribute("aria-label")).toBe("Increase pushups");
+
+    const icons = container.querySelectorAll(
+      "button > svg.lucide-minus, button > svg.lucide-plus",
+    );
+    expect(icons.length).toBeGreaterThanOrEqual(2);
+    icons.forEach((icon) => {
+      expect(icon.getAttribute("aria-hidden")).toBe("true");
+    });
+  });
+});
