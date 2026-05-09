@@ -176,3 +176,38 @@ describe("C-m3-012: LooseBricksTray + Brick pill calls onAddBrick", () => {
     expect(addBrick).toBeInTheDocument();
   });
 });
+
+// ─── C-m4b-021: LooseBricksTray threads onGoalLog down to inner goal BrickChip ─
+
+describe("C-m4b-021: LooseBricksTray threads onGoalLog down to BrickChip", () => {
+  const looseGoal: Brick = {
+    id: "loose-g1",
+    name: "pushups",
+    kind: "goal",
+    count: 3,
+    target: 10,
+    unit: "reps",
+    categoryId: "c1",
+    parentBlockId: null,
+  };
+
+  it("clicking inner + button on a loose goal calls onGoalLog with brick.id and delta:1", async () => {
+    const user = userEvent.setup();
+    const onGoalLog = vi.fn();
+    render(
+      <LooseBricksTray
+        looseBricks={[looseGoal]}
+        categories={[cat1]}
+        onAddBrick={vi.fn()}
+        onGoalLog={onGoalLog}
+      />,
+    );
+    // Expand the tray (collapsed mode shows sm chips; expand for default md path)
+    const expand = screen.getByRole("button", { name: /expand loose bricks/i });
+    await user.click(expand);
+
+    const plus = screen.getByRole("button", { name: "Increase pushups" });
+    await user.click(plus);
+    expect(onGoalLog).toHaveBeenCalledWith("loose-g1", 1);
+  });
+});
