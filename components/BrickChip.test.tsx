@@ -941,3 +941,32 @@ describe("C-m4b-017: stepper button aria-labels and icon aria-hidden are correct
     });
   });
 });
+
+// ─── C-m4b-018: tick chip regression — single <button>, no goal stepper ─────
+
+describe("C-m4b-018: tick chip remains a single <button>; onTickToggle fires; onGoalLog NOT", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("clicking the tick button calls onTickToggle, not onGoalLog; no role=group", async () => {
+    const onTickToggle = vi.fn();
+    const onGoalLog = vi.fn();
+    const user = userEvent.setup();
+    const { container } = render(
+      <BrickChip
+        brick={makeTick(false)}
+        categories={[cat1]}
+        onTickToggle={onTickToggle}
+        onGoalLog={onGoalLog}
+      />,
+    );
+    expect(container.querySelector("[role='group']")).toBeNull();
+    const buttons = screen.getAllByRole("button");
+    expect(buttons).toHaveLength(1);
+    await user.click(buttons[0]);
+    expect(onTickToggle).toHaveBeenCalledTimes(1);
+    expect(onTickToggle).toHaveBeenCalledWith("r1");
+    expect(onGoalLog).not.toHaveBeenCalled();
+  });
+});
