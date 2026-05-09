@@ -429,3 +429,65 @@ describe("C-m4a-015: BuildingClient tap tick chip → LOG_TICK_BRICK → state c
     expect(screen.queryByTestId("fireworks")).toBeNull(); // not active initially
   });
 });
+
+// ─── C-m4b-022: BuildingClient day-100 cross-up via onGoalLog ────────────────
+
+vi.mock("@/lib/data", async () => {
+  const actual =
+    await vi.importActual<typeof import("@/lib/data")>("@/lib/data");
+  return {
+    ...actual,
+    defaultState: () => ({
+      blocks: [
+        {
+          id: "b1",
+          name: "Block 1",
+          start: "09:00",
+          end: "10:00",
+          recurrence: { kind: "just-today", date: "2026-05-09" },
+          categoryId: "c1",
+          bricks: [
+            {
+              id: "g1",
+              name: "pushups",
+              kind: "goal",
+              count: 9,
+              target: 10,
+              unit: "reps",
+              categoryId: "c1",
+              parentBlockId: "b1",
+            },
+          ],
+        },
+      ],
+      looseBricks: [],
+      categories: [{ id: "c1", name: "Health", color: "#34d399" }],
+    }),
+  };
+});
+
+describe("C-m4b-022: BuildingClient + on goal at 9/10 dispatches LOG_GOAL_BRICK; day-100 fires", () => {
+  it("after tap, haptics.notification + playChime called once; Fireworks active", async () => {
+    const { haptics } = await import("@/lib/haptics");
+    const { playChime } = await import("@/lib/audio");
+    vi.clearAllMocks();
+
+    const user = userEvent.setup();
+    const { container } = render(<BuildingClient />);
+
+    const card = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    expect(card).not.toBeNull();
+    await user.click(card);
+
+    const plus = await screen.findByRole("button", {
+      name: "Increase pushups",
+    });
+    await user.click(plus);
+
+    expect(haptics.notification).toHaveBeenCalledTimes(1);
+    expect(playChime).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("fireworks")).toBeInTheDocument();
+  });
+});
