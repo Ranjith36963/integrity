@@ -688,3 +688,23 @@ describe("C-m4b-010: goal brick-fill is 30% wide and transitions width 600ms eas
     expect(fill.style.transition).toContain("width 600ms ease-in-out");
   });
 });
+
+// ─── C-m4b-011: reduced-motion collapses goal brick-fill transition ──────────
+
+describe("C-m4b-011: goal brick-fill transition collapses to 'none' when reduced-motion=true", () => {
+  it("transition is 'none' but width is still 30%", async () => {
+    const { useReducedMotion } = await import("motion/react");
+    vi.mocked(useReducedMotion).mockReturnValue(true);
+    const { container } = render(
+      <BrickChip
+        brick={makeGoalBrick("g1", "pushups", 3, 10)}
+        categories={[cat1]}
+      />,
+    );
+    const fill = container.querySelector(
+      "[data-testid='brick-fill']",
+    ) as HTMLElement;
+    expect(fill.style.width).toBe("30%");
+    expect(fill.style.transition).toBe("none");
+  });
+});
