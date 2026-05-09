@@ -534,3 +534,50 @@ describe("C-m4a-012: reduced-motion does not suppress haptics or chime on block 
     expect(playChime).toHaveBeenCalledTimes(1);
   });
 });
+
+// ─── C-m4b-020: TimelineBlock threads onGoalLog down to BrickChip ─────────────
+
+describe("C-m4b-020: TimelineBlock threads onGoalLog down to inner goal BrickChip", () => {
+  const cat1: Category = { id: "c1", name: "category 1", color: "#34d399" };
+  const blockWithGoal: Block = {
+    id: "b1",
+    name: "block 1",
+    start: "09:00",
+    end: "10:00",
+    recurrence: { kind: "just-today", date: "2026-05-06" },
+    categoryId: "c1",
+    bricks: [
+      {
+        id: "g1",
+        name: "pushups",
+        kind: "goal",
+        count: 3,
+        target: 10,
+        unit: "reps",
+        categoryId: "c1",
+        parentBlockId: "b1",
+      },
+    ],
+  };
+
+  it("clicking inner + button calls onGoalLog with brick.id and delta:1", async () => {
+    const user = userEvent.setup();
+    const onGoalLog = vi.fn();
+    const { container } = render(
+      <TimelineBlock
+        block={blockWithGoal}
+        categories={[cat1]}
+        onAddBrick={vi.fn()}
+        onGoalLog={onGoalLog}
+      />,
+    );
+    const card = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    await user.click(card);
+
+    const plus = screen.getByRole("button", { name: "Increase pushups" });
+    await user.click(plus);
+    expect(onGoalLog).toHaveBeenCalledWith("g1", 1);
+  });
+});
