@@ -19,6 +19,7 @@ import { reducer, defaultState } from "@/lib/data";
 import { useCrossUpEffect } from "@/lib/celebrations";
 import { haptics } from "@/lib/haptics";
 import { playChime } from "@/lib/audio";
+import { useTimer, findTimeBrickById } from "@/lib/timer";
 import { EditModeProvider } from "@/components/EditModeProvider";
 import { TopBar } from "@/components/TopBar";
 import { Hero } from "@/components/Hero";
@@ -29,6 +30,7 @@ import { AddChooserSheet } from "@/components/AddChooserSheet";
 import { AddBlockSheet } from "@/components/AddBlockSheet";
 import { AddBrickSheet } from "@/components/AddBrickSheet";
 import { LooseBricksTray } from "@/components/LooseBricksTray";
+import { TimerSheet } from "@/components/TimerSheet";
 import { Fireworks } from "@/components/Fireworks";
 import type { Block, Brick, Category } from "@/lib/types";
 
@@ -61,6 +63,11 @@ interface ChooserState {
   defaultStart: string | null; // captured slot hour ("HH:00"), or null when opened from dock +
 }
 
+interface TimerSheetState {
+  open: boolean;
+  brickId: string | null;
+}
+
 export function BuildingClient() {
   const [state, dispatch] = useReducer(reducer, defaultState());
   const [sheetState, setSheetState] = useState<SheetState>({
@@ -76,6 +83,10 @@ export function BuildingClient() {
   const [chooserState, setChooserState] = useState<ChooserState>({
     open: false,
     defaultStart: null,
+  });
+  const [timerSheetState, setTimerSheetState] = useState<TimerSheetState>({
+    open: false,
+    brickId: null,
   });
 
   // Live clock (ADR-023: server-clock paint on SSR, reconciles within 60s)
@@ -100,6 +111,48 @@ export function BuildingClient() {
   }, []);
 
   useCrossUpEffect(heroPct, 100, fireDayComplete);
+
+  // M4c: single-interval timer hook — manages setInterval + visibilitychange for the running timer
+  useTimer(state, dispatch);
+
+  // M4c: tap a time chip → START_TIMER (if stopped) or STOP_TIMER (if running)
+  // Depends on state.runningTimerBrickId per plan § Cross-cutting concerns #2 (stale-closure).
+  const handleTimerToggle = useCallback(
+    (brickId: string) => {
+      if (state.runningTimerBrickId === brickId) {
+        dispatch({ type: "STOP_TIMER", brickId });
+      } else {
+        dispatch({ type: "START_TIMER", brickId });
+      }
+    },
+    [state.runningTimerBrickId, dispatch],
+  );
+
+  // M4c: long-press a time chip → open TimerSheet with that brick's id
+  const handleTimerOpenSheet = useCallback((brickId: string) => {
+    setTimerSheetState({ open: true, brickId });
+  }, []);
+
+  // M4c: TimerSheet Save → dispatch SET_TIMER_MINUTES; close sheet
+  // Depends on timerSheetState.brickId per plan § Cross-cutting concerns #2.
+  const handleTimerSave = useCallback(
+    (minutes: number) => {
+      if (timerSheetState.brickId !== null) {
+        dispatch({
+          type: "SET_TIMER_MINUTES",
+          brickId: timerSheetState.brickId,
+          minutes,
+        });
+      }
+      setTimerSheetState({ open: false, brickId: null });
+    },
+    [timerSheetState.brickId, dispatch],
+  );
+
+  // M4c: TimerSheet Cancel → close sheet without dispatching
+  const handleTimerCancel = useCallback(() => {
+    setTimerSheetState({ open: false, brickId: null });
+  }, []);
 
   // M4a: dispatch LOG_TICK_BRICK for tick chip taps; threaded to Timeline + LooseBricksTray
   const handleTickToggle = useCallback(
@@ -237,6 +290,9 @@ export function BuildingClient() {
           onTickToggle={handleTickToggle}
           onGoalLog={handleGoalLog}
           hasLooseBricks={state.looseBricks.length > 0}
+          runningTimerBrickId={state.runningTimerBrickId}
+          onTimerToggle={handleTimerToggle}
+          onTimerOpenSheet={handleTimerOpenSheet}
         />
         {/* LooseBricksTray: pinned above dock, visible when blocks or loose bricks exist */}
         {showTray && (
@@ -246,6 +302,9 @@ export function BuildingClient() {
             onAddBrick={handleAddLooseBrick}
             onTickToggle={handleTickToggle}
             onGoalLog={handleGoalLog}
+            runningTimerBrickId={state.runningTimerBrickId}
+            onTimerToggle={handleTimerToggle}
+            onTimerOpenSheet={handleTimerOpenSheet}
           />
         )}
         <BottomBar onAddPress={handleDockAdd} />
@@ -275,6 +334,23 @@ export function BuildingClient() {
           onCancel={closeBrickSheet}
           onCreateCategory={handleCreateCategory}
         />
+        {/* M4c: TimerSheet — manual minute entry for time bricks */}
+        {timerSheetState.open &&
+          timerSheetState.brickId !== null &&
+          (() => {
+            const timerBrick = findTimeBrickById(
+              state,
+              timerSheetState.brickId,
+            );
+            return timerBrick ? (
+              <TimerSheet
+                open={timerSheetState.open}
+                brick={timerBrick}
+                onSave={handleTimerSave}
+                onCancel={handleTimerCancel}
+              />
+            ) : null;
+          })()}
         {/* M4a: Fireworks overlay — day-100% celebration */}
         <Fireworks active={fireworksActive} />
       </div>

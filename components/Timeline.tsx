@@ -32,6 +32,12 @@ interface Props {
    * Used by BuildingClient when looseBricks.length > 0 (AC #10/#11 — loose bricks
    * fill the day so the block-empty state is no longer relevant). */
   hasLooseBricks?: boolean;
+  /** M4c: current running timer brick id threaded to TimelineBlock → BrickChip */
+  runningTimerBrickId?: string | null;
+  /** M4c: tap a time chip to start/stop */
+  onTimerToggle?: (brickId: string) => void;
+  /** M4c: long-press a time chip to open manual-entry sheet */
+  onTimerOpenSheet?: (brickId: string) => void;
 }
 
 export function Timeline({
@@ -43,6 +49,9 @@ export function Timeline({
   onTickToggle,
   onGoalLog,
   hasLooseBricks = false,
+  runningTimerBrickId = null,
+  onTimerToggle,
+  onTimerOpenSheet,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -121,6 +130,9 @@ export function Timeline({
               onAddBrick={onAddBrick}
               onTickToggle={onTickToggle}
               onGoalLog={onGoalLog}
+              runningTimerBrickId={runningTimerBrickId}
+              onTimerToggle={onTimerToggle}
+              onTimerOpenSheet={onTimerOpenSheet}
             />
           ))}
 

@@ -18,6 +18,12 @@ interface Props {
   onAddBrick: () => void;
   onTickToggle?: (brickId: string) => void;
   onGoalLog?: (brickId: string, delta: 1 | -1) => void;
+  /** M4c: current running timer brick id for computing running=true on time chips */
+  runningTimerBrickId?: string | null;
+  /** M4c: tap a time chip to start/stop */
+  onTimerToggle?: (brickId: string) => void;
+  /** M4c: long-press a time chip to open manual-entry sheet */
+  onTimerOpenSheet?: (brickId: string) => void;
 }
 
 export function LooseBricksTray({
@@ -26,6 +32,9 @@ export function LooseBricksTray({
   onAddBrick,
   onTickToggle,
   onGoalLog,
+  runningTimerBrickId = null,
+  onTimerToggle,
+  onTimerOpenSheet,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const listId = useId();
@@ -131,6 +140,9 @@ export function LooseBricksTray({
                   size="md"
                   onTickToggle={onTickToggle}
                   onGoalLog={onGoalLog}
+                  running={runningTimerBrickId === brick.id}
+                  onTimerToggle={onTimerToggle}
+                  onTimerOpenSheet={onTimerOpenSheet}
                 />
               </li>
             ))}
@@ -157,6 +169,9 @@ export function LooseBricksTray({
                 size="sm"
                 onTickToggle={onTickToggle}
                 onGoalLog={onGoalLog}
+                running={runningTimerBrickId === brick.id}
+                onTimerToggle={onTimerToggle}
+                onTimerOpenSheet={onTimerOpenSheet}
               />
             </div>
           ))}

@@ -24,6 +24,12 @@ interface Props {
   onAddBrick?: (parentBlockId: string) => void;
   onTickToggle?: (brickId: string) => void;
   onGoalLog?: (brickId: string, delta: 1 | -1) => void;
+  /** M4c: current running timer brick id for computing running=true on time chips */
+  runningTimerBrickId?: string | null;
+  /** M4c: tap a time chip to start/stop */
+  onTimerToggle?: (brickId: string) => void;
+  /** M4c: long-press a time chip to open manual-entry sheet */
+  onTimerOpenSheet?: (brickId: string) => void;
 }
 
 export function TimelineBlock({
@@ -32,6 +38,9 @@ export function TimelineBlock({
   onAddBrick,
   onTickToggle,
   onGoalLog,
+  runningTimerBrickId = null,
+  onTimerToggle,
+  onTimerOpenSheet,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [bloomKey, setBloomKey] = useState(0);
@@ -239,6 +248,9 @@ export function TimelineBlock({
                         size="md"
                         onTickToggle={onTickToggle}
                         onGoalLog={onGoalLog}
+                        running={runningTimerBrickId === brick.id}
+                        onTimerToggle={onTimerToggle}
+                        onTimerOpenSheet={onTimerOpenSheet}
                       />
                     </li>
                   ))}
