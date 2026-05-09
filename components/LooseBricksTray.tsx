@@ -17,6 +17,7 @@ interface Props {
   categories: Category[];
   onAddBrick: () => void;
   onTickToggle?: (brickId: string) => void;
+  onGoalLog?: (brickId: string, delta: 1 | -1) => void;
 }
 
 export function LooseBricksTray({
@@ -24,6 +25,7 @@ export function LooseBricksTray({
   categories,
   onAddBrick,
   onTickToggle,
+  onGoalLog,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const listId = useId();
@@ -128,6 +130,7 @@ export function LooseBricksTray({
                   categories={categories}
                   size="md"
                   onTickToggle={onTickToggle}
+                  onGoalLog={onGoalLog}
                 />
               </li>
             ))}
@@ -153,6 +156,7 @@ export function LooseBricksTray({
                 categories={categories}
                 size="sm"
                 onTickToggle={onTickToggle}
+                onGoalLog={onGoalLog}
               />
             </div>
           ))}
