@@ -56,6 +56,7 @@ npm run test:e2e:install
 | M3 — Add Brick + Live Scoring | Shipped + tap-tested                           |
 | M4a — Tick Brick Logging      | Shipped to preview — awaiting Gate #2 tap-test |
 | M4b — Goal Stepper            | Shipped to preview — awaiting Gate #2 tap-test |
+| M4d — Add Chooser Sheet       | Shipped to preview — awaiting Gate #2 tap-test |
 | M4c — Time Timer              | Not started — next up                          |
 
 Latest preview: `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (branch alias; auto-tracks `claude/verify-m0-deployment-s4XRy`). Vercel Deployment Protection active — open in browser while signed in to Vercel.
@@ -75,6 +76,7 @@ components/          Shared UI components + unit tests
   BottomBar.tsx      Floating dock — + button opens AddBlockSheet (M2+)
   AddBlockSheet.tsx  Full add-block flow: title, time, recurrence, category, validation
   AddBrickSheet.tsx  Add Brick flow: kind picker (tick/goal/time), per-type fields, validation
+  AddChooserSheet.tsx Chooser sheet shown when dock + or empty slot is tapped; routes to AddBlockSheet or AddBrickSheet; real focus trap; reduced-motion respected (M4d)
   BrickChip.tsx      Brick chip with type-specific render + foreground fill = brickPct%; tick chips are tappable; goal chips host GoalStepperChip (M4b)
   Fireworks.tsx      Day-100% celebration overlay; ≤ 16 particles; ~1.6 s; suppressed under prefers-reduced-motion
   CategoryPicker.tsx Category selector chip row with inline NewCategoryForm sub-view

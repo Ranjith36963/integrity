@@ -6,9 +6,9 @@
 
 ## Snapshot
 
-- **Branch:** `claude/verify-m0-deployment-s4XRy` at `ddeef6d` · `main` at `c3ef9f1` (feature branch not yet merged)
-- **Last commit:** `ddeef6d` — M4b ship (docs: CHANGELOG + README + status.md). Implementation HEAD: `8a01cd2`.
-- **Last preview URL:** `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (stable branch alias; auto-tracks latest deployment for this branch). Sandbox `curl -I` returns HTTP 403 `x-deny-reason: host_not_allowed` (Vercel Deployment Protection — same as M0/M1/M2/M3/M4a; not a failure; signed-in browser sessions serve normally).
+- **Branch:** `claude/verify-m0-deployment-s4XRy` at `1192178` · `main` at `c3ef9f1` (feature branch not yet merged)
+- **Last commit:** `1192178` — M4d ship (chooser sheet; 600 vitest; M2/M3 migrations).
+- **Last preview URL:** `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (stable branch alias; auto-tracks latest deployment for this branch). Sandbox `curl -I` returns HTTP 403 `x-deny-reason: host_not_allowed` (Vercel Deployment Protection — same as M0–M4b; not a failure; signed-in browser sessions serve normally).
 - **Methodology:** The Loop (SDD-outside, TDD-inside) per ADR-025; **single human gate** (preview tap-test only) per ADR-041 — the VERIFIER agent now replaces the planning gate; per-phase commit prefixes per ADR-027.
 
 ## Plan in force
@@ -26,6 +26,7 @@
 | **M3 — Add Brick + Live Scoring** | **Shipped + tap-tested ✓**                         | Add Brick flow, HeroRing, LooseBricksTray, BrickChip, live scoring, cross-up hook. 57 IDs closed. Gate #2 closed.                                                                                                                                                                             |
 | **M4a — Tick Brick Logging**      | **Shipped to preview — awaiting Gate #2 tap-test** | First user-driven verb. Tap tick brick → done. Cascade: chip fill, glyph, scaffold, HeroRing, BlueprintBar. Triggers M3 celebrations (bloom/chime/fireworks). 41 IDs closed. Playwright+axe deferred to preview.                                                                              |
 | **M4b — Goal Brick Stepper**      | **Shipped to preview — awaiting Gate #2 tap-test** | Stepper verb for goal bricks. GoalStepperChip with −/+ buttons, 500ms long-press auto-repeat, light haptic per tick, medium haptic on clamp, scale-press feedback, reduced-motion respected. Reuses M4a celebrations for goal-driven path. 27 IDs closed. Playwright+axe deferred to preview. |
+| **M4d — Add Chooser Sheet**       | **Shipped to preview — awaiting Gate #2 tap-test** | Chooser sheet routing for dock `+` and slot tap. New `<AddChooserSheet>` with real focus trap, reduced-motion respected. Inside-block `+ Add brick` and tray `+ Brick` pill bypass chooser. M2/M3 migrations walk through chooser. 25 IDs closed. Playwright+axe deferred to preview.         |
 | M4c — Time Timer                  | Not started — next up                              | Timer verb for time bricks. Real countdown timer per ADR-017.                                                                                                                                                                                                                                 |
 | M5 — Edit Mode + Delete           | Not started                                        | "Just today" delete writes to `deletions[date:blockId]` per locked schema.                                                                                                                                                                                                                    |
 | M6 — Drag Reorder                 | Not started                                        | Framer Motion layout animations.                                                                                                                                                                                                                                                              |
@@ -46,27 +47,33 @@
 - **`harness.md` MCP rows still MISSING** for Vercel + Context7 + Playwright — wired in user's Claude account, not loaded into this session.
 - **`lib/dharma.ts:duration()` returns 0 for no-end blocks** — intentional design; documented in CHANGELOG.
 - **The Loop is now single-gate (ADR-041).** VERIFIER agent replaces Gate #1. Gate #2 (preview tap-test) is the only human gate.
-- **NEW (M4a): `public/sounds/chime.mp3` is a 431-byte placeholder.** Sandbox had no audio tooling. Replace with a real royalty-free chime ≤ 30 KB before the M4a preview is user-facing. Otherwise the celebration is silent.
-- **NEW (M4a): 4 tests.md cleanup items deferred from M4a EVALUATOR:** U-m4a-009 prose-vs-impl drift on async swallow; C-m4a-002 snapshot-claim drift; C-m4a-003 schema-mismatch in prose (`elapsedMs`/`durationMs`); A-m4a-\* + E-m4a-005 vacuous-pass guards via `if (count > 0)` patterns. Address in next planner cycle.
-- **NEW (M4a): Gate D (typecheck) added to BUILDER contract** (`23662cf`). Effective M4b onward; closed the M4a-first-attempt gap where Vitest passed but `tsc` reported 6 net-new errors.
-- **NEW (M4b): 3 new lint warnings** in `lib/longPress.ts` lines 104, 111, 118 (`_e` underscore-prefixed unused params). Fixable by adding `"argsIgnorePattern": "^_"` to `@typescript-eslint/no-unused-vars` rule in ESLint config. Deferred to M5/M7 polish.
-- **NEW (M4b): Vacuous-pass guards — acknowledged spanning debt.** M4b e2e specs reproduce the M4a `if ((await x.count()) > 0)` pattern despite the M4b tests.md preamble (line 3232) explicitly promising not to. Spans M4a + M4b. Future TESTS-mode follow-up should land `addInitScript` seeding helpers (per ADR-039 ships-empty + `?seed=...` query param or test-only `localStorage` shim).
-- **NEW (M4b): C-m4b-022 in dedicated test file** (`app/(building)/BuildingClient.m4b.test.tsx`). `defaultState` mock isolation requires file-level scoping — sound, not a defect.
+- **`public/sounds/chime.mp3` is a 431-byte placeholder.** Sandbox had no audio tooling. Replace with a real royalty-free chime ≤ 30 KB before any M4a/M4b/M4d preview is user-facing. Otherwise the celebration is silent.
+- **M4a tests.md cleanup items (4 deferred):** U-m4a-009 prose-vs-impl drift on async swallow; C-m4a-002 snapshot-claim drift; C-m4a-003 schema-mismatch in prose (`elapsedMs`/`durationMs`); A-m4a-\* + E-m4a-005 vacuous-pass guards via `if (count > 0)` patterns.
+- **Gate D (typecheck) added to BUILDER contract** (`23662cf`). Effective M4b onward.
+- **3 lint warnings in `lib/longPress.ts`** lines 104, 111, 118 (`_e` underscore-prefixed unused params). Fix via `argsIgnorePattern: "^_"` in ESLint config. Deferred M5/M7.
+- **Vacuous-pass debt spans M4a + M4b + M4d.** 12 new M4d e2e/a11y specs reproduce the `if ((await x.count()) > 0)` guard pattern. Future TESTS-mode follow-up owes deterministic seeding helpers (per ADR-039 ships-empty + `?seed=...` query param or test-only `localStorage` shim).
+- **C-m4b-022 in dedicated test file** (`app/(building)/BuildingClient.m4b.test.tsx`). `defaultState` mock isolation requires file-level scoping — sound, not a defect.
+- **M4d — AC #14 swipe-down dismiss** for chooser inherited from M0 `<Sheet>`; not M4d-tested directly. Confirm at preview Gate #2 tap-test.
+- **M4d — D2 plan↔implementation drift on focus trap.** `plan.md:~1731` says M4d does NOT need a local focus trap; BUILDER added a real Tab-cycling trap in `components/AddChooserSheet.tsx:32–65` because A-m4d-002 demanded it. EVALUATOR confirmed: trap is real, matches AddBlockSheet/AddBrickSheet pattern. Plan prose is stale on this point — recorded so future devs don't re-litigate.
+- **M4d — D4 Esc dismiss** confirmed deterministic via `<Sheet>`'s existing keydown listener (`components/ui/Sheet.tsx:22–29`). Promoted from "stretch test" to "expected behavior."
+- **M4d — D5 audit trail.** Main Claude authored the tests.md M4d entry directly in-thread (TESTS-mode planner agent hit usage limit). Substantively equivalent to healthy planner output; VERIFIER and EVALUATOR both gated PASS. Flag for traceability only.
+- **M4d — `Timeline.hasLooseBricks` prop scope-creep.** Plan said Timeline survives unchanged; AC #10/#11 forced a 4-line additive change (default `false` preserves M3 semantics; existing Timeline tests still pass). Planner-side oversight, not builder overreach.
+- **M4d — `AddBlockSheet` start prop-sync `useEffect` scope-creep.** Mirrors AddBrickSheet's `defaultCategoryId` sync per SG-m3-04. Justified by precedent. Eslint-disable comment in place.
 
-## Quality gates (last full Evaluator PASS on `8a01cd2` — M4b)
+## Quality gates (last full Evaluator PASS on `1192178` — M4d)
 
-| Gate                       | Result                                                                                                                                                                                                                     |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ESLint                     | 0 errors, 10 warnings (7 pre-existing M0–M4a carry-forward + 3 new in `lib/longPress.ts` lines 104/111/118 — `_e` underscore-prefixed unused params; fixable via `argsIgnorePattern: "^_"` in ESLint config — deferred M5) |
-| `tsc --noEmit`             | clean — 0 errors                                                                                                                                                                                                           |
-| Vitest                     | 569/569 passed — up from 553/553 at end of M4a (+16 M4b component tests + 14 M4b unit tests — but EVALUATOR reported 553→569; 27 coverage ACs closed)                                                                      |
-| Playwright (mobile-chrome) | deferred to Vercel preview — sandbox `next dev` socket bind failure (M0–M4a pattern); test files at `tests/e2e/m4b.spec.ts` (10 IDs) + `tests/e2e/m4b.a11y.spec.ts` (6 IDs)                                                |
-| Playwright (mobile-safari) | not run — WebKit unavailable (ADR-010)                                                                                                                                                                                     |
-| axe-core                   | deferred to Vercel preview                                                                                                                                                                                                 |
-| Lighthouse                 | not measured — no prod URL reachable from sandbox                                                                                                                                                                          |
+| Gate                       | Result                                                                                                                                                                                                                 |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ESLint                     | 0 errors, 10 warnings (7 pre-existing M0–M4a carry-forward + 3 in `lib/longPress.ts` lines 104/111/118 — `_e` underscore-prefixed unused params; fixable via `argsIgnorePattern: "^_"` in ESLint config — deferred M5) |
+| `tsc --noEmit`             | clean — 0 errors                                                                                                                                                                                                       |
+| Vitest                     | 600/600 passed — up from 569/569 at end of M4b (+31 M4d tests: 2U + 17C + 6E stub + 4A stub; 25 M4d coverage ACs closed; 5 M2/M3 migration tests amended to walk through chooser)                                      |
+| Playwright (mobile-chrome) | deferred to Vercel preview — sandbox `next dev` socket bind failure (M0–M4b pattern); test files at `tests/e2e/m4d.spec.ts` (6 IDs) + `tests/e2e/m4d.a11y.spec.ts` (4 IDs)                                             |
+| Playwright (mobile-safari) | not run — WebKit unavailable (ADR-010)                                                                                                                                                                                 |
+| axe-core                   | deferred to Vercel preview                                                                                                                                                                                             |
+| Lighthouse                 | not measured — no prod URL reachable from sandbox                                                                                                                                                                      |
 
 ## Next intended action
 
-**Gate #2 (M4b):** user must open the M4b Vercel preview and tap-test Goal Brick Stepper. Verify: tap `+` on a goal brick → count increments, chip fill updates proportionally; long-press `+` (hold 500ms) → auto-repeats at 50ms ticks; reaching `target` clamps at target (medium haptic); `−` decrements; block at 100% triggers bloom + chime + haptic; day at 100% triggers fireworks overlay + chime + haptic; reduced-motion collapses scale animation to instant (haptics still fire).
+**Gate #2 (M4d):** user must open the M4d Vercel preview and tap-test the Add Chooser Sheet. Verify: tap dock `+` → chooser appears with "Add Block" / "Add Brick" options; tap an empty time slot → chooser appears; "Add Block" routes to AddBlockSheet; "Add Brick" routes to AddBrickSheet; inside-block `+ Add brick` and tray `+ Brick` pill bypass chooser and go direct; swipe-down dismisses (AC #14); Esc dismisses; Tab cycles focus within the chooser sheet; `prefers-reduced-motion: reduce` respected.
 
-**After Gate #2:** author M4c SPEC entry (time timer) in `/docs/spec.md`, then invoke `/feature m4c`.
+**After Gate #2 on M4d:** `/feature m4c` (time brick timer). M4c spec already exists at `docs/spec.md:1231–1348`.
