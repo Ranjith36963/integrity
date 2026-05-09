@@ -2,7 +2,7 @@
 // Covers: C-m3-001..005, C-m4a-001..009
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BrickChip } from "./BrickChip";
 import type { Brick, Category } from "@/lib/types";
@@ -571,5 +571,42 @@ describe("C-m4b-006: single tap on - calls onGoalLog(id, -1) and haptics.light o
     expect(onGoalLog).toHaveBeenCalledWith("g1", -1);
     expect(haptics.light).toHaveBeenCalledTimes(1);
     expect(haptics.medium).not.toHaveBeenCalled();
+  });
+});
+
+// ─── C-m4b-007: clamp haptic (medium) at ceiling; no dispatch ─────────────────
+// Note: <button disabled> doesn't receive pointer events in real browsers/JSDOM.
+// The clamp haptic path is tested by using fireEvent which bypasses the disabled
+// constraint — simulates the "press path" per plan.md § Components > BrickChip.
+// The component's fireTick(1) fires medium when isAtCeil=true.
+// For production: the enabled=false guard in useLongPressRepeat prevents auto-
+// repeat ticks from firing after the cap is reached mid-press (defense-in-depth).
+
+describe("C-m4b-007: clamp haptic fires medium when pressed at count===target", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("haptics.medium called; onGoalLog NOT called; no light haptic (ceiling clamp)", async () => {
+    const { haptics } = await import("@/lib/haptics");
+    const onGoalLog = vi.fn();
+    // We use a wrapper with a button that triggers fireTick(1) at isAtCeil=true.
+    // Since <button disabled> blocks pointer events, we test via the clamp logic
+    // by rendering count=9,target=10 (enabled) and calling with a manual check:
+    // Actually, test the fireTick clamp path by rendering count=10,target=10
+    // and using fireEvent.pointerDown to bypass JSDOM disabled-button filter.
+    render(
+      <BrickChip
+        brick={makeGoalBrick("g1", "pushups", 10, 10)}
+        categories={[cat1]}
+        onGoalLog={onGoalLog}
+      />,
+    );
+    const plus = screen.getByRole("button", { name: "Increase pushups" });
+    // fireEvent dispatches the event even on disabled buttons (bypasses browser filter)
+    fireEvent.pointerDown(plus);
+    expect(onGoalLog).not.toHaveBeenCalled();
+    expect(haptics.light).not.toHaveBeenCalled();
+    expect(haptics.medium).toHaveBeenCalledTimes(1);
   });
 });
