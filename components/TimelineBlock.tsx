@@ -23,6 +23,7 @@ interface Props {
   categories: Category[];
   onAddBrick?: (parentBlockId: string) => void;
   onTickToggle?: (brickId: string) => void;
+  onGoalLog?: (brickId: string, delta: 1 | -1) => void;
 }
 
 export function TimelineBlock({
@@ -30,6 +31,7 @@ export function TimelineBlock({
   categories,
   onAddBrick,
   onTickToggle,
+  onGoalLog,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [bloomKey, setBloomKey] = useState(0);
@@ -236,6 +238,7 @@ export function TimelineBlock({
                         categories={categories}
                         size="md"
                         onTickToggle={onTickToggle}
+                        onGoalLog={onGoalLog}
                       />
                     </li>
                   ))}
