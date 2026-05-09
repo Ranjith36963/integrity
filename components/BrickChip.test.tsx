@@ -668,3 +668,23 @@ describe("C-m4b-009: goal badge text format honors unit presence/absence", () =>
     expect(badge!.textContent).not.toMatch(/\s$/);
   });
 });
+
+// ─── C-m4b-010: goal brick-fill width = (count/target)*100% with brickFill ────
+
+describe("C-m4b-010: goal brick-fill is 30% wide and transitions width 600ms ease-in-out", () => {
+  it("width is 30% and transition includes 'width 600ms ease-in-out' when reduced-motion=false", async () => {
+    const { useReducedMotion } = await import("motion/react");
+    vi.mocked(useReducedMotion).mockReturnValue(false);
+    const { container } = render(
+      <BrickChip
+        brick={makeGoalBrick("g1", "pushups", 3, 10)}
+        categories={[cat1]}
+      />,
+    );
+    const fill = container.querySelector(
+      "[data-testid='brick-fill']",
+    ) as HTMLElement;
+    expect(fill.style.width).toBe("30%");
+    expect(fill.style.transition).toContain("width 600ms ease-in-out");
+  });
+});
