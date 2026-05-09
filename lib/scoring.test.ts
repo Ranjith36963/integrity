@@ -40,7 +40,7 @@ function makeBlock(
 }
 
 function toState(blocks: Block[]): AppState {
-  return { blocks, categories: [], looseBricks: [] };
+  return { blocks, categories: [], looseBricks: [], runningTimerBrickId: null };
 }
 
 // U-bld-010: Two blocks of unequal duration with percentages 50 and 100
@@ -122,16 +122,28 @@ describe("U-bld-011 (inline fixture): dayPct equals equal-weighted mean", () => 
 // U-bld-012: dayPct(emptyState) = 0 (no division by zero)
 describe("U-bld-012: dayPct(emptyState) returns 0 without division by zero", () => {
   it("returns 0 for empty state", () => {
-    expect(dayPct({ blocks: [], categories: [], looseBricks: [] })).toBe(0);
+    expect(
+      dayPct({
+        blocks: [],
+        categories: [],
+        looseBricks: [],
+        runningTimerBrickId: null,
+      }),
+    ).toBe(0);
   });
 });
 
 // Verify buildingPct alias works the same way
 describe("buildingPct is an alias for dayPct", () => {
   it("buildingPct(emptyState) === 0", () => {
-    expect(buildingPct({ blocks: [], categories: [], looseBricks: [] })).toBe(
-      0,
-    );
+    expect(
+      buildingPct({
+        blocks: [],
+        categories: [],
+        looseBricks: [],
+        runningTimerBrickId: null,
+      }),
+    ).toBe(0);
   });
 
   it("buildingPct with inline fixture === dayPct with same fixture", () => {

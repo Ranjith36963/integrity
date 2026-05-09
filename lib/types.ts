@@ -41,20 +41,25 @@ export type Block = {
   bricks: Brick[]; // populated in M3 via ADD_BRICK action
 };
 
-// AppState — extends M2's shape with looseBricks (M3)
+// AppState — extends M3's shape with runningTimerBrickId (M4c)
 export type AppState = {
   blocks: Block[];
   categories: Category[];
   looseBricks: Brick[]; // M3 — bricks with parentBlockId === null
+  runningTimerBrickId: string | null; // M4c — null = no timer running; one running brick at a time
 };
 
-// Action — extends M4a's discriminated union with LOG_GOAL_BRICK (M4b)
+// Action — extends M4b's discriminated union with four timer actions (M4c)
 export type Action =
   | { type: "ADD_BLOCK"; block: Block }
   | { type: "ADD_CATEGORY"; category: Category }
   | { type: "ADD_BRICK"; brick: Brick } // M3 — routed by brick.parentBlockId
   | { type: "LOG_TICK_BRICK"; brickId: string } // M4a — flips `done` on the brick with this id
-  | { type: "LOG_GOAL_BRICK"; brickId: string; delta: 1 | -1 }; // M4b — clamp-increments goal brick count
+  | { type: "LOG_GOAL_BRICK"; brickId: string; delta: 1 | -1 } // M4b — clamp-increments goal brick count
+  | { type: "START_TIMER"; brickId: string } // M4c — implicitly stops any other running timer
+  | { type: "STOP_TIMER"; brickId: string } // M4c — no-op when brickId is not the running one
+  | { type: "TICK_TIMER"; brickId: string; minutesDone: number } // M4c — dispatched by lib/timer.ts
+  | { type: "SET_TIMER_MINUTES"; brickId: string; minutes: number }; // M4c — long-press manual entry, clamped in reducer
 
 export function assertNever(x: never): never {
   throw new Error(`unhandled ${JSON.stringify(x)}`);

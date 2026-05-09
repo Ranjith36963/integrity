@@ -20,7 +20,12 @@ const testBlock: Block = {
 // U-m2-008: reducer handles ADD_BLOCK (immutable append)
 describe("U-m2-008: reducer ADD_BLOCK appends immutably", () => {
   it("returns a new state with blocks.length === 1", () => {
-    const state: AppState = { blocks: [], categories: [], looseBricks: [] };
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
     const next = reducer(state, { type: "ADD_BLOCK", block: testBlock });
     expect(next).not.toBe(state);
     expect(next.blocks).toHaveLength(1);
@@ -28,14 +33,24 @@ describe("U-m2-008: reducer ADD_BLOCK appends immutably", () => {
   });
 
   it("does not mutate the original state", () => {
-    const state: AppState = { blocks: [], categories: [], looseBricks: [] };
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
     reducer(state, { type: "ADD_BLOCK", block: testBlock });
     expect(state.blocks).toHaveLength(0);
   });
 
   it("preserves categories by reference", () => {
     const cats = [{ id: "c1", name: "Health", color: "#34d399" }];
-    const state: AppState = { blocks: [], categories: cats, looseBricks: [] };
+    const state: AppState = {
+      blocks: [],
+      categories: cats,
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
     const next = reducer(state, { type: "ADD_BLOCK", block: testBlock });
     expect(next.categories).toBe(cats);
   });
@@ -44,7 +59,12 @@ describe("U-m2-008: reducer ADD_BLOCK appends immutably", () => {
 // U-m2-009: reducer handles ADD_CATEGORY + assertNever + defaultState
 describe("U-m2-009: reducer ADD_CATEGORY, assertNever, and defaultState", () => {
   it("ADD_CATEGORY appends a new category", () => {
-    const state: AppState = { blocks: [], categories: [], looseBricks: [] };
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
     const next = reducer(state, {
       type: "ADD_CATEGORY",
       category: { id: "c1", name: "Health", color: "#34d399" },
@@ -55,16 +75,26 @@ describe("U-m2-009: reducer ADD_CATEGORY, assertNever, and defaultState", () => 
   });
 
   it("unknown action fires assertNever and throws", () => {
-    const state: AppState = { blocks: [], categories: [], looseBricks: [] };
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
     expect(() =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       reducer(state, { type: "NOPE" } as any),
     ).toThrow();
   });
 
-  it("defaultState() returns { blocks: [], categories: [], looseBricks: [] }", () => {
+  it("defaultState() returns { blocks: [], categories: [], looseBricks: [], runningTimerBrickId: null }", () => {
     const s = defaultState();
-    expect(s).toEqual({ blocks: [], categories: [], looseBricks: [] });
+    expect(s).toEqual({
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    });
   });
 });
 
@@ -85,6 +115,7 @@ describe("U-m3-009: reducer ADD_BRICK routes to block.bricks when parentBlockId 
       blocks: [blockWithId],
       categories: [],
       looseBricks: [],
+      runningTimerBrickId: null,
     };
     const next = reducer(state, {
       type: "ADD_BRICK",
@@ -106,6 +137,7 @@ describe("U-m3-009: reducer ADD_BRICK routes to block.bricks when parentBlockId 
       blocks: [blockWithId],
       categories: [],
       looseBricks: [],
+      runningTimerBrickId: null,
     };
     reducer(state, {
       type: "ADD_BRICK",
@@ -126,6 +158,7 @@ describe("U-m3-009: reducer ADD_BRICK routes to block.bricks when parentBlockId 
       blocks: [blockWithId],
       categories: [],
       looseBricks: [],
+      runningTimerBrickId: null,
     };
     const next = reducer(state, {
       type: "ADD_BRICK",
@@ -146,6 +179,7 @@ describe("U-m3-009: reducer ADD_BRICK routes to block.bricks when parentBlockId 
       blocks: [blockWithId],
       categories: [],
       looseBricks: [],
+      runningTimerBrickId: null,
     };
     const next = reducer(state, {
       type: "ADD_BRICK",
@@ -167,7 +201,12 @@ describe("U-m3-009: reducer ADD_BRICK routes to block.bricks when parentBlockId 
 
 describe("U-m3-010: reducer ADD_BRICK routes to looseBricks when parentBlockId === null", () => {
   it("appends brick to looseBricks", () => {
-    const state: AppState = { blocks: [], categories: [], looseBricks: [] };
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
     const next = reducer(state, {
       type: "ADD_BRICK",
       brick: {
@@ -191,6 +230,7 @@ describe("U-m3-010: reducer ADD_BRICK routes to looseBricks when parentBlockId =
       blocks: existingBlocks,
       categories: [],
       looseBricks: [],
+      runningTimerBrickId: null,
     };
     const next = reducer(state, {
       type: "ADD_BRICK",
@@ -209,7 +249,12 @@ describe("U-m3-010: reducer ADD_BRICK routes to looseBricks when parentBlockId =
   });
 
   it("immutable update: original state unchanged", () => {
-    const state: AppState = { blocks: [], categories: [], looseBricks: [] };
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
     reducer(state, {
       type: "ADD_BRICK",
       brick: {
@@ -231,16 +276,26 @@ describe("U-m3-010: reducer ADD_BRICK routes to looseBricks when parentBlockId =
 
 describe("U-m3-011: assertNever exhaustiveness + defaultState looseBricks", () => {
   it("unknown action fires assertNever and throws (M3 Action union including ADD_BRICK)", () => {
-    const state: AppState = { blocks: [], categories: [], looseBricks: [] };
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
     expect(() =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       reducer(state, { type: "NOPE" } as any),
     ).toThrow();
   });
 
-  it("defaultState() returns { blocks: [], categories: [], looseBricks: [] }", () => {
+  it("defaultState() returns { blocks: [], categories: [], looseBricks: [], runningTimerBrickId: null }", () => {
     const s = defaultState();
-    expect(s).toEqual({ blocks: [], categories: [], looseBricks: [] });
+    expect(s).toEqual({
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    });
   });
 });
 
@@ -270,6 +325,7 @@ describe("U-m4a-001: LOG_TICK_BRICK flips done false→true for brick inside a b
       ],
       categories: [],
       looseBricks: [],
+      runningTimerBrickId: null,
     };
     const next = reducer(state, { type: "LOG_TICK_BRICK", brickId: "b1" });
     const brick = next.blocks[0].bricks[0];
@@ -308,6 +364,7 @@ describe("U-m4a-002: LOG_TICK_BRICK flips done true→false (toggle, not one-way
       ],
       categories: [],
       looseBricks: [],
+      runningTimerBrickId: null,
     };
     const next = reducer(state, { type: "LOG_TICK_BRICK", brickId: "b1" });
     expect(asTick(next.blocks[0].bricks[0]).done).toBe(false);
@@ -331,6 +388,7 @@ describe("U-m4a-003: LOG_TICK_BRICK flips done on looseBricks (no blocks)", () =
           parentBlockId: null,
         },
       ],
+      runningTimerBrickId: null,
     };
     const next = reducer(state, { type: "LOG_TICK_BRICK", brickId: "lb1" });
     expect(asTick(next.looseBricks[0]).done).toBe(true);
@@ -372,6 +430,7 @@ describe("U-m4a-004: LOG_TICK_BRICK is a no-op when brickId does not match any b
       ],
       categories: [],
       looseBricks: [],
+      runningTimerBrickId: null,
     };
     const next = reducer(state, {
       type: "LOG_TICK_BRICK",
@@ -410,6 +469,7 @@ describe("U-m4a-005: LOG_TICK_BRICK is a no-op when brick kind is not tick", () 
       ],
       categories: [],
       looseBricks: [],
+      runningTimerBrickId: null,
     };
     const next = reducer(state, { type: "LOG_TICK_BRICK", brickId: "g1" });
     const brick = next.blocks[0].bricks[0];
@@ -447,6 +507,7 @@ describe("U-m4a-006: LOG_TICK_BRICK returns new top-level reference; no in-place
       ],
       categories: [],
       looseBricks: [],
+      runningTimerBrickId: null,
     };
     const originalBlocks = prevState.blocks;
     const nextState = reducer(prevState, {
@@ -467,7 +528,12 @@ describe("U-m4a-006: LOG_TICK_BRICK returns new top-level reference; no in-place
 
 describe("U-m4a-007: assertNever fires for unknown action shape (exhaustiveness)", () => {
   it("default branch throws for unknown action type", () => {
-    const state: AppState = { blocks: [], categories: [], looseBricks: [] };
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
     expect(() => reducer(state, { type: "__never__" } as never)).toThrow();
   });
 });
@@ -506,6 +572,7 @@ describe("U-m4b-001: LOG_GOAL_BRICK increments count on a goal brick inside a bl
       ],
       categories: [],
       looseBricks: [],
+      runningTimerBrickId: null,
     };
     const next = reducer(state, {
       type: "LOG_GOAL_BRICK",
@@ -548,6 +615,7 @@ describe("U-m4b-002: LOG_GOAL_BRICK decrements count on a goal brick inside a bl
       ],
       categories: [],
       looseBricks: [],
+      runningTimerBrickId: null,
     };
     const next = reducer(state, {
       type: "LOG_GOAL_BRICK",
@@ -590,6 +658,7 @@ describe("U-m4b-003: LOG_GOAL_BRICK returns same state reference when clamped at
       ],
       categories: [],
       looseBricks: [],
+      runningTimerBrickId: null,
     };
     const next = reducer(state, {
       type: "LOG_GOAL_BRICK",
@@ -629,6 +698,7 @@ describe("U-m4b-004: LOG_GOAL_BRICK returns same state reference when clamped at
       ],
       categories: [],
       looseBricks: [],
+      runningTimerBrickId: null,
     };
     const next = reducer(state, {
       type: "LOG_GOAL_BRICK",
@@ -660,6 +730,7 @@ describe("U-m4b-005: LOG_GOAL_BRICK increments looseBricks goal brick; state.blo
           parentBlockId: null,
         },
       ],
+      runningTimerBrickId: null,
     };
     const next = reducer(state, {
       type: "LOG_GOAL_BRICK",
@@ -699,6 +770,7 @@ describe("U-m4b-006: LOG_GOAL_BRICK is a no-op when brickId does not match any b
       ],
       categories: [],
       looseBricks: [],
+      runningTimerBrickId: null,
     };
     const next = reducer(state, {
       type: "LOG_GOAL_BRICK",
@@ -735,6 +807,7 @@ describe("U-m4b-007: LOG_GOAL_BRICK is a no-op when id matches a tick brick (kin
       ],
       categories: [],
       looseBricks: [],
+      runningTimerBrickId: null,
     };
     const next = reducer(state, {
       type: "LOG_GOAL_BRICK",
@@ -776,6 +849,7 @@ describe("U-m4b-008: LOG_GOAL_BRICK is a no-op when id matches a time brick (kin
       ],
       categories: [],
       looseBricks: [],
+      runningTimerBrickId: null,
     };
     const next = reducer(state, {
       type: "LOG_GOAL_BRICK",
@@ -815,6 +889,7 @@ describe("U-m4b-009: LOG_GOAL_BRICK returns new state reference on real change; 
       ],
       categories: [],
       looseBricks: [],
+      runningTimerBrickId: null,
     };
     const originalBrick = prevState.blocks[0].bricks[0];
     const nextState = reducer(prevState, {
@@ -832,7 +907,12 @@ describe("U-m4b-009: LOG_GOAL_BRICK returns new state reference on real change; 
 
 describe("U-m4b-010: assertNever fires for unknown action after LOG_GOAL_BRICK added", () => {
   it("default branch throws for unknown action type", () => {
-    const state: AppState = { blocks: [], categories: [], looseBricks: [] };
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
     expect(() => reducer(state, { type: "__never__" } as never)).toThrow();
   });
 });
@@ -865,6 +945,7 @@ describe("U-m4b-011: LOG_GOAL_BRICK is a no-op when target === 0 (degenerate cas
       ],
       categories: [],
       looseBricks: [],
+      runningTimerBrickId: null,
     };
     const next = reducer(state, {
       type: "LOG_GOAL_BRICK",

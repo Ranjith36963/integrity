@@ -54,6 +54,7 @@ vi.mock("@/lib/data", async () => {
       ],
       looseBricks: [],
       categories: [{ id: "c1", name: "Health", color: "#34d399" }],
+      runningTimerBrickId: null,
     }),
   };
 });

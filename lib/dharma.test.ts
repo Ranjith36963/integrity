@@ -80,7 +80,12 @@ function makeBlock(
 
 // Empty state helper
 function emptyState(): AppState {
-  return { blocks: [], categories: [], looseBricks: [] };
+  return {
+    blocks: [],
+    categories: [],
+    looseBricks: [],
+    runningTimerBrickId: null,
+  };
 }
 
 describe("dharma utilities (harness smoke test)", () => {
@@ -352,9 +357,14 @@ it("U-m3-007: dayPct(state) averages blocks+looseBricks correctly", () => {
     name: "b1",
     bricks: [makeTick({ done: true })],
   });
-  expect(dayPct({ blocks: [block100], categories: [], looseBricks: [] })).toBe(
-    100,
-  );
+  expect(
+    dayPct({
+      blocks: [block100],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    }),
+  ).toBe(100);
 
   // One block at 100, one loose brick at 0 → 50
   const looseBrick0 = makeTick({ done: false });
@@ -363,6 +373,7 @@ it("U-m3-007: dayPct(state) averages blocks+looseBricks correctly", () => {
       blocks: [block100],
       categories: [],
       looseBricks: [looseBrick0],
+      runningTimerBrickId: null,
     }),
   ).toBe(50);
 
@@ -378,13 +389,19 @@ it("U-m3-007: dayPct(state) averages blocks+looseBricks correctly", () => {
       blocks: [block100, block100b],
       categories: [],
       looseBricks: [looseBrick50],
+      runningTimerBrickId: null,
     }),
   ).toBeCloseTo((100 + 100 + 50) / 3, 2);
 
   // Zero blocks, one loose brick at 40 → 40
   const looseBrick40 = makeGoal({ count: 40, target: 100 });
   expect(
-    dayPct({ blocks: [], categories: [], looseBricks: [looseBrick40] }),
+    dayPct({
+      blocks: [],
+      categories: [],
+      looseBricks: [looseBrick40],
+      runningTimerBrickId: null,
+    }),
   ).toBe(40);
 });
 
@@ -424,6 +441,7 @@ it("U-m3-008: categoryDayPct filters by category; null excluded; non-existent �
     blocks: [c1Block],
     categories: [],
     looseBricks: [looseC1, looseNull],
+    runningTimerBrickId: null,
   };
 
   // c1: block (categoryId=c1 → blockPct=50%), c1 brick inside block (100%), loose c1 brick (50%)

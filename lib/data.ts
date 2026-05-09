@@ -13,7 +13,12 @@ import type { AppState, Action, Brick } from "./types";
 import { assertNever } from "./types";
 
 export function defaultState(): AppState {
-  return { blocks: [], categories: [], looseBricks: [] };
+  return {
+    blocks: [],
+    categories: [],
+    looseBricks: [],
+    runningTimerBrickId: null,
+  };
 }
 
 /**
@@ -92,6 +97,85 @@ export function reducer(state: AppState, action: Action): AppState {
         ...state,
         blocks: blocksChanged ? newBlocks : state.blocks,
         looseBricks: looseChanged ? newLoose : state.looseBricks,
+      };
+    }
+    case "START_TIMER": {
+      // Single-running invariant: just write the new id. No separate stop for the prior running brick;
+      // the field is single-valued, the swap IS the stop. lib/timer.ts captures the new startedAt
+      // off the change in state.runningTimerBrickId.
+      if (state.runningTimerBrickId === action.brickId) return state; // already running — true no-op
+      return { ...state, runningTimerBrickId: action.brickId };
+    }
+    case "STOP_TIMER": {
+      if (state.runningTimerBrickId === null) return state;
+      if (state.runningTimerBrickId !== action.brickId) return state; // stopping a non-running brick is a no-op
+      return { ...state, runningTimerBrickId: null };
+    }
+    case "TICK_TIMER": {
+      // Identity short-circuit when minutesDone is unchanged (avoids spurious cross-up effect re-runs).
+      const applyTick = (b: Brick): Brick => {
+        if (b.id !== action.brickId || b.kind !== "time") return b;
+        if (b.minutesDone === action.minutesDone) return b;
+        return { ...b, minutesDone: action.minutesDone };
+      };
+      // Same array-identity preservation pattern as LOG_GOAL_BRICK.
+      let tickBlocksChanged = false;
+      const tickNewBlocks = state.blocks.map((bl) => {
+        let changed = false;
+        const bricks = bl.bricks.map((br) => {
+          const out = applyTick(br);
+          if (out !== br) changed = true;
+          return out;
+        });
+        if (!changed) return bl;
+        tickBlocksChanged = true;
+        return { ...bl, bricks };
+      });
+      let tickLooseChanged = false;
+      const tickNewLoose = state.looseBricks.map((br) => {
+        const out = applyTick(br);
+        if (out !== br) tickLooseChanged = true;
+        return out;
+      });
+      if (!tickBlocksChanged && !tickLooseChanged) return state;
+      return {
+        ...state,
+        blocks: tickBlocksChanged ? tickNewBlocks : state.blocks,
+        looseBricks: tickLooseChanged ? tickNewLoose : state.looseBricks,
+      };
+    }
+    case "SET_TIMER_MINUTES": {
+      // Clamp at the reducer level (defense-in-depth alongside the sheet's own clamp).
+      const applySet = (b: Brick): Brick => {
+        if (b.id !== action.brickId || b.kind !== "time") return b;
+        const clamped = Math.max(0, Math.min(b.durationMin, action.minutes));
+        if (b.minutesDone === clamped) return b;
+        return { ...b, minutesDone: clamped };
+      };
+      // Same array-identity preservation pattern as TICK_TIMER.
+      let setBlocksChanged = false;
+      const setNewBlocks = state.blocks.map((bl) => {
+        let changed = false;
+        const bricks = bl.bricks.map((br) => {
+          const out = applySet(br);
+          if (out !== br) changed = true;
+          return out;
+        });
+        if (!changed) return bl;
+        setBlocksChanged = true;
+        return { ...bl, bricks };
+      });
+      let setLooseChanged = false;
+      const setNewLoose = state.looseBricks.map((br) => {
+        const out = applySet(br);
+        if (out !== br) setLooseChanged = true;
+        return out;
+      });
+      if (!setBlocksChanged && !setLooseChanged) return state;
+      return {
+        ...state,
+        blocks: setBlocksChanged ? setNewBlocks : state.blocks,
+        looseBricks: setLooseChanged ? setNewLoose : state.looseBricks,
       };
     }
     default:
