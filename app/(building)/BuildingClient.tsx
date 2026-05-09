@@ -95,6 +95,14 @@ export function BuildingClient() {
     [dispatch],
   );
 
+  // M4b: dispatch LOG_GOAL_BRICK for goal stepper steps; threaded to Timeline + LooseBricksTray
+  const handleGoalLog = useCallback(
+    (brickId: string, delta: 1 | -1) => {
+      dispatch({ type: "LOG_GOAL_BRICK", brickId, delta });
+    },
+    [dispatch],
+  );
+
   function openSheet(defaultStart: string) {
     setSheetState({ open: true, defaultStart });
   }
@@ -169,6 +177,7 @@ export function BuildingClient() {
           onSlotTap={(hour) => openSheet(hourToHHMM(hour))}
           onAddBrick={handleAddBrickFromBlock}
           onTickToggle={handleTickToggle}
+          onGoalLog={handleGoalLog}
         />
         {/* LooseBricksTray: pinned above dock, visible when blocks or loose bricks exist */}
         {showTray && (
@@ -177,6 +186,7 @@ export function BuildingClient() {
             categories={state.categories}
             onAddBrick={handleAddLooseBrick}
             onTickToggle={handleTickToggle}
+            onGoalLog={handleGoalLog}
           />
         )}
         <BottomBar onAddPress={() => openSheet(roundDownToHour(now))} />

@@ -27,6 +27,7 @@ interface Props {
   onSlotTap: (hour: number) => void;
   onAddBrick?: (parentBlockId: string) => void;
   onTickToggle?: (brickId: string) => void;
+  onGoalLog?: (brickId: string, delta: 1 | -1) => void;
 }
 
 export function Timeline({
@@ -36,6 +37,7 @@ export function Timeline({
   onSlotTap,
   onAddBrick,
   onTickToggle,
+  onGoalLog,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -113,6 +115,7 @@ export function Timeline({
               categories={categories}
               onAddBrick={onAddBrick}
               onTickToggle={onTickToggle}
+              onGoalLog={onGoalLog}
             />
           ))}
 
