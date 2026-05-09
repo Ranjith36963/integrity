@@ -64,6 +64,16 @@ export function AddBlockSheet({
   const sheetContentRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
+  // Sync defaultStart prop → start state when the sheet opens.
+  // AddBlockSheet is always mounted but initially closed (BuildingClient single-instance pattern).
+  // When opened via the M4d chooser, the defaultStart prop changes at the same tick as open→true.
+  // Without this sync, useState(defaultStart) keeps the stale "00:00" from initial mount.
+  useEffect(() => {
+    if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional prop-sync on open per M4d chooser routing (SG-m4d-03); same pattern as AddBrickSheet defaultCategoryId sync (SG-m3-04)
+    setStart(defaultStart);
+  }, [open, defaultStart]);
+
   // Focus trap and autofocus
   useEffect(() => {
     if (!open) return;

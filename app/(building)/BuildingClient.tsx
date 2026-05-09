@@ -1,10 +1,14 @@
 "use client";
-// BuildingClient — M4a extended from M3:
-// - M3 features preserved: blocks reducer, AddBlockSheet, Timeline, BlueprintBar,
-//   AddBrickSheet, LooseBricksTray, dayPct passed to Hero.
-// - M4a NEW: handleTickToggle dispatches LOG_TICK_BRICK; threaded to Timeline + LooseBricksTray.
-// - M4a NEW: useCrossUpEffect for day-100% → haptics.notification + playChime + Fireworks.
-// - M4a NEW: <Fireworks active={fireworksActive} /> overlay rendered.
+// BuildingClient — M4d extended from M4a/M4b:
+// - M4a features preserved: LOG_TICK_BRICK dispatch, useCrossUpEffect, Fireworks overlay.
+// - M4b features preserved: LOG_GOAL_BRICK dispatch.
+// - M4d NEW: AddChooserSheet inserted between dock-+ / slot-tap and the downstream sheets.
+//   - handleDockAdd: opens chooser with defaultStart=roundDownToHour(now)
+//   - handleSlotTap: opens chooser with defaultStart=hourToHHMM(hour)
+//   - handleChooserPick: routes to AddBlockSheet or AddBrickSheet(null)
+//   - handleChooserCancel: closes chooser silently
+//   - Inside-block "+ Add brick" (handleAddBrickFromBlock) bypasses chooser — direct path.
+//   - Tray "+ Brick" pill (handleAddLooseBrick) bypasses chooser — direct path.
 // - roundDownToHour: 1-line local helper — string slice, no Date math (SG-m2-04)
 
 import { useReducer, useState, useCallback } from "react";
@@ -21,6 +25,7 @@ import { Hero } from "@/components/Hero";
 import { BlueprintBar } from "@/components/BlueprintBar";
 import { Timeline } from "@/components/Timeline";
 import { BottomBar } from "@/components/BottomBar";
+import { AddChooserSheet } from "@/components/AddChooserSheet";
 import { AddBlockSheet } from "@/components/AddBlockSheet";
 import { AddBrickSheet } from "@/components/AddBrickSheet";
 import { LooseBricksTray } from "@/components/LooseBricksTray";
@@ -51,6 +56,11 @@ interface BrickSheetState {
   defaultCategoryId: string | null;
 }
 
+interface ChooserState {
+  open: boolean;
+  defaultStart: string | null; // captured slot hour ("HH:00"), or null when opened from dock +
+}
+
 export function BuildingClient() {
   const [state, dispatch] = useReducer(reducer, defaultState());
   const [sheetState, setSheetState] = useState<SheetState>({
@@ -63,6 +73,10 @@ export function BuildingClient() {
     defaultCategoryId: null,
   });
   const [fireworksActive, setFireworksActive] = useState(false);
+  const [chooserState, setChooserState] = useState<ChooserState>({
+    open: false,
+    defaultStart: null,
+  });
 
   // Live clock (ADR-023: server-clock paint on SSR, reconciles within 60s)
   const now = useNow();
@@ -103,9 +117,53 @@ export function BuildingClient() {
     [dispatch],
   );
 
-  function openSheet(defaultStart: string) {
-    setSheetState({ open: true, defaultStart });
-  }
+  // M4d: dock + → open chooser with defaultStart=roundDownToHour(now) captured at open time.
+  // Storing the hour at open time avoids stale-closure risk on `now` inside handleChooserPick
+  // (cross-cutting concern #3 from plan.md).
+  const handleDockAdd = useCallback(() => {
+    setChooserState({ open: true, defaultStart: roundDownToHour(now) });
+  }, [now]);
+
+  // M4d: slot tap → open chooser with the tapped hour captured as defaultStart.
+  const handleSlotTap = useCallback((hour: number) => {
+    setChooserState({ open: true, defaultStart: hourToHHMM(hour) });
+  }, []);
+
+  // M4d: chooser pick — close chooser, then open the appropriate downstream sheet.
+  // exhaustiveness: switch on 'block' | 'brick' with a default that throws if a
+  // third option is ever added without handling it (assertNever pattern from plan.md).
+  const handleChooserPick = useCallback(
+    (choice: "block" | "brick") => {
+      switch (choice) {
+        case "block": {
+          const start = chooserState.defaultStart ?? roundDownToHour(now);
+          setChooserState({ open: false, defaultStart: null });
+          setSheetState({ open: true, defaultStart: start });
+          break;
+        }
+        case "brick": {
+          setChooserState({ open: false, defaultStart: null });
+          setBrickSheetState({
+            open: true,
+            parentBlockId: null,
+            defaultCategoryId: null,
+          });
+          break;
+        }
+        default: {
+          // Exhaustiveness guard: this branch is unreachable at runtime.
+          const _exhaustive: never = choice;
+          throw new Error(`Unhandled chooser choice: ${String(_exhaustive)}`);
+        }
+      }
+    },
+    [chooserState.defaultStart, now],
+  );
+
+  // M4d: chooser cancel — close chooser silently (no downstream sheet, no haptic).
+  const handleChooserCancel = useCallback(() => {
+    setChooserState({ open: false, defaultStart: null });
+  }, []);
 
   function closeSheet() {
     setSheetState((s) => ({ ...s, open: false }));
@@ -174,10 +232,11 @@ export function BuildingClient() {
           blocks={state.blocks}
           categories={state.categories}
           now={now}
-          onSlotTap={(hour) => openSheet(hourToHHMM(hour))}
+          onSlotTap={handleSlotTap}
           onAddBrick={handleAddBrickFromBlock}
           onTickToggle={handleTickToggle}
           onGoalLog={handleGoalLog}
+          hasLooseBricks={state.looseBricks.length > 0}
         />
         {/* LooseBricksTray: pinned above dock, visible when blocks or loose bricks exist */}
         {showTray && (
@@ -189,7 +248,13 @@ export function BuildingClient() {
             onGoalLog={handleGoalLog}
           />
         )}
-        <BottomBar onAddPress={() => openSheet(roundDownToHour(now))} />
+        <BottomBar onAddPress={handleDockAdd} />
+        {/* AddChooserSheet: M4d routing surface — opens before AddBlockSheet or AddBrickSheet */}
+        <AddChooserSheet
+          open={chooserState.open}
+          onPick={handleChooserPick}
+          onCancel={handleChooserCancel}
+        />
         {/* AddBlockSheet: single instance, view state inside */}
         <AddBlockSheet
           open={sheetState.open}

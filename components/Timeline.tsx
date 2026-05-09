@@ -28,6 +28,10 @@ interface Props {
   onAddBrick?: (parentBlockId: string) => void;
   onTickToggle?: (brickId: string) => void;
   onGoalLog?: (brickId: string, delta: 1 | -1) => void;
+  /** M4d: when true, the EmptyBlocks card is suppressed even if blocks is empty.
+   * Used by BuildingClient when looseBricks.length > 0 (AC #10/#11 — loose bricks
+   * fill the day so the block-empty state is no longer relevant). */
+  hasLooseBricks?: boolean;
 }
 
 export function Timeline({
@@ -38,6 +42,7 @@ export function Timeline({
   onAddBrick,
   onTickToggle,
   onGoalLog,
+  hasLooseBricks = false,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -119,8 +124,8 @@ export function Timeline({
             />
           ))}
 
-          {/* Layer 2 (centered): EmptyBlocks card — only when blocks.length === 0 */}
-          {blocks.length === 0 && (
+          {/* Layer 2 (centered): EmptyBlocks card — only when blocks empty AND no loose bricks */}
+          {blocks.length === 0 && !hasLooseBricks && (
             <div className="absolute inset-x-4 z-0" style={{ top: "20px" }}>
               <EmptyBlocks />
             </div>

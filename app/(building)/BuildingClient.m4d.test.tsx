@@ -1,7 +1,7 @@
 // app/(building)/BuildingClient.m4d.test.tsx — M4d BuildingClient wiring tests
 // Covers: C-m4d-009..017
 
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BuildingClient } from "./BuildingClient";
@@ -21,8 +21,14 @@ vi.mock("@/lib/audio", () => ({
   playChime: vi.fn(),
 }));
 
+beforeEach(() => {
+  // Ensure real timers are active before each test (guards against fake-timer leakage)
+  vi.useRealTimers();
+});
+
 afterEach(() => {
   vi.clearAllMocks();
+  vi.useRealTimers();
 });
 
 // ─── C-m4d-009: dock + → AddChooserSheet (not AddBlockSheet directly) ─────────
@@ -61,9 +67,10 @@ describe("C-m4d-009: dock + opens AddChooserSheet, not AddBlockSheet directly", 
   });
 
   it("defaultStart is set to rounded current hour when dock + → chooser → Add Block", async () => {
-    vi.useFakeTimers();
+    // Fake only Date (not setTimeout/setInterval) so userEvent works without timer conflicts
+    vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-05-09T08:47:00"));
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const user = userEvent.setup();
     render(<BuildingClient />);
 
     await user.click(screen.getByRole("button", { name: "Add" }));
@@ -72,8 +79,6 @@ describe("C-m4d-009: dock + opens AddChooserSheet, not AddBlockSheet directly", 
     // Start input should be "08:00" (rounded down from 08:47)
     const startInput = screen.getByLabelText(/Start/i);
     expect(startInput).toHaveValue("08:00");
-
-    vi.useRealTimers();
   });
 });
 
@@ -113,14 +118,11 @@ describe("C-m4d-010: dock + → chooser → 'Add Brick' → AddBrickSheet opens 
 // ─── C-m4d-011: slot tap → chooser with captured hour ────────────────────────
 
 describe("C-m4d-011: slot tap opens chooser; Add Block gets defaultStart=captured hour; Add Brick discards hour", () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
   it("slot tap opens chooser (not AddBlockSheet directly)", async () => {
-    vi.useFakeTimers();
+    // Fake only Date (not setTimeout/setInterval) so userEvent works without timer conflicts
+    vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-05-09T08:30:00"));
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const user = userEvent.setup();
     render(<BuildingClient />);
 
     // Click slot at hour 13
@@ -133,9 +135,10 @@ describe("C-m4d-011: slot tap opens chooser; Add Block gets defaultStart=capture
   });
 
   it("slot tap → Add Block → AddBlockSheet with defaultStart=captured hour (13:00)", async () => {
-    vi.useFakeTimers();
+    // Fake only Date so userEvent works without timer conflicts
+    vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-05-09T08:30:00"));
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const user = userEvent.setup();
     render(<BuildingClient />);
 
     // Click slot at hour 13
@@ -151,9 +154,10 @@ describe("C-m4d-011: slot tap opens chooser; Add Block gets defaultStart=capture
   });
 
   it("slot tap (hour 13) → Add Brick → AddBrickSheet opens; captured hour discarded", async () => {
-    vi.useFakeTimers();
+    // Fake only Date so userEvent works without timer conflicts
+    vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-05-09T08:30:00"));
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const user = userEvent.setup();
     render(<BuildingClient />);
 
     // Click slot at hour 13
@@ -270,14 +274,11 @@ describe("C-m4d-014: empty state → dock + → chooser → Add Brick → save �
 // ─── C-m4d-015: slot tap → Add Brick → hour discarded → tray renders ─────────
 
 describe("C-m4d-015: slot tap → chooser → Add Brick → save → loose brick in tray; hour discarded", () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
   it("brick from slot-tap path lands in tray; no start/time field populated", async () => {
-    vi.useFakeTimers();
+    // Fake only Date so userEvent works without timer conflicts
+    vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-05-09T08:30:00"));
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const user = userEvent.setup();
     render(<BuildingClient />);
 
     // Click slot at hour 9
