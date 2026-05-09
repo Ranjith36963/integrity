@@ -748,3 +748,43 @@ describe("C-m4b-012: + long-press fires 1 initial + 1 at HOLD_MS + 4 intervals =
     expect(haptics.medium).not.toHaveBeenCalled();
   });
 });
+
+// ─── C-m4b-013: pointerup mid-burst halts auto-repeat ────────────────────────
+
+describe("C-m4b-013: pointerup mid-burst stops auto-repeat ticks", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("after pointerup mid-burst, no further onGoalLog/haptics fire even after 500ms", async () => {
+    const { haptics } = await import("@/lib/haptics");
+    const onGoalLog = vi.fn();
+    render(
+      <BrickChip
+        brick={makeGoalBrick("g1", "pushups", 3, 10)}
+        categories={[cat1]}
+        onGoalLog={onGoalLog}
+      />,
+    );
+    const plus = screen.getByRole("button", { name: "Increase pushups" });
+    fireEvent.pointerDown(plus);
+    vi.advanceTimersByTime(500); // HOLD_MS
+    vi.advanceTimersByTime(50);
+    vi.advanceTimersByTime(50);
+    vi.advanceTimersByTime(50);
+    vi.advanceTimersByTime(50);
+    const dispatchesBeforeRelease = onGoalLog.mock.calls.length;
+    const lightBeforeRelease = vi.mocked(haptics.light).mock.calls.length;
+
+    fireEvent.pointerUp(plus);
+    vi.advanceTimersByTime(500);
+
+    expect(onGoalLog).toHaveBeenCalledTimes(dispatchesBeforeRelease);
+    expect(haptics.light).toHaveBeenCalledTimes(lightBeforeRelease);
+  });
+});
