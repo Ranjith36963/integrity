@@ -956,3 +956,402 @@ describe("U-m4b-011: LOG_GOAL_BRICK is a no-op when target === 0 (degenerate cas
     expect(asGoal(next.blocks[0].bricks[0]).count).toBe(0);
   });
 });
+
+// ─── U-m4c-001: START_TIMER sets runningTimerBrickId ─────────────────────────
+
+describe("U-m4c-001: START_TIMER sets runningTimerBrickId to brickId", () => {
+  it("sets runningTimerBrickId to t1; brick minutesDone unchanged; categories/looseBricks same ref", () => {
+    const cats = [{ id: "c1", name: "Health", color: "#34d399" }];
+    const state: AppState = {
+      blocks: [
+        {
+          id: "block-1",
+          name: "block 1",
+          start: "09:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: null,
+          bricks: [
+            {
+              id: "t1",
+              name: "Read",
+              kind: "time",
+              durationMin: 25,
+              minutesDone: 0,
+              categoryId: null,
+              parentBlockId: "block-1",
+            },
+          ],
+        },
+      ],
+      categories: cats,
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
+    const next = reducer(state, { type: "START_TIMER", brickId: "t1" });
+    expect(next.runningTimerBrickId).toBe("t1");
+    // brick minutesDone unchanged
+    if (next.blocks[0].bricks[0].kind === "time") {
+      expect(next.blocks[0].bricks[0].minutesDone).toBe(0);
+    }
+    // categories and looseBricks preserve referential equality
+    expect(next.categories).toBe(cats);
+    expect(next.looseBricks).toBe(state.looseBricks);
+  });
+});
+
+// ─── U-m4c-002: START_TIMER while another timer running swaps id ──────────────
+
+describe("U-m4c-002: START_TIMER while another timer is running swaps runningTimerBrickId", () => {
+  it("runningTimerBrickId becomes t2; no separate STOP_TIMER needed; minutesDone unchanged", () => {
+    const state: AppState = {
+      blocks: [
+        {
+          id: "block-1",
+          name: "block 1",
+          start: "09:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: null,
+          bricks: [
+            {
+              id: "t1",
+              name: "Read",
+              kind: "time",
+              durationMin: 25,
+              minutesDone: 3,
+              categoryId: null,
+              parentBlockId: "block-1",
+            },
+            {
+              id: "t2",
+              name: "Write",
+              kind: "time",
+              durationMin: 30,
+              minutesDone: 0,
+              categoryId: null,
+              parentBlockId: "block-1",
+            },
+          ],
+        },
+      ],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: "t1",
+    };
+    const next = reducer(state, { type: "START_TIMER", brickId: "t2" });
+    expect(next.runningTimerBrickId).toBe("t2");
+    // t1's minutesDone stays as the last captured value
+    if (next.blocks[0].bricks[0].kind === "time") {
+      expect(next.blocks[0].bricks[0].minutesDone).toBe(3);
+    }
+    // t2's minutesDone unchanged
+    if (next.blocks[0].bricks[1].kind === "time") {
+      expect(next.blocks[0].bricks[1].minutesDone).toBe(0);
+    }
+  });
+});
+
+// ─── U-m4c-003: START_TIMER re-starting already-running brick is a no-op ──────
+
+describe("U-m4c-003: START_TIMER re-start already-running brick returns same state reference", () => {
+  it("Object.is(out, state) === true when brickId matches runningTimerBrickId", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: "t1",
+    };
+    const next = reducer(state, { type: "START_TIMER", brickId: "t1" });
+    expect(Object.is(next, state)).toBe(true);
+  });
+});
+
+// ─── U-m4c-004: STOP_TIMER clears runningTimerBrickId ────────────────────────
+
+describe("U-m4c-004: STOP_TIMER sets runningTimerBrickId to null", () => {
+  it("runningTimerBrickId becomes null after STOP_TIMER for running brick", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: "t1",
+    };
+    const next = reducer(state, { type: "STOP_TIMER", brickId: "t1" });
+    expect(next.runningTimerBrickId).toBeNull();
+  });
+});
+
+// ─── U-m4c-005: STOP_TIMER no-op when null or mismatched ─────────────────────
+
+describe("U-m4c-005: STOP_TIMER is a no-op when no timer running or id mismatched", () => {
+  it("returns same reference when runningTimerBrickId is null", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
+    const next = reducer(state, { type: "STOP_TIMER", brickId: "t1" });
+    expect(Object.is(next, state)).toBe(true);
+  });
+
+  it("returns same reference when brickId does not match running brick (t1 running, t2 stopped)", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: "t1",
+    };
+    const next = reducer(state, { type: "STOP_TIMER", brickId: "t2" });
+    expect(Object.is(next, state)).toBe(true);
+  });
+});
+
+// ─── U-m4c-006: TICK_TIMER writes minutesDone; array identity preserved ───────
+
+describe("U-m4c-006: TICK_TIMER updates brick minutesDone; categories and looseBricks same ref", () => {
+  it("brick minutesDone becomes 7; categories same ref; looseBricks same ref", () => {
+    const cats = [{ id: "c1", name: "Health", color: "#34d399" }];
+    const loose: AppState["looseBricks"] = [];
+    const state: AppState = {
+      blocks: [
+        {
+          id: "block-1",
+          name: "block 1",
+          start: "09:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: null,
+          bricks: [
+            {
+              id: "t1",
+              name: "Read",
+              kind: "time",
+              durationMin: 25,
+              minutesDone: 5,
+              categoryId: null,
+              parentBlockId: "block-1",
+            },
+          ],
+        },
+      ],
+      categories: cats,
+      looseBricks: loose,
+      runningTimerBrickId: "t1",
+    };
+    const next = reducer(state, {
+      type: "TICK_TIMER",
+      brickId: "t1",
+      minutesDone: 7,
+    });
+    if (next.blocks[0].bricks[0].kind === "time") {
+      expect(next.blocks[0].bricks[0].minutesDone).toBe(7);
+    }
+    expect(next.runningTimerBrickId).toBe("t1");
+    expect(next.categories).toBe(cats);
+    expect(next.looseBricks).toBe(loose);
+    // blocks array reference changed (new brick mutated)
+    expect(next.blocks).not.toBe(state.blocks);
+  });
+});
+
+// ─── U-m4c-007: TICK_TIMER identity short-circuit when minutesDone unchanged ──
+
+describe("U-m4c-007: TICK_TIMER returns same state reference when minutesDone is unchanged", () => {
+  it("Object.is(out, state) === true when minutesDone === 7 and dispatch carries 7", () => {
+    const state: AppState = {
+      blocks: [
+        {
+          id: "block-1",
+          name: "block 1",
+          start: "09:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: null,
+          bricks: [
+            {
+              id: "t1",
+              name: "Read",
+              kind: "time",
+              durationMin: 25,
+              minutesDone: 7,
+              categoryId: null,
+              parentBlockId: "block-1",
+            },
+          ],
+        },
+      ],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: "t1",
+    };
+    const next = reducer(state, {
+      type: "TICK_TIMER",
+      brickId: "t1",
+      minutesDone: 7,
+    });
+    expect(Object.is(next, state)).toBe(true);
+  });
+});
+
+// ─── U-m4c-008: TICK_TIMER no-op when kind !== "time" ────────────────────────
+
+describe("U-m4c-008: TICK_TIMER is a no-op when the matching brick has kind !== 'time'", () => {
+  it("returns same reference when brickId matches a tick brick", () => {
+    const state: AppState = {
+      blocks: [
+        {
+          id: "block-1",
+          name: "block 1",
+          start: "09:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: null,
+          bricks: [
+            {
+              id: "tk1",
+              name: "exercise",
+              kind: "tick",
+              done: false,
+              categoryId: null,
+              parentBlockId: "block-1",
+            },
+            {
+              id: "t1",
+              name: "Read",
+              kind: "time",
+              durationMin: 25,
+              minutesDone: 0,
+              categoryId: null,
+              parentBlockId: "block-1",
+            },
+          ],
+        },
+      ],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
+    const next = reducer(state, {
+      type: "TICK_TIMER",
+      brickId: "tk1",
+      minutesDone: 7,
+    });
+    expect(Object.is(next, state)).toBe(true);
+  });
+});
+
+// ─── U-m4c-009: SET_TIMER_MINUTES clamp + identity short-circuit ─────────────
+
+describe("U-m4c-009: SET_TIMER_MINUTES clamps to [0, durationMin] and identity short-circuits", () => {
+  function makeTimerState(minutesDone: number, inLoose = false): AppState {
+    const brick = {
+      id: "t1",
+      name: "Read",
+      kind: "time" as const,
+      durationMin: 25,
+      minutesDone,
+      categoryId: null,
+      parentBlockId: inLoose ? null : "block-1",
+    };
+    if (inLoose) {
+      return {
+        blocks: [],
+        categories: [],
+        looseBricks: [brick],
+        runningTimerBrickId: null,
+      };
+    }
+    return {
+      blocks: [
+        {
+          id: "block-1",
+          name: "block 1",
+          start: "09:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: null,
+          bricks: [brick],
+        },
+      ],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
+  }
+
+  it("in-range minutes: minutesDone set to 12 on loose brick", () => {
+    const state = makeTimerState(5, true);
+    const next = reducer(state, {
+      type: "SET_TIMER_MINUTES",
+      brickId: "t1",
+      minutes: 12,
+    });
+    if (next.looseBricks[0].kind === "time") {
+      expect(next.looseBricks[0].minutesDone).toBe(12);
+    }
+  });
+
+  it("overflow minutes: clamped to durationMin (25) when minutes=30", () => {
+    const state = makeTimerState(5, true);
+    const next = reducer(state, {
+      type: "SET_TIMER_MINUTES",
+      brickId: "t1",
+      minutes: 30,
+    });
+    if (next.looseBricks[0].kind === "time") {
+      expect(next.looseBricks[0].minutesDone).toBe(25);
+    }
+  });
+
+  it("under-zero minutes: clamped to 0 when minutes=-3", () => {
+    const state = makeTimerState(5, true);
+    const next = reducer(state, {
+      type: "SET_TIMER_MINUTES",
+      brickId: "t1",
+      minutes: -3,
+    });
+    if (next.looseBricks[0].kind === "time") {
+      expect(next.looseBricks[0].minutesDone).toBe(0);
+    }
+  });
+
+  it("identity short-circuit: same reference when minutes === current minutesDone", () => {
+    const state = makeTimerState(12, true);
+    const next = reducer(state, {
+      type: "SET_TIMER_MINUTES",
+      brickId: "t1",
+      minutes: 12,
+    });
+    expect(Object.is(next, state)).toBe(true);
+  });
+});
+
+// ─── U-m4c-010: AppState requires runningTimerBrickId; defaultState includes it ─
+
+describe("U-m4c-010: defaultState() includes runningTimerBrickId: null", () => {
+  it("defaultState returns runningTimerBrickId: null", () => {
+    const s = defaultState();
+    expect(s.runningTimerBrickId).toBeNull();
+  });
+
+  it("defaultState deep-equal includes all fields including runningTimerBrickId", () => {
+    const s = defaultState();
+    expect(s).toEqual({
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    });
+  });
+});
+
+// ─── U-m4c-011: assertNever exhaustiveness preserved with 4 new union members ──
+
+describe("U-m4c-011: assertNever fires for unknown action (exhaustiveness with M4c actions)", () => {
+  it("default branch throws for unknown action type cast through any", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(() => reducer(state, { type: "NOPE" } as any)).toThrow();
+  });
+});
