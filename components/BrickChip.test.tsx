@@ -970,3 +970,32 @@ describe("C-m4b-018: tick chip remains a single <button>; onTickToggle fires; on
     expect(onGoalLog).not.toHaveBeenCalled();
   });
 });
+
+// ─── C-m4b-019: time chip regression — single inert button, no stepper ──────
+
+describe("C-m4b-019: time chip remains a single inert <button>; no − or + buttons", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("clicking time chip calls neither onGoalLog nor onTickToggle; no Decrease/Increase buttons", async () => {
+    const onTickToggle = vi.fn();
+    const onGoalLog = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <BrickChip
+        brick={makeTime(0, 10)}
+        categories={[cat1]}
+        onTickToggle={onTickToggle}
+        onGoalLog={onGoalLog}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /Decrease/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Increase/i })).toBeNull();
+    const buttons = screen.getAllByRole("button");
+    expect(buttons).toHaveLength(1);
+    await user.click(buttons[0]);
+    expect(onTickToggle).not.toHaveBeenCalled();
+    expect(onGoalLog).not.toHaveBeenCalled();
+  });
+});
