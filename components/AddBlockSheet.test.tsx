@@ -197,8 +197,8 @@ describe("C-m2-005: End past 23:59 shows inline error", () => {
   });
 });
 
-// C-m2-006: Soft overlap warning — Save still enabled
-describe("C-m2-006: Soft overlap warning, Save still enabled", () => {
+// C-m2-006: Overlap warning (M4e retroactive upgrade: role="status"→"alert", Save disabled)
+describe("C-m2-006: Overlap warning (M4e: role=alert, Save disabled)", () => {
   const existingBlock: Block = {
     id: "b1",
     name: "Existing",
@@ -209,39 +209,57 @@ describe("C-m2-006: Soft overlap warning, Save still enabled", () => {
     bricks: [],
   };
 
-  it("shows overlap status message and keeps Save enabled", async () => {
+  it("shows overlap-warning chip with role=alert and disables Save (M4e upgrade)", async () => {
     const user = userEvent.setup();
+    const state = stateWithBlock({
+      id: "b1",
+      name: "Existing",
+      start: "09:00",
+      end: "10:00",
+    });
     render(
       <AddBlockSheet
         {...defaultProps}
         defaultStart="09:30"
         blocks={[existingBlock]}
+        state={state}
       />,
     );
     await user.type(screen.getByLabelText(/Title/i), "Foo");
     const endInput = screen.getByLabelText(/End/i);
     await user.type(endInput, "10:30");
-    const status = screen.getByRole("status");
-    expect(status.textContent).toContain("Existing");
+    const chip = screen.getByTestId("overlap-warning");
+    expect(chip.getAttribute("role")).toBe("alert");
+    expect(chip.textContent).toContain("Existing");
     expect(screen.getByRole("button", { name: /Save/i })).toHaveAttribute(
       "aria-disabled",
-      "false",
+      "true",
     );
   });
 
-  it("clicking Save with overlap still invokes onSave", async () => {
+  it("clicking Save with overlap calls haptics.medium, NOT onSave (M4e upgrade)", async () => {
+    vi.mocked(haptics.medium).mockClear();
     const user = userEvent.setup();
+    const state = stateWithBlock({
+      id: "b1",
+      name: "Existing",
+      start: "09:00",
+      end: "10:00",
+    });
     render(
       <AddBlockSheet
         {...defaultProps}
         defaultStart="09:30"
         blocks={[existingBlock]}
+        state={state}
+        onSave={mockSave}
       />,
     );
     await user.type(screen.getByLabelText(/Title/i), "Foo");
     await user.type(screen.getByLabelText(/End/i), "10:30");
-    await user.click(screen.getByRole("button", { name: /Save/i }));
-    expect(mockSave).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: /Save/i }));
+    expect(vi.mocked(haptics.medium)).toHaveBeenCalledTimes(1);
+    expect(mockSave).not.toHaveBeenCalled();
   });
 });
 
