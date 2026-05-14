@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { defaultState, reducer } from "./data";
+import { defaultState, reducer, withDurationDefaults } from "./data";
 import type { AppState, Block, Brick } from "./types";
 
 /** Narrow a Brick to the tick variant. Throws if kind !== "tick". */
@@ -1353,5 +1353,310 @@ describe("U-m4c-011: assertNever fires for unknown action (exhaustiveness with M
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(() => reducer(state, { type: "NOPE" } as any)).toThrow();
+  });
+});
+
+// ─── U-m4e-015: ADD_BRICK happy path with hasDuration:true ───────────────────
+
+describe("U-m4e-015: ADD_BRICK with hasDuration:true and all three fields present — appends to looseBricks", () => {
+  it("stores brick with hasDuration:true, start, end, recurrence in looseBricks", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
+    const next = reducer(state, {
+      type: "ADD_BRICK",
+      brick: {
+        id: "r1",
+        kind: "tick",
+        done: false,
+        name: "Run",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: true,
+        start: "09:00",
+        end: "09:30",
+        recurrence: { kind: "just-today", date: "2026-05-14" },
+      },
+    });
+    expect(next.looseBricks).toHaveLength(1);
+    const saved = next.looseBricks[0];
+    expect(saved.hasDuration).toBe(true);
+    if (saved.hasDuration) {
+      expect(saved.start).toBe("09:00");
+      expect(saved.end).toBe("09:30");
+      expect(saved.recurrence).toEqual({ kind: "just-today", date: "2026-05-14" });
+    }
+  });
+});
+
+// ─── U-m4e-016: ADD_BRICK rejects when hasDuration:true but fields missing ───
+
+describe("U-m4e-016: ADD_BRICK with hasDuration:true but missing end/start/recurrence — returns same state (identity)", () => {
+  it("returns same reference when end is undefined", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
+    const out = reducer(state, {
+      type: "ADD_BRICK",
+      brick: {
+        id: "r1",
+        kind: "tick",
+        done: false,
+        name: "Run",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: true,
+        start: "09:00",
+        end: undefined,
+        recurrence: { kind: "just-today", date: "2026-05-14" },
+      },
+    });
+    expect(Object.is(out, state)).toBe(true);
+  });
+
+  it("returns same reference when start is undefined", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
+    const out = reducer(state, {
+      type: "ADD_BRICK",
+      brick: {
+        id: "r1",
+        kind: "tick",
+        done: false,
+        name: "Run",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: true,
+        start: undefined,
+        end: "09:30",
+        recurrence: { kind: "just-today", date: "2026-05-14" },
+      },
+    });
+    expect(Object.is(out, state)).toBe(true);
+  });
+
+  it("returns same reference when recurrence is undefined", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
+    const out = reducer(state, {
+      type: "ADD_BRICK",
+      brick: {
+        id: "r1",
+        kind: "tick",
+        done: false,
+        name: "Run",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: true,
+        start: "09:00",
+        end: "09:30",
+        recurrence: undefined,
+      },
+    });
+    expect(Object.is(out, state)).toBe(true);
+  });
+});
+
+// ─── U-m4e-017: ADD_BRICK rejects when hasDuration:false but fields present ──
+
+describe("U-m4e-017: ADD_BRICK with hasDuration:false but time fields present — returns same state (identity)", () => {
+  it("returns same reference when start is defined but hasDuration:false", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
+    const out = reducer(state, {
+      type: "ADD_BRICK",
+      brick: {
+        id: "r1",
+        kind: "tick",
+        done: false,
+        name: "Run",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        start: "09:00",
+      },
+    });
+    expect(Object.is(out, state)).toBe(true);
+  });
+
+  it("returns same reference when end is defined but hasDuration:false", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
+    const out = reducer(state, {
+      type: "ADD_BRICK",
+      brick: {
+        id: "r1",
+        kind: "tick",
+        done: false,
+        name: "Run",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        end: "09:30",
+      },
+    });
+    expect(Object.is(out, state)).toBe(true);
+  });
+
+  it("returns same reference when recurrence is defined but hasDuration:false", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
+    const out = reducer(state, {
+      type: "ADD_BRICK",
+      brick: {
+        id: "r1",
+        kind: "tick",
+        done: false,
+        name: "Run",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        recurrence: { kind: "just-today", date: "2026-05-14" },
+      },
+    });
+    expect(Object.is(out, state)).toBe(true);
+  });
+});
+
+// ─── U-m4e-018: ADD_BRICK happy path with hasDuration:false (M3 byte-identical) ─
+
+describe("U-m4e-018: ADD_BRICK with hasDuration:false and no time fields — valid path (M3/M4a/b/c byte-identical)", () => {
+  it("appends brick with hasDuration:false; start/end/recurrence all undefined on stored shape", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
+    const next = reducer(state, {
+      type: "ADD_BRICK",
+      brick: {
+        id: "r1",
+        kind: "tick",
+        done: false,
+        name: "Run",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+      },
+    });
+    expect(next.looseBricks).toHaveLength(1);
+    const saved = next.looseBricks[0];
+    expect(saved.hasDuration).toBe(false);
+    expect(saved.start).toBeUndefined();
+    expect(saved.end).toBeUndefined();
+    expect(saved.recurrence).toBeUndefined();
+  });
+});
+
+// ─── U-m4e-019: withDurationDefaults fills missing hasDuration field ─────────
+
+describe("U-m4e-019: withDurationDefaults — fills hasDuration:false when field absent", () => {
+  it("adds hasDuration:false; preserves all other fields; start/end/recurrence remain absent", () => {
+    // Cast through unknown to simulate a pre-M4e brick without hasDuration
+    const preMigration = {
+      id: "r1",
+      kind: "tick" as const,
+      done: false as const,
+      name: "Run",
+      categoryId: null,
+      parentBlockId: null,
+    } as unknown as Brick;
+    const result = withDurationDefaults(preMigration);
+    expect(result.hasDuration).toBe(false);
+    expect(result.start).toBeUndefined();
+    expect(result.end).toBeUndefined();
+    expect(result.recurrence).toBeUndefined();
+    expect(result.id).toBe("r1");
+    expect(result.kind).toBe("tick");
+    expect(result.name).toBe("Run");
+    expect(result.categoryId).toBeNull();
+    expect(result.parentBlockId).toBeNull();
+  });
+});
+
+// ─── U-m4e-020: withDurationDefaults is idempotent when hasDuration is set ───
+
+describe("U-m4e-020: withDurationDefaults — idempotent when hasDuration is already a boolean", () => {
+  it("returns same reference when hasDuration:true already set", () => {
+    const brick: Brick = {
+      id: "r1",
+      kind: "tick",
+      done: false,
+      name: "Run",
+      categoryId: null,
+      parentBlockId: null,
+      hasDuration: true,
+      start: "09:00",
+      end: "09:30",
+      recurrence: { kind: "just-today", date: "2026-05-14" },
+    };
+    const result = withDurationDefaults(brick);
+    expect(Object.is(result, brick)).toBe(true);
+  });
+
+  it("returns same reference when hasDuration:false already set", () => {
+    const brick: Brick = {
+      id: "r1",
+      kind: "tick",
+      done: false,
+      name: "Run",
+      categoryId: null,
+      parentBlockId: null,
+      hasDuration: false,
+    };
+    const result = withDurationDefaults(brick);
+    expect(Object.is(result, brick)).toBe(true);
+  });
+});
+
+// ─── U-m4e-021: assertNever exhaustiveness preserved + defaultState unchanged ─
+
+describe("U-m4e-021: assertNever exhaustiveness preserved after M4e; defaultState unchanged", () => {
+  it("throws for unknown action type NOPE", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(() => reducer(state, { type: "NOPE" } as any)).toThrow();
+  });
+
+  it("defaultState() deep-equal matches expected shape (no new AppState fields in M4e)", () => {
+    const s = defaultState();
+    expect(s).toEqual({
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    });
   });
 });

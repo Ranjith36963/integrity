@@ -1,6 +1,7 @@
 // lib/types.ts — re-authored for M3 (plan.md § Data model).
 // M2: Brick stub with old field names (current/target) replaced.
 // M3: Full Brick discriminated union with id/categoryId/parentBlockId per locked schema.
+// M4e: BrickBase gains universal duration axis (ADR-042).
 
 // Brick — REPLACES M2's stub. Adds id/categoryId/parentBlockId; renames goal/time progress fields.
 type BrickBase = {
@@ -8,6 +9,13 @@ type BrickBase = {
   name: string;
   categoryId: string | null; // FK to AppState.categories; null = uncategorized
   parentBlockId: string | null; // FK to AppState.blocks; null = standalone (loose)
+  // NEW in M4e — universal duration axis (orthogonal to score type per ADR-042).
+  // Presence invariant: hasDuration === true IFF all three of start/end/recurrence are present;
+  // hasDuration === false IFF all three are undefined. Reducer enforces in ADD_BRICK.
+  hasDuration: boolean; // default false; controlled by the AddBrickSheet <Toggle>
+  start?: string; // "HH:MM"; present iff hasDuration === true
+  end?: string; // "HH:MM"; present iff hasDuration === true; half-open [start, end) per ADR-006
+  recurrence?: Recurrence; // present iff hasDuration === true; default { kind: "just-today", date: <today ISO> }
 };
 
 export type Brick =
