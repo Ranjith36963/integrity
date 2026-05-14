@@ -31,7 +31,8 @@ function makeTickBrick(
     start: overrides.start ?? "09:00",
     end: overrides.end ?? "09:30",
     recurrence: { kind: "just-today", date: "2026-05-14" },
-    categoryId: overrides.categoryId ?? "c1",
+    categoryId:
+      "categoryId" in overrides ? (overrides.categoryId ?? null) : "c1",
     parentBlockId: null,
   };
 }
@@ -62,8 +63,11 @@ describe("C-m4e-020: TimedLooseBrickCard absolute positioning and dashed border"
     expect(wrapper.style.borderStyle).toBe("dashed");
     // Border width 1.5px
     expect(wrapper.style.borderWidth).toBe("1.5px");
-    // Border color is category color
-    expect(wrapper.style.borderColor).toBe("#fbbf24");
+    // Border color is category color — JSDOM converts hex to rgb
+    const borderColor = wrapper.style.borderColor;
+    expect(
+      borderColor === "#fbbf24" || borderColor === "rgb(251, 191, 36)",
+    ).toBe(true);
   });
 
   it("border-color falls back to var(--ink-dim) when categoryId is null", () => {

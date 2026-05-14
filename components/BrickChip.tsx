@@ -49,7 +49,11 @@ function buildAriaLabel(brick: Brick, pct: number, running?: boolean): string {
   if (brick.kind === "tick") {
     // M4a: enriched tick label — replaces M3's generic "brick A, tick, 0% complete"
     const state = brick.done ? "done" : "not done";
-    return `${brick.name}, ${state}, tap to toggle`;
+    const base = `${brick.name}, ${state}, tap to toggle`;
+    if (brick.hasDuration && brick.start && brick.end) {
+      return `${base}, scheduled ${brick.start} to ${brick.end}`;
+    }
+    return base;
   }
   const roundedPct = Math.round(pct);
   const base = `${brick.name}, ${brick.kind}, ${roundedPct}% complete`;
@@ -63,6 +67,25 @@ function buildAriaLabel(brick: Brick, pct: number, running?: boolean): string {
     return `${brick.name}, ${brick.minutesDone} of ${brick.durationMin} minutes, ${runState}`;
   }
   return base;
+}
+
+// M4e: Time-window badge — shown below the name when hasDuration === true
+function TimeWindowBadge({ brick }: { brick: Brick }) {
+  if (!brick.hasDuration || !brick.start || !brick.end) return null;
+  return (
+    <span
+      data-testid="brick-time-window"
+      style={{
+        fontFamily: "var(--font-mono)",
+        fontSize: "var(--fs-10)",
+        color: "var(--ink-dim)",
+        display: "block",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {brick.start}–{brick.end}
+    </span>
+  );
 }
 
 function TypeBadge({ brick, running }: { brick: Brick; running?: boolean }) {
@@ -211,17 +234,26 @@ function TimerChip({
           ...pulseStyle,
         }}
       >
-        {/* Title */}
+        {/* Title + optional time-window secondary line */}
         <span
           style={{
-            overflow: "hidden",
-            whiteSpace: "nowrap",
-            textOverflow: "ellipsis",
+            display: "flex",
+            flexDirection: "column",
             flex: 1,
             minWidth: 0,
+            overflow: "hidden",
           }}
         >
-          {brick.name}
+          <span
+            style={{
+              overflow: "hidden",
+              whiteSpace: "nowrap",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {brick.name}
+          </span>
+          <TimeWindowBadge brick={brick} />
         </span>
 
         {/* Badge with Play/Pause glyph */}
@@ -395,14 +427,23 @@ function GoalStepperChip({
       >
         <span
           style={{
-            overflow: "hidden",
-            whiteSpace: "nowrap",
-            textOverflow: "ellipsis",
+            display: "flex",
+            flexDirection: "column",
             flex: 1,
             minWidth: 0,
+            overflow: "hidden",
           }}
         >
-          {brick.name}
+          <span
+            style={{
+              overflow: "hidden",
+              whiteSpace: "nowrap",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {brick.name}
+          </span>
+          <TimeWindowBadge brick={brick} />
         </span>
         <TypeBadge brick={brick} />
       </div>
@@ -542,17 +583,26 @@ export function BrickChip({
           textAlign: "left",
         }}
       >
-        {/* Title */}
+        {/* Title + optional time-window secondary line */}
         <span
           style={{
-            overflow: "hidden",
-            whiteSpace: "nowrap",
-            textOverflow: "ellipsis",
+            display: "flex",
+            flexDirection: "column",
             flex: 1,
             minWidth: 0,
+            overflow: "hidden",
           }}
         >
-          {brick.name}
+          <span
+            style={{
+              overflow: "hidden",
+              whiteSpace: "nowrap",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {brick.name}
+          </span>
+          <TimeWindowBadge brick={brick} />
         </span>
 
         {/* Type badge */}
