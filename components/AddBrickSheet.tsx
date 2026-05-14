@@ -64,11 +64,6 @@ interface Props {
 type View = "brick" | "newCategory";
 type BrickKind = "tick" | "goal" | "time";
 
-const DEFAULT_RECURRENCE: Recurrence = {
-  kind: "just-today",
-  date: "2026-05-14",
-};
-
 export function AddBrickSheet({
   open,
   parentBlockId,
@@ -93,7 +88,10 @@ export function AddBrickSheet({
   const [hasDuration, setHasDuration] = useState(false);
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
-  const [recurrence, setRecurrence] = useState<Recurrence>(DEFAULT_RECURRENCE);
+  const [recurrence, setRecurrence] = useState<Recurrence>(() => ({
+    kind: "just-today",
+    date: todayISO(),
+  }));
 
   const titleRef = useRef<HTMLInputElement>(null);
   const sheetContentRef = useRef<HTMLDivElement>(null);
