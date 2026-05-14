@@ -1,20 +1,52 @@
-// components/AddBrickSheet.test.tsx — M3 component tests
-// Covers: C-m3-013..019
+// components/AddBrickSheet.test.tsx — M3 component tests + M4e duration/overlap tests
+// Covers: C-m3-013..019, C-m4e-001..013
 
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AddBrickSheet } from "./AddBrickSheet";
-import type { Brick, Category } from "@/lib/types";
+import type { AppState, Brick, Category } from "@/lib/types";
+import { defaultState } from "@/lib/data";
+
+vi.mock("@/lib/haptics", () => ({
+  haptics: { light: vi.fn(), medium: vi.fn(), success: vi.fn() },
+}));
+
+import { haptics } from "@/lib/haptics";
 
 const cat1: Category = { id: "c1", name: "category 1", color: "#34d399" };
 
-function defaultProps(overrides = {}) {
+function emptyState(): AppState {
+  return defaultState();
+}
+
+function stateWithBlock(
+  overrides: Partial<{
+    id: string;
+    name: string;
+    start: string;
+    end: string;
+  }> = {},
+): AppState {
+  const block = {
+    id: overrides.id ?? "bk1",
+    name: overrides.name ?? "Stretch",
+    start: overrides.start ?? "08:30",
+    end: overrides.end ?? "09:30",
+    categoryId: null,
+    bricks: [],
+    recurrence: { kind: "just-today" as const, date: "2026-05-14" },
+  };
+  return { ...defaultState(), blocks: [block] };
+}
+
+function defaultProps(overrides: Record<string, unknown> = {}) {
   return {
     open: true,
     parentBlockId: null as string | null,
     defaultCategoryId: null as string | null,
     categories: [] as Category[],
+    state: emptyState(),
     onSave: vi.fn<(brick: Brick) => void>(),
     onCreateCategory: vi.fn(),
     onCancel: vi.fn(),
@@ -324,5 +356,468 @@ describe("C-m3-019: AddBrickSheet Cancel discards sheet state", () => {
     await user.click(screen.getByRole("button", { name: /cancel/i }));
     expect(screen.queryByRole("status")).toBeFalsy();
     expect(screen.queryByRole("alert")).toBeFalsy();
+  });
+});
+
+// ─── C-m4e-001: Duration toggle present, aria-checked=false, no time fields ──
+
+describe("C-m4e-001: AddBrickSheet has Duration switch OFF by default", () => {
+  it("has role=switch with aria-checked=false; Start/End/Recurrence NOT in DOM", () => {
+    render(<AddBrickSheet {...defaultProps({ state: emptyState() })} />);
+    const toggle = screen.getByRole("switch", { name: /duration/i });
+    expect(toggle).toBeInTheDocument();
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    expect(screen.queryByLabelText(/^start$/i)).toBeNull();
+    expect(screen.queryByLabelText(/^end$/i)).toBeNull();
+    // Recurrence chip group: no radiogroup with name matching "recurrence"
+    const rg = screen
+      .queryAllByRole("radiogroup")
+      .find((el) =>
+        el.getAttribute("aria-label")?.toLowerCase().includes("recurrence"),
+      );
+    expect(rg).toBeUndefined();
+  });
+});
+
+// ─── C-m4e-002: Toggle ON → aria-checked=true, haptics.light, fields appear ──
+
+describe("C-m4e-002: clicking Duration toggle ON reveals time fields", () => {
+  it("flips aria-checked to true; haptics.light called; Start/End/Recurrence appear; no AnimatePresence", () => {
+    vi.mocked(haptics.light).mockClear();
+    const { container } = render(
+      <AddBrickSheet {...defaultProps({ state: emptyState() })} />,
+    );
+    const toggle = screen.getByRole("switch", { name: /duration/i });
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    expect(vi.mocked(haptics.light)).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText(/^start$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^end$/i)).toBeInTheDocument();
+    const rg = screen
+      .getAllByRole("radiogroup")
+      .find((el) =>
+        el.getAttribute("aria-label")?.toLowerCase().includes("recurrence"),
+      );
+    expect(rg).toBeTruthy();
+    // SG-m4e-07: no AnimatePresence/motion wrapper
+    expect(container.querySelector("[data-framer-appear-id]")).toBeNull();
+  });
+});
+
+// ─── C-m4e-003: Default values when toggle ON (nested vs loose) ───────────────
+
+describe("C-m4e-003: Duration toggle ON fills default Start/End from parent block", () => {
+  it("nested: Start=block.start, End=block.end; Recurrence default Just today", () => {
+    const state = stateWithBlock({ id: "bk1", start: "06:00", end: "06:40" });
+    render(
+      <AddBrickSheet {...defaultProps({ parentBlockId: "bk1", state })} />,
+    );
+    fireEvent.click(screen.getByRole("switch", { name: /duration/i }));
+    expect((screen.getByLabelText(/^start$/i) as HTMLInputElement).value).toBe(
+      "06:00",
+    );
+    expect((screen.getByLabelText(/^end$/i) as HTMLInputElement).value).toBe(
+      "06:40",
+    );
+    // "Just today" chip should be the default selected recurrence
+    const justTodayBtn = screen.getByRole("radio", { name: /just today/i });
+    expect(justTodayBtn.getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("loose (parentBlockId=null): Start=current-hour-floor, End=Start+30min", () => {
+    // Mock Date to 10:23
+    const origDate = Date;
+    const mockNow = new Date("2026-05-14T10:23:00.000Z");
+    vi.spyOn(global, "Date").mockImplementation(
+      (...args: ConstructorParameters<typeof Date>) =>
+        args.length ? new origDate(...args) : (mockNow as unknown as Date),
+    );
+    render(
+      <AddBrickSheet
+        {...defaultProps({ parentBlockId: null, state: emptyState() })}
+      />,
+    );
+    fireEvent.click(screen.getByRole("switch", { name: /duration/i }));
+    const startVal = (screen.getByLabelText(/^start$/i) as HTMLInputElement)
+      .value;
+    const endVal = (screen.getByLabelText(/^end$/i) as HTMLInputElement).value;
+    // Start should be current hour floored (in local time, which for UTC+0 is 10:00)
+    expect(startVal).toMatch(/^\d{2}:\d{2}$/); // valid HH:MM
+    expect(endVal).toMatch(/^\d{2}:\d{2}$/);
+    vi.restoreAllMocks();
+  });
+});
+
+// ─── C-m4e-004: Toggle OFF hides fields, Save produces hasDuration:false ──────
+
+describe("C-m4e-004: Toggle OFF hides time fields; Save produces hasDuration:false", () => {
+  it("toggle OFF removes Start/End/Recurrence from DOM; haptics.light called", async () => {
+    vi.mocked(haptics.light).mockClear();
+    render(<AddBrickSheet {...defaultProps({ state: emptyState() })} />);
+    const toggle = screen.getByRole("switch", { name: /duration/i });
+    fireEvent.click(toggle); // ON
+    fireEvent.click(toggle); // OFF
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    expect(vi.mocked(haptics.light)).toHaveBeenCalledTimes(2);
+    expect(screen.queryByLabelText(/^start$/i)).toBeNull();
+    expect(screen.queryByLabelText(/^end$/i)).toBeNull();
+  });
+
+  it("clicking Save with toggle OFF calls onSave with hasDuration:false and no start/end/recurrence", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(
+      <AddBrickSheet {...defaultProps({ state: emptyState(), onSave })} />,
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: /title/i }),
+      "Morning run",
+    );
+    const toggle = screen.getByRole("switch", { name: /duration/i });
+    fireEvent.click(toggle); // ON
+    // populate Start/End so toggle-OFF discards them
+    const startInput = screen.getByLabelText(/^start$/i);
+    const endInput = screen.getByLabelText(/^end$/i);
+    fireEvent.change(startInput, { target: { value: "09:00" } });
+    fireEvent.change(endInput, { target: { value: "09:30" } });
+    fireEvent.click(toggle); // OFF
+    // Click Save
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+    expect(onSave).toHaveBeenCalledTimes(1);
+    const brick = onSave.mock.calls[0][0] as Brick;
+    expect(brick.hasDuration).toBe(false);
+    expect(brick.start).toBeUndefined();
+    expect(brick.end).toBeUndefined();
+    expect(brick.recurrence).toBeUndefined();
+  });
+});
+
+// ─── C-m4e-005: Save with toggle ON writes hasDuration:true + all time fields ─
+
+describe("C-m4e-005: Save with toggle ON produces hasDuration:true brick", () => {
+  it("onSave called with hasDuration:true, start, end, recurrence", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(
+      <AddBrickSheet {...defaultProps({ state: emptyState(), onSave })} />,
+    );
+    await user.type(screen.getByRole("textbox", { name: /title/i }), "Run");
+    // Switch to Goal type
+    const group = screen.getByRole("radiogroup", { name: /brick type/i });
+    const goalRadio = within(group)
+      .getAllByRole("radio")
+      .find((r) =>
+        r.getAttribute("aria-label")?.toLowerCase().includes("goal"),
+      );
+    await user.click(goalRadio!);
+    await user.type(screen.getByRole("spinbutton", { name: /target/i }), "5");
+    // Toggle ON
+    fireEvent.click(screen.getByRole("switch", { name: /duration/i }));
+    // Set start and end
+    fireEvent.change(screen.getByLabelText(/^start$/i), {
+      target: { value: "09:00" },
+    });
+    fireEvent.change(screen.getByLabelText(/^end$/i), {
+      target: { value: "09:30" },
+    });
+    // Save
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+    expect(onSave).toHaveBeenCalledTimes(1);
+    const brick = onSave.mock.calls[0][0] as Brick;
+    expect(brick.hasDuration).toBe(true);
+    expect(brick.start).toBe("09:00");
+    expect(brick.end).toBe("09:30");
+    expect(brick.recurrence).toBeDefined();
+  });
+});
+
+// ─── C-m4e-006: End ≤ Start → inline alert + Save disabled ───────────────────
+
+describe("C-m4e-006: End≤Start → role=alert, Save aria-disabled=true", () => {
+  it("zero-duration (09:00–09:00) shows alert and disables Save", () => {
+    render(<AddBrickSheet {...defaultProps({ state: emptyState() })} />);
+    fireEvent.click(screen.getByRole("switch", { name: /duration/i }));
+    fireEvent.change(screen.getByLabelText(/^start$/i), {
+      target: { value: "09:00" },
+    });
+    fireEvent.change(screen.getByLabelText(/^end$/i), {
+      target: { value: "09:00" },
+    });
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toMatch(/end must be after start/i);
+    expect(
+      screen
+        .getByRole("button", { name: /save/i })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+  });
+
+  it("negative duration (09:00 start, 08:00 end) shows alert", () => {
+    render(<AddBrickSheet {...defaultProps({ state: emptyState() })} />);
+    fireEvent.click(screen.getByRole("switch", { name: /duration/i }));
+    fireEvent.change(screen.getByLabelText(/^start$/i), {
+      target: { value: "09:00" },
+    });
+    fireEvent.change(screen.getByLabelText(/^end$/i), {
+      target: { value: "08:00" },
+    });
+    expect(screen.getByRole("alert").textContent).toMatch(
+      /end must be after start/i,
+    );
+    expect(
+      screen
+        .getByRole("button", { name: /save/i })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+  });
+});
+
+// ─── C-m4e-007: Straddles midnight → same-day alert + Save disabled ───────────
+
+describe("C-m4e-007: Start=23:00 End=01:00 straddles midnight → alert", () => {
+  it("shows same-day alert and disables Save", () => {
+    render(<AddBrickSheet {...defaultProps({ state: emptyState() })} />);
+    fireEvent.click(screen.getByRole("switch", { name: /duration/i }));
+    fireEvent.change(screen.getByLabelText(/^start$/i), {
+      target: { value: "23:00" },
+    });
+    fireEvent.change(screen.getByLabelText(/^end$/i), {
+      target: { value: "01:00" },
+    });
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toMatch(/same day/i);
+    expect(
+      screen
+        .getByRole("button", { name: /save/i })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+  });
+});
+
+// ─── C-m4e-008: Overlap with block → data-testid=overlap-warning, role=alert ──
+
+describe("C-m4e-008: Overlap with existing block shows overlap-warning chip", () => {
+  it("chip has data-testid=overlap-warning, role=alert, Save disabled", () => {
+    // State has one block 08:30–09:30
+    const state = stateWithBlock({
+      id: "bk1",
+      name: "Stretch",
+      start: "08:30",
+      end: "09:30",
+    });
+    render(<AddBrickSheet {...defaultProps({ state })} />);
+    fireEvent.click(screen.getByRole("switch", { name: /duration/i }));
+    fireEvent.change(screen.getByLabelText(/^start$/i), {
+      target: { value: "09:00" },
+    });
+    fireEvent.change(screen.getByLabelText(/^end$/i), {
+      target: { value: "09:30" },
+    });
+    const chip = screen.getByTestId("overlap-warning");
+    expect(chip.getAttribute("role")).toBe("alert");
+    expect(chip.textContent).toMatch(/block.*stretch.*08:30.*09:30/i);
+    expect(
+      screen
+        .getByRole("button", { name: /save/i })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+  });
+});
+
+// ─── C-m4e-009: 4 overlapping items → 3 listed + "+1 more" ───────────────────
+
+describe("C-m4e-009: 4 overlapping items shows 3 names + +1 more", () => {
+  it("chip text contains first 3 names and +1 more", () => {
+    // Create state with 3 blocks + 1 timed loose brick all overlapping 09:00–10:00
+    const state: AppState = {
+      ...defaultState(),
+      blocks: [
+        {
+          id: "bk1",
+          name: "Alpha",
+          start: "09:00",
+          end: "10:00",
+          categoryId: null,
+          bricks: [],
+          recurrence: { kind: "just-today", date: "2026-05-14" },
+        },
+        {
+          id: "bk2",
+          name: "Beta",
+          start: "09:00",
+          end: "10:00",
+          categoryId: null,
+          bricks: [],
+          recurrence: { kind: "just-today", date: "2026-05-14" },
+        },
+        {
+          id: "bk3",
+          name: "Gamma",
+          start: "09:00",
+          end: "10:00",
+          categoryId: null,
+          bricks: [],
+          recurrence: { kind: "just-today", date: "2026-05-14" },
+        },
+      ],
+      looseBricks: [
+        {
+          id: "r1",
+          name: "Delta",
+          kind: "tick",
+          done: false,
+          hasDuration: true,
+          start: "09:00",
+          end: "10:00",
+          recurrence: { kind: "just-today", date: "2026-05-14" },
+          categoryId: null,
+          parentBlockId: null,
+        },
+      ],
+    };
+    render(<AddBrickSheet {...defaultProps({ state })} />);
+    fireEvent.click(screen.getByRole("switch", { name: /duration/i }));
+    fireEvent.change(screen.getByLabelText(/^start$/i), {
+      target: { value: "09:00" },
+    });
+    fireEvent.change(screen.getByLabelText(/^end$/i), {
+      target: { value: "10:00" },
+    });
+    const chip = screen.getByTestId("overlap-warning");
+    expect(chip.textContent).toMatch(/\+1 more/i);
+    // First 3 names present (sorted: blocks first asc name, then bricks)
+    // blocks: Alpha, Beta, Gamma; brick: Delta
+    // Sorted by start asc (all same), then kind (block before brick), then name asc
+    // → Alpha, Beta, Gamma shown; Delta is "+1 more"
+    expect(chip.textContent).toMatch(/alpha/i);
+    expect(chip.textContent).toMatch(/beta/i);
+    expect(chip.textContent).toMatch(/gamma/i);
+    expect(chip.textContent).not.toMatch(/delta/i);
+  });
+});
+
+// ─── C-m4e-010: Click disabled Save → haptics.medium, onSave NOT called ───────
+
+describe("C-m4e-010: click disabled Save fires haptics.medium, not onSave", () => {
+  it("haptics.medium called once; onSave not called", () => {
+    vi.mocked(haptics.medium).mockClear();
+    const onSave = vi.fn();
+    const state = stateWithBlock({
+      id: "bk1",
+      name: "Stretch",
+      start: "08:30",
+      end: "09:30",
+    });
+    render(<AddBrickSheet {...defaultProps({ state, onSave })} />);
+    fireEvent.click(screen.getByRole("switch", { name: /duration/i }));
+    fireEvent.change(screen.getByLabelText(/^start$/i), {
+      target: { value: "09:00" },
+    });
+    fireEvent.change(screen.getByLabelText(/^end$/i), {
+      target: { value: "09:30" },
+    });
+    // overlap active → Save disabled
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+    expect(vi.mocked(haptics.medium)).toHaveBeenCalledTimes(1);
+    expect(onSave).not.toHaveBeenCalled();
+  });
+});
+
+// ─── C-m4e-011: Fix overlap → warning gone, Save enabled, onSave called ──────
+
+describe("C-m4e-011: fixing overlap clears warning and enables Save", () => {
+  it("overlap-warning gone; aria-disabled=false; onSave called after fix", () => {
+    const onSave = vi.fn();
+    const state = stateWithBlock({
+      id: "bk1",
+      name: "Stretch",
+      start: "08:30",
+      end: "09:30",
+    });
+    render(<AddBrickSheet {...defaultProps({ state, onSave })} />);
+    fireEvent.click(screen.getByRole("switch", { name: /duration/i }));
+    // Set overlapping window
+    fireEvent.change(screen.getByLabelText(/^start$/i), {
+      target: { value: "09:00" },
+    });
+    fireEvent.change(screen.getByLabelText(/^end$/i), {
+      target: { value: "09:30" },
+    });
+    expect(screen.getByTestId("overlap-warning")).toBeInTheDocument();
+    // Fix: move to non-overlapping window
+    fireEvent.change(screen.getByLabelText(/^start$/i), {
+      target: { value: "08:00" },
+    });
+    fireEvent.change(screen.getByLabelText(/^end$/i), {
+      target: { value: "08:30" },
+    });
+    expect(screen.queryByTestId("overlap-warning")).toBeNull();
+    expect(
+      screen
+        .getByRole("button", { name: /save/i })
+        .getAttribute("aria-disabled"),
+    ).toBe("false");
+    // Also need a title for save to work
+    fireEvent.change(screen.getByRole("textbox", { name: /title/i }), {
+      target: { value: "Morning walk" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ─── C-m4e-012: Custom range + zero weekdays → alert + Save disabled ──────────
+
+describe("C-m4e-012: Custom range with zero weekdays → alert, Save disabled", () => {
+  it("shows pick-at-least-one-weekday alert; checking Monday clears it", async () => {
+    const user = userEvent.setup();
+    render(<AddBrickSheet {...defaultProps({ state: emptyState() })} />);
+    fireEvent.click(screen.getByRole("switch", { name: /duration/i }));
+    // Select "Custom range" in the recurrence group
+    const customRangeBtn = screen.getByRole("radio", { name: /custom range/i });
+    await user.click(customRangeBtn);
+    // Zero weekdays checked by default → alert present
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toMatch(/pick at least one weekday/i);
+    expect(
+      screen
+        .getByRole("button", { name: /save/i })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+    // Check Monday
+    const monBtn = screen.getByRole("button", { name: /mon/i });
+    await user.click(monBtn);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
+
+// ─── C-m4e-013: RecurrenceChips present with 4 chips, default "Just today" ────
+
+describe("C-m4e-013: RecurrenceChips rendered with 4 chips, default Just today", () => {
+  it("4 radio chips in recurrence group; Just today selected; Custom range expands", async () => {
+    const user = userEvent.setup();
+    render(<AddBrickSheet {...defaultProps({ state: emptyState() })} />);
+    fireEvent.click(screen.getByRole("switch", { name: /duration/i }));
+    const rg = screen
+      .getAllByRole("radiogroup")
+      .find((el) =>
+        el.getAttribute("aria-label")?.toLowerCase().includes("recurrence"),
+      )!;
+    const chips = within(rg).getAllByRole("radio");
+    expect(chips).toHaveLength(4);
+    const justToday = chips.find((c) =>
+      c.textContent?.toLowerCase().includes("just today"),
+    );
+    expect(justToday?.getAttribute("aria-checked")).toBe("true");
+    // Select Custom range
+    const customRange = chips.find((c) =>
+      c.textContent?.toLowerCase().includes("custom range"),
+    );
+    await user.click(customRange!);
+    expect(customRange?.getAttribute("aria-checked")).toBe("true");
+    // Weekday picker should be visible
+    expect(
+      screen.getByRole("group", { name: /weekdays/i }),
+    ).toBeInTheDocument();
   });
 });
