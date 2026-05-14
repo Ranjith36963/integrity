@@ -391,14 +391,15 @@ export function AddBlockSheet({
                   margin: 0,
                 }}
               >
-                {overlaps
+                {`⚠ overlaps with ${overlaps
                   .slice(0, 3)
                   .map(
                     (it) =>
                       `${it.kind === "block" ? "Block" : "Brick"}: ${it.name}, ${it.start}–${it.end}`,
                   )
-                  .join("; ")}
-                {overlaps.length > 3 ? ` +${overlaps.length - 3} more` : ""}
+                  .join(
+                    "; ",
+                  )}${overlaps.length > 3 ? `; +${overlaps.length - 3} more` : ""}`}
               </p>
             )}
 

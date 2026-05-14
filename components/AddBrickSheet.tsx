@@ -305,7 +305,8 @@ export function AddBrickSheet({
         `${item.kind === "block" ? "Block" : "Brick"}: ${item.name}, ${item.start}–${item.end}`,
     );
     const base = parts.join("; ");
-    return extra > 0 ? `${base}; +${extra} more` : base;
+    const tail = extra > 0 ? `${base}; +${extra} more` : base;
+    return `⚠ overlaps with ${tail}`;
   }
 
   return (
