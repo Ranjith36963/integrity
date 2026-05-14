@@ -613,7 +613,9 @@ describe("C-m4e-008: Overlap with existing block shows overlap-warning chip", ()
     });
     const chip = screen.getByTestId("overlap-warning");
     expect(chip.getAttribute("role")).toBe("alert");
-    expect(chip.textContent).toMatch(/block.*stretch.*08:30.*09:30/i);
+    expect(chip.textContent).toMatch(
+      /overlaps with.*Block.*Stretch.*08:30.*09:30/i,
+    );
     expect(
       screen
         .getByRole("button", { name: /save/i })

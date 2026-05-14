@@ -230,7 +230,7 @@ describe("C-m2-006: Overlap warning (M4e: role=alert, Save disabled)", () => {
     await user.type(endInput, "10:30");
     const chip = screen.getByTestId("overlap-warning");
     expect(chip.getAttribute("role")).toBe("alert");
-    expect(chip.textContent).toContain("Existing");
+    expect(chip.textContent).toMatch(/overlaps with.*Existing/i);
     expect(screen.getByRole("button", { name: /Save/i })).toHaveAttribute(
       "aria-disabled",
       "true",
@@ -366,7 +366,9 @@ describe("C-m4e-024: AddBlockSheet shows overlap-warning (role=alert) and disabl
     });
     const chip = screen.getByTestId("overlap-warning");
     expect(chip.getAttribute("role")).toBe("alert");
-    expect(chip.textContent).toMatch(/block.*standup.*09:00.*10:00/i);
+    expect(chip.textContent).toMatch(
+      /overlaps with.*Block.*Standup.*09:00.*10:00/i,
+    );
     expect(
       screen
         .getByRole("button", { name: /save/i })
@@ -405,7 +407,9 @@ describe("C-m4e-025: AddBlockSheet detects overlap with timed loose brick", () =
     });
     const chip = screen.getByTestId("overlap-warning");
     expect(chip.getAttribute("role")).toBe("alert");
-    expect(chip.textContent).toMatch(/brick.*pushups.*09:30.*10:00/i);
+    expect(chip.textContent).toMatch(
+      /overlaps with.*Brick.*Pushups.*09:30.*10:00/i,
+    );
     expect(
       screen
         .getByRole("button", { name: /save/i })
