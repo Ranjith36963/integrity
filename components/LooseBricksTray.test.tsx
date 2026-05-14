@@ -214,6 +214,77 @@ describe("C-m4b-021: LooseBricksTray threads onGoalLog down to BrickChip", () =>
   });
 });
 
+// ─── C-m4e-022: LooseBricksTray renders only pre-filtered hasDuration:false bricks
+
+describe("C-m4e-022: LooseBricksTray renders pre-filtered list (no timed bricks)", () => {
+  it("renders exactly 2 chips when passed 2 hasDuration:false bricks; no brick-time-window", () => {
+    const brickA: Brick = {
+      id: "r1",
+      name: "Walk",
+      kind: "tick",
+      hasDuration: false,
+      done: false,
+      categoryId: null,
+      parentBlockId: null,
+    };
+    const brickB: Brick = {
+      id: "r2",
+      name: "Read",
+      kind: "tick",
+      hasDuration: false,
+      done: false,
+      categoryId: null,
+      parentBlockId: null,
+    };
+    render(
+      <LooseBricksTray
+        looseBricks={[brickA, brickB]}
+        categories={[]}
+        onAddBrick={vi.fn()}
+      />,
+    );
+    // Both chips are accessible buttons
+    expect(screen.getByRole("button", { name: /walk/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /read/i })).toBeInTheDocument();
+    // No time-window badge (bricks have hasDuration:false)
+    expect(
+      document.querySelector("[data-testid='brick-time-window']"),
+    ).toBeNull();
+  });
+});
+
+// ─── C-m4e-023: LooseBricksTray hidden when filtered list is empty + no blocks
+
+describe("C-m4e-023: LooseBricksTray hidden when empty+no blocks; shown when empty+blocks exist", () => {
+  it("queryByTestId('loose-bricks-tray') is null when looseBricks=[] and blocksExist=false", () => {
+    render(
+      <LooseBricksTray
+        looseBricks={[]}
+        blocksExist={false}
+        categories={[]}
+        onAddBrick={vi.fn()}
+      />,
+    );
+    expect(
+      document.querySelector("[data-testid='loose-bricks-tray']"),
+    ).toBeNull();
+  });
+
+  it("tray IS in DOM when looseBricks=[] and blocksExist=true", () => {
+    render(
+      <LooseBricksTray
+        looseBricks={[]}
+        blocksExist={true}
+        categories={[]}
+        onAddBrick={vi.fn()}
+      />,
+    );
+    expect(
+      document.querySelector("[data-testid='loose-bricks-tray']"),
+    ).not.toBeNull();
+  });
+});
+
 // ─── C-m4c-020: LooseBricksTray threads runningTimerBrickId + timer callbacks ──
 
 vi.mock("@/lib/haptics", () => ({

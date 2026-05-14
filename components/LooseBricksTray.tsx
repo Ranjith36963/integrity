@@ -24,6 +24,12 @@ interface Props {
   onTimerToggle?: (brickId: string) => void;
   /** M4c: long-press a time chip to open manual-entry sheet */
   onTimerOpenSheet?: (brickId: string) => void;
+  /**
+   * M4e: whether any blocks exist in state.
+   * Used to determine tray visibility: hidden when looseBricks is empty AND blocksExist is false.
+   * Defaults to true for backward compatibility with pre-M4e callers.
+   */
+  blocksExist?: boolean;
 }
 
 export function LooseBricksTray({
@@ -35,9 +41,15 @@ export function LooseBricksTray({
   runningTimerBrickId = null,
   onTimerToggle,
   onTimerOpenSheet,
+  blocksExist = true,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const listId = useId();
+
+  // M4e: Tray is hidden when filtered list is empty AND no blocks exist
+  if (looseBricks.length === 0 && !blocksExist) {
+    return null;
+  }
 
   function toggleExpanded() {
     haptics.light();
@@ -54,6 +66,7 @@ export function LooseBricksTray({
       role="region"
       aria-label="Loose bricks"
       aria-expanded={expanded}
+      data-testid="loose-bricks-tray"
       style={{
         position: "relative",
         padding: "0 20px",
