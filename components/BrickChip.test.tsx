@@ -1258,3 +1258,222 @@ describe("C-m4c-006: reduced motion suppresses chip running-state pulse animatio
     expect(screen.getByText(/5\s*\/\s*25\s*m/)).toBeInTheDocument();
   });
 });
+
+// ─── C-m4e-014: tick with hasDuration:true shows time-window badge ────────────
+
+describe("C-m4e-014: tick chip with hasDuration:true shows brick-time-window", () => {
+  it("data-testid=brick-time-window contains '06:00–06:40'; name above it in DOM", () => {
+    render(
+      <BrickChip
+        brick={{
+          id: "r1",
+          kind: "tick",
+          done: false,
+          name: "Run",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: true,
+          start: "06:00",
+          end: "06:40",
+          recurrence: { kind: "just-today", date: "2026-05-14" },
+        }}
+        categories={[]}
+        onTickToggle={vi.fn()}
+      />,
+    );
+    const badge = screen.getByTestId("brick-time-window");
+    expect(badge).toBeInTheDocument();
+    expect(badge.textContent).toBe("06:00–06:40"); // en-dash
+  });
+});
+
+// ─── C-m4e-015: goal with hasDuration:true shows time-window + count badge ────
+
+describe("C-m4e-015: goal chip with hasDuration:true shows time-window + count badge", () => {
+  it("data-testid=brick-time-window present; count/target badge still rendered", () => {
+    render(
+      <BrickChip
+        brick={{
+          id: "r1",
+          kind: "goal",
+          target: 5,
+          count: 3,
+          unit: "reps",
+          name: "Pushups",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: true,
+          start: "07:00",
+          end: "07:30",
+          recurrence: { kind: "just-today", date: "2026-05-14" },
+        }}
+        categories={[]}
+        onGoalLog={vi.fn()}
+      />,
+    );
+    const badge = screen.getByTestId("brick-time-window");
+    expect(badge.textContent).toBe("07:00–07:30");
+    // count/target badge still present
+    expect(screen.getByText("3 / 5 reps")).toBeInTheDocument();
+  });
+});
+
+// ─── C-m4e-016: time with hasDuration:true shows time-window + performance badge
+
+describe("C-m4e-016: time chip with hasDuration:true shows time-window + performance badge", () => {
+  it("data-testid=brick-time-window present; performance badge '5 / 25 m' still rendered", () => {
+    render(
+      <BrickChip
+        brick={{
+          id: "t1",
+          kind: "time",
+          durationMin: 25,
+          minutesDone: 5,
+          name: "Read",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: true,
+          start: "08:00",
+          end: "08:30",
+          recurrence: { kind: "just-today", date: "2026-05-14" },
+        }}
+        categories={[]}
+        running={false}
+        onTimerToggle={vi.fn()}
+        onTimerOpenSheet={vi.fn()}
+      />,
+    );
+    const badge = screen.getByTestId("brick-time-window");
+    expect(badge.textContent).toBe("08:00–08:30");
+    expect(screen.getByText(/5\s*\/\s*25\s*m/)).toBeInTheDocument();
+  });
+});
+
+// ─── C-m4e-017: hasDuration:false → no brick-time-window (regression) ─────────
+
+describe("C-m4e-017: chip with hasDuration:false has no brick-time-window", () => {
+  it("tick hasDuration:false: queryByTestId('brick-time-window') is null", () => {
+    render(
+      <BrickChip
+        brick={{
+          id: "r1",
+          kind: "tick",
+          done: false,
+          name: "Run",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+        }}
+        categories={[]}
+        onTickToggle={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId("brick-time-window")).toBeNull();
+  });
+
+  it("goal hasDuration:false: no time-window badge", () => {
+    render(
+      <BrickChip
+        brick={{
+          id: "r1",
+          kind: "goal",
+          target: 5,
+          count: 3,
+          unit: "reps",
+          name: "Pushups",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+        }}
+        categories={[]}
+        onGoalLog={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId("brick-time-window")).toBeNull();
+  });
+
+  it("time hasDuration:false: no time-window badge", () => {
+    render(
+      <BrickChip
+        brick={{
+          id: "t1",
+          kind: "time",
+          durationMin: 25,
+          minutesDone: 5,
+          name: "Read",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+        }}
+        categories={[]}
+        running={false}
+        onTimerToggle={vi.fn()}
+        onTimerOpenSheet={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId("brick-time-window")).toBeNull();
+  });
+});
+
+// ─── C-m4e-018: accessible name includes scheduled suffix when hasDuration:true ─
+
+describe("C-m4e-018: tick chip hasDuration:true accessible name has scheduled suffix", () => {
+  it("button accessible name contains 'scheduled 06:00 to 06:40' OR aria-describedby equivalent", () => {
+    const { container } = render(
+      <BrickChip
+        brick={{
+          id: "r1",
+          kind: "tick",
+          done: false,
+          name: "Run",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: true,
+          start: "06:00",
+          end: "06:40",
+          recurrence: { kind: "just-today", date: "2026-05-14" },
+        }}
+        categories={[]}
+        onTickToggle={vi.fn()}
+      />,
+    );
+    const btn = screen.getByRole("button");
+    const ariaLabel = btn.getAttribute("aria-label") ?? "";
+    const describedById = btn.getAttribute("aria-describedby");
+    let accessibleDescription = "";
+    if (describedById) {
+      const descEl = container.querySelector(`#${describedById}`);
+      accessibleDescription = descEl?.textContent ?? "";
+    }
+    // Either the aria-label contains the suffix OR aria-describedby resolves to it
+    const hasScheduled =
+      /scheduled 06:00 to 06:40/i.test(ariaLabel) ||
+      /scheduled 06:00 to 06:40/i.test(accessibleDescription);
+    expect(hasScheduled).toBe(true);
+  });
+});
+
+// ─── C-m4e-019: accessible name unchanged for hasDuration:false ────────────────
+
+describe("C-m4e-019: tick chip hasDuration:false accessible name is byte-identical to pre-M4e", () => {
+  it("aria-label is 'Run, not done, tap to toggle' with no scheduled suffix", () => {
+    render(
+      <BrickChip
+        brick={{
+          id: "r1",
+          kind: "tick",
+          done: false,
+          name: "Run",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+        }}
+        categories={[]}
+        onTickToggle={vi.fn()}
+      />,
+    );
+    const btn = screen.getByRole("button");
+    expect(btn.getAttribute("aria-label")).toBe("Run, not done, tap to toggle");
+    expect(btn.getAttribute("aria-describedby")).toBeNull();
+  });
+});
