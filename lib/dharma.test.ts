@@ -17,7 +17,7 @@ import {
 } from "./dharma";
 import type { AppState, Block, Brick } from "./types";
 
-// Helper to create a full M3-schema brick
+// Helper to create a full M3-schema brick (M4e: hasDuration: false added per migration table)
 function makeTick(
   overrides: Partial<Brick> & { done: boolean },
 ): Brick & { kind: "tick" } {
@@ -28,6 +28,7 @@ function makeTick(
     done: overrides.done,
     categoryId: overrides.categoryId ?? null,
     parentBlockId: overrides.parentBlockId ?? null,
+    hasDuration: false,
     ...("id" in overrides ? { id: overrides.id as string } : {}),
     ...("name" in overrides ? { name: overrides.name as string } : {}),
   } as Brick & { kind: "tick" };
@@ -45,6 +46,7 @@ function makeGoal(
     unit: overrides.unit ?? "",
     categoryId: overrides.categoryId ?? null,
     parentBlockId: overrides.parentBlockId ?? null,
+    hasDuration: false,
     ...("id" in overrides ? { id: overrides.id as string } : {}),
     ...("name" in overrides ? { name: overrides.name as string } : {}),
   } as Brick & { kind: "goal" };
@@ -61,6 +63,7 @@ function makeTime(
     minutesDone: overrides.minutesDone,
     categoryId: overrides.categoryId ?? null,
     parentBlockId: overrides.parentBlockId ?? null,
+    hasDuration: false,
     ...("id" in overrides ? { id: overrides.id as string } : {}),
     ...("name" in overrides ? { name: overrides.name as string } : {}),
   } as Brick & { kind: "time" };

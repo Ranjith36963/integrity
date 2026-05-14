@@ -43,6 +43,7 @@ vi.mock("@/lib/data", async () => {
               id: "g1",
               name: "pushups",
               kind: "goal",
+              hasDuration: false,
               count: 9,
               target: 10,
               unit: "reps",

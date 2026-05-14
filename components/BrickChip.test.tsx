@@ -14,6 +14,7 @@ function makeTick(done: boolean, categoryId: string | null = "c1"): Brick {
     id: "r1",
     name: "brick A",
     kind: "tick",
+    hasDuration: false,
     done,
     categoryId,
     parentBlockId: null,
@@ -30,6 +31,7 @@ function makeGoal(
     id: "r2",
     name: "brick B",
     kind: "goal",
+    hasDuration: false,
     count,
     target,
     unit,
@@ -47,6 +49,7 @@ function makeTime(
     id: "r3",
     name: "brick C",
     kind: "time",
+    hasDuration: false,
     minutesDone,
     durationMin,
     categoryId,
@@ -447,6 +450,7 @@ function makeGoalBrick(
     id,
     name,
     kind: "goal",
+    hasDuration: false,
     count,
     target,
     unit,
@@ -1020,6 +1024,7 @@ describe("C-m4c-001: time chip stopped renders Play icon, aria-pressed=false, ba
         brick={{
           id: "t1",
           kind: "time",
+          hasDuration: false,
           durationMin: 25,
           minutesDone: 5,
           name: "Read",
@@ -1053,6 +1058,7 @@ describe("C-m4c-002: time chip running renders Pause icon, aria-pressed=true, up
         brick={{
           id: "t1",
           kind: "time",
+          hasDuration: false,
           durationMin: 25,
           minutesDone: 12,
           name: "Read",
@@ -1095,6 +1101,7 @@ describe("C-m4c-003: tap on stopped time chip calls onTimerToggle once; haptics.
         brick={{
           id: "t1",
           kind: "time",
+          hasDuration: false,
           durationMin: 25,
           minutesDone: 0,
           name: "Read",
@@ -1142,6 +1149,7 @@ describe("C-m4c-004: tap on running time chip calls onTimerToggle once; haptics.
         brick={{
           id: "t1",
           kind: "time",
+          hasDuration: false,
           durationMin: 25,
           minutesDone: 8,
           name: "Read",
@@ -1189,6 +1197,7 @@ describe("C-m4c-005: long-press (>=500ms) calls onTimerOpenSheet; onTimerToggle 
         brick={{
           id: "t1",
           kind: "time",
+          hasDuration: false,
           durationMin: 25,
           minutesDone: 0,
           name: "Read",
@@ -1229,6 +1238,7 @@ describe("C-m4c-006: reduced motion suppresses chip running-state pulse animatio
         brick={{
           id: "t1",
           kind: "time",
+          hasDuration: false,
           durationMin: 25,
           minutesDone: 5,
           name: "Read",

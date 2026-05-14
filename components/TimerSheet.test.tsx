@@ -19,6 +19,7 @@ const timeBrick = {
   id: "t1",
   name: "Read",
   kind: "time" as const,
+  hasDuration: false,
   durationMin: 25,
   minutesDone: 8,
   categoryId: null,

@@ -240,7 +240,7 @@ describe("U-m4e-007: findOverlaps — sort tiebreaker: kind (block before brick)
     expect(result[1].id).toBe("r1");
   });
 
-  it("two blocks with same start are sorted by name alphabetic", () => {
+  it("two blocks with same start are sorted by name alphabetic (ascending)", () => {
     const candidate = { start: "09:30", end: "10:30" };
     const items: TimedItem[] = [
       {
@@ -248,7 +248,7 @@ describe("U-m4e-007: findOverlaps — sort tiebreaker: kind (block before brick)
         id: "b1",
         start: "09:00",
         end: "10:00",
-        name: "A",
+        name: "B",
         categoryId: null,
       },
       {
@@ -256,7 +256,7 @@ describe("U-m4e-007: findOverlaps — sort tiebreaker: kind (block before brick)
         id: "r1",
         start: "09:00",
         end: "10:00",
-        name: "B",
+        name: "Z",
         categoryId: null,
       },
       {
@@ -264,16 +264,17 @@ describe("U-m4e-007: findOverlaps — sort tiebreaker: kind (block before brick)
         id: "b2",
         start: "09:00",
         end: "10:00",
-        name: "AA",
+        name: "A",
         categoryId: null,
       },
     ];
     const result = findOverlaps(candidate, items);
     expect(result).toHaveLength(3);
-    // order: b2 (AA), b1 (A), r1 (B) — blocks first, then alphabetic within kind
-    expect(result[0].id).toBe("b2"); // AA
-    expect(result[1].id).toBe("b1"); // A
-    expect(result[2].id).toBe("r1"); // brick B
+    // Blocks come first (before brick), then within blocks: A < B alphabetically
+    // order: b2 (A), b1 (B), r1 (Z) — blocks before bricks, alphabetic within kind
+    expect(result[0].id).toBe("b2"); // A
+    expect(result[1].id).toBe("b1"); // B
+    expect(result[2].id).toBe("r1"); // brick Z
   });
 });
 
@@ -478,7 +479,9 @@ describe("U-m4e-014: selectTimelineItems + selectAllTimedItems — defensive gua
     const state = makeState({ looseBricks: [malformed as any] });
 
     const timelineItems = selectTimelineItems(state);
-    expect(timelineItems.find((i) => i.kind === "brick" && i.brick.id === "bad")).toBeUndefined();
+    expect(
+      timelineItems.find((i) => i.kind === "brick" && i.brick.id === "bad"),
+    ).toBeUndefined();
 
     const allTimed = selectAllTimedItems(state);
     expect(allTimed.find((i) => i.id === "bad")).toBeUndefined();

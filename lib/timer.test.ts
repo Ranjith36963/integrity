@@ -29,6 +29,7 @@ function makeState(
             minutesDone,
             categoryId: null,
             parentBlockId: "block-1",
+            hasDuration: false,
           },
         ],
       },

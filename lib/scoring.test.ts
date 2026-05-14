@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { dayPct, buildingPct, blockPct } from "./scoring";
 import type { AppState, Block, Brick } from "./types";
 
-// Helpers for M3 Brick schema
+// Helpers for M3 Brick schema (M4e: hasDuration: false added per migration table)
 function makeTick(done: boolean): Brick {
   return {
     id: "t",
@@ -11,6 +11,7 @@ function makeTick(done: boolean): Brick {
     done,
     categoryId: null,
     parentBlockId: null,
+    hasDuration: false,
   };
 }
 
@@ -24,6 +25,7 @@ function makeGoal(count: number, target: number): Brick {
     unit: "",
     categoryId: null,
     parentBlockId: null,
+    hasDuration: false,
   };
 }
 

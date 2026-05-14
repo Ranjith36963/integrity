@@ -235,6 +235,7 @@ describe("C-m3-023: BlueprintBar segment opacity based on blockPct", () => {
         id: `${id}-r${i}`,
         name: `brick ${i}`,
         kind: "tick" as const,
+        hasDuration: false,
         done,
         categoryId,
         parentBlockId: id,
