@@ -1,10 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AddBlockSheet } from "./AddBlockSheet";
-import type { Block } from "@/lib/types";
+import type { AppState, Block, Brick } from "@/lib/types";
+import { defaultState } from "@/lib/data";
 
 vi.mock("@/lib/uuid", () => ({ uuid: () => "uuid-1" }));
+vi.mock("@/lib/haptics", () => ({
+  haptics: { light: vi.fn(), medium: vi.fn(), success: vi.fn() },
+}));
+
+import { haptics } from "@/lib/haptics";
 
 const mockSave = vi.fn();
 const mockCancel = vi.fn();
@@ -15,10 +21,35 @@ const defaultProps = {
   defaultStart: "09:00",
   categories: [],
   blocks: [] as Block[],
+  state: defaultState(),
   onSave: mockSave,
   onCancel: mockCancel,
   onCreateCategory: mockCreate,
 };
+
+function stateWithBlock(
+  block: Partial<Block> & {
+    id: string;
+    name: string;
+    start: string;
+    end?: string;
+  },
+): AppState {
+  return {
+    ...defaultState(),
+    blocks: [
+      {
+        id: block.id,
+        name: block.name,
+        start: block.start,
+        end: block.end,
+        categoryId: null,
+        bricks: [],
+        recurrence: { kind: "just-today", date: "2026-05-14" },
+      },
+    ],
+  };
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -290,5 +321,105 @@ describe("C-m2-011: Sheet view-toggle inside single dialog", () => {
     expect(dialog).toHaveAttribute("aria-label", "Add Block");
     // Title should still hold "Foo"
     expect(screen.getByLabelText(/Title/i)).toHaveValue("Foo");
+  });
+});
+
+// ─── C-m4e-024: AddBlockSheet overlap-warning with role=alert + Save disabled ──
+
+describe("C-m4e-024: AddBlockSheet shows overlap-warning (role=alert) and disables Save", () => {
+  it("chip has data-testid=overlap-warning, role=alert, Save aria-disabled=true", async () => {
+    const user = userEvent.setup();
+    const state = stateWithBlock({
+      id: "bk1",
+      name: "Standup",
+      start: "09:00",
+      end: "10:00",
+    });
+    render(<AddBlockSheet {...defaultProps} state={state} />);
+    // Type title
+    await user.type(screen.getByLabelText(/Title/i), "Run");
+    // Set Start to overlap
+    fireEvent.change(screen.getByLabelText(/^Start$/i), {
+      target: { value: "09:30" },
+    });
+    // Set End to overlap
+    fireEvent.change(screen.getByLabelText(/^End/i), {
+      target: { value: "10:30" },
+    });
+    const chip = screen.getByTestId("overlap-warning");
+    expect(chip.getAttribute("role")).toBe("alert");
+    expect(chip.textContent).toMatch(/block.*standup.*09:00.*10:00/i);
+    expect(
+      screen
+        .getByRole("button", { name: /save/i })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+  });
+});
+
+// ─── C-m4e-025: AddBlockSheet overlap with timed loose brick ─────────────────
+
+describe("C-m4e-025: AddBlockSheet detects overlap with timed loose brick", () => {
+  it("overlap-warning chip present; Save disabled when block overlaps a timed loose brick", async () => {
+    const user = userEvent.setup();
+    const timedBrick: Brick = {
+      id: "r1",
+      name: "Pushups",
+      kind: "goal",
+      target: 5,
+      count: 0,
+      unit: "reps",
+      hasDuration: true,
+      start: "09:30",
+      end: "10:00",
+      recurrence: { kind: "just-today", date: "2026-05-14" },
+      categoryId: null,
+      parentBlockId: null,
+    };
+    const state: AppState = { ...defaultState(), looseBricks: [timedBrick] };
+    render(<AddBlockSheet {...defaultProps} state={state} />);
+    await user.type(screen.getByLabelText(/Title/i), "Run");
+    fireEvent.change(screen.getByLabelText(/^Start$/i), {
+      target: { value: "09:00" },
+    });
+    fireEvent.change(screen.getByLabelText(/^End/i), {
+      target: { value: "10:30" },
+    });
+    const chip = screen.getByTestId("overlap-warning");
+    expect(chip.getAttribute("role")).toBe("alert");
+    expect(chip.textContent).toMatch(/brick.*pushups.*09:30.*10:00/i);
+    expect(
+      screen
+        .getByRole("button", { name: /save/i })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+  });
+});
+
+// ─── C-m4e-026: AddBlockSheet disabled-Save click fires haptics.medium ────────
+
+describe("C-m4e-026: click disabled Save fires haptics.medium; onSave not called", () => {
+  it("haptics.medium called once; onSave not called when overlap active", async () => {
+    vi.mocked(haptics.medium).mockClear();
+    const user = userEvent.setup();
+    const state = stateWithBlock({
+      id: "bk1",
+      name: "Standup",
+      start: "09:00",
+      end: "10:00",
+    });
+    const onSave = vi.fn();
+    render(<AddBlockSheet {...defaultProps} state={state} onSave={onSave} />);
+    await user.type(screen.getByLabelText(/Title/i), "Run");
+    fireEvent.change(screen.getByLabelText(/^Start$/i), {
+      target: { value: "09:30" },
+    });
+    fireEvent.change(screen.getByLabelText(/^End/i), {
+      target: { value: "10:30" },
+    });
+    // Click disabled Save
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+    expect(vi.mocked(haptics.medium)).toHaveBeenCalledTimes(1);
+    expect(onSave).not.toHaveBeenCalled();
   });
 });
