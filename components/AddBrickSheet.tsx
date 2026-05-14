@@ -701,6 +701,7 @@ export function AddBrickSheet({
                 type="button"
                 aria-label="Save"
                 aria-disabled={isValid ? "false" : "true"}
+                aria-describedby={hasOverlap ? "brick-save-hint" : undefined}
                 onClick={handleSave}
                 style={{
                   flex: 1,
@@ -719,6 +720,11 @@ export function AddBrickSheet({
               >
                 Save
               </button>
+              {hasOverlap && (
+                <span id="brick-save-hint" className="sr-only">
+                  Resolve the overlap to save.
+                </span>
+              )}
               <button
                 type="button"
                 onClick={handleClose}

@@ -424,6 +424,7 @@ export function AddBlockSheet({
               <button
                 type="button"
                 aria-disabled={isValid ? "false" : "true"}
+                aria-describedby={hasOverlap ? "block-save-hint" : undefined}
                 onClick={handleSave}
                 style={{
                   flex: 1,
@@ -442,6 +443,11 @@ export function AddBlockSheet({
               >
                 Save
               </button>
+              {hasOverlap && (
+                <span id="block-save-hint" className="sr-only">
+                  Resolve the overlap to save.
+                </span>
+              )}
               <button
                 type="button"
                 onClick={handleClose}
