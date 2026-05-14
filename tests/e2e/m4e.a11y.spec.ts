@@ -125,6 +125,14 @@ test("A-m4e-003: disabled Save has aria-disabled=true; re-enables when overlap c
       if ((await warningChip.count()) > 0) {
         // Save is disabled while overlap active
         await expect(saveBtn).toHaveAttribute("aria-disabled", "true");
+        // aria-describedby points to sr-only hint (SPEC AC #22, plan.md § A11y)
+        await expect(saveBtn).toHaveAttribute(
+          "aria-describedby",
+          "brick-save-hint",
+        );
+        const hint = page.locator("#brick-save-hint");
+        await expect(hint).toBeAttached();
+        await expect(hint).toHaveText("Resolve the overlap to save.");
 
         // Clear the overlap
         await sheet.getByLabel(/^Start/i).fill("08:00");

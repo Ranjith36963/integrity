@@ -616,11 +616,13 @@ describe("C-m4e-008: Overlap with existing block shows overlap-warning chip", ()
     expect(chip.textContent).toMatch(
       /overlaps with.*Block.*Stretch.*08:30.*09:30/i,
     );
-    expect(
-      screen
-        .getByRole("button", { name: /save/i })
-        .getAttribute("aria-disabled"),
-    ).toBe("true");
+    const saveBtn = screen.getByRole("button", { name: /save/i });
+    expect(saveBtn.getAttribute("aria-disabled")).toBe("true");
+    // G2: aria-describedby points to sr-only hint span (SPEC AC #22, A-m4e-003)
+    expect(saveBtn.getAttribute("aria-describedby")).toBe("brick-save-hint");
+    const hint = document.getElementById("brick-save-hint");
+    expect(hint).not.toBeNull();
+    expect(hint?.textContent).toBe("Resolve the overlap to save.");
   });
 });
 

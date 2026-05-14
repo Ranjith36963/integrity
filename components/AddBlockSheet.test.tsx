@@ -369,11 +369,13 @@ describe("C-m4e-024: AddBlockSheet shows overlap-warning (role=alert) and disabl
     expect(chip.textContent).toMatch(
       /overlaps with.*Block.*Standup.*09:00.*10:00/i,
     );
-    expect(
-      screen
-        .getByRole("button", { name: /save/i })
-        .getAttribute("aria-disabled"),
-    ).toBe("true");
+    const saveBtn = screen.getByRole("button", { name: /save/i });
+    expect(saveBtn.getAttribute("aria-disabled")).toBe("true");
+    // G2: aria-describedby points to sr-only hint span (SPEC AC #22, A-m4e-003)
+    expect(saveBtn.getAttribute("aria-describedby")).toBe("block-save-hint");
+    const hint = document.getElementById("block-save-hint");
+    expect(hint).not.toBeNull();
+    expect(hint?.textContent).toBe("Resolve the overlap to save.");
   });
 });
 
