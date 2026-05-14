@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Timeline } from "./Timeline";
-import { HOUR_HEIGHT_PX } from "@/lib/timeOffset";
-import type { Block } from "@/lib/types";
+import { HOUR_HEIGHT_PX, timeToOffsetPx } from "@/lib/timeOffset";
+import type { Block, Brick } from "@/lib/types";
 
 // Default props for M2 Timeline (re-authored to add categories + onSlotTap)
 const defaultProps = {
@@ -275,5 +275,100 @@ describe("C-m2-019: Timeline layered structure (re-authored M2)", () => {
       screen.getByRole("button", { name: "Add block at 14:00" }),
     );
     expect(mockSlotTap).toHaveBeenCalledWith(14);
+  });
+});
+
+// ─── C-m4e-030: Timeline union renderer — items prop replaces blocks ──────────
+
+describe("C-m4e-030: Timeline renders TimelineBlock for block items + TimedLooseBrickCard for brick items", () => {
+  const blockA: Block = {
+    id: "b1",
+    name: "Morning block",
+    start: "09:00",
+    end: "10:00",
+    recurrence: { kind: "just-today", date: "2026-05-14" },
+    categoryId: null,
+    bricks: [],
+  };
+
+  const timedBrick: Brick = {
+    id: "r1",
+    name: "Yoga",
+    kind: "tick",
+    done: false,
+    hasDuration: true,
+    start: "11:00",
+    end: "11:30",
+    recurrence: { kind: "just-today", date: "2026-05-14" },
+    categoryId: null,
+    parentBlockId: null,
+  };
+
+  it("renders one TimelineBlock for the block item at 09:00 top", () => {
+    const { container } = render(
+      <Timeline
+        items={[{ kind: "block", block: blockA }]}
+        categories={[]}
+        now="08:00"
+        onSlotTap={vi.fn()}
+      />,
+    );
+    const tlBlock = container.querySelector(
+      '[data-component="timeline-block"]',
+    );
+    expect(tlBlock).not.toBeNull();
+    const expectedTop = timeToOffsetPx("09:00", HOUR_HEIGHT_PX);
+    expect((tlBlock as HTMLElement).style.top).toBe(`${expectedTop}px`);
+  });
+
+  it("renders one TimedLooseBrickCard for the brick item at 11:00 top", () => {
+    const { container } = render(
+      <Timeline
+        items={[{ kind: "brick", brick: timedBrick }]}
+        categories={[]}
+        now="08:00"
+        onSlotTap={vi.fn()}
+      />,
+    );
+    const timedCard = container.querySelector(
+      '[data-testid="timed-loose-brick"]',
+    ) as HTMLElement | null;
+    expect(timedCard).not.toBeNull();
+    const expectedTop = timeToOffsetPx("11:00", HOUR_HEIGHT_PX);
+    expect(timedCard!.style.top).toBe(`${expectedTop}px`);
+  });
+
+  it("renders both TimelineBlock and TimedLooseBrickCard when items has both kinds", () => {
+    const { container } = render(
+      <Timeline
+        items={[
+          { kind: "block", block: blockA },
+          { kind: "brick", brick: timedBrick },
+        ]}
+        categories={[]}
+        now="08:00"
+        onSlotTap={vi.fn()}
+      />,
+    );
+    expect(
+      container.querySelector('[data-component="timeline-block"]'),
+    ).not.toBeNull();
+    expect(
+      container.querySelector('[data-testid="timed-loose-brick"]'),
+    ).not.toBeNull();
+  });
+
+  it("renders neither TimelineBlock nor TimedLooseBrickCard when items=[]", () => {
+    const { container } = render(
+      <Timeline items={[]} categories={[]} now="08:00" onSlotTap={vi.fn()} />,
+    );
+    expect(
+      container.querySelector('[data-component="timeline-block"]'),
+    ).toBeNull();
+    expect(
+      container.querySelector('[data-testid="timed-loose-brick"]'),
+    ).toBeNull();
+    // Hour grid still renders
+    expect(container.querySelector('[data-testid="hour-grid"]')).not.toBeNull();
   });
 });
