@@ -1,25 +1,61 @@
 "use client";
-// AddBrickSheet — NEW in M3 (plan.md § Components — <AddBrickSheet>).
+// AddBrickSheet — M3 foundation; M4e adds universal duration axis (ADR-042).
 // Mirrors M2's <AddBlockSheet> single-Sheet-instance pattern.
 // View toggle: 'brick' | 'newCategory' — single <Sheet> instance.
-// Props: open, parentBlockId, defaultCategoryId, categories, onSave, onCreateCategory, onCancel.
-// Accessibility: role="dialog" from Sheet, radiogroup for type selector, autofocus title.
-// Focus trap per M2 pattern.
+// M4e additions: Duration toggle (role="switch"), Start/End inputs,
+//   RecurrenceChips, overlap detection via selectAllTimedItems + findOverlaps,
+//   overlap-warning chip (role="alert"), Save-disable with haptics.medium.
+// SG-m4e-07: field reveal is instant — no AnimatePresence wrapper.
+// SG-m4e-08: RecurrenceChips reused verbatim from M2.
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { uuid } from "@/lib/uuid";
-import type { Brick, Category } from "@/lib/types";
-import { isValidBrickGoal, isValidBrickTime } from "@/lib/blockValidation";
+import type { AppState, Brick, Category, Recurrence } from "@/lib/types";
+import {
+  isValidBrickGoal,
+  isValidBrickTime,
+  endAfterStart,
+  isValidCustomRange,
+} from "@/lib/blockValidation";
+import { findOverlaps, selectAllTimedItems } from "@/lib/overlap";
+import { toMin } from "@/lib/dharma";
 import { Sheet } from "@/components/ui/Sheet";
+import { Toggle } from "@/components/ui/Toggle";
 import { CategoryPicker } from "@/components/CategoryPicker";
 import { NewCategoryForm } from "@/components/NewCategoryForm";
+import { RecurrenceChips } from "@/components/RecurrenceChips";
 import { haptics } from "@/lib/haptics";
+
+// Today's ISO date for RecurrenceChips default
+function todayISO(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+// Current hour floored to HH:00
+function currentHourFloor(): string {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, "0")}:00`;
+}
+
+// Add 30 minutes to an HH:MM string (wraps within same day)
+function addThirtyMin(hhmm: string): string {
+  const [hh, mm] = hhmm.split(":").map(Number);
+  const total = hh * 60 + (mm ?? 0) + 30;
+  const newHH = Math.floor(total / 60) % 24;
+  const newMM = total % 60;
+  return `${String(newHH).padStart(2, "0")}:${String(newMM).padStart(2, "0")}`;
+}
 
 interface Props {
   open: boolean;
   parentBlockId: string | null;
   defaultCategoryId: string | null;
   categories: Category[];
+  state: AppState;
   onSave: (brick: Brick) => void;
   onCreateCategory: (cat: Pick<Category, "id" | "name" | "color">) => void;
   onCancel: () => void;
@@ -28,11 +64,17 @@ interface Props {
 type View = "brick" | "newCategory";
 type BrickKind = "tick" | "goal" | "time";
 
+const DEFAULT_RECURRENCE: Recurrence = {
+  kind: "just-today",
+  date: "2026-05-14",
+};
+
 export function AddBrickSheet({
   open,
   parentBlockId,
   defaultCategoryId,
   categories,
+  state,
   onSave,
   onCreateCategory,
   onCancel,
@@ -47,14 +89,17 @@ export function AddBrickSheet({
     defaultCategoryId,
   );
 
+  // M4e: Duration axis state
+  const [hasDuration, setHasDuration] = useState(false);
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [recurrence, setRecurrence] = useState<Recurrence>(DEFAULT_RECURRENCE);
+
   const titleRef = useRef<HTMLInputElement>(null);
   const sheetContentRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
-  // Sync pre-fill when defaultCategoryId prop changes (SG-m3-04: parent block's
-  // category pre-fills inside-block; null for standalone). Acceptable prop-sync
-  // here because the sheet is mounted continuously and prop changes when the
-  // user opens it for a different parent block.
+  // Sync pre-fill when defaultCategoryId prop changes (SG-m3-04).
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional prop-sync per SG-m3-04
     setSelectedCategoryId(defaultCategoryId);
@@ -106,13 +151,82 @@ export function AddBrickSheet({
     onCancel();
   }, [onCancel]);
 
+  // M4e: Duration toggle handler
+  function handleDurationToggle() {
+    haptics.light();
+    if (!hasDuration) {
+      // Turning ON: fill defaults
+      if (parentBlockId !== null) {
+        // Nested: use parent block's start/end
+        const parentBlock = state.blocks.find((b) => b.id === parentBlockId);
+        if (parentBlock) {
+          setStart(parentBlock.start);
+          setEnd(parentBlock.end ?? addThirtyMin(parentBlock.start));
+        } else {
+          const floor = currentHourFloor();
+          setStart(floor);
+          setEnd(addThirtyMin(floor));
+        }
+      } else {
+        // Loose: current hour floor + 30 min
+        const floor = currentHourFloor();
+        setStart(floor);
+        setEnd(addThirtyMin(floor));
+      }
+      setRecurrence({ kind: "just-today", date: todayISO() });
+    }
+    setHasDuration((prev) => !prev);
+  }
+
+  // M4e: Validation for time fields
+  const startEndValid =
+    !hasDuration ||
+    (start.length > 0 && end.length > 0 && endAfterStart(start, end));
+  const recurrenceValid = !hasDuration || isValidCustomRange(recurrence);
+
+  // Determine the alert message for time validation
+  let timeAlertMsg: string | null = null;
+  if (hasDuration && start.length > 0 && end.length > 0) {
+    if (!endAfterStart(start, end)) {
+      // end is not after start — check if it looks like a midnight straddle
+      // (i.e. end is in the early hours of the "next day" relative to start)
+      const startMins = toMin(start);
+      const endMins = toMin(end);
+      // Straddle heuristic: start is in the evening and end is very early (large gap > 12h)
+      if (startMins > endMins && startMins - endMins > 12 * 60) {
+        timeAlertMsg = "Start and end must be on the same day";
+      } else {
+        timeAlertMsg = "End must be after start";
+      }
+    }
+  }
+
+  // M4e: Overlap detection
+  const overlaps =
+    hasDuration && start.length > 0 && end.length > 0 && !timeAlertMsg
+      ? findOverlaps(
+          { start, end },
+          selectAllTimedItems(state),
+          undefined, // no excludeId for new brick
+        )
+      : [];
+
+  const hasOverlap = overlaps.length > 0;
+
   // Validation
   const titleValid = title.trim().length > 0;
   const target = parseInt(targetStr, 10);
   const durationMin = parseInt(durationStr, 10);
   const goalValid = kind !== "goal" || isValidBrickGoal(target);
   const timeValid = kind !== "time" || isValidBrickTime(durationMin);
-  const isValid = titleValid && goalValid && timeValid;
+  const isValid =
+    titleValid &&
+    goalValid &&
+    timeValid &&
+    startEndValid &&
+    !timeAlertMsg &&
+    recurrenceValid &&
+    !hasOverlap;
 
   function handleSave() {
     if (!isValid) {
@@ -120,6 +234,14 @@ export function AddBrickSheet({
       return;
     }
     haptics.success();
+
+    const durationFields: Pick<
+      import("@/lib/types").BrickBase,
+      "hasDuration" | "start" | "end" | "recurrence"
+    > = hasDuration
+      ? { hasDuration: true, start, end, recurrence }
+      : { hasDuration: false };
+
     let brick: Brick;
     if (kind === "tick") {
       brick = {
@@ -129,6 +251,7 @@ export function AddBrickSheet({
         done: false,
         categoryId: selectedCategoryId,
         parentBlockId,
+        ...durationFields,
       };
     } else if (kind === "goal") {
       brick = {
@@ -140,6 +263,7 @@ export function AddBrickSheet({
         unit: unit.trim(),
         categoryId: selectedCategoryId,
         parentBlockId,
+        ...durationFields,
       };
     } else {
       brick = {
@@ -150,6 +274,7 @@ export function AddBrickSheet({
         minutesDone: 0,
         categoryId: selectedCategoryId,
         parentBlockId,
+        ...durationFields,
       };
     }
     onSave(brick);
@@ -172,6 +297,18 @@ export function AddBrickSheet({
   }
 
   const sheetTitle = view === "brick" ? "Add Brick" : "New Category";
+
+  // Overlap chip content: max 3 named items + "+N more"
+  function overlapChipText(): string {
+    const listed = overlaps.slice(0, 3);
+    const extra = overlaps.length - 3;
+    const parts = listed.map(
+      (item) =>
+        `${item.kind === "block" ? "Block" : "Brick"}: ${item.name}, ${item.start}–${item.end}`,
+    );
+    const base = parts.join("; ");
+    return extra > 0 ? `${base}; +${extra} more` : base;
+  }
 
   return (
     <Sheet open={open} onClose={handleClose} title={sheetTitle}>
@@ -372,6 +509,180 @@ export function AddBrickSheet({
                     padding: "0 12px",
                     width: "100%",
                   }}
+                />
+              </div>
+            )}
+
+            {/* M4e: Duration toggle row */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+              }}
+            >
+              <Toggle
+                pressed={hasDuration}
+                onPressedChange={handleDurationToggle}
+                label="Duration"
+              />
+              <span
+                style={{
+                  fontFamily: "var(--font-ui)",
+                  fontSize: "var(--fs-14)",
+                  color: "var(--ink-dim)",
+                }}
+              >
+                Duration
+              </span>
+            </div>
+
+            {/* M4e: Time-window fields — instant reveal, no AnimatePresence */}
+            {hasDuration && (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px",
+                }}
+              >
+                {/* Start / End inputs */}
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <div
+                    style={{
+                      flex: 1,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "4px",
+                    }}
+                  >
+                    <label
+                      htmlFor="brick-start"
+                      style={{
+                        fontFamily: "var(--font-ui)",
+                        fontSize: "var(--fs-12)",
+                        color: "var(--ink-dim)",
+                      }}
+                    >
+                      Start
+                    </label>
+                    <input
+                      id="brick-start"
+                      type="time"
+                      value={start}
+                      onChange={(e) => setStart(e.target.value)}
+                      aria-label="Start"
+                      style={{
+                        height: "44px",
+                        borderRadius: "8px",
+                        border: "1px solid var(--ink-dim)",
+                        background: "var(--bg-elev)",
+                        color: "var(--ink)",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: "var(--fs-14)",
+                        padding: "0 12px",
+                        width: "100%",
+                      }}
+                    />
+                  </div>
+                  <div
+                    style={{
+                      flex: 1,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "4px",
+                    }}
+                  >
+                    <label
+                      htmlFor="brick-end"
+                      style={{
+                        fontFamily: "var(--font-ui)",
+                        fontSize: "var(--fs-12)",
+                        color: "var(--ink-dim)",
+                      }}
+                    >
+                      End
+                    </label>
+                    <input
+                      id="brick-end"
+                      type="time"
+                      value={end}
+                      onChange={(e) => setEnd(e.target.value)}
+                      aria-label="End"
+                      style={{
+                        height: "44px",
+                        borderRadius: "8px",
+                        border: "1px solid var(--ink-dim)",
+                        background: "var(--bg-elev)",
+                        color: "var(--ink)",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: "var(--fs-14)",
+                        padding: "0 12px",
+                        width: "100%",
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Time validation alert */}
+                {timeAlertMsg && (
+                  <div
+                    role="alert"
+                    style={{
+                      fontFamily: "var(--font-ui)",
+                      fontSize: "var(--fs-12)",
+                      color: "var(--error, #ef4444)",
+                      padding: "8px 12px",
+                      borderRadius: "8px",
+                      background: "rgba(239,68,68,0.1)",
+                    }}
+                  >
+                    {timeAlertMsg}
+                  </div>
+                )}
+
+                {/* Custom-range weekday validation alert */}
+                {!timeAlertMsg &&
+                  recurrence.kind === "custom-range" &&
+                  recurrence.weekdays.length === 0 && (
+                    <div
+                      role="alert"
+                      style={{
+                        fontFamily: "var(--font-ui)",
+                        fontSize: "var(--fs-12)",
+                        color: "var(--error, #ef4444)",
+                        padding: "8px 12px",
+                        borderRadius: "8px",
+                        background: "rgba(239,68,68,0.1)",
+                      }}
+                    >
+                      Pick at least one weekday
+                    </div>
+                  )}
+
+                {/* Overlap warning chip */}
+                {!timeAlertMsg && hasOverlap && (
+                  <div
+                    role="alert"
+                    data-testid="overlap-warning"
+                    style={{
+                      fontFamily: "var(--font-ui)",
+                      fontSize: "var(--fs-12)",
+                      color: "var(--error, #ef4444)",
+                      padding: "8px 12px",
+                      borderRadius: "8px",
+                      background: "rgba(239,68,68,0.1)",
+                    }}
+                  >
+                    {overlapChipText()}
+                  </div>
+                )}
+
+                {/* Recurrence chips */}
+                <RecurrenceChips
+                  value={recurrence}
+                  onChange={setRecurrence}
+                  today={todayISO()}
                 />
               </div>
             )}

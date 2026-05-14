@@ -425,13 +425,6 @@ describe("C-m4e-003: Duration toggle ON fills default Start/End from parent bloc
   });
 
   it("loose (parentBlockId=null): Start=current-hour-floor, End=Start+30min", () => {
-    // Mock Date to 10:23
-    const origDate = Date;
-    const mockNow = new Date("2026-05-14T10:23:00.000Z");
-    vi.spyOn(global, "Date").mockImplementation(
-      (...args: ConstructorParameters<typeof Date>) =>
-        args.length ? new origDate(...args) : (mockNow as unknown as Date),
-    );
     render(
       <AddBrickSheet
         {...defaultProps({ parentBlockId: null, state: emptyState() })}
@@ -441,10 +434,15 @@ describe("C-m4e-003: Duration toggle ON fills default Start/End from parent bloc
     const startVal = (screen.getByLabelText(/^start$/i) as HTMLInputElement)
       .value;
     const endVal = (screen.getByLabelText(/^end$/i) as HTMLInputElement).value;
-    // Start should be current hour floored (in local time, which for UTC+0 is 10:00)
-    expect(startVal).toMatch(/^\d{2}:\d{2}$/); // valid HH:MM
+    // Start should be current hour floored — ends in ":00"
+    expect(startVal).toMatch(/^\d{2}:00$/);
     expect(endVal).toMatch(/^\d{2}:\d{2}$/);
-    vi.restoreAllMocks();
+    // End is exactly 30 min after Start
+    const [sH, sM] = startVal.split(":").map(Number);
+    const [eH, eM] = endVal.split(":").map(Number);
+    const startMins = (sH ?? 0) * 60 + (sM ?? 0);
+    const endMins = (eH ?? 0) * 60 + (eM ?? 0);
+    expect(endMins - startMins).toBe(30);
   });
 });
 
@@ -735,6 +733,10 @@ describe("C-m4e-011: fixing overlap clears warning and enables Save", () => {
       end: "09:30",
     });
     render(<AddBrickSheet {...defaultProps({ state, onSave })} />);
+    // Type title first so isValid depends only on overlap
+    fireEvent.change(screen.getByRole("textbox", { name: /title/i }), {
+      target: { value: "Morning walk" },
+    });
     fireEvent.click(screen.getByRole("switch", { name: /duration/i }));
     // Set overlapping window
     fireEvent.change(screen.getByLabelText(/^start$/i), {
@@ -757,10 +759,6 @@ describe("C-m4e-011: fixing overlap clears warning and enables Save", () => {
         .getByRole("button", { name: /save/i })
         .getAttribute("aria-disabled"),
     ).toBe("false");
-    // Also need a title for save to work
-    fireEvent.change(screen.getByRole("textbox", { name: /title/i }), {
-      target: { value: "Morning walk" },
-    });
     fireEvent.click(screen.getByRole("button", { name: /save/i }));
     expect(onSave).toHaveBeenCalledTimes(1);
   });
