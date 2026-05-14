@@ -48,16 +48,17 @@ npm run test:e2e:install
 
 ## Status
 
-| Milestone                     | State                                          |
-| ----------------------------- | ---------------------------------------------- |
-| M0 — Design System            | Shipped + tap-tested                           |
-| M1 — Empty Building Shell     | Shipped + tap-tested                           |
-| M2 — Add Block Flow           | Shipped + tap-tested                           |
-| M3 — Add Brick + Live Scoring | Shipped + tap-tested                           |
-| M4a — Tick Brick Logging      | Shipped to preview — awaiting Gate #2 tap-test |
-| M4b — Goal Brick Stepper      | Shipped to preview — awaiting Gate #2 tap-test |
-| M4d — Add Chooser Sheet       | Shipped to preview — awaiting Gate #2 tap-test |
-| M4c — Time Brick Timer        | Shipped to preview — awaiting Gate #2 tap-test |
+| Milestone                      | State                                          |
+| ------------------------------ | ---------------------------------------------- |
+| M0 — Design System             | Shipped + tap-tested                           |
+| M1 — Empty Building Shell      | Shipped + tap-tested                           |
+| M2 — Add Block Flow            | Shipped + tap-tested                           |
+| M3 — Add Brick + Live Scoring  | Shipped + tap-tested                           |
+| M4a — Tick Brick Logging       | Shipped to preview — awaiting Gate #2 tap-test |
+| M4b — Goal Brick Stepper       | Shipped to preview — awaiting Gate #2 tap-test |
+| M4d — Add Chooser Sheet        | Shipped to preview — awaiting Gate #2 tap-test |
+| M4c — Time Brick Timer         | Shipped to preview — awaiting Gate #2 tap-test |
+| M4e — Brick Duration + Overlap | Shipped to preview — awaiting Gate #2 tap-test |
 
 Latest preview: `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (branch alias; auto-tracks `claude/verify-m0-deployment-s4XRy`). Vercel Deployment Protection active — open in browser while signed in to Vercel.
 
@@ -75,9 +76,10 @@ components/          Shared UI components + unit tests
   BlueprintBar.tsx   Day Blueprint bar — segments aggregated by categoryId (M2+)
   BottomBar.tsx      Floating dock — + button opens AddBlockSheet (M2+)
   AddBlockSheet.tsx  Full add-block flow: title, time, recurrence, category, validation
-  AddBrickSheet.tsx  Add Brick flow: kind picker (tick/goal/time), per-type fields, validation
+  AddBrickSheet.tsx  Add Brick flow: kind picker (tick/goal/time), per-type fields, hasDuration toggle (M4e), overlap warning chip, validation
   AddChooserSheet.tsx Chooser sheet shown when dock + or empty slot is tapped; routes to AddBlockSheet or AddBrickSheet; real focus trap; reduced-motion respected (M4d)
-  BrickChip.tsx      Brick chip with type-specific render + foreground fill = brickPct%; tick chips are tappable; goal chips host GoalStepperChip (M4b); time chips are tappable start/stop with long-press → TimerSheet (M4c)
+  BrickChip.tsx      Brick chip with type-specific render + foreground fill = brickPct%; tick chips are tappable; goal chips host GoalStepperChip (M4b); time chips are tappable start/stop with long-press → TimerSheet (M4c); time-window badge for timed bricks (M4e)
+  TimedLooseBrickCard.tsx Timed loose-brick chip with dashed outline; renders on the Timeline at its start row (M4e)
   TimerSheet.tsx     Sheet for direct minute entry on a time brick; single number input + Save/Cancel; reuses M0 Sheet + M4d focus-trap pattern (M4c)
   Fireworks.tsx      Day-100% celebration overlay; ≤ 16 particles; ~1.6 s; suppressed under prefers-reduced-motion
   CategoryPicker.tsx Category selector chip row with inline NewCategoryForm sub-view
@@ -87,6 +89,7 @@ lib/                 Domain logic: types, data, scoring, utilities
   celebrations.ts    useCrossUpEffect hook — one-shot cross-up detection for bloom/fireworks
   audio.ts           playChime() — lazy HTMLAudioElement for /sounds/chime.mp3; SSR + iOS guard
   longPress.ts       useLongPressRepeat hook — 500ms hold → 50ms ticks; used by GoalStepperChip (M4b). Also exports useLongPress single-fire sibling; used by time BrickChip (M4c)
+  overlap.ts         Pure half-open overlap engine: intervalsOverlap + findOverlaps (M4e)
   timer.ts           useTimer hook — single-instance 1 s setInterval + visibilitychange listener; called once at BuildingClient top; identity short-circuit suppresses ~59/60 dispatches (M4c)
   dayOfYear.ts       Pure day-of-year helper (leap-year aware)
   timeOffset.ts      Exports HOUR_HEIGHT_PX — single source of truth for timeline geometry
