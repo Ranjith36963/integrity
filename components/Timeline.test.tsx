@@ -2,12 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Timeline } from "./Timeline";
+import type { TimelineItem } from "./Timeline";
 import { HOUR_HEIGHT_PX, timeToOffsetPx } from "@/lib/timeOffset";
 import type { Block, Brick } from "@/lib/types";
 
 // Default props for M2 Timeline (re-authored to add categories + onSlotTap)
+// M4e: `blocks` prop renamed to `items: TimelineItem[]` — use items=[] for the empty case.
 const defaultProps = {
-  blocks: [] as Block[],
+  items: [] as TimelineItem[],
   categories: [],
   now: "08:00",
   onSlotTap: vi.fn(),
@@ -209,6 +211,7 @@ describe("C-bld-016 (re-authored M2): Timeline renders locked SPEC empty-state c
 });
 
 // C-m2-019: Timeline composes SlotTapTargets + TimelineBlock + NowLine layers (re-authored M2)
+// M4e: `blocks={[block]}` → `items={[{kind:"block", block}]}`
 describe("C-m2-019: Timeline layered structure (re-authored M2)", () => {
   const block: Block = {
     id: "b1",
@@ -224,7 +227,7 @@ describe("C-m2-019: Timeline layered structure (re-authored M2)", () => {
     const mockSlotTap = vi.fn();
     const { container } = render(
       <Timeline
-        blocks={[block]}
+        items={[{ kind: "block", block }]}
         categories={[]}
         now="08:00"
         onSlotTap={mockSlotTap}
@@ -246,10 +249,10 @@ describe("C-m2-019: Timeline layered structure (re-authored M2)", () => {
     expect(container.querySelector('[data-testid="now-line"]')).not.toBeNull();
   });
 
-  it("EmptyBlocks NOT in DOM when blocks.length > 0", () => {
+  it("EmptyBlocks NOT in DOM when items has a block", () => {
     render(
       <Timeline
-        blocks={[block]}
+        items={[{ kind: "block", block }]}
         categories={[]}
         now="08:00"
         onSlotTap={vi.fn()}
@@ -265,7 +268,7 @@ describe("C-m2-019: Timeline layered structure (re-authored M2)", () => {
     const user = userEvent.setup();
     render(
       <Timeline
-        blocks={[block]}
+        items={[{ kind: "block", block }]}
         categories={[]}
         now="08:00"
         onSlotTap={mockSlotTap}

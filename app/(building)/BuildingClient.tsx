@@ -15,7 +15,8 @@ import { useReducer, useState, useCallback } from "react";
 import { today, dateLabel, dayPct } from "@/lib/dharma";
 import { dayOfYear, daysInYear } from "@/lib/dayOfYear";
 import { useNow } from "@/lib/useNow";
-import { reducer, defaultState } from "@/lib/data";
+import { reducer, defaultState, withDurationDefaults } from "@/lib/data";
+import { selectTrayBricks, selectTimelineItems } from "@/lib/overlap";
 import { useCrossUpEffect } from "@/lib/celebrations";
 import { haptics } from "@/lib/haptics";
 import { playChime } from "@/lib/audio";
@@ -69,7 +70,19 @@ interface TimerSheetState {
 }
 
 export function BuildingClient() {
-  const [state, dispatch] = useReducer(reducer, defaultState());
+  // M4e: lazy initializer runs once, applies withDurationDefaults to every brick
+  // (defensive migration for pre-M4e brick literals that may lack hasDuration — SG-m4e-06).
+  const [state, dispatch] = useReducer(reducer, undefined, () => {
+    const initial = defaultState();
+    return {
+      ...initial,
+      blocks: initial.blocks.map((bl) => ({
+        ...bl,
+        bricks: bl.bricks.map(withDurationDefaults),
+      })),
+      looseBricks: initial.looseBricks.map(withDurationDefaults),
+    };
+  });
   const [sheetState, setSheetState] = useState<SheetState>({
     open: false,
     defaultStart: "00:00",
@@ -261,8 +274,12 @@ export function BuildingClient() {
     openBrickSheet(null, null);
   }
 
-  // Tray visible iff there's at least one block or loose brick
-  const showTray = state.blocks.length > 0 || state.looseBricks.length > 0;
+  // M4e: tray shows only non-timed loose bricks (selectTrayBricks filters out hasDuration:true).
+  // showTray: visible when any blocks exist OR any non-timed loose bricks exist (AC #29).
+  const trayBricks = selectTrayBricks(state);
+  const showTray = state.blocks.length > 0 || trayBricks.length > 0;
+  // M4e: Timeline renders blocks + timed loose bricks via selectTimelineItems (AC #28).
+  const timelineItems = selectTimelineItems(state);
 
   return (
     <EditModeProvider>
@@ -282,22 +299,22 @@ export function BuildingClient() {
         />
         {/* NowCard: NOT rendered in M2/M3/M4a */}
         <Timeline
-          blocks={state.blocks}
+          items={timelineItems}
           categories={state.categories}
           now={now}
           onSlotTap={handleSlotTap}
           onAddBrick={handleAddBrickFromBlock}
           onTickToggle={handleTickToggle}
           onGoalLog={handleGoalLog}
-          hasLooseBricks={state.looseBricks.length > 0}
+          hasLooseBricks={trayBricks.length > 0}
           runningTimerBrickId={state.runningTimerBrickId}
           onTimerToggle={handleTimerToggle}
           onTimerOpenSheet={handleTimerOpenSheet}
         />
-        {/* LooseBricksTray: pinned above dock, visible when blocks or loose bricks exist */}
+        {/* LooseBricksTray: pinned above dock, visible when blocks exist OR non-timed loose bricks exist */}
         {showTray && (
           <LooseBricksTray
-            looseBricks={state.looseBricks}
+            looseBricks={trayBricks}
             categories={state.categories}
             onAddBrick={handleAddLooseBrick}
             onTickToggle={handleTickToggle}
@@ -305,6 +322,7 @@ export function BuildingClient() {
             runningTimerBrickId={state.runningTimerBrickId}
             onTimerToggle={handleTimerToggle}
             onTimerOpenSheet={handleTimerOpenSheet}
+            blocksExist={state.blocks.length > 0}
           />
         )}
         <BottomBar onAddPress={handleDockAdd} />
@@ -320,6 +338,7 @@ export function BuildingClient() {
           defaultStart={sheetState.defaultStart}
           categories={state.categories}
           blocks={state.blocks}
+          state={state}
           onSave={handleSave}
           onCancel={closeSheet}
           onCreateCategory={handleCreateCategory}

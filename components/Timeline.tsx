@@ -1,19 +1,26 @@
 "use client";
 // Timeline — re-authored for M2 (plan.md § Components — Timeline):
 // - Layered structure: hour-grid (z=0) → SlotTapTargets (z=1) → TimelineBlock cards (z=2) → NowLine (z=3)
-// - EmptyBlocks card when blocks.length === 0
+// - EmptyBlocks card when items.length === 0 AND !hasLooseBricks
 // - Accepts new props: categories: Category[], onSlotTap: (hour: number) => void
 // - Auto-scroll-to-now from M1 preserved
 // - NowLine always on top (z=3)
 // - M1 hour-grid CSS gradient unchanged
+// - M4e: `blocks: Block[]` prop replaced by `items: TimelineItem[]` union (blocks + timed loose bricks)
+//        Renders TimelineBlock for kind="block", TimedLooseBrickCard for kind="brick".
 
 import { useRef, useEffect } from "react";
-import type { Block, Category } from "@/lib/types";
+import type { Block, Brick, Category } from "@/lib/types";
 import { HOUR_HEIGHT_PX, timeToOffsetPx } from "@/lib/timeOffset";
 import { NowLine } from "./NowLine";
 import { EmptyBlocks } from "./EmptyBlocks";
 import { SlotTapTargets } from "./SlotTapTargets";
 import { TimelineBlock } from "./TimelineBlock";
+import { TimedLooseBrickCard } from "./TimedLooseBrickCard";
+
+export type TimelineItem =
+  | { kind: "block"; block: Block }
+  | { kind: "brick"; brick: Brick };
 
 const HOURS = Array.from(
   { length: 24 },
@@ -21,15 +28,15 @@ const HOURS = Array.from(
 );
 
 interface Props {
-  blocks: Block[];
+  items: TimelineItem[];
   categories: Category[];
   now: string;
   onSlotTap: (hour: number) => void;
   onAddBrick?: (parentBlockId: string) => void;
   onTickToggle?: (brickId: string) => void;
   onGoalLog?: (brickId: string, delta: 1 | -1) => void;
-  /** M4d: when true, the EmptyBlocks card is suppressed even if blocks is empty.
-   * Used by BuildingClient when looseBricks.length > 0 (AC #10/#11 — loose bricks
+  /** M4d: when true, the EmptyBlocks card is suppressed even if items is empty.
+   * Used by BuildingClient when selectTrayBricks(state).length > 0 (AC #10/#11 — loose bricks
    * fill the day so the block-empty state is no longer relevant). */
   hasLooseBricks?: boolean;
   /** M4c: current running timer brick id threaded to TimelineBlock → BrickChip */
@@ -41,7 +48,7 @@ interface Props {
 }
 
 export function Timeline({
-  blocks,
+  items,
   categories,
   now,
   onSlotTap,
@@ -121,23 +128,36 @@ export function Timeline({
           {/* Layer 1: Slot tap targets (z=1, above hour-grid, below blocks) */}
           <SlotTapTargets onSlotTap={onSlotTap} />
 
-          {/* Layer 2: Timeline block cards (z=2) */}
-          {blocks.map((b) => (
-            <TimelineBlock
-              key={b.id}
-              block={b}
-              categories={categories}
-              onAddBrick={onAddBrick}
-              onTickToggle={onTickToggle}
-              onGoalLog={onGoalLog}
-              runningTimerBrickId={runningTimerBrickId}
-              onTimerToggle={onTimerToggle}
-              onTimerOpenSheet={onTimerOpenSheet}
-            />
-          ))}
+          {/* Layer 2: Timeline items — block cards OR timed loose brick cards */}
+          {items.map((item) =>
+            item.kind === "block" ? (
+              <TimelineBlock
+                key={item.block.id}
+                block={item.block}
+                categories={categories}
+                onAddBrick={onAddBrick}
+                onTickToggle={onTickToggle}
+                onGoalLog={onGoalLog}
+                runningTimerBrickId={runningTimerBrickId}
+                onTimerToggle={onTimerToggle}
+                onTimerOpenSheet={onTimerOpenSheet}
+              />
+            ) : (
+              <TimedLooseBrickCard
+                key={item.brick.id}
+                brick={item.brick}
+                categories={categories}
+                onTickToggle={onTickToggle}
+                onGoalLog={onGoalLog}
+                running={runningTimerBrickId === item.brick.id}
+                onTimerToggle={onTimerToggle}
+                onTimerOpenSheet={onTimerOpenSheet}
+              />
+            ),
+          )}
 
-          {/* Layer 2 (centered): EmptyBlocks card — only when blocks empty AND no loose bricks */}
-          {blocks.length === 0 && !hasLooseBricks && (
+          {/* Layer 2 (centered): EmptyBlocks card — only when items empty AND no loose bricks */}
+          {items.length === 0 && !hasLooseBricks && (
             <div className="absolute inset-x-4 z-0" style={{ top: "20px" }}>
               <EmptyBlocks />
             </div>
