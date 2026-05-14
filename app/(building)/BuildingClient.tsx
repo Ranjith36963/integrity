@@ -349,6 +349,7 @@ export function BuildingClient() {
           parentBlockId={brickSheetState.parentBlockId}
           defaultCategoryId={brickSheetState.defaultCategoryId}
           categories={state.categories}
+          state={state}
           onSave={handleSaveBrick}
           onCancel={closeBrickSheet}
           onCreateCategory={handleCreateCategory}

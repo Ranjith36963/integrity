@@ -235,12 +235,10 @@ export function AddBrickSheet({
     }
     haptics.success();
 
-    const durationFields: Pick<
-      import("@/lib/types").BrickBase,
-      "hasDuration" | "start" | "end" | "recurrence"
-    > = hasDuration
-      ? { hasDuration: true, start, end, recurrence }
-      : { hasDuration: false };
+    // Presence invariant (ADR-042): hasDuration===true IFF start/end/recurrence all present.
+    const durationFields = hasDuration
+      ? ({ hasDuration: true, start, end, recurrence } as const)
+      : ({ hasDuration: false } as const);
 
     let brick: Brick;
     if (kind === "tick") {
