@@ -4,7 +4,9 @@
 // - Owns local form state + view toggle ('block' | 'newCategory')
 // - Focus trap LOCAL to AddBlockSheet (SG-m2-09 — does NOT modify <Sheet> primitive)
 // - Validation: isValidStart, isValidEnd, endAfterStart, isValidCustomRange (inline alerts)
-// - Soft overlap warning: overlapsExistingBlock → role="status" (Save still enabled)
+// M4e retroactive upgrade: overlap warning → role="alert" + data-testid="overlap-warning"
+//   + Save disabled when overlapping (replaces M2's soft role="status" / Save-enabled pattern).
+//   Overlap engine now uses findOverlaps + selectAllTimedItems (includes timed loose bricks).
 // - onSave(block) / onCancel() / onCreateCategory(category) props from BuildingClient
 // - Single <Sheet> instance with view state; no nested portals (plan.md § Cross-cutting)
 // - aria-label updates per view ("Add Block" vs "New Category")
@@ -12,24 +14,27 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { uuid } from "@/lib/uuid";
-import type { Block, Category, Recurrence } from "@/lib/types";
+import type { AppState, Block, Category, Recurrence } from "@/lib/types";
 import {
   isValidStart,
   isValidEnd,
   endAfterStart,
-  overlapsExistingBlock,
   isValidCustomRange,
 } from "@/lib/blockValidation";
+import { findOverlaps, selectAllTimedItems } from "@/lib/overlap";
 import { Sheet } from "@/components/ui/Sheet";
 import { RecurrenceChips } from "@/components/RecurrenceChips";
 import { CategoryPicker } from "@/components/CategoryPicker";
 import { NewCategoryForm } from "@/components/NewCategoryForm";
+import { haptics } from "@/lib/haptics";
 
 interface Props {
   open: boolean;
   defaultStart: string;
   categories: Category[];
   blocks: Block[];
+  /** M4e: full state for overlap detection against timed loose bricks. Optional for backward compat. */
+  state?: AppState;
   onSave: (block: Block) => void;
   onCancel: () => void;
   onCreateCategory: (cat: Pick<Category, "id" | "name" | "color">) => void;
@@ -44,6 +49,7 @@ export function AddBlockSheet({
   defaultStart,
   categories,
   blocks,
+  state,
   onSave,
   onCancel,
   onCreateCategory,
@@ -145,16 +151,35 @@ export function AddBlockSheet({
   const endBeforeStart =
     !endEmpty && isValidEnd(end) && !endAfterStart(start, end);
 
-  const candidate = endEmpty ? { start } : { start, end };
-  const overlapping = titleValid
-    ? overlapsExistingBlock(blocks, candidate)
-    : null;
+  const candidate = endEmpty ? null : { start, end };
+
+  // M4e: use findOverlaps + selectAllTimedItems so timed loose bricks are also checked.
+  // Only check when there is a valid end time AND title is filled (avoids noisy alerts).
+  const effectiveState = state ?? {
+    blocks,
+    categories,
+    looseBricks: [],
+    runningTimerBrickId: null,
+  };
+  const overlaps =
+    titleValid && candidate
+      ? findOverlaps(candidate, selectAllTimedItems(effectiveState))
+      : [];
+  const hasOverlap = overlaps.length > 0;
 
   const isValid =
-    titleValid && startValid && endValid && endAfterStartOk && customRangeValid;
+    titleValid &&
+    startValid &&
+    endValid &&
+    endAfterStartOk &&
+    customRangeValid &&
+    !hasOverlap;
 
   function handleSave() {
-    if (!isValid) return;
+    if (!isValid) {
+      haptics.medium();
+      return;
+    }
     const block: Block = {
       id: uuid(),
       name: title.trim(),
@@ -354,18 +379,26 @@ export function AddBlockSheet({
               </p>
             )}
 
-            {/* Soft overlap warning */}
-            {overlapping && (
+            {/* M4e hard overlap warning — role=alert + Save disabled (ADR-042) */}
+            {hasOverlap && (
               <p
-                role="status"
+                data-testid="overlap-warning"
+                role="alert"
                 style={{
                   fontFamily: "var(--font-ui)",
                   fontSize: "var(--fs-12)",
-                  color: "var(--ink-dim)",
+                  color: "var(--accent-deep)",
                   margin: 0,
                 }}
               >
-                Overlaps with {overlapping.name}
+                {overlaps
+                  .slice(0, 3)
+                  .map(
+                    (it) =>
+                      `${it.kind === "block" ? "Block" : "Brick"}: ${it.name}, ${it.start}–${it.end}`,
+                  )
+                  .join("; ")}
+                {overlaps.length > 3 ? ` +${overlaps.length - 3} more` : ""}
               </p>
             )}
 
