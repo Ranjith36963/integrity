@@ -19,6 +19,7 @@ function makeState(partial: Partial<AppState> = {}): AppState {
     blocks: [],
     categories: [],
     looseBricks: [],
+    programStart: "2026-01-01",
     ...partial,
   };
 }

@@ -42,7 +42,12 @@ function makeBlock(
 }
 
 function toState(blocks: Block[]): AppState {
-  return { blocks, categories: [], looseBricks: [] };
+  return {
+    blocks,
+    categories: [],
+    looseBricks: [],
+    programStart: "2026-01-01",
+  };
 }
 
 // U-bld-010: Two blocks of unequal duration with percentages 50 and 100
@@ -129,6 +134,7 @@ describe("U-bld-012: dayPct(emptyState) returns 0 without division by zero", () 
         blocks: [],
         categories: [],
         looseBricks: [],
+        programStart: "2026-01-01",
       }),
     ).toBe(0);
   });
@@ -142,6 +148,7 @@ describe("buildingPct is an alias for dayPct", () => {
         blocks: [],
         categories: [],
         looseBricks: [],
+        programStart: "2026-01-01",
       }),
     ).toBe(0);
   });

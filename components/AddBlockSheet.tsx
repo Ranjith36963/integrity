@@ -155,10 +155,13 @@ export function AddBlockSheet({
 
   // M4e: use findOverlaps + selectAllTimedItems so timed loose bricks are also checked.
   // Only check when there is a valid end time AND title is filled (avoids noisy alerts).
+  // M8: programStart is required on AppState (ADR-044); placeholder used here
+  // because AddBlockSheet only needs blocks/categories/looseBricks for overlap detection.
   const effectiveState = state ?? {
     blocks,
     categories,
     looseBricks: [],
+    programStart: "",
   };
   const overlaps =
     titleValid && candidate
