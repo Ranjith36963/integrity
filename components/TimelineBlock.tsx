@@ -25,16 +25,6 @@ interface Props {
   onTickToggle?: (brickId: string) => void;
   /** M4f: called with brickId when a units chip is tapped (opens UnitsEntrySheet). */
   onUnitsOpenSheet?: (brickId: string) => void;
-  /** @deprecated use onUnitsOpenSheet; kept for backwards-compat prop shape; ignored */
-  onUnitsLog?: (brickId: string, delta: 1 | -1) => void;
-  /** @deprecated use onUnitsOpenSheet; kept for backwards-compat prop shape; ignored */
-  onGoalLog?: (brickId: string, delta: 1 | -1) => void;
-  /** @deprecated M4c removed; kept for backwards-compat prop shape; ignored */
-  runningTimerBrickId?: string | null;
-  /** @deprecated M4c removed; kept for backwards-compat prop shape; ignored */
-  onTimerToggle?: (brickId: string) => void;
-  /** @deprecated M4c removed; kept for backwards-compat prop shape; ignored */
-  onTimerOpenSheet?: (brickId: string) => void;
 }
 
 export function TimelineBlock({

@@ -22,16 +22,6 @@ interface Props {
   onTickToggle?: (brickId: string) => void;
   /** M4f: called with brick.id when a units brick chip is tapped (opens UnitsEntrySheet). */
   onUnitsOpenSheet?: (brickId: string) => void;
-  /** @deprecated M4f removed — kept for backwards-compat prop shape; ignored */
-  onUnitsLog?: (brickId: string, delta: 1 | -1) => void;
-  /** @deprecated M4f removed — kept for backwards-compat prop shape; ignored */
-  onGoalLog?: (brickId: string, delta: 1 | -1) => void;
-  /** @deprecated M4c removed — kept for backwards-compat prop shape; ignored */
-  running?: boolean;
-  /** @deprecated M4c removed — kept for backwards-compat prop shape; ignored */
-  onTimerToggle?: (brickId: string) => void;
-  /** @deprecated M4c removed — kept for backwards-compat prop shape; ignored */
-  onTimerOpenSheet?: (brickId: string) => void;
 }
 
 function resolveColor(brick: Brick, categories: Category[]): string | null {

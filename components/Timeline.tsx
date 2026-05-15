@@ -37,10 +37,6 @@ interface Props {
   onTickToggle?: (brickId: string) => void;
   /** M4f: called with brickId when a units chip is tapped (opens UnitsEntrySheet). */
   onUnitsOpenSheet?: (brickId: string) => void;
-  /** @deprecated use onUnitsOpenSheet; kept for backwards-compat prop shape; ignored */
-  onUnitsLog?: (brickId: string, delta: 1 | -1) => void;
-  /** @deprecated use onUnitsOpenSheet; kept for backwards-compat prop shape; ignored */
-  onGoalLog?: (brickId: string, delta: 1 | -1) => void;
   /** M4d: when true, the EmptyBlocks card is suppressed even if items is empty.
    * Used by BuildingClient when selectTrayBricks(state).length > 0 (AC #10/#11 — loose bricks
    * fill the day so the block-empty state is no longer relevant). */

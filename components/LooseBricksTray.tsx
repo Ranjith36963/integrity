@@ -19,10 +19,6 @@ interface Props {
   onTickToggle?: (brickId: string) => void;
   /** M4f: called with brickId when a units chip is tapped (opens UnitsEntrySheet). */
   onUnitsOpenSheet?: (brickId: string) => void;
-  /** @deprecated use onUnitsOpenSheet; kept for backwards-compat prop shape; ignored */
-  onUnitsLog?: (brickId: string, delta: 1 | -1) => void;
-  /** @deprecated use onUnitsOpenSheet; kept for backwards-compat prop shape; ignored */
-  onGoalLog?: (brickId: string, delta: 1 | -1) => void;
   /**
    * M4e: whether any blocks exist in state.
    * Used to determine tray visibility: hidden when looseBricks is empty AND blocksExist is false.
