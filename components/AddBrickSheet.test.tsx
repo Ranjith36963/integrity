@@ -777,3 +777,133 @@ describe("C-m4e-013: RecurrenceChips rendered with 4 chips, default Just today",
     ).toBeInTheDocument();
   });
 });
+
+// ─── C-m4f-015: Save with "Units" constructs kind:"units" + done:0 + M4e fields ─
+// Production behavior already landed in 7b34777. This is a coverage backfill for
+// SPEC AC #20. Tests Save with toggle OFF (no duration) and toggle ON (with duration).
+
+describe("C-m4f-015: Save with Units selected constructs {kind:units,done:0} + M4e duration fields", () => {
+  it("toggle OFF: onSave called with {kind:units, target:30, unit:minutes, done:0, hasDuration:false}", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(
+      <AddBrickSheet {...defaultProps({ state: emptyState(), onSave })} />,
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: /title/i }),
+      "Meditate",
+    );
+    // Switch to Units
+    const group = screen.getByRole("radiogroup", { name: /brick type/i });
+    const unitsRadio = within(group)
+      .getAllByRole("radio")
+      .find((r) =>
+        r.getAttribute("aria-label")?.toLowerCase().includes("units"),
+      );
+    await user.click(unitsRadio!);
+    // Fill target and unit
+    const targetInput = screen.getByRole("spinbutton", { name: /target/i });
+    await user.clear(targetInput);
+    await user.type(targetInput, "30");
+    await user.type(screen.getByRole("textbox", { name: /unit/i }), "minutes");
+    // Save (duration toggle OFF by default)
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+    expect(onSave).toHaveBeenCalledTimes(1);
+    const brick = onSave.mock.calls[0][0] as Brick;
+    expect(brick.kind).toBe("units");
+    if (brick.kind === "units") {
+      expect(brick.target).toBe(30);
+      expect(brick.unit).toBe("minutes");
+      expect(brick.done).toBe(0);
+    }
+    expect(brick.hasDuration).toBe(false);
+    expect(brick.start).toBeUndefined();
+    expect(brick.end).toBeUndefined();
+    expect(brick.recurrence).toBeUndefined();
+  });
+
+  it("toggle ON: onSave called with {kind:units, target:30, unit:minutes, done:0, hasDuration:true, start, end, recurrence}", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(
+      <AddBrickSheet {...defaultProps({ state: emptyState(), onSave })} />,
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: /title/i }),
+      "Meditate",
+    );
+    // Switch to Units
+    const group = screen.getByRole("radiogroup", { name: /brick type/i });
+    const unitsRadio = within(group)
+      .getAllByRole("radio")
+      .find((r) =>
+        r.getAttribute("aria-label")?.toLowerCase().includes("units"),
+      );
+    await user.click(unitsRadio!);
+    // Fill target and unit
+    const targetInput = screen.getByRole("spinbutton", { name: /target/i });
+    await user.clear(targetInput);
+    await user.type(targetInput, "30");
+    await user.type(screen.getByRole("textbox", { name: /unit/i }), "minutes");
+    // Toggle duration ON
+    fireEvent.click(screen.getByRole("switch", { name: /duration/i }));
+    // Set start and end
+    fireEvent.change(screen.getByLabelText(/^start$/i), {
+      target: { value: "09:00" },
+    });
+    fireEvent.change(screen.getByLabelText(/^end$/i), {
+      target: { value: "09:30" },
+    });
+    // Save
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+    expect(onSave).toHaveBeenCalledTimes(1);
+    const brick = onSave.mock.calls[0][0] as Brick;
+    expect(brick.kind).toBe("units");
+    if (brick.kind === "units") {
+      expect(brick.target).toBe(30);
+      expect(brick.unit).toBe("minutes");
+      expect(brick.done).toBe(0);
+    }
+    expect(brick.hasDuration).toBe(true);
+    expect(brick.start).toBe("09:00");
+    expect(brick.end).toBe("09:30");
+    expect(brick.recurrence).toBeDefined();
+  });
+});
+
+// ─── C-m4f-017: M4e overlap chip + aria-describedby + sr-only hint unchanged ───
+// Production behavior already landed in 7b34777. This is a coverage backfill for
+// SPEC AC #22. Asserts the M4e overlap contract survives the kind-selector collapse.
+
+describe("C-m4f-017: M4e overlap chip + aria-describedby + sr-only hint preserved after kind-selector collapse", () => {
+  it("overlap warning chip, aria-describedby, sr-only hint present; Save aria-disabled=true", () => {
+    // State has one block 08:30–09:30; new Units brick with toggle ON overlaps it
+    const state = stateWithBlock({
+      id: "bk1",
+      name: "Stretch",
+      start: "08:30",
+      end: "09:30",
+    });
+    render(<AddBrickSheet {...defaultProps({ state })} />);
+    // Overlap chip appears only when duration toggle is ON with overlapping times
+    fireEvent.click(screen.getByRole("switch", { name: /duration/i }));
+    fireEvent.change(screen.getByLabelText(/^start$/i), {
+      target: { value: "09:00" },
+    });
+    fireEvent.change(screen.getByLabelText(/^end$/i), {
+      target: { value: "09:30" },
+    });
+    // The M4e overlap warning chip is still present
+    const chip = screen.getByTestId("overlap-warning");
+    expect(chip.getAttribute("role")).toBe("alert");
+    expect(chip.textContent).toMatch(/stretch/i);
+    // Save is disabled
+    const saveBtn = screen.getByRole("button", { name: /save/i });
+    expect(saveBtn.getAttribute("aria-disabled")).toBe("true");
+    // aria-describedby points to the sr-only hint
+    expect(saveBtn.getAttribute("aria-describedby")).toBe("brick-save-hint");
+    const hint = document.getElementById("brick-save-hint");
+    expect(hint).not.toBeNull();
+    expect(hint?.textContent).toBe("Resolve the overlap to save.");
+  });
+});
