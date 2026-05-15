@@ -7,13 +7,14 @@
  * M4e: ADD_BRICK arm enforces hasDuration presence invariant. Exports withDurationDefaults.
  * M4f: collapsed to 5 action arms (removed START/STOP/TICK/SET_TIMER_MINUTES + LOG_GOAL_BRICK;
  *      added SET_UNITS_DONE). defaultState drops runningTimerBrickId. Adds findUnitsBrickById.
+ * M8: persistence wired — defaultState gains programStart: today() (ADR-044).
  *
  * ADD_BRICK routing: parentBlockId === null → looseBricks[]; else → matching block.bricks[].
- * No persistence in M3. Page refresh clears state. M8 lands localStorage rehydration.
  */
 
 import type { AppState, Action, Brick } from "./types";
 import { assertNever } from "./types";
+import { today } from "./dharma";
 
 /**
  * Migration helper for pre-M4e in-memory brick literals.
@@ -38,6 +39,7 @@ export function defaultState(): AppState {
     blocks: [],
     categories: [],
     looseBricks: [],
+    programStart: today(), // M8 — stamped to today on first run (ADR-044)
   };
 }
 

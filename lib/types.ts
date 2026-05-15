@@ -50,12 +50,13 @@ export type Block = {
   bricks: Brick[]; // populated in M3 via ADD_BRICK action
 };
 
-// AppState — M4f: runningTimerBrickId removed (ADR-043)
+// AppState — M4f: runningTimerBrickId removed (ADR-043). M8: programStart added.
 export type AppState = {
   blocks: Block[];
   categories: Category[];
   looseBricks: Brick[]; // M3 — bricks with parentBlockId === null
   // runningTimerBrickId: REMOVED in M4f (ADR-043)
+  programStart: string; // M8 — ISO YYYY-MM-DD, stamped once on first run (ADR-044)
 };
 
 // Action — M4f: collapsed to 5 variants; 5 timer/goal actions removed (ADR-043)

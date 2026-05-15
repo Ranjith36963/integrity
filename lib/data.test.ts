@@ -86,11 +86,14 @@ describe("U-m2-009: reducer ADD_CATEGORY, assertNever, and defaultState", () => 
 
   it("defaultState() returns { blocks: [], categories: [], looseBricks: [] }", () => {
     const s = defaultState();
+    // M8: programStart added to AppState (ADR-044); toEqual includes it
     expect(s).toEqual({
       blocks: [],
       categories: [],
       looseBricks: [],
+      programStart: s.programStart, // ISO date — exact value is clock-dependent
     });
+    expect(typeof s.programStart).toBe("string");
   });
 });
 
@@ -285,10 +288,12 @@ describe("U-m3-011: assertNever exhaustiveness + defaultState looseBricks", () =
 
   it("defaultState() returns { blocks: [], categories: [], looseBricks: [] } (M4f: no runningTimerBrickId)", () => {
     const s = defaultState();
+    // M8: programStart added to AppState (ADR-044)
     expect(s).toEqual({
       blocks: [],
       categories: [],
       looseBricks: [],
+      programStart: s.programStart,
     });
   });
 });
@@ -824,10 +829,12 @@ describe("U-m4e-021: assertNever exhaustiveness preserved after M4e; defaultStat
 
   it("defaultState() deep-equal matches expected shape (no new AppState fields in M4e)", () => {
     const s = defaultState();
+    // M8: programStart added to AppState (ADR-044); shape verified here
     expect(s).toEqual({
       blocks: [],
       categories: [],
       looseBricks: [],
+      programStart: s.programStart,
     });
   });
 });
@@ -1229,7 +1236,13 @@ describe("U-m4f-010: assertNever exhaustiveness + defaultState shape post-M4f", 
   it("defaultState() has no runningTimerBrickId key", () => {
     const s = defaultState();
     expect("runningTimerBrickId" in s).toBe(false);
-    expect(s).toEqual({ blocks: [], categories: [], looseBricks: [] });
+    // M8: programStart added to AppState (ADR-044)
+    expect(s).toEqual({
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      programStart: s.programStart,
+    });
   });
 });
 
