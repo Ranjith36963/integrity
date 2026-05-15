@@ -6,8 +6,8 @@
 
 ## Snapshot
 
-- **Branch:** `claude/verify-m0-deployment-s4XRy` at `<ship-commit-pending>` · `main` at `c3ef9f1` (feature branch not yet merged)
-- **Last ship:** M8 — Persistence — branch `claude/verify-m0-deployment-s4XRy`.
+- **Branch:** `claude/verify-m0-deployment-s4XRy` at `9cdd7ee` · `main` at `c3ef9f1` (feature branch not yet merged)
+- **Last ship:** M8 — Persistence — commit `9cdd7ee` — branch `claude/verify-m0-deployment-s4XRy`.
 - **Last preview URL:** `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (stable branch alias; auto-tracks latest deployment for this branch). Sandbox `curl -I` returns HTTP 403 `x-deny-reason: host_not_allowed` (Vercel Deployment Protection — same as M0–M8; not a failure; signed-in browser sessions serve normally).
 - **Methodology:** The Loop (SDD-outside, TDD-inside) per ADR-025; **single human gate** (preview tap-test only) per ADR-041 — the VERIFIER agent now replaces the planning gate; per-phase commit prefixes per ADR-027.
 
