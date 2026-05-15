@@ -169,6 +169,31 @@ describe("U-m2-006: isValidCustomRange validates custom-range recurrence", () =>
   });
 });
 
+// ─── U-m4f-017: intervalsOverlap — back-to-back (re-point of U-m2-005) ──────────
+// Production behavior landed in 7b34777. This is a coverage backfill asserting the
+// M2 back-to-back regression is re-pointed from overlapsExistingBlock (deleted) to
+// lib/overlap.ts:intervalsOverlap per SG-m4f-03 (ADR-006).
+
+describe("U-m4f-017: intervalsOverlap back-to-back blocks do NOT overlap (re-point of U-m2-005)", () => {
+  it("returns false for back-to-back windows [09:00,10:00) and [10:00,11:00) — boundary not overlap", () => {
+    expect(
+      intervalsOverlap(
+        { start: "09:00", end: "10:00" },
+        { start: "10:00", end: "11:00" },
+      ),
+    ).toBe(false);
+  });
+
+  it("is symmetric: [10:00,11:00) vs [09:00,10:00) also returns false", () => {
+    expect(
+      intervalsOverlap(
+        { start: "10:00", end: "11:00" },
+        { start: "09:00", end: "10:00" },
+      ),
+    ).toBe(false);
+  });
+});
+
 // ─── U-m4f-016 / U-m3-013: isValidBrickUnitsTarget (renamed from isValidBrickGoal) ─────
 
 describe("U-m4f-016: isValidBrickUnitsTarget validates target is integer ≥ 1", () => {
