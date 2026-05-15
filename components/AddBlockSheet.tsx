@@ -159,7 +159,6 @@ export function AddBlockSheet({
     blocks,
     categories,
     looseBricks: [],
-    runningTimerBrickId: null,
   };
   const overlaps =
     titleValid && candidate

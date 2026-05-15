@@ -7,8 +7,8 @@
 //      C-m4e-015 goal→units; C-m4e-016 time→units; C-m4e-017 time variant deleted;
 //      C-m4f-009..012 added (units chip design).
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BrickChip } from "./BrickChip";
 import type { Brick, Category } from "@/lib/types";

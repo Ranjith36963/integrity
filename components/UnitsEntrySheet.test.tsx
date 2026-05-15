@@ -2,7 +2,7 @@
 // Covers: C-m4f-001..008
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { UnitsEntrySheet } from "./UnitsEntrySheet";
 import type { Brick } from "@/lib/types";
