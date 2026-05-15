@@ -1,7 +1,9 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BuildingClient } from "./BuildingClient";
+import { saveState } from "@/lib/persist";
+import type { PersistedState } from "@/lib/persist";
 
 vi.mock("@/lib/uuid", () => ({ uuid: () => "uuid-1" }));
 
@@ -47,20 +49,25 @@ describe("C-bld-039: BuildingClient shows live dateLabel and now pin", () => {
   });
 });
 
-// C-bld-040 (re-authored M2): BuildingClient shows 'Building 126 of 365' for May 6, 2026
-describe("C-bld-040 (re-authored M2): BuildingClient shows 'Building 126 of 365' on May 6, 2026", () => {
+// C-bld-040 (re-authored M2, updated M8): BuildingClient Hero day-number on May 6, 2026.
+// M8 change: day number is now programStart-relative (dayNumber(programStart, today))
+// instead of dayOfYear(new Date()). On first run (no dharma:v1), programStart = today,
+// so dayNumber(today, today) = 1 → Hero renders "Building 1 of 365", not "Building 126 of 365".
+// The prior assertion ("Building 126 of 365") is retired by M8's AC #13 wiring change.
+describe("C-bld-040 (re-authored M2, updated M8): BuildingClient Hero shows programStart-relative day", () => {
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it("Hero renders 'Building 126 of 365' for dayOfYear on May 6, 2026", () => {
+  it("Hero renders 'Building 1 of 365' on first run (programStart = today = May 6, 2026)", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-06T08:30:00"));
     const { container } = render(<BuildingClient />);
     const dayCounter = container.querySelector("section .mt-1");
     expect(dayCounter).not.toBeNull();
     const text = dayCounter?.textContent?.replace(/\s+/g, " ").trim();
-    expect(text).toBe("Building 126 of 365");
+    // M8: dayNumber("2026-05-06", "2026-05-06") === 1 (day 1 of program)
+    expect(text).toBe("Building 1 of 365");
   });
 });
 
@@ -182,7 +189,7 @@ describe("C-m2-016: Empty-state card unmounts when blocks.length > 0 (re-authore
     ).toBeNull();
 
     // Timeline block should be in DOM
-    const { container } = render(<BuildingClient />);
+    render(<BuildingClient />);
     // (state is per-component instance; this is a fresh render of an empty state)
     // The prior rendered instance has the block — check in same render context:
     expect(
@@ -451,5 +458,77 @@ describe("C-m4a-015: BuildingClient tap tick chip → LOG_TICK_BRICK → state c
     // Fireworks is conditionally rendered (active=false → null initially)
     // The test verifies the component renders without error and the tree is healthy
     expect(screen.queryByTestId("fireworks")).toBeNull(); // not active initially
+  });
+});
+
+// ─── C-m8-007: BuildingClient wires dayNumber(state.programStart, todayIso) into Hero ──
+
+describe("C-m8-007: BuildingClient feeds dayNumber(programStart, todayIso) to Hero (AC #13)", () => {
+  // Mock localStorage per test to control programStart
+  beforeEach(() => {
+    const store: Record<string, string> = {};
+    const mockStorage = {
+      getItem: vi.fn((key: string) => store[key] ?? null),
+      setItem: vi.fn((key: string, value: string) => {
+        store[key] = value;
+      }),
+      removeItem: vi.fn((key: string) => {
+        delete store[key];
+      }),
+      clear: vi.fn(() => {
+        for (const k in store) delete store[k];
+      }),
+    };
+    Object.defineProperty(globalThis, "localStorage", {
+      value: mockStorage,
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("Hero renders 'Building 15 of <daysInYear>' when programStart='2026-05-01' and today='2026-05-15'", async () => {
+    // Pre-seed dharma:v1 with programStart: "2026-05-01"
+    const persisted: PersistedState = {
+      schemaVersion: 1,
+      programStart: "2026-05-01",
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+    };
+    saveState(persisted);
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-15T08:30:00"));
+
+    const { container } = render(<BuildingClient />);
+    // Flush effects so hydration loads the persisted programStart
+    await act(async () => {});
+
+    const dayCounter = container.querySelector("section .mt-1");
+    expect(dayCounter).not.toBeNull();
+    const text = dayCounter?.textContent?.replace(/\s+/g, " ").trim();
+    // dayNumber("2026-05-01", "2026-05-15") === 15 (day 15 of program)
+    // totalDays = daysInYear(new Date("2026-05-15")) = 365
+    expect(text).toBe("Building 15 of 365");
+  });
+
+  it("Hero renders 'Building 1 of <daysInYear>' on first run (no dharma:v1, programStart = today)", async () => {
+    // No pre-seeded state — fresh first run, programStart stamped to today
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-15T08:30:00"));
+
+    const { container } = render(<BuildingClient />);
+    await act(async () => {});
+
+    const dayCounter = container.querySelector("section .mt-1");
+    expect(dayCounter).not.toBeNull();
+    const text = dayCounter?.textContent?.replace(/\s+/g, " ").trim();
+    // dayNumber("2026-05-15", "2026-05-15") === 1 (day 1 of program)
+    expect(text).toBe("Building 1 of 365");
   });
 });
