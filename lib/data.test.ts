@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { defaultState, reducer, withDurationDefaults } from "./data";
 import type { AppState, Block, Brick } from "./types";
+// M4f: findUnitsBrickById exported from lib/data.ts
+import { findUnitsBrickById } from "./data";
 
 /** Narrow a Brick to the tick variant. Throws if kind !== "tick". */
 function asTick(b: Brick): Extract<Brick, { kind: "tick" }> {
@@ -1693,5 +1695,579 @@ describe("U-m4e-021: assertNever exhaustiveness preserved after M4e; defaultStat
       looseBricks: [],
       runningTimerBrickId: null,
     });
+  });
+});
+
+// ─── U-m4f-001: SET_UNITS_DONE on a loose units brick ────────────────────────
+
+describe("U-m4f-001: SET_UNITS_DONE updates done on loose units brick", () => {
+  it("sets done=20 on a loose units brick; preserves blocks/categories by reference", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [
+        {
+          id: "u1",
+          name: "Meditate",
+          kind: "units",
+          target: 30,
+          unit: "minutes",
+          done: 0,
+          hasDuration: false,
+          categoryId: null,
+          parentBlockId: null,
+        } as unknown as Brick,
+      ],
+      runningTimerBrickId: null,
+    };
+    const next = reducer(state, {
+      type: "SET_UNITS_DONE",
+      brickId: "u1",
+      done: 20,
+    } as unknown as Parameters<typeof reducer>[1]);
+    const brick = next.looseBricks[0] as unknown as {
+      done: number;
+      target: number;
+      unit: string;
+    };
+    expect(brick.done).toBe(20);
+    expect(brick.target).toBe(30);
+    expect(brick.unit).toBe("minutes");
+    expect(next.blocks).toBe(state.blocks);
+    expect(next.categories).toBe(state.categories);
+    expect(next.looseBricks).not.toBe(state.looseBricks);
+  });
+});
+
+// ─── U-m4f-002: SET_UNITS_DONE on a nested units brick ───────────────────────
+
+describe("U-m4f-002: SET_UNITS_DONE updates done on a nested units brick inside a block", () => {
+  it("updates done=55 in nested brick; block ref changes; looseBricks+categories unchanged", () => {
+    const blockBrick = {
+      id: "n1",
+      name: "Squats",
+      kind: "units",
+      target: 100,
+      unit: "reps",
+      done: 10,
+      hasDuration: false,
+      categoryId: null,
+      parentBlockId: "b1",
+    } as unknown as Brick;
+    const b1: Block = {
+      id: "b1",
+      name: "Morning",
+      start: "09:00",
+      recurrence: { kind: "just-today", date: "2026-05-15" },
+      categoryId: null,
+      bricks: [blockBrick],
+    };
+    const state: AppState = {
+      blocks: [b1],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
+    const next = reducer(state, {
+      type: "SET_UNITS_DONE",
+      brickId: "n1",
+      done: 55,
+    } as unknown as Parameters<typeof reducer>[1]);
+    const updatedBrick = next.blocks[0].bricks[0] as unknown as {
+      done: number;
+    };
+    expect(updatedBrick.done).toBe(55);
+    expect(next.blocks[0]).not.toBe(b1);
+    expect(next.looseBricks).toBe(state.looseBricks);
+    expect(next.categories).toBe(state.categories);
+  });
+});
+
+// ─── U-m4f-003: SET_UNITS_DONE clamp (negative, decimal, negative decimal) ───
+
+describe("U-m4f-003: SET_UNITS_DONE applies Math.max(0, Math.floor(done)) clamp", () => {
+  function makeLooseUnitsState(done: number) {
+    return {
+      blocks: [],
+      categories: [],
+      looseBricks: [
+        {
+          id: "u1",
+          name: "Meditate",
+          kind: "units",
+          target: 30,
+          unit: "minutes",
+          done,
+          hasDuration: false,
+          categoryId: null,
+          parentBlockId: null,
+        } as unknown as Brick,
+      ],
+      runningTimerBrickId: null,
+    } satisfies AppState;
+  }
+
+  it("negative value → clamped to 0", () => {
+    const state = makeLooseUnitsState(5);
+    const next = reducer(state, {
+      type: "SET_UNITS_DONE",
+      brickId: "u1",
+      done: -7,
+    } as unknown as Parameters<typeof reducer>[1]);
+    expect((next.looseBricks[0] as unknown as { done: number }).done).toBe(0);
+  });
+
+  it("decimal value → floored", () => {
+    const state = makeLooseUnitsState(5);
+    const next = reducer(state, {
+      type: "SET_UNITS_DONE",
+      brickId: "u1",
+      done: 20.9,
+    } as unknown as Parameters<typeof reducer>[1]);
+    expect((next.looseBricks[0] as unknown as { done: number }).done).toBe(20);
+  });
+
+  it("negative decimal → clamped to 0", () => {
+    const state = makeLooseUnitsState(5);
+    const next = reducer(state, {
+      type: "SET_UNITS_DONE",
+      brickId: "u1",
+      done: -3.4,
+    } as unknown as Parameters<typeof reducer>[1]);
+    expect((next.looseBricks[0] as unknown as { done: number }).done).toBe(0);
+  });
+});
+
+// ─── U-m4f-004: SET_UNITS_DONE identity short-circuit when done unchanged ────
+
+describe("U-m4f-004: SET_UNITS_DONE returns same state reference when done is unchanged", () => {
+  it("returns Object.is(out, state) === true when done already equals clamped value", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [
+        {
+          id: "u1",
+          name: "Meditate",
+          kind: "units",
+          target: 30,
+          unit: "minutes",
+          done: 5,
+          hasDuration: false,
+          categoryId: null,
+          parentBlockId: null,
+        } as unknown as Brick,
+      ],
+      runningTimerBrickId: null,
+    };
+    const next = reducer(state, {
+      type: "SET_UNITS_DONE",
+      brickId: "u1",
+      done: 5,
+    } as unknown as Parameters<typeof reducer>[1]);
+    expect(Object.is(next, state)).toBe(true);
+  });
+});
+
+// ─── U-m4f-005: SET_UNITS_DONE no-op when brickId not found ─────────────────
+
+describe("U-m4f-005: SET_UNITS_DONE is a no-op when brickId does not exist", () => {
+  it("returns same state reference when brickId not found", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [
+        {
+          id: "u1",
+          name: "Meditate",
+          kind: "units",
+          target: 30,
+          unit: "minutes",
+          done: 5,
+          hasDuration: false,
+          categoryId: null,
+          parentBlockId: null,
+        } as unknown as Brick,
+      ],
+      runningTimerBrickId: null,
+    };
+    const next = reducer(state, {
+      type: "SET_UNITS_DONE",
+      brickId: "does-not-exist",
+      done: 9,
+    } as unknown as Parameters<typeof reducer>[1]);
+    expect(Object.is(next, state)).toBe(true);
+  });
+});
+
+// ─── U-m4f-006: SET_UNITS_DONE no-op on a tick brick ────────────────────────
+
+describe("U-m4f-006: SET_UNITS_DONE is a no-op when targeting a tick brick", () => {
+  it("returns same state reference; tick brick done stays boolean false", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [
+        {
+          id: "t1",
+          name: "Run",
+          kind: "tick",
+          done: false,
+          hasDuration: false,
+          categoryId: null,
+          parentBlockId: null,
+        },
+      ],
+      runningTimerBrickId: null,
+    };
+    const next = reducer(state, {
+      type: "SET_UNITS_DONE",
+      brickId: "t1",
+      done: 12,
+    } as unknown as Parameters<typeof reducer>[1]);
+    expect(Object.is(next, state)).toBe(true);
+    expect(next.looseBricks[0].kind).toBe("tick");
+    if (next.looseBricks[0].kind === "tick") {
+      expect(next.looseBricks[0].done).toBe(false);
+    }
+  });
+});
+
+// ─── U-m4f-007: ADD_BRICK defensive kind reject ───────────────────────────────
+
+describe("U-m4f-007: ADD_BRICK defensively rejects stale kind literals", () => {
+  it("rejects kind:'goal' (stale pre-M4f); returns same state reference", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
+    const goalBrick = {
+      id: "g1",
+      name: "pushups",
+      kind: "goal",
+      target: 10,
+      count: 0,
+      unit: "reps",
+      hasDuration: false,
+      categoryId: null,
+      parentBlockId: null,
+    } as unknown as Brick;
+    const next = reducer(state, { type: "ADD_BRICK", brick: goalBrick });
+    expect(Object.is(next, state)).toBe(true);
+  });
+
+  it("rejects kind:'time' (stale pre-M4f); returns same state reference", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
+    const timeBrick = {
+      id: "tm1",
+      name: "Meditation",
+      kind: "time",
+      durationMin: 30,
+      minutesDone: 0,
+      hasDuration: false,
+      categoryId: null,
+      parentBlockId: null,
+    } as unknown as Brick;
+    const next = reducer(state, { type: "ADD_BRICK", brick: timeBrick });
+    expect(Object.is(next, state)).toBe(true);
+  });
+});
+
+// ─── U-m4f-008: ADD_BRICK accepts units and tick kinds ───────────────────────
+
+describe("U-m4f-008: ADD_BRICK accepts both units and tick variants; M4e invariant preserved", () => {
+  it("accepts kind:'units' brick; verifies fields", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
+    const unitsBrick = {
+      id: "u1",
+      name: "Meditate",
+      kind: "units",
+      target: 30,
+      unit: "minutes",
+      done: 0,
+      hasDuration: false,
+      categoryId: null,
+      parentBlockId: null,
+    } as unknown as Brick;
+    const next = reducer(state, { type: "ADD_BRICK", brick: unitsBrick });
+    expect(next.looseBricks).toHaveLength(1);
+    const saved = next.looseBricks[0] as unknown as {
+      kind: string;
+      target: number;
+      unit: string;
+      done: number;
+    };
+    expect(saved.kind).toBe("units");
+    expect(saved.target).toBe(30);
+    expect(saved.unit).toBe("minutes");
+    expect(saved.done).toBe(0);
+  });
+
+  it("accepts kind:'tick' brick", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
+    const next = reducer(state, {
+      type: "ADD_BRICK",
+      brick: {
+        id: "t1",
+        name: "Run",
+        kind: "tick",
+        done: false,
+        hasDuration: false,
+        categoryId: null,
+        parentBlockId: null,
+      },
+    });
+    expect(next.looseBricks).toHaveLength(1);
+    expect(next.looseBricks[0].kind).toBe("tick");
+  });
+
+  it("M4e invariant: units brick with hasDuration:true but missing end is rejected", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      runningTimerBrickId: null,
+    };
+    const malformed = {
+      id: "u1",
+      name: "Meditate",
+      kind: "units",
+      target: 30,
+      unit: "minutes",
+      done: 0,
+      hasDuration: true,
+      start: "06:00",
+      // end is missing
+      recurrence: { kind: "just-today", date: "2026-05-15" },
+      categoryId: null,
+      parentBlockId: null,
+    } as unknown as Brick;
+    const next = reducer(state, { type: "ADD_BRICK", brick: malformed });
+    expect(Object.is(next, state)).toBe(true);
+  });
+});
+
+// ─── U-m4f-009: LOG_TICK_BRICK unchanged from M4a ────────────────────────────
+
+describe("U-m4f-009: LOG_TICK_BRICK behavior unchanged by schema collapse", () => {
+  it("flips tick done false→true; second call flips back to false", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [
+        {
+          id: "t1",
+          name: "Run",
+          kind: "tick",
+          done: false,
+          hasDuration: false,
+          categoryId: null,
+          parentBlockId: null,
+        },
+      ],
+      runningTimerBrickId: null,
+    };
+    const next1 = reducer(state, { type: "LOG_TICK_BRICK", brickId: "t1" });
+    expect(
+      (next1.looseBricks[0] as Extract<Brick, { kind: "tick" }>).done,
+    ).toBe(true);
+    const next2 = reducer(next1, { type: "LOG_TICK_BRICK", brickId: "t1" });
+    expect(
+      (next2.looseBricks[0] as Extract<Brick, { kind: "tick" }>).done,
+    ).toBe(false);
+  });
+});
+
+// ─── U-m4f-010: assertNever + defaultState after M4f collapse ────────────────
+
+describe("U-m4f-010: assertNever exhaustiveness + defaultState shape post-M4f", () => {
+  it("throws for unknown action type NOPE (assertNever preserved)", () => {
+    const state: AppState = { blocks: [], categories: [], looseBricks: [] };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(() => reducer(state, { type: "NOPE" } as any)).toThrow();
+  });
+
+  it("defaultState() has no runningTimerBrickId key", () => {
+    const s = defaultState();
+    expect("runningTimerBrickId" in s).toBe(false);
+    expect(s).toEqual({ blocks: [], categories: [], looseBricks: [] });
+  });
+});
+
+// ─── U-m4f-011: findUnitsBrickById helper ────────────────────────────────────
+
+describe("U-m4f-011: findUnitsBrickById returns correct brick or null", () => {
+  it("finds a loose units brick by id", () => {
+    const unitsBrick = {
+      id: "u1",
+      name: "Meditate",
+      kind: "units",
+      target: 30,
+      unit: "minutes",
+      done: 5,
+      hasDuration: false,
+      categoryId: null,
+      parentBlockId: null,
+    } as unknown as Brick;
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [unitsBrick],
+    };
+    const found = findUnitsBrickById(state, "u1");
+    expect(found).not.toBeNull();
+    expect(found?.id).toBe("u1");
+  });
+
+  it("finds a nested units brick inside a block", () => {
+    const nestedBrick = {
+      id: "n1",
+      name: "Squats",
+      kind: "units",
+      target: 100,
+      unit: "reps",
+      done: 10,
+      hasDuration: false,
+      categoryId: null,
+      parentBlockId: "b1",
+    } as unknown as Brick;
+    const state: AppState = {
+      blocks: [
+        {
+          id: "b1",
+          name: "Morning",
+          start: "09:00",
+          recurrence: { kind: "just-today", date: "2026-05-15" },
+          categoryId: null,
+          bricks: [nestedBrick],
+        },
+      ],
+      categories: [],
+      looseBricks: [],
+    };
+    const found = findUnitsBrickById(state, "n1");
+    expect(found).not.toBeNull();
+    expect(found?.id).toBe("n1");
+  });
+
+  it("returns null for a tick brick id (wrong kind)", () => {
+    const state: AppState = {
+      blocks: [],
+      categories: [],
+      looseBricks: [
+        {
+          id: "t1",
+          name: "Run",
+          kind: "tick",
+          done: false,
+          hasDuration: false,
+          categoryId: null,
+          parentBlockId: null,
+        },
+      ],
+    };
+    expect(findUnitsBrickById(state, "t1")).toBeNull();
+  });
+
+  it("returns null when id does not exist", () => {
+    const state: AppState = { blocks: [], categories: [], looseBricks: [] };
+    expect(findUnitsBrickById(state, "missing")).toBeNull();
+  });
+});
+
+// ─── U-m4f-012: Brick union shape contract (runtime anchor) ──────────────────
+
+describe("U-m4f-012: Brick union has two variants with correct field shapes", () => {
+  it("units variant has kind, target, unit, done; no count field", () => {
+    const brick = {
+      id: "u1",
+      name: "Meditate",
+      kind: "units",
+      target: 30,
+      unit: "minutes",
+      done: 0,
+      hasDuration: false,
+      categoryId: null,
+      parentBlockId: null,
+    } as unknown as Brick;
+    expect(brick.kind).toBe("units");
+    const u = brick as unknown as {
+      target: number;
+      unit: string;
+      done: number;
+    };
+    expect(typeof u.target).toBe("number");
+    expect(typeof u.unit).toBe("string");
+    expect(typeof u.done).toBe("number");
+    expect("count" in brick).toBe(false);
+  });
+
+  it("tick variant exposes done as boolean", () => {
+    const brick: Brick = {
+      id: "t1",
+      name: "Run",
+      kind: "tick",
+      done: false,
+      hasDuration: false,
+      categoryId: null,
+      parentBlockId: null,
+    };
+    expect(brick.kind).toBe("tick");
+    if (brick.kind === "tick") {
+      expect(typeof brick.done).toBe("boolean");
+    }
+  });
+});
+
+// ─── U-m4f-013: M4e BrickBase fields on units + AppState shape ───────────────
+
+describe("U-m4f-013: M4e BrickBase fields preserved on units variant; AppState has no runningTimerBrickId", () => {
+  it("units brick retains all four M4e BrickBase fields", () => {
+    const brick = {
+      id: "u1",
+      name: "Meditate",
+      kind: "units",
+      target: 30,
+      unit: "minutes",
+      done: 0,
+      hasDuration: true,
+      start: "06:00",
+      end: "06:40",
+      recurrence: { kind: "just-today", date: "2026-05-15" },
+      categoryId: null,
+      parentBlockId: null,
+    } as unknown as Brick;
+    const b = brick as unknown as {
+      hasDuration: boolean;
+      start: string;
+      end: string;
+      recurrence: unknown;
+    };
+    expect(b.hasDuration).toBe(true);
+    expect(b.start).toBe("06:00");
+    expect(b.end).toBe("06:40");
+    expect(b.recurrence).toBeDefined();
+  });
+
+  it("defaultState() has no runningTimerBrickId key (runtime anchor for tsc-gate)", () => {
+    const s = defaultState();
+    expect("runningTimerBrickId" in s).toBe(false);
   });
 });
