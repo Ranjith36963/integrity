@@ -5666,7 +5666,7 @@ All 8 M4g ACs map to at least one gate/grep or the one test-ID change. M4g intro
 
 ## Milestone 8 — Persistence — Tests
 
-This entry covers M8 — `lib/persist.ts` (`loadState`/`saveState`/`PersistedState`/`STORAGE_KEY`/`migrate`/`defaultPersisted`), the `usePersistedState()` hook in `lib/usePersistedState.ts`, two-pass hydration wired into `BuildingClient`, and the `programStart`-relative `dayNumber()` helper added to `lib/dharma.ts`. It is derived from the `plan.md` M8 entry (`## Milestone 8 — Persistence — Plan`, committed `b25d174`). Feature slug: `m8`. ID prefixes: `U-m8-`, `C-m8-`, `E-m8-`, `A-m8-`.
+This entry covers M8 — `lib/persist.ts` (`loadState`/`saveState`/`PersistedState`/`STORAGE_KEY`/`migrate`/`defaultPersisted`), the `usePersistedState()` hook in `lib/usePersistedState.ts`, two-pass hydration wired into `BuildingClient`, and the AC #13 day-number swap (`BuildingClient` wires the **pre-existing** `lib/dharma.ts:dayNumber()` helper in place of `dayOfYear()` — the helper is not new and is not re-authored; see § Retired test IDs). It is derived from the `plan.md` M8 entry (`## Milestone 8 — Persistence — Plan`, committed `b25d174`, day-number section amended per VERIFIER FAIL retry 1). Feature slug: `m8`. ID prefixes: `U-m8-`, `C-m8-`, `E-m8-`, `A-m8-`.
 
 ### Testing approach — what is bespoke vs gate-verified
 
@@ -5675,7 +5675,7 @@ M8 has a **large genuine unit + component surface** (the persist module is pure 
 - **AC #14 (no regression — every M1–M4g Vitest/component test passes unmodified)** → gate-verified by the **full Vitest suite staying green** under `npm run eval`. M8 changes no UI surface, so a bespoke "nothing changed" test would be vacuous; the binding proof is that no prior test file is edited and all prior IDs stay green. (`U-m8-009` plus `C-m8-001`/`C-m8-007` give runtime anchors for the schema-lock and zero-UI-delta portions, but the regression guarantee itself is the suite gate.)
 - **AC #15 (quality gates — `tsc --noEmit` clean, ESLint 0 errors / ≤13 warnings, full Vitest green; E2E clears `localStorage` per case)** → gate-verified by `npm run eval` (lint + typecheck + vitest + e2e + a11y). The `localStorage`-cleared-per-case requirement is realized as a `test.beforeEach` in the E2E specs (see § E2E) — not a bespoke assertion.
 
-All other 13 ACs map to at least one concrete bespoke test ID below.
+All other 13 ACs map to at least one concrete test ID below. One nuance: **AC #13 (`programStart`-relative day number)** is a pure wiring task — `BuildingClient` swaps `dayOfYear(new Date())` for the **pre-existing** `lib/dharma.ts:dayNumber()` helper. The helper's math is already covered green by the existing `U-bld-024` (`lib/dharma.test.ts`); M8 therefore authors **no** bespoke unit test for the helper and verifies AC #13 only at the wiring layer (`C-m8-007`). The pre-VERIFIER draft's `U-m8-012`/`U-m8-013` were removed for re-testing the helper against a wrong, clamped signature that contradicted the locked `U-bld-024` contract — see § Unit and § Retired test IDs.
 
 ### Mutation-resistance notes (read before reviewing the IDs)
 
@@ -5690,11 +5690,13 @@ Per the dispatch's explicit requirement, these tests are written to fail against
 
 | Layer                                 | IDs             | Count  |
 | ------------------------------------- | --------------- | ------ |
-| Unit (Vitest)                         | `U-m8-001..013` | 13     |
+| Unit (Vitest)                         | `U-m8-001..011` | 11     |
 | Component / integration (Vitest+TL)   | `C-m8-001..007` | 7      |
 | E2E (Playwright, deferred-to-preview) | `E-m8-001..003` | 3      |
 | Accessibility (axe via Playwright)    | `A-m8-001`      | 1      |
-| **Total**                             |                 | **24** |
+| **Total**                             |                 | **22** |
+
+_`U-m8-012`/`U-m8-013` from the pre-VERIFIER draft were removed (see § Unit and § Retired test IDs) — the `U-m8-` series ends at `011` with no renumbering of surviving IDs and no gap re-used._
 
 ### Unit (Vitest)
 
@@ -5797,23 +5799,7 @@ Target file: `lib/persist.test.ts`
 **THEN** each call returns a fresh object with `schemaVersion === 1`, `blocks`/`categories`/`looseBricks` all `[]`, and `programStart` equal to today's ISO date; the two returned `blocks` arrays are **distinct references** (no shared mutable default) — `defaultPersisted().blocks !== defaultPersisted().blocks`.
 Proves: plan.md § `lib/persist.ts` API (`defaultPersisted()` shape; fresh-object factory, no shared-array footgun) — covers SPEC AC #3.
 
-#### U-m8-012
-
-Target file: `lib/dharma.test.ts`
-**GIVEN** the new `dayNumber(programStart: string, today: string)` helper in `lib/dharma.ts`
-**WHEN** called with `dayNumber("2026-05-15", "2026-05-15")` (same day)
-**THEN** it returns `1` — the `programStart` day is day 1 (1-based, inclusive).
-**AND** `dayNumber("2026-05-15", "2026-05-16")` returns `2`; `dayNumber("2026-05-01", "2026-05-15")` returns `15`.
-**AND** the count is DST-safe — crossing a month boundary (`dayNumber("2026-04-28", "2026-05-03")`) returns `6`.
-Proves: plan.md § Day-number design (`dayNumber` — 1-based inclusive day count, `programStart` = day 1) — covers SPEC AC #13.
-
-#### U-m8-013
-
-Target file: `lib/dharma.test.ts`
-**GIVEN** the `dayNumber(programStart, today)` helper
-**WHEN** called with a `programStart` strictly **after** `today` — `dayNumber("2026-06-01", "2026-05-15")` (clock skew / hand-edited key)
-**THEN** it returns `1` (clamped to `>= 1` — never `0` or negative).
-Proves: plan.md § Day-number design + § Edge cases (`programStart` in the future → `dayNumber` clamps to `>= 1`) — covers SPEC AC #13.
+_(IDs `U-m8-012` and `U-m8-013` were removed during VERIFIER FAIL retry 1 — they re-tested the math of the **pre-existing** `lib/dharma.ts:dayNumber()` helper, which is already covered green by `U-bld-024`. AC #13 is a pure wiring task; its coverage lives at the component layer in `C-m8-007`. No `U-m8-` ID is reused for the gap — the series ends at `U-m8-011`. See § Retired test IDs.)_
 
 ### Component (Vitest + Testing Library)
 
@@ -5922,7 +5908,14 @@ Per the established M4a–M4g pattern: this sandbox cannot launch chromium (bina
 
 ### Retired test IDs
 
-**None.** M8 deletes no test file and no test. `dayOfYear()` and its tests (`lib/dayOfYear.test.ts`) are explicitly **kept** (plan.md § File structure — `dayOfYear` stays with its tests; only `BuildingClient`'s import line drops it, and `daysInYear` is retained). Every existing `U-/C-/E-/A-` ID across all milestones remains live and green. M8 is purely additive: 24 new `m8` IDs, zero retirements. The "Retired test IDs" section is intentionally empty for this milestone.
+**None — no existing test is retired or amended.** M8 deletes no test file and no test.
+
+- **`U-bld-024` survives unchanged.** `U-bld-024` (`lib/dharma.test.ts:266-272`) covers the `lib/dharma.ts:dayNumber()` helper's math (`number | undefined` return, `null`/`""`/`undefined` → `undefined`, no clamp). M8 wires this **pre-existing** helper into `BuildingClient` without changing its signature or behavior — `lib/dharma.ts` is byte-identical post-M8 (plan.md § Day-number design, § Modified files `lib/dharma.ts` row, § Risks R5). Therefore `U-bld-024` is **not** retired, **not** amended, and stays green untouched. AC #13 verification lives at the wiring layer (`C-m8-007`), not by re-testing the helper.
+- **`dayOfYear()` and its tests survive unchanged.** `dayOfYear()` and `lib/dayOfYear.test.ts` are explicitly **kept** (plan.md § File structure — `dayOfYear` stays with its tests; only `BuildingClient`'s import line drops `dayOfYear`, and `daysInYear` is retained).
+
+Every existing `U-/C-/E-/A-` ID across all milestones — including `U-bld-024` — remains live and green. M8 is purely additive: 22 new `m8` IDs, zero retirements.
+
+**Draft-only note (not a retirement):** the pre-VERIFIER draft of this entry contained `U-m8-012`/`U-m8-013`, which re-tested the `dayNumber()` helper math against a _wrong_ signature (`(programStart: string, today: string): number`, clamped `>= 1`) that contradicted the locked `U-bld-024` contract. Both were removed during VERIFIER FAIL retry 1 — they were never shipped IDs, so this is a draft correction, not a retirement of a live test. The `U-m8-` series now ends at `011`.
 
 ### AC → test-ID coverage map (all 15 ACs accounted for)
 
@@ -5940,16 +5933,16 @@ Per the established M4a–M4g pattern: this sandbox cannot launch chromium (bina
 | #10 | Partial persisted object → missing collections filled with `[]`                                      | `U-m8-007`                                                                                             |
 | #11 | `localStorage` getItem/setItem throwing → default returned / error swallowed; no crash               | `U-m8-008`, `E-m8-003`                                                                                 |
 | #12 | First run stamps `programStart` = today; subsequent loads preserve it unchanged                      | `U-m8-004`, `U-m8-010`                                                                                 |
-| #13 | Top-bar day number computed `programStart`-relative (`programStart` = day 1), replacing `dayOfYear`  | `U-m8-012`, `U-m8-013`, `C-m8-007`                                                                     |
+| #13 | Top-bar day number computed `programStart`-relative (`programStart` = day 1), replacing `dayOfYear`  | `C-m8-007` (wiring) + `U-bld-024` (pre-existing, proves the `dayNumber()` helper math AC #13 wires to) |
 | #14 | No UI/component/interaction change; every M1–M4g Vitest/component test passes unmodified             | **gate (`npm run eval`)** + anchors `C-m8-001`, `C-m8-007`, `A-m8-001`                                 |
 | #15 | Quality gates: `tsc --noEmit` clean; ESLint 0 err / ≤13 warn; full Vitest green; E2E clears storage  | **gate (`npm run eval`)** + E2E `beforeEach` realizes the clear-per-case requirement (`E-m8-001..003`) |
 
-**Gate-verified ACs:** #14 and #15 — consistent with how M4f/M4g mapped purely-structural / quality-gate ACs to `npm run eval`. All other 13 ACs map to at least one concrete bespoke test ID. No AC is unmapped; every `m8` test ID maps back to at least one AC.
+**Gate-verified ACs:** #14 and #15 — consistent with how M4f/M4g mapped purely-structural / quality-gate ACs to `npm run eval`. All other 13 ACs map to at least one concrete test ID. AC #13's day-number-helper math is proven by the pre-existing `U-bld-024`; its M8-specific wiring is proven by `C-m8-007`. No AC is unmapped; every `m8` test ID maps back to at least one AC.
 
 ### Spec gaps surfaced for VERIFIER
 
-**None unresolved.** All five SG-m8 gaps (SG-m8-01 save cadence, SG-m8-02 hook vs inline effect, SG-m8-03 day-number swap scope, SG-m8-04 `programStart`/`schemaVersion` placement, SG-m8-05 corrupt-key disposition) are **resolved in plan.md** and reflected in the IDs above (synchronous save → `C-m8-005`; `usePersistedState()` hook → all `C-m8-*`; AC #13 full swap in scope → `U-m8-012/013` + `C-m8-007`; `programStart` on `AppState` / `schemaVersion` boundary-only → `U-m8-003` + `C-m8-004`; passive overwrite → `U-m8-005` + `E-m8-003`). No ADR is reversed: ADR-044 (persisted schema) and ADR-018 (transport — single `dharma:v1` key, two-pass load) are both honored. One non-blocking item for VERIFIER to confirm with a one-line answer (not a re-plan):
+**None unresolved.** All five SG-m8 gaps (SG-m8-01 save cadence, SG-m8-02 hook vs inline effect, SG-m8-03 day-number swap scope, SG-m8-04 `programStart`/`schemaVersion` placement, SG-m8-05 corrupt-key disposition) are **resolved in plan.md** and reflected in the IDs above (synchronous save → `C-m8-005`; `usePersistedState()` hook → all `C-m8-*`; AC #13 wiring-only swap → `C-m8-007`, with the pre-existing `dayNumber()` helper math already covered by `U-bld-024`; `programStart` on `AppState` / `schemaVersion` boundary-only → `U-m8-003` + `C-m8-004`; passive overwrite → `U-m8-005` + `E-m8-003`). No ADR is reversed: ADR-044 (persisted schema) and ADR-018 (transport — single `dharma:v1` key, two-pass load) are both honored. One non-blocking item for VERIFIER to confirm with a one-line answer (not a re-plan):
 
 1. **Two gate-verified ACs.** AC #14 (no regression) and AC #15 (quality gates) are mapped to the `npm run eval` gate rather than bespoke `it()` blocks, because M8 changes no UI surface — a "nothing changed" test would be vacuous. VERIFIER's call: confirm this is acceptable spec-coverage, consistent with the M4f (#39/#40/#41 → `gate (npm run eval)`) and M4g precedents. Runtime anchors (`C-m8-001` for the `Action`-lock, `C-m8-007` for the `<Hero>` prop-signature, `A-m8-001` for a11y) are provided so the gate is not the _only_ evidence for the schema-lock and zero-UI-delta portions. No escalation expected.
 
-All 15 M8 ACs map to at least one bespoke test ID or the `npm run eval` gate. M8 adds 24 `m8` test IDs (13 U + 7 C + 3 E + 1 A) and retires none.
+All 15 M8 ACs map to at least one test ID (bespoke `m8` ID, the pre-existing `U-bld-024`, or the `npm run eval` gate). M8 adds 22 `m8` test IDs (11 U + 7 C + 3 E + 1 A) and retires none.
