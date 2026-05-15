@@ -42,7 +42,7 @@ export function defaultState(): AppState {
 }
 
 /**
- * findUnitsBrickById — M4f helper (mirrors deleted findTimeBrickById from lib/timer.ts).
+ * findUnitsBrickById — M4f helper. Searches state for a units-kind brick by id.
  * Searches looseBricks first, then block.bricks. Returns the units-kind brick with
  * the given id, or null if not found or if the brick is a tick kind.
  */

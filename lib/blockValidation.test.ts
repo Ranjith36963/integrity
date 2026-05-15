@@ -194,9 +194,9 @@ describe("U-m4f-017: intervalsOverlap back-to-back blocks do NOT overlap (re-poi
   });
 });
 
-// ─── U-m4f-016 / U-m3-013: isValidBrickUnitsTarget (renamed from isValidBrickGoal) ─────
+// ─── U-m3-013: isValidBrickUnitsTarget (renamed from isValidBrickGoal at M4f) ─────
 
-describe("U-m4f-016: isValidBrickUnitsTarget validates target is integer ≥ 1", () => {
+describe("U-m3-013: isValidBrickUnitsTarget validates target is integer ≥ 1", () => {
   it("returns true for 1, 100, 9999", () => {
     expect(isValidBrickUnitsTarget(1)).toBe(true);
     expect(isValidBrickUnitsTarget(100)).toBe(true);
