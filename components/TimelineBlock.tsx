@@ -1,123 +1,278 @@
 "use client";
-import { X } from "lucide-react";
-import { Block, CATEGORY_COLOR, CATEGORY_LABEL } from "@/lib/types";
-import { blockPct } from "@/lib/dharma";
-import { Brick as BrickComponent } from "./Brick";
-import { Scaffold } from "./Scaffold";
-import { EmptyBricks } from "./EmptyBricks";
-import { useEditMode } from "./EditModeProvider";
-import type { Brick } from "@/lib/types";
+// TimelineBlock — M4a extended from M3:
+// - M3 features preserved: absolute position, height, category dot, time range,
+//   fade-in, scaffold left-bar, tap-to-expand, BrickChip list, Add brick button.
+// - M4a NEW: onTickToggle prop threaded to each BrickChip.
+// - M4a NEW: useCrossUpEffect wired for block-100% bloom + chime + haptics.success.
+// - M4a NEW: bloom visual (motion.div) keyed on bloomKey; suppressed under reduced-motion.
+
+import { useState, useCallback } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
+import { Plus } from "lucide-react";
+import type { Block, Category } from "@/lib/types";
+import { HOUR_HEIGHT_PX, timeToOffsetPx } from "@/lib/timeOffset";
+import { fmtRange, blockPct } from "@/lib/dharma";
+import { useCrossUpEffect } from "@/lib/celebrations";
+import { haptics } from "@/lib/haptics";
+import { playChime } from "@/lib/audio";
+import { springConfigs } from "@/lib/motion";
+import { BrickChip } from "./BrickChip";
 
 interface Props {
   block: Block;
-  status: "past" | "current" | "future";
-  onLogBrick: (brickIndex: number, updated: Brick) => void;
+  categories: Category[];
+  onAddBrick?: (parentBlockId: string) => void;
+  onTickToggle?: (brickId: string) => void;
+  /** M4f: called with brickId when a units chip is tapped (opens UnitsEntrySheet). */
+  onUnitsOpenSheet?: (brickId: string) => void;
 }
 
-export function TimelineBlock({ block, status, onLogBrick }: Props) {
-  const { editMode } = useEditMode();
-  const pct = Math.round(blockPct(block));
-  const color = CATEGORY_COLOR[block.category];
-  const isCurrent = status === "current";
-  const isPast = status === "past";
+export function TimelineBlock({
+  block,
+  categories,
+  onAddBrick,
+  onTickToggle,
+  onUnitsOpenSheet,
+}: Props) {
+  const [expanded, setExpanded] = useState(false);
+  const [bloomKey, setBloomKey] = useState(0);
+  const prefersReducedMotion = useReducedMotion();
+
+  const category =
+    block.categoryId !== null
+      ? (categories.find((c) => c.id === block.categoryId) ?? null)
+      : null;
+
+  const top = timeToOffsetPx(block.start, HOUR_HEIGHT_PX);
+  const height =
+    block.end !== undefined
+      ? timeToOffsetPx(block.end, HOUR_HEIGHT_PX) - top
+      : HOUR_HEIGHT_PX / 12;
+
+  const timeLabel = fmtRange(block);
+  const pct = blockPct(block);
+  const scaffoldColor = category?.color ?? "var(--text-dim)";
+
+  // M4a: block-100% cross-up — fires bloom + chime + success haptic once per crossing
+  const fireBlockComplete = useCallback(() => {
+    haptics.success();
+    playChime();
+    setBloomKey((k) => k + 1);
+  }, []);
+
+  useCrossUpEffect(pct, 100, fireBlockComplete);
+
+  const variants = {
+    hidden: { opacity: 0, y: 4 },
+    visible: { opacity: 1, y: 0 },
+  };
+
+  const bloomVariants = {
+    initial: { scale: 1, opacity: 0 },
+    animate: { scale: 1.04, opacity: 1 },
+    exit: { scale: 1, opacity: 0 },
+  };
+
+  function handleCardClick() {
+    setExpanded((e) => !e);
+  }
+
+  function handleAddBrickClick(e: React.MouseEvent) {
+    e.stopPropagation();
+    onAddBrick?.(block.id);
+  }
 
   return (
-    <div
-      data-testid="timeline-block"
-      data-status={status}
-      className="flex gap-3 rounded-lg p-3 transition-colors"
-      style={{
-        background: isCurrent ? "rgba(251,191,36,0.06)" : "var(--card)",
-        border: `1px solid ${
-          isCurrent ? "rgba(251,191,36,0.35)" : "var(--card-edge)"
-        }`,
-        opacity: isPast ? 0.55 : 1,
-      }}
-    >
-      <div className="flex w-10 shrink-0 flex-col items-center pt-1">
+    <AnimatePresence>
+      <motion.div
+        data-component="timeline-block"
+        role="article"
+        aria-expanded={expanded}
+        initial={prefersReducedMotion ? false : "hidden"}
+        animate="visible"
+        variants={prefersReducedMotion ? undefined : variants}
+        transition={
+          prefersReducedMotion
+            ? { duration: 0 }
+            : { duration: 0.18, ease: "easeOut" }
+        }
+        onClick={handleCardClick}
+        style={{
+          position: "absolute",
+          top: `${top}px`,
+          height: expanded ? "auto" : `${height}px`,
+          minHeight: `${height}px`,
+          left: "4px",
+          right: "4px",
+          overflow: "hidden",
+          borderRadius: "6px",
+          border: "1px solid var(--card-edge)",
+          background: "var(--card)",
+          display: "flex",
+          alignItems: "flex-start",
+          padding: "4px 6px",
+          gap: "4px",
+          cursor: "pointer",
+          zIndex: 2,
+        }}
+      >
+        {/* Scaffold left-bar */}
         <div
-          className="text-[10px] tracking-[0.06em]"
-          style={{ color: "var(--ink-dim)" }}
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: "4px",
+            background: "var(--surface-2)",
+            overflow: "hidden",
+          }}
         >
-          {block.start}
+          <div
+            data-testid="scaffold-fill"
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: `${pct}%`,
+              background: scaffoldColor,
+              transition: prefersReducedMotion
+                ? "none"
+                : "height 600ms ease-in-out",
+            }}
+          />
         </div>
-        <div className="my-1.5">
-          <Scaffold pct={pct} category={block.category} height={48} />
-        </div>
-        <div
-          className="text-[9px] tracking-[0.06em]"
-          style={{ color: "var(--ink-dim)" }}
-        >
-          {block.end}
-        </div>
-      </div>
 
-      <div className="min-w-0 flex-1">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
+        {/* M4a: bloom overlay — only renders when not reduced-motion and bloomKey > 0 */}
+        {!prefersReducedMotion && bloomKey > 0 && (
+          <motion.div
+            key={bloomKey}
+            data-testid="bloom-overlay"
+            aria-hidden="true"
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            variants={bloomVariants}
+            transition={springConfigs.bloom}
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: "6px",
+              background: category?.color
+                ? `${category.color}33`
+                : "var(--accent)33",
+              pointerEvents: "none",
+              zIndex: 3,
+            }}
+          />
+        )}
+
+        {/* Category color dot — 8px circle, only when categoryId !== null */}
+        {category !== null && (
+          <span
+            data-testid="category-dot"
+            aria-hidden="true"
+            style={{
+              display: "inline-block",
+              width: "8px",
+              height: "8px",
+              borderRadius: "50%",
+              flexShrink: 0,
+              marginTop: "3px",
+              marginLeft: "4px", // offset for scaffold bar
+              background: category.color,
+            }}
+          />
+        )}
+
+        <div style={{ minWidth: 0, flex: 1, marginLeft: category ? 0 : "4px" }}>
+          {/* Title: single-line ellipsis per plan.md § Edge cases */}
+          <div
+            style={{
+              fontFamily: "var(--font-ui)",
+              fontSize: "var(--fs-14)",
+              color: "var(--ink)",
+              overflow: "hidden",
+              whiteSpace: "nowrap",
+              textOverflow: "ellipsis",
+              lineHeight: 1.2,
+            }}
+          >
+            {block.name}
+          </div>
+          {/* Time range label */}
+          <div
+            style={{
+              fontFamily: "var(--font-ui)",
+              fontSize: "var(--fs-10)",
+              color: "var(--ink-dim)",
+              marginTop: "1px",
+            }}
+          >
+            {timeLabel}
+          </div>
+
+          {/* Expanded view: bricks list + + Add brick button */}
+          {expanded && (
             <div
-              className="truncate text-[14px] leading-tight"
-              style={{ color: "var(--ink)" }}
+              onClick={(e) => e.stopPropagation()}
+              style={{ marginTop: "8px" }}
             >
-              {block.name}
-            </div>
-            <div className="mt-1 flex items-center gap-1.5">
-              <span
-                className="h-1.5 w-1.5 rounded-[2px]"
-                style={{ background: color }}
-              />
-              <span
-                className="text-[9px] tracking-[0.16em] uppercase"
-                style={{ color: "var(--ink-dim)" }}
-              >
-                {CATEGORY_LABEL[block.category].toUpperCase()}
-              </span>
-            </div>
-          </div>
-          <div className="flex items-start gap-1">
-            <div className="text-right">
-              <div
-                className="font-serif-italic text-[26px] leading-none"
-                style={{ color: isPast ? "var(--ink-dim)" : "var(--ink)" }}
-              >
-                {pct}
-                <span
-                  className="ml-0.5 align-top text-[12px]"
-                  style={{ color: "var(--ink-dim)" }}
+              {block.bricks.length > 0 && (
+                <ul
+                  role="list"
+                  style={{
+                    listStyle: "none",
+                    margin: 0,
+                    padding: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "4px",
+                    marginBottom: "8px",
+                  }}
                 >
-                  %
-                </span>
-              </div>
-            </div>
-            {editMode && (
-              <button
-                aria-label="Delete block"
-                className="grid h-6 w-6 place-items-center rounded"
-                style={{ color: "var(--ink-dim)" }}
-              >
-                <X size={12} />
-              </button>
-            )}
-          </div>
-        </div>
+                  {block.bricks.map((brick) => (
+                    <li key={brick.id} role="listitem">
+                      <BrickChip
+                        brick={brick}
+                        categories={categories}
+                        size="md"
+                        onTickToggle={onTickToggle}
+                        onUnitsOpenSheet={onUnitsOpenSheet}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
 
-        <div className="mt-2.5 flex flex-wrap gap-1">
-          {block.bricks.length === 0 ? (
-            <EmptyBricks />
-          ) : (
-            block.bricks.map((b, i) => (
-              <BrickComponent
-                key={`${block.start}-${b.name}-${b.kind}`}
-                brick={b}
-                category={block.category}
-                index={i}
-                onLog={(updated) => onLogBrick(i, updated)}
-                editMode={editMode}
-              />
-            ))
+              <button
+                type="button"
+                aria-label="Add brick"
+                onClick={handleAddBrickClick}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "4px",
+                  width: "100%",
+                  minHeight: "44px",
+                  borderRadius: "6px",
+                  border: "1px dashed var(--ink-dim)",
+                  background: "transparent",
+                  color: "var(--ink-dim)",
+                  cursor: "pointer",
+                  fontFamily: "var(--font-ui)",
+                  fontSize: "var(--fs-12)",
+                }}
+              >
+                <Plus size={12} />
+                Add brick
+              </button>
+            </div>
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </AnimatePresence>
   );
 }

@@ -1,67 +1,337 @@
 "use client";
-import { useState } from "react";
-import { BLOCKS, NOW, DAY_NUMBER, TOTAL_DAYS, TODAY_LABEL } from "@/lib/data";
-import { currentBlockIndex, dayPct } from "@/lib/dharma";
+// BuildingClient — M4f: timer ripped, brick kinds collapsed to tick+units (ADR-043).
+// - M4a features preserved: LOG_TICK_BRICK dispatch, useCrossUpEffect, Fireworks overlay.
+// - M4f: LOG_GOAL_BRICK replaced by SET_UNITS_DONE (via UnitsEntrySheet tap-to-open-sheet).
+// - M4d NEW: AddChooserSheet inserted between dock-+ / slot-tap and the downstream sheets.
+//   - handleDockAdd: opens chooser with defaultStart=roundDownToHour(now)
+//   - handleSlotTap: opens chooser with defaultStart=hourToHHMM(hour)
+//   - handleChooserPick: routes to AddBlockSheet or AddBrickSheet(null)
+//   - handleChooserCancel: closes chooser silently
+//   - Inside-block "+ Add brick" (handleAddBrickFromBlock) bypasses chooser — direct path.
+//   - Tray "+ Brick" pill (handleAddLooseBrick) bypasses chooser — direct path.
+// - roundDownToHour: 1-line local helper — string slice, no Date math (SG-m2-04)
+// M4f: removed handleUnitsLog stepper; added handleUnitsOpenSheet → UnitsEntrySheet → handleUnitsSave.
+
+import { useState, useCallback } from "react";
+import { today, dateLabel, dayPct, dayNumber } from "@/lib/dharma";
+import { daysInYear } from "@/lib/dayOfYear";
+import { useNow } from "@/lib/useNow";
+import { usePersistedState } from "@/lib/usePersistedState";
+import { selectTrayBricks, selectTimelineItems } from "@/lib/overlap";
+import { useCrossUpEffect } from "@/lib/celebrations";
+import { haptics } from "@/lib/haptics";
+import { playChime } from "@/lib/audio";
 import { EditModeProvider } from "@/components/EditModeProvider";
 import { TopBar } from "@/components/TopBar";
 import { Hero } from "@/components/Hero";
 import { BlueprintBar } from "@/components/BlueprintBar";
-import { NowCard } from "@/components/NowCard";
 import { Timeline } from "@/components/Timeline";
 import { BottomBar } from "@/components/BottomBar";
-import type { Block, Brick } from "@/lib/types";
+import { AddChooserSheet } from "@/components/AddChooserSheet";
+import { AddBlockSheet } from "@/components/AddBlockSheet";
+import { AddBrickSheet } from "@/components/AddBrickSheet";
+import { LooseBricksTray } from "@/components/LooseBricksTray";
+import { UnitsEntrySheet } from "@/components/UnitsEntrySheet";
+import { Fireworks } from "@/components/Fireworks";
+import type { Block, Brick, Category } from "@/lib/types";
 
-// Page-1 client component. State is in-memory only — mutations are lost on refresh.
-// No localStorage or server persistence in this feature (Phase 1 scope).
+/**
+ * roundDownToHour — SG-m2-04.
+ * Pure string slice: "09:47" → "09:00". No Date math.
+ * Exported for U-m2-010 unit test.
+ */
+export function roundDownToHour(hhmm: string): string {
+  return hhmm.slice(0, 2) + ":00";
+}
+
+function hourToHHMM(hour: number): string {
+  return String(hour).padStart(2, "0") + ":00";
+}
+
+interface SheetState {
+  open: boolean;
+  defaultStart: string;
+}
+
+interface BrickSheetState {
+  open: boolean;
+  parentBlockId: string | null;
+  defaultCategoryId: string | null;
+}
+
+interface ChooserState {
+  open: boolean;
+  defaultStart: string | null; // captured slot hour ("HH:00"), or null when opened from dock +
+}
+
+interface UnitsSheetState {
+  open: boolean;
+  brickId: string | null;
+}
+
 export function BuildingClient() {
-  // Clone BLOCKS into mutable state; lib/data.ts const is left unmodified.
-  const [blocks, setBlocks] = useState<Block[]>(() =>
-    BLOCKS.map((b) => ({ ...b, bricks: [...b.bricks] })),
+  // M8: usePersistedState replaces useReducer — owns two-pass hydration + save-on-dispatch.
+  // The hook's dispatch is byte-identical to useReducer's dispatch at all call sites below.
+  const [state, dispatch] = usePersistedState();
+  const [sheetState, setSheetState] = useState<SheetState>({
+    open: false,
+    defaultStart: "00:00",
+  });
+  const [brickSheetState, setBrickSheetState] = useState<BrickSheetState>({
+    open: false,
+    parentBlockId: null,
+    defaultCategoryId: null,
+  });
+  const [fireworksActive, setFireworksActive] = useState(false);
+  const [chooserState, setChooserState] = useState<ChooserState>({
+    open: false,
+    defaultStart: null,
+  });
+  // M4f: UnitsEntrySheet state — opened when a units chip is tapped
+  const [unitsSheetState, setUnitsSheetState] = useState<UnitsSheetState>({
+    open: false,
+    brickId: null,
+  });
+
+  // Live clock (ADR-023: server-clock paint on SSR, reconciles within 60s)
+  const now = useNow();
+  const todayIso = today();
+
+  // M8: dayNumber(programStart, todayIso) replaces dayOfYear(new Date()) (AC #13).
+  // programStart comes from persisted AppState (set to today on first run, preserved thereafter).
+  // dayNumber returns number | undefined; undefined only if programStart is empty (never in practice).
+  // totalDays keeps daysInYear — the program is a one-year arc.
+  const dayNumberValue = dayNumber(state.programStart, todayIso);
+  const totalDays = daysInYear(new Date());
+  const dateLabelValue = dateLabel(todayIso);
+
+  // M3: dayPct now takes full AppState (blocks + looseBricks)
+  const heroPct = dayPct(state);
+
+  // M4a: day-100% cross-up — fires notification haptic + chime + fireworks once per crossing
+  const fireDayComplete = useCallback(() => {
+    haptics.notification();
+    playChime();
+    setFireworksActive(true);
+    window.setTimeout(() => setFireworksActive(false), 1700);
+  }, []);
+
+  useCrossUpEffect(heroPct, 100, fireDayComplete);
+
+  // M4a: dispatch LOG_TICK_BRICK for tick chip taps; threaded to Timeline + LooseBricksTray
+  const handleTickToggle = useCallback(
+    (brickId: string) => {
+      dispatch({ type: "LOG_TICK_BRICK", brickId });
+    },
+    [dispatch],
   );
 
-  function handleLogBrick(
-    blockIndex: number,
-    brickIndex: number,
-    updated: Brick,
-  ) {
-    setBlocks((prev) =>
-      prev.map((block, bi) => {
-        if (bi !== blockIndex) return block;
-        return {
-          ...block,
-          bricks: block.bricks.map((brick, ri) =>
-            ri === brickIndex ? updated : brick,
-          ),
-        };
-      }),
-    );
+  // M4f: units chip tap → open UnitsEntrySheet for that brick
+  const handleUnitsOpenSheet = useCallback((brickId: string) => {
+    setUnitsSheetState({ open: true, brickId });
+  }, []);
+
+  // M4f: UnitsEntrySheet Save → dispatch SET_UNITS_DONE + close sheet
+  const handleUnitsSave = useCallback(
+    (brickId: string, done: number) => {
+      dispatch({ type: "SET_UNITS_DONE", brickId, done });
+      setUnitsSheetState({ open: false, brickId: null });
+    },
+    [dispatch],
+  );
+
+  // M4f: UnitsEntrySheet Cancel → close without dispatch
+  const handleUnitsClose = useCallback(() => {
+    setUnitsSheetState({ open: false, brickId: null });
+  }, []);
+
+  // M4d: dock + → open chooser with defaultStart=roundDownToHour(now) captured at open time.
+  // Storing the hour at open time avoids stale-closure risk on `now` inside handleChooserPick
+  // (cross-cutting concern #3 from plan.md).
+  const handleDockAdd = useCallback(() => {
+    setChooserState({ open: true, defaultStart: roundDownToHour(now) });
+  }, [now]);
+
+  // M4d: slot tap → open chooser with the tapped hour captured as defaultStart.
+  const handleSlotTap = useCallback((hour: number) => {
+    setChooserState({ open: true, defaultStart: hourToHHMM(hour) });
+  }, []);
+
+  // M4d: chooser pick — close chooser, then open the appropriate downstream sheet.
+  // exhaustiveness: switch on 'block' | 'brick' with a default that throws if a
+  // third option is ever added without handling it (assertNever pattern from plan.md).
+  const handleChooserPick = useCallback(
+    (choice: "block" | "brick") => {
+      switch (choice) {
+        case "block": {
+          const start = chooserState.defaultStart ?? roundDownToHour(now);
+          setChooserState({ open: false, defaultStart: null });
+          setSheetState({ open: true, defaultStart: start });
+          break;
+        }
+        case "brick": {
+          setChooserState({ open: false, defaultStart: null });
+          setBrickSheetState({
+            open: true,
+            parentBlockId: null,
+            defaultCategoryId: null,
+          });
+          break;
+        }
+        default: {
+          // Exhaustiveness guard: this branch is unreachable at runtime.
+          const _exhaustive: never = choice;
+          throw new Error(`Unhandled chooser choice: ${String(_exhaustive)}`);
+        }
+      }
+    },
+    [chooserState.defaultStart, now],
+  );
+
+  // M4d: chooser cancel — close chooser silently (no downstream sheet, no haptic).
+  const handleChooserCancel = useCallback(() => {
+    setChooserState({ open: false, defaultStart: null });
+  }, []);
+
+  function closeSheet() {
+    setSheetState((s) => ({ ...s, open: false }));
   }
 
-  const idx = currentBlockIndex(blocks, NOW);
-  const current = idx >= 0 ? blocks[idx] : null;
-  const pct = Math.round(dayPct(blocks));
+  function openBrickSheet(
+    parentBlockId: string | null,
+    defaultCategoryId: string | null,
+  ) {
+    setBrickSheetState({ open: true, parentBlockId, defaultCategoryId });
+  }
+
+  function closeBrickSheet() {
+    setBrickSheetState((s) => ({ ...s, open: false }));
+  }
+
+  function handleSave(block: Block) {
+    dispatch({ type: "ADD_BLOCK", block });
+    closeSheet();
+  }
+
+  function handleSaveBrick(brick: Brick) {
+    dispatch({ type: "ADD_BRICK", brick });
+    closeBrickSheet();
+  }
+
+  function handleCreateCategory(cat: Pick<Category, "id" | "name" | "color">) {
+    dispatch({
+      type: "ADD_CATEGORY",
+      category: { id: cat.id, name: cat.name, color: cat.color },
+    });
+    // Sheet stays open (user returns to block form after creating category)
+  }
+
+  function handleAddBrickFromBlock(parentBlockId: string) {
+    // Find the block's categoryId to pre-fill
+    const block = state.blocks.find((b) => b.id === parentBlockId);
+    openBrickSheet(parentBlockId, block?.categoryId ?? null);
+  }
+
+  function handleAddLooseBrick() {
+    openBrickSheet(null, null);
+  }
+
+  // M4e: tray shows only non-timed loose bricks (selectTrayBricks filters out hasDuration:true).
+  // showTray: visible when any blocks exist OR any non-timed loose bricks exist (AC #29).
+  const trayBricks = selectTrayBricks(state);
+  const showTray = state.blocks.length > 0 || trayBricks.length > 0;
+  // M4e: Timeline renders blocks + timed loose bricks via selectTimelineItems (AC #28).
+  const timelineItems = selectTimelineItems(state);
+
+  // M4f: find the current units brick for UnitsEntrySheet
+  const unitsSheetBrick: Extract<Brick, { kind: "units" }> | null = (() => {
+    if (!unitsSheetState.brickId) return null;
+    for (const bl of state.blocks) {
+      const br = bl.bricks.find((b) => b.id === unitsSheetState.brickId);
+      if (br && br.kind === "units") return br;
+    }
+    for (const br of state.looseBricks) {
+      if (br.id === unitsSheetState.brickId && br.kind === "units") return br;
+    }
+    return null;
+  })();
 
   return (
     <EditModeProvider>
       <div className="relative mx-auto min-h-dvh max-w-[430px]">
         <TopBar />
         <Hero
-          dateLabel={TODAY_LABEL}
-          dayNumber={DAY_NUMBER}
-          totalDays={TOTAL_DAYS}
-          pct={pct}
+          dateLabel={dateLabelValue}
+          dayNumber={dayNumberValue}
+          totalDays={totalDays}
+          pct={heroPct}
         />
-        {blocks.length > 0 && <BlueprintBar blocks={blocks} now={NOW} />}
-        {blocks.length > 0 && current && (
-          <NowCard
-            block={current}
-            onLogBrick={(brickIndex, updated) =>
-              handleLogBrick(idx, brickIndex, updated)
-            }
+        {/* BlueprintBar: always rendered (SPEC AC #8 — unconditional) */}
+        <BlueprintBar
+          blocks={state.blocks}
+          categories={state.categories}
+          now={now}
+        />
+        {/* NowCard: NOT rendered in M2/M3/M4a */}
+        <Timeline
+          items={timelineItems}
+          categories={state.categories}
+          now={now}
+          onSlotTap={handleSlotTap}
+          onAddBrick={handleAddBrickFromBlock}
+          onTickToggle={handleTickToggle}
+          onUnitsOpenSheet={handleUnitsOpenSheet}
+          hasLooseBricks={trayBricks.length > 0}
+        />
+        {/* LooseBricksTray: pinned above dock, visible when blocks exist OR non-timed loose bricks exist */}
+        {showTray && (
+          <LooseBricksTray
+            looseBricks={trayBricks}
+            categories={state.categories}
+            onAddBrick={handleAddLooseBrick}
+            onTickToggle={handleTickToggle}
+            onUnitsOpenSheet={handleUnitsOpenSheet}
+            blocksExist={state.blocks.length > 0}
           />
         )}
-        <Timeline blocks={blocks} now={NOW} onLogBrick={handleLogBrick} />
-        <BottomBar />
+        <BottomBar onAddPress={handleDockAdd} />
+        {/* AddChooserSheet: M4d routing surface — opens before AddBlockSheet or AddBrickSheet */}
+        <AddChooserSheet
+          open={chooserState.open}
+          onPick={handleChooserPick}
+          onCancel={handleChooserCancel}
+        />
+        {/* AddBlockSheet: single instance, view state inside */}
+        <AddBlockSheet
+          open={sheetState.open}
+          defaultStart={sheetState.defaultStart}
+          categories={state.categories}
+          blocks={state.blocks}
+          state={state}
+          onSave={handleSave}
+          onCancel={closeSheet}
+          onCreateCategory={handleCreateCategory}
+        />
+        {/* AddBrickSheet: single instance, parentBlockId null = loose brick */}
+        <AddBrickSheet
+          open={brickSheetState.open}
+          parentBlockId={brickSheetState.parentBlockId}
+          defaultCategoryId={brickSheetState.defaultCategoryId}
+          categories={state.categories}
+          state={state}
+          onSave={handleSaveBrick}
+          onCancel={closeBrickSheet}
+          onCreateCategory={handleCreateCategory}
+        />
+        {/* M4f: UnitsEntrySheet — opened when a units chip is tapped */}
+        <UnitsEntrySheet
+          brick={unitsSheetBrick}
+          open={unitsSheetState.open}
+          onClose={handleUnitsClose}
+          onSave={handleUnitsSave}
+        />
+        {/* M4a: Fireworks overlay — day-100% celebration */}
+        <Fireworks active={fireworksActive} />
       </div>
     </EditModeProvider>
   );

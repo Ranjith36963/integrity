@@ -1,103 +1,603 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { TimelineBlock } from "./TimelineBlock";
-import { blockPct } from "@/lib/dharma";
-import { EditModeProvider, useEditMode } from "./EditModeProvider";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { Block } from "@/lib/types";
+import { TimelineBlock } from "./TimelineBlock";
+import type { Block, Category } from "@/lib/types";
+import { HOUR_HEIGHT_PX } from "@/lib/timeOffset";
 
-const fitnessBlock: Block = {
-  start: "06:00",
-  end: "07:00",
-  name: "Fitness",
-  category: "health",
-  bricks: [
-    { kind: "goal", name: "pushups", current: 80, target: 100 },
-    { kind: "time", name: "run", current: 30, target: 30 },
-    { kind: "tick", name: "stretch", done: true },
-  ],
-};
+// C-m2-014: TimelineBlock — re-authored M2
+// Consumes new Block schema, positions absolutely, height ∝ duration
+describe("C-m2-014: TimelineBlock new schema, absolute position, height", () => {
+  const block: Block = {
+    id: "b1",
+    name: "Foo",
+    start: "09:00",
+    end: "10:30",
+    recurrence: { kind: "just-today", date: "2026-05-06" },
+    categoryId: "c1",
+    bricks: [],
+  };
+  const categories: Category[] = [
+    { id: "c1", name: "Health", color: "#34d399" },
+  ];
 
-const emptyBlock: Block = {
-  start: "09:00",
-  end: "10:00",
-  name: "Empty block",
-  category: "mind",
-  bricks: [],
-};
-
-function renderBlock(
-  block: Block,
-  status: "past" | "current" | "future" = "current",
-) {
-  return render(
-    <EditModeProvider>
-      <TimelineBlock block={block} status={status} onLogBrick={vi.fn()} />
-    </EditModeProvider>,
-  );
-}
-
-// Helper component to test edit mode scenarios
-function TimelineBlockWithEditToggle({ block }: { block: Block }) {
-  const { toggle } = useEditMode();
-  return (
-    <>
-      <button aria-label="Toggle edit" onClick={toggle} />
-      <TimelineBlock block={block} status="current" onLogBrick={vi.fn()} />
-    </>
-  );
-}
-
-// C-bld-017: TimelineBlock shows start, end, name, category dot, and pct
-describe("C-bld-017: TimelineBlock renders start/end/name/category/pct", () => {
-  it("shows 06:00, 07:00, Fitness, health dot, and pct numeral", () => {
-    renderBlock(fitnessBlock, "current");
-    expect(screen.getByText("06:00")).toBeInTheDocument();
-    expect(screen.getByText("07:00")).toBeInTheDocument();
-    expect(screen.getByText("Fitness")).toBeInTheDocument();
-    const pct = Math.round(blockPct(fitnessBlock));
-    expect(screen.getByText(String(pct))).toBeInTheDocument();
-  });
-});
-
-// C-bld-018: past status → wrapper has opacity: 0.55
-describe("C-bld-018: past block has opacity 0.55", () => {
-  it("wrapper style has opacity 0.55 for status='past'", () => {
-    const { container } = renderBlock(fitnessBlock, "past");
-    const wrapper = container.querySelector(
-      "[data-testid='timeline-block']",
+  it("renders with position absolute, top 576px (9*64), height 96px ((10.5-9)*64)", () => {
+    const { container: c } = render(
+      <TimelineBlock block={block} categories={categories} />,
+    );
+    const el = c.querySelector(
+      '[data-component="timeline-block"]',
     ) as HTMLElement;
-    expect(wrapper.style.opacity).toBe("0.55");
+    expect(el).not.toBeNull();
+    expect(el.style.position).toBe("absolute");
+    expect(el.style.top).toBe(`${9 * HOUR_HEIGHT_PX}px`); // 576px
+    expect(el.style.height).toBe(`${1.5 * HOUR_HEIGHT_PX}px`); // 96px
+  });
+
+  it("renders title 'Foo' with single-line ellipsis CSS", () => {
+    render(<TimelineBlock block={block} categories={categories} />);
+    const title = screen.getByText("Foo");
+    const style = (title as HTMLElement).style;
+    expect(style.overflow).toBe("hidden");
+    expect(style.whiteSpace).toBe("nowrap");
+    expect(style.textOverflow).toBe("ellipsis");
+  });
+
+  it("renders time-range label '09:00–10:30' (en-dash)", () => {
+    render(<TimelineBlock block={block} categories={categories} />);
+    expect(screen.getByText("09:00–10:30")).toBeInTheDocument();
+  });
+
+  it("renders category color dot with background matching #34d399", () => {
+    const { container } = render(
+      <TimelineBlock block={block} categories={categories} />,
+    );
+    const dot = container.querySelector(
+      '[data-testid="category-dot"]',
+    ) as HTMLElement;
+    expect(dot).not.toBeNull();
+    // JSDOM normalizes hex to rgb(); accept either form
+    const bg = dot.style.background;
+    expect(bg === "#34d399" || bg === "rgb(52, 211, 153)").toBe(true);
+  });
+
+  it("clicking does not throw (no-op onClick)", () => {
+    const { container } = render(
+      <TimelineBlock block={block} categories={categories} />,
+    );
+    const el = container.querySelector('[data-component="timeline-block"]');
+    expect(() => (el as HTMLElement).click()).not.toThrow();
   });
 });
 
-// C-bld-019: block with empty bricks shows empty state copy
-describe("C-bld-019: TimelineBlock shows empty state for empty bricks", () => {
-  it("shows 'No bricks yet. Tap + to add a brick.'", () => {
-    renderBlock(emptyBlock, "current");
-    expect(
-      screen.getByText("No bricks yet. Tap + to add a brick."),
-    ).toBeInTheDocument();
+// C-m2-015: TimelineBlock — re-authored M2
+// End not set: height = HOUR_HEIGHT_PX/12, no en-dash, no category dot
+describe("C-m2-015: TimelineBlock with no end field", () => {
+  const block: Block = {
+    id: "b1",
+    name: "Foo",
+    start: "09:00",
+    recurrence: { kind: "just-today", date: "2026-05-06" },
+    categoryId: null,
+    bricks: [],
+  };
+
+  it("renders top=576px (9*64) and height≈5.33px (64/12)", () => {
+    const { container } = render(
+      <TimelineBlock block={block} categories={[]} />,
+    );
+    const el = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    expect(el).not.toBeNull();
+    expect(el.style.top).toBe(`${9 * HOUR_HEIGHT_PX}px`);
+    const h = parseFloat(el.style.height);
+    expect(Math.abs(h - HOUR_HEIGHT_PX / 12)).toBeLessThan(0.5);
+  });
+
+  it("renders just '09:00' (no en-dash) when end is not set", () => {
+    render(<TimelineBlock block={block} categories={[]} />);
+    expect(screen.getByText("09:00")).toBeInTheDocument();
+    // en-dash should NOT appear in the time label
+    const all = screen.queryAllByText(/09:00[–]/);
+    expect(all).toHaveLength(0);
+  });
+
+  it("does NOT render category dot when categoryId is null", () => {
+    const { container } = render(
+      <TimelineBlock block={block} categories={[]} />,
+    );
+    expect(container.querySelector('[data-testid="category-dot"]')).toBeNull();
   });
 });
 
-// C-bld-028: TimelineBlock in edit mode shows Delete block button
-describe("C-bld-028: TimelineBlock in edit mode shows delete affordance", () => {
-  it("shows × button with aria-label='Delete block' when edit mode is on", async () => {
+// ─── C-m3-021: tap-to-expand toggles; aria-expanded; bricks list role="list" ─
+
+describe("C-m3-021: TimelineBlock tap-to-expand toggles", () => {
+  const cat1: Category = { id: "c1", name: "category 1", color: "#34d399" };
+  const block: Block = {
+    id: "b1",
+    name: "block one",
+    start: "09:00",
+    end: "10:00",
+    recurrence: { kind: "just-today", date: "2026-05-06" },
+    categoryId: "c1",
+    bricks: [
+      {
+        id: "r1",
+        name: "brick A",
+        kind: "tick",
+        hasDuration: false,
+        done: false,
+        categoryId: "c1",
+        parentBlockId: "b1",
+      },
+    ],
+  };
+
+  it("clicking block sets aria-expanded='true'", async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <TimelineBlock block={block} categories={[cat1]} onAddBrick={vi.fn()} />,
+    );
+    const card = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    await user.click(card);
+    expect(card.getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("expanded: renders ul role='list' with one li per block.bricks[]", async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <TimelineBlock block={block} categories={[cat1]} onAddBrick={vi.fn()} />,
+    );
+    const card = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    await user.click(card);
+    const list = screen.getByRole("list");
+    expect(list).toBeTruthy();
+    const items = within(list).getAllByRole("listitem");
+    expect(items).toHaveLength(1);
+  });
+
+  it("expanded: '+ Add brick' ghost button is below the list", async () => {
     const user = userEvent.setup();
     render(
-      <EditModeProvider>
-        <TimelineBlockWithEditToggle block={fitnessBlock} />
-      </EditModeProvider>,
+      <TimelineBlock block={block} categories={[cat1]} onAddBrick={vi.fn()} />,
     );
-    // Initially no delete block button
+    const { container } = render(
+      <TimelineBlock block={block} categories={[cat1]} onAddBrick={vi.fn()} />,
+    );
+    const card = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    await user.click(card);
     expect(
-      screen.queryByRole("button", { name: "Delete block" }),
-    ).not.toBeInTheDocument();
-    // Toggle edit mode
-    await user.click(screen.getByRole("button", { name: /toggle edit/i }));
-    expect(
-      screen.getByRole("button", { name: "Delete block" }),
-    ).toBeInTheDocument();
+      screen.getAllByRole("button", { name: /add brick/i }).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("clicking card again returns aria-expanded='false'", async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <TimelineBlock block={block} categories={[cat1]} onAddBrick={vi.fn()} />,
+    );
+    const card = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    await user.click(card);
+    await user.click(card);
+    expect(card.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("clicking '+ Add brick' calls onAddBrick('b1')", async () => {
+    const user = userEvent.setup();
+    const onAddBrick = vi.fn();
+    const { container } = render(
+      <TimelineBlock
+        block={block}
+        categories={[cat1]}
+        onAddBrick={onAddBrick}
+      />,
+    );
+    const card = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    await user.click(card);
+    const addBrickBtn = screen.getByRole("button", { name: /add brick/i });
+    await user.click(addBrickBtn);
+    expect(onAddBrick).toHaveBeenCalledWith("b1");
   });
 });
+
+// ─── C-m3-022: scaffold left-bar height = blockPct% ───────────────────────────
+
+describe("C-m3-022: TimelineBlock scaffold left-bar height", () => {
+  const cat1: Category = { id: "c1", name: "category 1", color: "#34d399" };
+  const block50: Block = {
+    id: "b1",
+    name: "block one",
+    start: "09:00",
+    end: "10:00",
+    recurrence: { kind: "just-today", date: "2026-05-06" },
+    categoryId: "c1",
+    bricks: [
+      {
+        id: "r1",
+        name: "x",
+        kind: "tick",
+        hasDuration: false,
+        done: true,
+        categoryId: "c1",
+        parentBlockId: "b1",
+      },
+      {
+        id: "r2",
+        name: "y",
+        kind: "tick",
+        hasDuration: false,
+        done: false,
+        categoryId: "c1",
+        parentBlockId: "b1",
+      },
+    ],
+  };
+
+  it("scaffold fill height is '50%' for blockPct=50", () => {
+    const { container } = render(
+      <TimelineBlock
+        block={block50}
+        categories={[cat1]}
+        onAddBrick={vi.fn()}
+      />,
+    );
+    const fill = container.querySelector(
+      "[data-testid='scaffold-fill']",
+    ) as HTMLElement;
+    expect(fill?.style.height).toBe("50%");
+  });
+
+  it("scaffold fill background resolves to category color #34d399", () => {
+    const { container } = render(
+      <TimelineBlock
+        block={block50}
+        categories={[cat1]}
+        onAddBrick={vi.fn()}
+      />,
+    );
+    const fill = container.querySelector(
+      "[data-testid='scaffold-fill']",
+    ) as HTMLElement;
+    const bg = fill?.style.background;
+    expect(bg === "#34d399" || bg === "rgb(52, 211, 153)").toBe(true);
+  });
+
+  it("when categoryId is null, scaffold uses var(--text-dim)", () => {
+    const uncatBlock: Block = { ...block50, categoryId: null };
+    const { container } = render(
+      <TimelineBlock
+        block={uncatBlock}
+        categories={[cat1]}
+        onAddBrick={vi.fn()}
+      />,
+    );
+    const fill = container.querySelector(
+      "[data-testid='scaffold-fill']",
+    ) as HTMLElement;
+    expect(fill?.style.background).toContain("text-dim");
+  });
+
+  it("when bricks:[], scaffold height is '0%'", () => {
+    const emptyBlock: Block = { ...block50, bricks: [] };
+    const { container } = render(
+      <TimelineBlock
+        block={emptyBlock}
+        categories={[cat1]}
+        onAddBrick={vi.fn()}
+      />,
+    );
+    const fill = container.querySelector(
+      "[data-testid='scaffold-fill']",
+    ) as HTMLElement;
+    expect(fill?.style.height).toBe("0%");
+  });
+});
+
+// ─── C-m4a-010: onTickToggle prop threading ───────────────────────────────────
+
+vi.mock("@/lib/haptics", () => ({
+  haptics: {
+    light: vi.fn(),
+    medium: vi.fn(),
+    success: vi.fn(),
+    notification: vi.fn(),
+  },
+}));
+
+vi.mock("@/lib/audio", () => ({
+  playChime: vi.fn(),
+}));
+
+describe("C-m4a-010: TimelineBlock threads onTickToggle down to BrickChip", () => {
+  const cat1: Category = { id: "c1", name: "category 1", color: "#34d399" };
+  const blockAt50: Block = {
+    id: "b1",
+    name: "block 1",
+    start: "09:00",
+    end: "10:00",
+    recurrence: { kind: "just-today", date: "2026-05-06" },
+    categoryId: "c1",
+    bricks: [
+      {
+        id: "brick-1",
+        name: "brick A",
+        kind: "tick",
+        hasDuration: false,
+        done: false,
+        categoryId: "c1",
+        parentBlockId: "b1",
+      },
+      {
+        id: "brick-2",
+        name: "brick A",
+        kind: "tick",
+        hasDuration: false,
+        done: true,
+        categoryId: "c1",
+        parentBlockId: "b1",
+      },
+    ],
+  };
+
+  it("clicking inner tick BrickChip calls onTickToggle with brick.id", async () => {
+    const user = userEvent.setup();
+    const onTickToggle = vi.fn();
+    const { container } = render(
+      <TimelineBlock
+        block={blockAt50}
+        categories={[cat1]}
+        onAddBrick={vi.fn()}
+        onTickToggle={onTickToggle}
+      />,
+    );
+    // Expand the block to show bricks
+    const card = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    await user.click(card);
+
+    // Click first tick chip (brick-1, done:false)
+    const brickBtns = screen.getAllByRole("button");
+    const tickBtn = brickBtns.find(
+      (b) => b.getAttribute("aria-pressed") !== null,
+    );
+    expect(tickBtn).toBeTruthy();
+    await user.click(tickBtn!);
+    expect(onTickToggle).toHaveBeenCalledWith("brick-1");
+  });
+});
+
+// ─── C-m4a-011: block 100% cross-up fires haptics.success + playChime ─────────
+
+describe("C-m4a-011: block cross-up to 100% fires haptics.success + playChime + bloom key", () => {
+  const cat1: Category = { id: "c1", name: "category 1", color: "#34d399" };
+
+  it("haptics.success and playChime called when blockPct goes from 99 to 100", async () => {
+    const { haptics } = await import("@/lib/haptics");
+    const { playChime } = await import("@/lib/audio");
+    vi.clearAllMocks();
+
+    // Block at 99% (one done, one undone out of 2 is 50%, so use 99 of 100)
+    // Easier: create a wrapper that controls blockPct via props re-render
+    const { rerender } = render(
+      <TimelineBlock
+        block={{
+          id: "b1",
+          name: "block 1",
+          start: "09:00",
+          end: "10:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: "c1",
+          bricks: [
+            {
+              id: "brick-1",
+              name: "brick A",
+              kind: "tick",
+              hasDuration: false,
+              done: true,
+              categoryId: "c1",
+              parentBlockId: "b1",
+            },
+            {
+              id: "brick-2",
+              name: "brick A",
+              kind: "tick",
+              hasDuration: false,
+              done: false,
+              categoryId: "c1",
+              parentBlockId: "b1",
+            },
+          ],
+        }}
+        categories={[cat1]}
+        onAddBrick={vi.fn()}
+      />,
+    );
+
+    // Re-render with all bricks done (100%)
+    rerender(
+      <TimelineBlock
+        block={{
+          id: "b1",
+          name: "block 1",
+          start: "09:00",
+          end: "10:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: "c1",
+          bricks: [
+            {
+              id: "brick-1",
+              name: "brick A",
+              kind: "tick",
+              hasDuration: false,
+              done: true,
+              categoryId: "c1",
+              parentBlockId: "b1",
+            },
+            {
+              id: "brick-2",
+              name: "brick A",
+              kind: "tick",
+              hasDuration: false,
+              done: true,
+              categoryId: "c1",
+              parentBlockId: "b1",
+            },
+          ],
+        }}
+        categories={[cat1]}
+        onAddBrick={vi.fn()}
+      />,
+    );
+
+    expect(haptics.success).toHaveBeenCalledTimes(1);
+    expect(playChime).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ─── C-m4a-012: reduced-motion — haptics + chime still fire even when suppressed
+
+vi.mock("motion/react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("motion/react")>();
+  return {
+    ...actual,
+    useReducedMotion: vi.fn(() => false),
+  };
+});
+
+describe("C-m4a-012: reduced-motion does not suppress haptics or chime on block 100%", () => {
+  const cat1: Category = { id: "c1", name: "category 1", color: "#34d399" };
+
+  it("haptics.success and playChime still fire when useReducedMotion is true", async () => {
+    const { useReducedMotion } = await import("motion/react");
+    vi.mocked(useReducedMotion).mockReturnValue(true);
+
+    const { haptics } = await import("@/lib/haptics");
+    const { playChime } = await import("@/lib/audio");
+    vi.clearAllMocks();
+
+    const { rerender } = render(
+      <TimelineBlock
+        block={{
+          id: "b1",
+          name: "block 1",
+          start: "09:00",
+          end: "10:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: "c1",
+          bricks: [
+            {
+              id: "brick-1",
+              name: "brick A",
+              kind: "tick",
+              hasDuration: false,
+              done: false,
+              categoryId: "c1",
+              parentBlockId: "b1",
+            },
+          ],
+        }}
+        categories={[cat1]}
+        onAddBrick={vi.fn()}
+      />,
+    );
+
+    // Cross up to 100%
+    rerender(
+      <TimelineBlock
+        block={{
+          id: "b1",
+          name: "block 1",
+          start: "09:00",
+          end: "10:00",
+          recurrence: { kind: "just-today", date: "2026-05-06" },
+          categoryId: "c1",
+          bricks: [
+            {
+              id: "brick-1",
+              name: "brick A",
+              kind: "tick",
+              hasDuration: false,
+              done: true,
+              categoryId: "c1",
+              parentBlockId: "b1",
+            },
+          ],
+        }}
+        categories={[cat1]}
+        onAddBrick={vi.fn()}
+      />,
+    );
+
+    expect(haptics.success).toHaveBeenCalledTimes(1);
+    expect(playChime).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ─── C-m4b-020: TimelineBlock threads onUnitsOpenSheet down to BrickChip ────────
+// M4f: onGoalLog stepper removed (ADR-043). Units chip is simple button.
+// Test updated: units chip tap opens sheet via onUnitsOpenSheet prop chain.
+
+describe("C-m4b-020: TimelineBlock threads onUnitsOpenSheet down to inner units BrickChip (M4f)", () => {
+  const cat1: Category = { id: "c1", name: "category 1", color: "#34d399" };
+  const blockWithUnits: Block = {
+    id: "b1",
+    name: "block 1",
+    start: "09:00",
+    end: "10:00",
+    recurrence: { kind: "just-today", date: "2026-05-06" },
+    categoryId: "c1",
+    bricks: [
+      {
+        id: "g1",
+        name: "pushups",
+        kind: "units",
+        hasDuration: false,
+        done: 3,
+        target: 10,
+        unit: "reps",
+        categoryId: "c1",
+        parentBlockId: "b1",
+      },
+    ],
+  };
+
+  it("clicking units chip calls onUnitsOpenSheet with brick.id", async () => {
+    const user = userEvent.setup();
+    const onUnitsOpenSheet = vi.fn();
+    const { container } = render(
+      <TimelineBlock
+        block={blockWithUnits}
+        categories={[cat1]}
+        onAddBrick={vi.fn()}
+        onUnitsOpenSheet={onUnitsOpenSheet}
+      />,
+    );
+    const card = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    await user.click(card);
+
+    const chipBtn = screen.getByRole("button", {
+      name: /pushups.*units/i,
+    });
+    await user.click(chipBtn);
+    expect(onUnitsOpenSheet).toHaveBeenCalledWith("g1");
+  });
+});
+
+// C-m4c-019: TimelineBlock timer pass-through — RETIRED in M4f (ADR-043).
+// kind:"time" removed; runningTimerBrickId removed from AppState.
+// Coverage replaced by C-m4b-020 units chip thread-through above.

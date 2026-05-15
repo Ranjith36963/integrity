@@ -37,6 +37,7 @@ npm run test:watch   # Vitest in watch mode
 npm run test:e2e     # Playwright e2e suite (mobile-chrome)
 npm run test:a11y    # Playwright axe-core accessibility suite
 npm run verify       # lint + typecheck + unit tests (pre-ship check)
+npm run eval         # full gate: lint + typecheck + vitest + e2e + a11y
 ```
 
 Playwright requires browsers to be installed once:
@@ -45,13 +46,57 @@ Playwright requires browsers to be installed once:
 npm run test:e2e:install
 ```
 
+## Status
+
+| Milestone                        | State                                          |
+| -------------------------------- | ---------------------------------------------- |
+| M0 — Design System               | Shipped + tap-tested                           |
+| M1 — Empty Building Shell        | Shipped + tap-tested                           |
+| M2 — Add Block Flow              | Shipped + tap-tested                           |
+| M3 — Add Brick + Live Scoring    | Shipped + tap-tested                           |
+| M4a — Tick Brick Logging         | Shipped to preview — awaiting Gate #2 tap-test |
+| M4b — Goal Brick Stepper         | Shipped to preview — awaiting Gate #2 tap-test |
+| M4d — Add Chooser Sheet          | Shipped to preview — awaiting Gate #2 tap-test |
+| M4c — Time Brick Timer           | Shipped to preview — awaiting Gate #2 tap-test |
+| M4e — Brick Duration + Overlap   | Shipped to preview — awaiting Gate #2 tap-test |
+| M4f — Two Brick Kinds; Rip Timer | Shipped to preview — awaiting Gate #2 tap-test |
+| M4g — Timer-era Dead-code Sweep  | Shipped to preview — awaiting Gate #2 tap-test |
+| M8 — Persistence                 | Shipped to preview — awaiting Gate #2 tap-test |
+
+Latest preview: `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (branch alias; auto-tracks `claude/verify-m0-deployment-s4XRy`). Vercel Deployment Protection active — open in browser while signed in to Vercel.
+
 ## Project layout
 
 ```
 app/                 Next.js App Router — pages, layouts, manifest
   (building)/        Page 1: Building view (today's routine)
+                       BuildingClient.tsx — composes the seven M1 regions
+  design/            M0 design-system harness page (all primitives in every state)
 components/          Shared UI components + unit tests
+  NowLine.tsx        Amber now-line, consumes useNow() (ADR-023)
+  Timeline.tsx       24-hour vertical grid with NowLine, TimelineBlock cards, SlotTapTargets
+  TimelineBlock.tsx  Block card rendering (height proportional to duration; no-end = 5px marker)
+  BlueprintBar.tsx   Day Blueprint bar — segments aggregated by categoryId (M2+)
+  BottomBar.tsx      Floating dock — + button opens AddBlockSheet (M2+)
+  AddBlockSheet.tsx  Full add-block flow: title, time, recurrence, category, validation
+  AddBrickSheet.tsx  Add Brick flow: kind picker (tick/units), per-type fields, hasDuration toggle (M4e), overlap warning chip, validation
+  AddChooserSheet.tsx Chooser sheet shown when dock + or empty slot is tapped; routes to AddBlockSheet or AddBrickSheet; real focus trap; reduced-motion respected (M4d)
+  BrickChip.tsx      Brick chip with type-specific render + foreground fill = brickPct%; tick chips are tappable; units chips open UnitsEntrySheet on tap; time-window badge for timed bricks (M4e)
+  TimedLooseBrickCard.tsx Timed loose-brick chip with dashed outline; renders on the Timeline at its start row (M4e)
+  UnitsEntrySheet.tsx Sheet for manual number entry on a units brick; single number input + Save/Cancel; opens on tap of a units brick chip (M4f)
+  Fireworks.tsx      Day-100% celebration overlay; ≤ 16 particles; ~1.6 s; suppressed under prefers-reduced-motion
+  CategoryPicker.tsx Category selector chip row with inline NewCategoryForm sub-view
+  HeroRing.tsx       SVG arc around the Hero numeral; stroke tracks dayPct%
+  LooseBricksTray    Pinned tray above dock; lists loose bricks + "+ Brick" pill
 lib/                 Domain logic: types, data, scoring, utilities
+  celebrations.ts    useCrossUpEffect hook — one-shot cross-up detection for bloom/fireworks
+  audio.ts           playChime() — lazy HTMLAudioElement for /sounds/chime.mp3; SSR + iOS guard
+  longPress.ts       useLongPressRepeat hook — 500ms hold → 50ms ticks; used by GoalStepperChip (M4b). Also exports useLongPress single-fire sibling
+  overlap.ts         Pure half-open overlap engine: intervalsOverlap + findOverlaps (M4e)
+  dayOfYear.ts       Pure day-of-year helper (leap-year aware)
+  timeOffset.ts      Exports HOUR_HEIGHT_PX — single source of truth for timeline geometry
+  blockValidation.ts Pure validators (title, end time, overflow, recurrence, overlap, brick fields)
+  uuid.ts            crypto.randomUUID() mockable seam
 tests/
   e2e/               Playwright specs (e2e + a11y)
 docs/
@@ -67,4 +112,4 @@ public/              Static assets, service-worker manifest
 
 Dharma is built with a Spec-Driven Development (SDD) outer loop wrapping a Test-Driven Development (TDD) inner loop, run by four isolated Claude agents (Planner, Builder, Evaluator, Shipper).
 
-See `CLAUDE.md` for the full harness — roles, hand-off rules, quality gates, and definition of done.
+See `CLAUDE.md` for the SDD/TDD harness (The Loop) — roles, hand-off rules, quality gates, and definition of done.

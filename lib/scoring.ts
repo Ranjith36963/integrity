@@ -1,6 +1,6 @@
 // scoring.ts — re-exports the canonical scoring helpers from dharma.ts.
-// dayPct (aliased as buildingPct) uses equal-weighted average of blockPct
-// per spec §Scoring: "All equal weight" (fixed in SG-bld-08).
+// M3: dayPct signature changed to dayPct(state: AppState) per plan.md § Data models.
+// buildingPct alias follows the same signature.
 export { brickPct, blockPct, dayPct } from "./dharma";
 
 // buildingPct is an alias for dayPct.

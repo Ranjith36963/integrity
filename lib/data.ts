@@ -1,140 +1,173 @@
-import { Block } from "./types";
+/**
+ * lib/data.ts — Re-authored for M3 (plan.md § Data model).
+ *
+ * defaultState() returns the empty AppState per ADR-039 (no factory data).
+ * M3: adds looseBricks: [] to defaultState and ADD_BRICK case to reducer.
+ * Reducer implements ADD_BLOCK + ADD_CATEGORY + ADD_BRICK with assertNever exhaustiveness.
+ * M4e: ADD_BRICK arm enforces hasDuration presence invariant. Exports withDurationDefaults.
+ * M4f: collapsed to 5 action arms (removed START/STOP/TICK/SET_TIMER_MINUTES + LOG_GOAL_BRICK;
+ *      added SET_UNITS_DONE). defaultState drops runningTimerBrickId. Adds findUnitsBrickById.
+ * M8: persistence wired — defaultState gains programStart: today() (ADR-044).
+ *
+ * ADD_BRICK routing: parentBlockId === null → looseBricks[]; else → matching block.bricks[].
+ */
 
-export const NOW = "11:47";
-export const DAY_NUMBER = 119;
-export const TOTAL_DAYS = 365;
-export const TODAY_LABEL = "Wed, Apr 29";
+import type { AppState, Action, Brick } from "./types";
+import { assertNever } from "./types";
+import { today } from "./dharma";
 
-export const BLOCKS: Block[] = [
-  {
-    start: "04:00",
-    end: "04:10",
-    name: "Wake ritual",
-    category: "passive",
-    bricks: [
-      { kind: "tick", name: "cold water", done: true },
-      { kind: "tick", name: "brush", done: true },
-      { kind: "tick", name: "lemon water", done: true },
-    ],
-  },
-  {
-    start: "04:10",
-    end: "04:20",
-    name: "Meditation",
-    category: "mind",
-    bricks: [{ kind: "time", name: "meditate", current: 10, target: 10 }],
-  },
-  {
-    start: "04:20",
-    end: "06:00",
-    name: "Job apps",
-    category: "career",
-    bricks: [
-      { kind: "goal", name: "apply", current: 5, target: 5 },
-      { kind: "goal", name: "follow-ups", current: 4, target: 5 },
-    ],
-  },
-  {
-    start: "06:00",
-    end: "07:00",
-    name: "Fitness",
-    category: "health",
-    bricks: [
-      { kind: "goal", name: "pushups", current: 80, target: 100 },
-      { kind: "time", name: "run", current: 30, target: 30 },
-      { kind: "tick", name: "stretch", done: true },
-    ],
-  },
-  {
-    start: "07:00",
-    end: "07:15",
-    name: "Cold shower",
-    category: "health",
-    bricks: [{ kind: "tick", name: "cold shower", done: true }],
-  },
-  {
-    start: "07:15",
-    end: "07:30",
-    name: "Prayer",
-    category: "mind",
-    bricks: [{ kind: "tick", name: "prayer", done: true }],
-  },
-  {
-    start: "07:30",
-    end: "07:50",
-    name: "Breakfast",
-    category: "health",
-    bricks: [{ kind: "tick", name: "breakfast", done: true }],
-  },
-  {
-    start: "07:50",
-    end: "08:00",
-    name: "Walk to bus",
-    category: "passive",
-    bricks: [{ kind: "tick", name: "walk", done: true }],
-  },
-  {
-    start: "08:00",
-    end: "08:45",
-    name: "Commute",
-    category: "passive",
-    bricks: [{ kind: "time", name: "read", current: 45, target: 45 }],
-  },
-  {
-    start: "08:45",
-    end: "17:15",
-    name: "Work block",
-    category: "passive",
-    bricks: [
-      { kind: "time", name: "deep work", current: 120, target: 240 },
-      { kind: "goal", name: "meetings", current: 1, target: 3 },
-      { kind: "tick", name: "lunch", done: false },
-      { kind: "tick", name: "dinner", done: false },
-    ],
-  },
-  {
-    start: "17:15",
-    end: "18:30",
-    name: "Commute home",
-    category: "passive",
-    bricks: [{ kind: "tick", name: "decompress", done: false }],
-  },
-  {
-    start: "18:30",
-    end: "21:30",
-    name: "Building AI",
-    category: "career",
-    bricks: [{ kind: "time", name: "code", current: 0, target: 180 }],
-  },
-  {
-    start: "21:30",
-    end: "21:40",
-    name: "Face wash",
-    category: "health",
-    bricks: [
-      { kind: "tick", name: "face wash", done: false },
-      { kind: "tick", name: "brush", done: false },
-    ],
-  },
-  {
-    start: "21:40",
-    end: "21:50",
-    name: "Journal",
-    category: "mind",
-    bricks: [{ kind: "tick", name: "write", done: false }],
-  },
-  {
-    start: "21:50",
-    end: "22:00",
-    name: "Meditation",
-    category: "mind",
-    bricks: [{ kind: "time", name: "meditate", current: 0, target: 10 }],
-  },
-  {
-    start: "22:00",
-    end: "04:00",
-    name: "Sleep",
-    category: "passive",
-    bricks: [{ kind: "time", name: "sleep", current: 0, target: 360 }],
-  },
-];
+/**
+ * Migration helper for pre-M4e in-memory brick literals.
+ * Returns the brick unchanged if hasDuration is already a boolean;
+ * otherwise fills hasDuration: false and leaves start/end/recurrence absent
+ * (matching the presence invariant for hasDuration === false).
+ * Used to migrate test fixtures and any in-memory seeded state defensively at boot.
+ * Resolves SG-m4e-06 (helper-based migration).
+ */
+export function withDurationDefaults<T extends Brick>(brick: T): T {
+  // Use `in` because the field is optional at the TS-shape level pre-migration but always present post-migration.
+  if (
+    "hasDuration" in brick &&
+    typeof (brick as Brick).hasDuration === "boolean"
+  )
+    return brick;
+  return { ...brick, hasDuration: false };
+}
+
+export function defaultState(): AppState {
+  return {
+    blocks: [],
+    categories: [],
+    looseBricks: [],
+    programStart: today(), // M8 — stamped to today on first run (ADR-044)
+  };
+}
+
+/**
+ * findUnitsBrickById — M4f helper. Searches state for a units-kind brick by id.
+ * Searches looseBricks first, then block.bricks. Returns the units-kind brick with
+ * the given id, or null if not found or if the brick is a tick kind.
+ */
+export function findUnitsBrickById(
+  state: AppState,
+  id: string,
+): Extract<Brick, { kind: "units" }> | null {
+  // Search loose bricks
+  for (const b of state.looseBricks) {
+    if (b.id === id && b.kind === "units") {
+      return b as Extract<Brick, { kind: "units" }>;
+    }
+  }
+  // Search nested bricks
+  for (const block of state.blocks) {
+    for (const b of block.bricks) {
+      if (b.id === id && b.kind === "units") {
+        return b as Extract<Brick, { kind: "units" }>;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Pure reducer: returns a new AppState for every action.
+ * Switch is exhaustive via assertNever — adding an Action union member without
+ * a matching case here is a TypeScript compile error.
+ */
+export function reducer(state: AppState, action: Action): AppState {
+  switch (action.type) {
+    case "ADD_BLOCK":
+      return { ...state, blocks: [...state.blocks, action.block] };
+    case "ADD_CATEGORY":
+      return { ...state, categories: [...state.categories, action.category] };
+    case "ADD_BRICK": {
+      const b = action.brick;
+      // M4f: defensive kind guard (runtime defense-in-depth against stale fixtures).
+      // TypeScript prevents kind:"goal"/"time" at compile time, but old fixtures may slip through.
+      const k = b.kind as string;
+      if (k !== "tick" && k !== "units") return state;
+      // M4e: Presence invariant guard (defense-in-depth — UI should never construct an invalid action).
+      // hasDuration === true IFF all three of start/end/recurrence are present.
+      const allPresent =
+        b.start !== undefined &&
+        b.end !== undefined &&
+        b.recurrence !== undefined;
+      if (b.hasDuration === true && !allPresent) return state;
+      if (
+        b.hasDuration === false &&
+        (b.start !== undefined ||
+          b.end !== undefined ||
+          b.recurrence !== undefined)
+      )
+        return state;
+      if (b.parentBlockId === null) {
+        // Standalone brick → looseBricks
+        return {
+          ...state,
+          looseBricks: [...state.looseBricks, b],
+        };
+      }
+      // Inside-block brick → find block by id and append to its bricks[]
+      return {
+        ...state,
+        blocks: state.blocks.map((bl) =>
+          bl.id === b.parentBlockId ? { ...bl, bricks: [...bl.bricks, b] } : bl,
+        ),
+      };
+    }
+    case "LOG_TICK_BRICK": {
+      // Flip done on the matching tick brick; no-op if id not found or kind !== "tick"
+      const flip = (b: Brick): Brick =>
+        b.id === action.brickId && b.kind === "tick"
+          ? { ...b, done: !b.done }
+          : b;
+      return {
+        ...state,
+        blocks: state.blocks.map((bl) => ({
+          ...bl,
+          bricks: bl.bricks.map(flip),
+        })),
+        looseBricks: state.looseBricks.map(flip),
+      };
+    }
+    case "SET_UNITS_DONE": {
+      // Absolute-value write: sets done = Math.max(0, Math.floor(action.done)).
+      // Identity short-circuit: returns original state reference when done is unchanged.
+      // No-op: returns original state when brickId not found or brick is tick kind.
+      const clamped = Math.max(0, Math.floor(action.done));
+      const apply = (b: Brick): Brick => {
+        if (b.id !== action.brickId) return b;
+        if (b.kind !== "units") return b; // AC #9: no-op on tick brick
+        if (b.done === clamped) return b; // identity short-circuit
+        return { ...b, done: clamped };
+      };
+      // Same array-identity preservation pattern as the old LOG_GOAL_BRICK arm.
+      let blocksChanged = false;
+      const newBlocks = state.blocks.map((bl) => {
+        let blockChanged = false;
+        const bricks = bl.bricks.map((br) => {
+          const out = apply(br);
+          if (out !== br) blockChanged = true;
+          return out;
+        });
+        if (!blockChanged) return bl;
+        blocksChanged = true;
+        return { ...bl, bricks };
+      });
+      let looseChanged = false;
+      const newLoose = state.looseBricks.map((br) => {
+        const out = apply(br);
+        if (out !== br) looseChanged = true;
+        return out;
+      });
+      if (!blocksChanged && !looseChanged) return state; // AC #8: missing id ⇒ unchanged
+      return {
+        ...state,
+        blocks: blocksChanged ? newBlocks : state.blocks,
+        looseBricks: looseChanged ? newLoose : state.looseBricks,
+      };
+    }
+    default:
+      return assertNever(action);
+  }
+}
