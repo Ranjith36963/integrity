@@ -546,11 +546,13 @@ describe("C-m4a-012: reduced-motion does not suppress haptics or chime on block 
   });
 });
 
-// ─── C-m4b-020: TimelineBlock threads onGoalLog down to BrickChip ─────────────
+// ─── C-m4b-020: TimelineBlock threads onUnitsOpenSheet down to BrickChip ────────
+// M4f: onGoalLog stepper removed (ADR-043). Units chip is simple button.
+// Test updated: units chip tap opens sheet via onUnitsOpenSheet prop chain.
 
-describe("C-m4b-020: TimelineBlock threads onGoalLog down to inner goal BrickChip", () => {
+describe("C-m4b-020: TimelineBlock threads onUnitsOpenSheet down to inner units BrickChip (M4f)", () => {
   const cat1: Category = { id: "c1", name: "category 1", color: "#34d399" };
-  const blockWithGoal: Block = {
+  const blockWithUnits: Block = {
     id: "b1",
     name: "block 1",
     start: "09:00",
@@ -561,9 +563,9 @@ describe("C-m4b-020: TimelineBlock threads onGoalLog down to inner goal BrickChi
       {
         id: "g1",
         name: "pushups",
-        kind: "goal",
+        kind: "units",
         hasDuration: false,
-        count: 3,
+        done: 3,
         target: 10,
         unit: "reps",
         categoryId: "c1",
@@ -572,15 +574,15 @@ describe("C-m4b-020: TimelineBlock threads onGoalLog down to inner goal BrickChi
     ],
   };
 
-  it("clicking inner + button calls onGoalLog with brick.id and delta:1", async () => {
+  it("clicking units chip calls onUnitsOpenSheet with brick.id", async () => {
     const user = userEvent.setup();
-    const onGoalLog = vi.fn();
+    const onUnitsOpenSheet = vi.fn();
     const { container } = render(
       <TimelineBlock
-        block={blockWithGoal}
+        block={blockWithUnits}
         categories={[cat1]}
         onAddBrick={vi.fn()}
-        onGoalLog={onGoalLog}
+        onUnitsOpenSheet={onUnitsOpenSheet}
       />,
     );
     const card = container.querySelector(
@@ -588,111 +590,14 @@ describe("C-m4b-020: TimelineBlock threads onGoalLog down to inner goal BrickChi
     ) as HTMLElement;
     await user.click(card);
 
-    const plus = screen.getByRole("button", { name: "Increase pushups" });
-    await user.click(plus);
-    expect(onGoalLog).toHaveBeenCalledWith("g1", 1);
+    const chipBtn = screen.getByRole("button", {
+      name: /pushups.*units/i,
+    });
+    await user.click(chipBtn);
+    expect(onUnitsOpenSheet).toHaveBeenCalledWith("g1");
   });
 });
 
-// ─── C-m4c-019: TimelineBlock threads runningTimerBrickId + timer callbacks ────
-
-describe("C-m4c-019: TimelineBlock pass-through of runningTimerBrickId and timer callbacks", () => {
-  const cat1: Category = { id: "c1", name: "category 1", color: "#34d399" };
-  const blockWithTimeBrick: Block = {
-    id: "b1",
-    name: "block 1",
-    start: "09:00",
-    end: "10:00",
-    recurrence: { kind: "just-today", date: "2026-05-06" },
-    categoryId: "c1",
-    bricks: [
-      {
-        id: "t1",
-        name: "Read",
-        kind: "time",
-        hasDuration: false,
-        durationMin: 25,
-        minutesDone: 5,
-        categoryId: "c1",
-        parentBlockId: "b1",
-      },
-    ],
-  };
-
-  it("chip receives running=true when runningTimerBrickId matches brick.id", async () => {
-    const user = userEvent.setup();
-    const { container } = render(
-      <TimelineBlock
-        block={blockWithTimeBrick}
-        categories={[cat1]}
-        onAddBrick={vi.fn()}
-        runningTimerBrickId="t1"
-        onTimerToggle={vi.fn()}
-        onTimerOpenSheet={vi.fn()}
-      />,
-    );
-    // Expand to reveal chip
-    const card = container.querySelector(
-      '[data-component="timeline-block"]',
-    ) as HTMLElement;
-    await user.click(card);
-
-    // Time chip should be aria-pressed="true" (running=true)
-    const chip = screen.getByRole("button", {
-      name: /running, tap to stop/,
-    });
-    expect(chip).toBeInTheDocument();
-    expect(chip.getAttribute("aria-pressed")).toBe("true");
-  });
-
-  it("chip receives running=false when runningTimerBrickId is different brick", async () => {
-    const user = userEvent.setup();
-    const { container } = render(
-      <TimelineBlock
-        block={blockWithTimeBrick}
-        categories={[cat1]}
-        onAddBrick={vi.fn()}
-        runningTimerBrickId="t2"
-        onTimerToggle={vi.fn()}
-        onTimerOpenSheet={vi.fn()}
-      />,
-    );
-    const card = container.querySelector(
-      '[data-component="timeline-block"]',
-    ) as HTMLElement;
-    await user.click(card);
-
-    const chip = screen.getByRole("button", {
-      name: /stopped, tap to start/,
-    });
-    expect(chip).toBeInTheDocument();
-    expect(chip.getAttribute("aria-pressed")).toBe("false");
-  });
-
-  it("onTimerToggle spy is called with brick id when chip onTimerToggle fires", async () => {
-    const user = userEvent.setup();
-    const onTimerToggle = vi.fn();
-    const { container } = render(
-      <TimelineBlock
-        block={blockWithTimeBrick}
-        categories={[cat1]}
-        onAddBrick={vi.fn()}
-        runningTimerBrickId={null}
-        onTimerToggle={onTimerToggle}
-        onTimerOpenSheet={vi.fn()}
-      />,
-    );
-    const card = container.querySelector(
-      '[data-component="timeline-block"]',
-    ) as HTMLElement;
-    await user.click(card);
-
-    // Tap the chip (short press)
-    const chip = screen.getByRole("button", { name: /stopped, tap to start/ });
-    chip.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
-    chip.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
-    await new Promise((r) => setTimeout(r, 50));
-
-    expect(onTimerToggle).toHaveBeenCalledWith("t1");
-  });
-});
+// C-m4c-019: TimelineBlock timer pass-through — RETIRED in M4f (ADR-043).
+// kind:"time" removed; runningTimerBrickId removed from AppState.
+// Coverage replaced by C-m4b-020 units chip thread-through above.

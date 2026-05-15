@@ -19,7 +19,6 @@ function makeState(partial: Partial<AppState> = {}): AppState {
     blocks: [],
     categories: [],
     looseBricks: [],
-    runningTimerBrickId: null,
     ...partial,
   };
 }
@@ -45,40 +44,8 @@ function makeTimedLooseBrick(
   id: string,
   start: string,
   end: string,
-  kind: "tick" | "goal" | "time" = "tick",
   name = "Brick",
 ): Brick {
-  if (kind === "goal") {
-    return {
-      id,
-      name,
-      kind: "goal",
-      target: 5,
-      count: 0,
-      unit: "",
-      categoryId: null,
-      parentBlockId: null,
-      hasDuration: true,
-      start,
-      end,
-      recurrence: { kind: "just-today", date: "2026-05-14" },
-    };
-  }
-  if (kind === "time") {
-    return {
-      id,
-      name,
-      kind: "time",
-      durationMin: 30,
-      minutesDone: 0,
-      categoryId: null,
-      parentBlockId: null,
-      hasDuration: true,
-      start,
-      end,
-      recurrence: { kind: "just-today", date: "2026-05-14" },
-    };
-  }
   return {
     id,
     name,
@@ -347,9 +314,10 @@ describe("U-m4e-010: selectAllTimedItems — collects blocks with end + bricks w
     const n1: Brick = {
       id: "n1",
       name: "Nested",
-      kind: "time",
-      durationMin: 30,
-      minutesDone: 0,
+      kind: "units",
+      target: 30,
+      done: 0,
+      unit: "minutes",
       categoryId: null,
       parentBlockId: "b1",
       hasDuration: true,
@@ -360,13 +328,13 @@ describe("U-m4e-010: selectAllTimedItems — collects blocks with end + bricks w
     const b1 = makeBlock("b1", "09:00", "10:00");
     b1.bricks = [n1];
     const b2 = makeBlock("b2", "11:00", undefined); // no end
-    const r1 = makeTimedLooseBrick("r1", "09:30", "10:30", "tick", "Run");
+    const r1 = makeTimedLooseBrick("r1", "09:30", "10:30", "Run");
     const r2: Brick = {
       id: "r2",
-      name: "Goal",
-      kind: "goal",
+      name: "Units",
+      kind: "units",
       target: 5,
-      count: 0,
+      done: 0,
       unit: "",
       categoryId: null,
       parentBlockId: null,

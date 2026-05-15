@@ -2,8 +2,10 @@
 // M2: Brick stub with old field names (current/target) replaced.
 // M3: Full Brick discriminated union with id/categoryId/parentBlockId per locked schema.
 // M4e: BrickBase gains universal duration axis (ADR-042).
+// M4f: Brick union collapsed to two kinds (tick + units); timer infrastructure removed (ADR-043).
 
-// Brick — REPLACES M2's stub. Adds id/categoryId/parentBlockId; renames goal/time progress fields.
+// Brick — REPLACES M3's three-kind union. Collapses to tick + units per ADR-043.
+// count → done rename; kind:"goal" → kind:"units"; kind:"time" removed.
 type BrickBase = {
   id: string; // crypto.randomUUID via lib/uuid.ts
   name: string;
@@ -20,8 +22,7 @@ type BrickBase = {
 
 export type Brick =
   | (BrickBase & { kind: "tick"; done: boolean })
-  | (BrickBase & { kind: "goal"; target: number; unit: string; count: number })
-  | (BrickBase & { kind: "time"; durationMin: number; minutesDone: number });
+  | (BrickBase & { kind: "units"; target: number; unit: string; done: number });
 
 // Recurrence discriminated union — locked by ADR-019.
 // custom-range weekdays: 0=Sun..6=Sat.
@@ -49,25 +50,23 @@ export type Block = {
   bricks: Brick[]; // populated in M3 via ADD_BRICK action
 };
 
-// AppState — extends M3's shape with runningTimerBrickId (M4c)
+// AppState — M4f: runningTimerBrickId removed (ADR-043)
 export type AppState = {
   blocks: Block[];
   categories: Category[];
   looseBricks: Brick[]; // M3 — bricks with parentBlockId === null
-  runningTimerBrickId: string | null; // M4c — null = no timer running; one running brick at a time
+  // runningTimerBrickId: REMOVED in M4f (ADR-043)
 };
 
-// Action — extends M4b's discriminated union with four timer actions (M4c)
+// Action — M4f: collapsed to 5 variants; 5 timer/goal actions removed (ADR-043)
 export type Action =
   | { type: "ADD_BLOCK"; block: Block }
   | { type: "ADD_CATEGORY"; category: Category }
   | { type: "ADD_BRICK"; brick: Brick } // M3 — routed by brick.parentBlockId
   | { type: "LOG_TICK_BRICK"; brickId: string } // M4a — flips `done` on the brick with this id
-  | { type: "LOG_GOAL_BRICK"; brickId: string; delta: 1 | -1 } // M4b — clamp-increments goal brick count
-  | { type: "START_TIMER"; brickId: string } // M4c — implicitly stops any other running timer
-  | { type: "STOP_TIMER"; brickId: string } // M4c — no-op when brickId is not the running one
-  | { type: "TICK_TIMER"; brickId: string; minutesDone: number } // M4c — dispatched by lib/timer.ts
-  | { type: "SET_TIMER_MINUTES"; brickId: string; minutes: number }; // M4c — long-press manual entry, clamped in reducer
+  | { type: "SET_UNITS_DONE"; brickId: string; done: number }; // M4f — sets done on a units brick
+// START_TIMER, STOP_TIMER, TICK_TIMER, SET_TIMER_MINUTES: REMOVED in M4f
+// LOG_GOAL_BRICK: REMOVED in M4f
 
 export function assertNever(x: never): never {
   throw new Error(`unhandled ${JSON.stringify(x)}`);

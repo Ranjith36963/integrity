@@ -2,10 +2,12 @@
  * lib/blockValidation.ts — Pure validation helpers for the Add Block form.
  * No React, no Date math — operates on "HH:MM" strings and Block structures.
  * Half-open [start, end) intervals per ADR-006.
+ * M4f: removed overlapsExistingBlock (re-pointed to lib/overlap.ts:intervalsOverlap per SG-m4f-03),
+ *      removed isValidBrickTime (time bricks gone), renamed isValidBrickGoal → isValidBrickUnitsTarget.
  */
 
 import { toMin } from "./dharma";
-import type { Block, Recurrence } from "./types";
+import type { Recurrence } from "./types";
 
 /** Validates HH:MM format: two-digit hour 00–23, two-digit minute 00–59. */
 export function isValidStart(start: string): boolean {
@@ -39,27 +41,10 @@ export function endAfterStart(start: string, end: string | undefined): boolean {
  *
  * ADR-006: back-to-back blocks (candidate.start === existing.end) do NOT overlap.
  * Existing blocks without an end field are skipped (no end = no hard boundary).
+ *
+ * NOTE: overlapsExistingBlock is DELETED in M4f (SG-m4f-03). Tests U-m2-004/005 are re-pointed
+ * to lib/overlap.ts:intervalsOverlap. Use intervalsOverlap from lib/overlap.ts for new callers.
  */
-export function overlapsExistingBlock(
-  blocks: Block[],
-  candidate: { start: string; end?: string },
-): Block | null {
-  const cStart = toMin(candidate.start);
-  const cEnd = candidate.end !== undefined ? toMin(candidate.end) : cStart + 1;
-
-  for (const block of blocks) {
-    if (!block.end) continue; // skip no-end existing blocks
-    const bStart = toMin(block.start);
-    const bEnd = toMin(block.end);
-
-    // Half-open interval intersection: [cStart, cEnd) ∩ [bStart, bEnd) ≠ ∅
-    // iff cStart < bEnd AND cEnd > bStart
-    if (cStart < bEnd && cEnd > bStart) {
-      return block;
-    }
-  }
-  return null;
-}
 
 /**
  * Returns true if the recurrence value is internally valid.
@@ -73,17 +58,10 @@ export function isValidCustomRange(rec: Recurrence): boolean {
 }
 
 /**
- * M3: Validates brick goal target — integer ≥ 1.
+ * M4f: Validates brick units target — integer ≥ 1.
+ * (Renamed from isValidBrickGoal per plan.md § File deletions, SG-m4f-03.)
  * Returns false for 0, negative, non-integer, and NaN.
  */
-export function isValidBrickGoal(target: number): boolean {
+export function isValidBrickUnitsTarget(target: number): boolean {
   return Number.isInteger(target) && target >= 1;
-}
-
-/**
- * M3: Validates brick time durationMin — integer ≥ 1.
- * Returns false for 0, negative, non-integer, and NaN.
- */
-export function isValidBrickTime(durationMin: number): boolean {
-  return Number.isInteger(durationMin) && durationMin >= 1;
 }

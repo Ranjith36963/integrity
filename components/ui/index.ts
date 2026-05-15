@@ -29,10 +29,4 @@ export type { EmptyStateProps } from "./EmptyState";
 export { BlockCard } from "./BlockCard";
 export type { BlockCardProps } from "./BlockCard";
 
-export { BrickChip } from "./BrickChip";
-export type {
-  BrickChipProps,
-  TickBrickChipProps,
-  GoalBrickChipProps,
-  TimeBrickChipProps,
-} from "./BrickChip";
+// BrickChip primitive removed in M4f (ADR-043) — use components/BrickChip.tsx instead.

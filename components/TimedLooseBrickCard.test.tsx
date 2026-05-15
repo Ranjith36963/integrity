@@ -102,14 +102,14 @@ describe("C-m4e-021: TimedLooseBrickCard inner BrickChip is fully interactive", 
     expect(onTickToggle).toHaveBeenCalledWith("r1");
   });
 
-  it("goal brick: onGoalLog called on stepper increase tap", () => {
-    const onGoalLog = vi.fn();
-    const goalBrick: Brick = {
+  it("units brick: onUnitsOpenSheet called with brick.id when chip tapped (M4f: no stepper)", () => {
+    const onUnitsOpenSheet = vi.fn();
+    const unitsBrick: Brick = {
       id: "r2",
       name: "Pushups",
-      kind: "goal",
+      kind: "units",
       target: 5,
-      count: 3,
+      done: 3,
       unit: "reps",
       hasDuration: true,
       start: "09:00",
@@ -120,14 +120,16 @@ describe("C-m4e-021: TimedLooseBrickCard inner BrickChip is fully interactive", 
     };
     render(
       <TimedLooseBrickCard
-        brick={goalBrick}
+        brick={unitsBrick}
         categories={[]}
-        onGoalLog={onGoalLog}
+        onUnitsOpenSheet={onUnitsOpenSheet}
       />,
     );
-    const plusBtn = screen.getByRole("button", { name: /increase pushups/i });
-    fireEvent.pointerDown(plusBtn);
-    fireEvent.pointerUp(plusBtn);
-    expect(onGoalLog).toHaveBeenCalledWith("r2", 1);
+    // M4f: units chip is a single button (no stepper); tap opens sheet
+    const chipBtn = screen.getByRole("button", {
+      name: /pushups.*units/i,
+    });
+    fireEvent.click(chipBtn);
+    expect(onUnitsOpenSheet).toHaveBeenCalledWith("r2");
   });
 });

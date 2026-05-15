@@ -8,6 +8,7 @@
 // - M1 hour-grid CSS gradient unchanged
 // - M4e: `blocks: Block[]` prop replaced by `items: TimelineItem[]` union (blocks + timed loose bricks)
 //        Renders TimelineBlock for kind="block", TimedLooseBrickCard for kind="brick".
+// - M4f: onGoalLog → onUnitsLog; timer props removed (ADR-043).
 
 import { useRef, useEffect } from "react";
 import type { Block, Brick, Category } from "@/lib/types";
@@ -34,17 +35,16 @@ interface Props {
   onSlotTap: (hour: number) => void;
   onAddBrick?: (parentBlockId: string) => void;
   onTickToggle?: (brickId: string) => void;
+  /** M4f: called with brickId when a units chip is tapped (opens UnitsEntrySheet). */
+  onUnitsOpenSheet?: (brickId: string) => void;
+  /** @deprecated use onUnitsOpenSheet; kept for backwards-compat prop shape; ignored */
+  onUnitsLog?: (brickId: string, delta: 1 | -1) => void;
+  /** @deprecated use onUnitsOpenSheet; kept for backwards-compat prop shape; ignored */
   onGoalLog?: (brickId: string, delta: 1 | -1) => void;
   /** M4d: when true, the EmptyBlocks card is suppressed even if items is empty.
    * Used by BuildingClient when selectTrayBricks(state).length > 0 (AC #10/#11 — loose bricks
    * fill the day so the block-empty state is no longer relevant). */
   hasLooseBricks?: boolean;
-  /** M4c: current running timer brick id threaded to TimelineBlock → BrickChip */
-  runningTimerBrickId?: string | null;
-  /** M4c: tap a time chip to start/stop */
-  onTimerToggle?: (brickId: string) => void;
-  /** M4c: long-press a time chip to open manual-entry sheet */
-  onTimerOpenSheet?: (brickId: string) => void;
 }
 
 export function Timeline({
@@ -54,25 +54,18 @@ export function Timeline({
   onSlotTap,
   onAddBrick,
   onTickToggle,
-  onGoalLog,
+  onUnitsOpenSheet,
   hasLooseBricks = false,
-  runningTimerBrickId = null,
-  onTimerToggle,
-  onTimerOpenSheet,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll on mount so NowLine is vertically centered in the visible viewport.
-  // Runs once after first paint (SSR-safe: useEffect never runs on the server).
-  // Uses behavior:"auto" (instant — no jarring smooth scroll on mount).
   useEffect(() => {
     if (!scrollRef.current) return;
     const containerHeight = scrollRef.current.clientHeight;
     const offsetPx = timeToOffsetPx(now, HOUR_HEIGHT_PX);
     const targetTop = Math.max(0, offsetPx - containerHeight / 2);
     scrollRef.current.scrollTop = targetTop;
-    // Intentionally runs only once on mount — not on every `now` tick.
-    // The user may have scrolled away intentionally; we don't re-center.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -84,7 +77,6 @@ export function Timeline({
       ref={scrollRef}
       className="relative overflow-x-hidden overflow-y-auto"
       style={{
-        // Reserve space for BottomBar (~96px) and above chrome.
         maxHeight: "calc(100dvh - 360px)",
       }}
     >
@@ -119,8 +111,6 @@ export function Timeline({
           className="absolute top-0 right-0 bottom-0"
           style={{
             left: `${labelColumnWidth}px`,
-            // Hour-grid lines via CSS gradient (SG-m1-03 choice: CSS gradient).
-            // Each row is HOUR_HEIGHT_PX tall; hairline at top of each row.
             backgroundImage: `repeating-linear-gradient(to bottom, var(--grid) 0px, var(--grid) 1px, transparent 1px, transparent ${HOUR_HEIGHT_PX}px)`,
             position: "relative",
           }}
@@ -137,10 +127,7 @@ export function Timeline({
                 categories={categories}
                 onAddBrick={onAddBrick}
                 onTickToggle={onTickToggle}
-                onGoalLog={onGoalLog}
-                runningTimerBrickId={runningTimerBrickId}
-                onTimerToggle={onTimerToggle}
-                onTimerOpenSheet={onTimerOpenSheet}
+                onUnitsOpenSheet={onUnitsOpenSheet}
               />
             ) : (
               <TimedLooseBrickCard
@@ -148,10 +135,7 @@ export function Timeline({
                 brick={item.brick}
                 categories={categories}
                 onTickToggle={onTickToggle}
-                onGoalLog={onGoalLog}
-                running={runningTimerBrickId === item.brick.id}
-                onTimerToggle={onTimerToggle}
-                onTimerOpenSheet={onTimerOpenSheet}
+                onUnitsOpenSheet={onUnitsOpenSheet}
               />
             ),
           )}

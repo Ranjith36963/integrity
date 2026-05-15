@@ -82,18 +82,27 @@ describe("C-m3-013: AddBrickSheet Title required + autofocus", () => {
 });
 
 // ─── C-m3-014: type selector (Tick default; per-type field reveal/hide) ────────
+// M4f: 3 chips → 2 chips (Tick, Units); Time chip removed (ADR-043).
 
 describe("C-m3-014: AddBrickSheet type selector", () => {
-  it("renders three chips in a radiogroup: Tick (default checked), Goal, Time", () => {
+  it("renders two chips in a radiogroup: Tick (default checked) and Units; no Time chip (C-m4f-013)", () => {
     render(<AddBrickSheet {...defaultProps()} />);
     const group = screen.getByRole("radiogroup");
     expect(group).toBeTruthy();
     const radios = within(group).getAllByRole("radio");
-    expect(radios).toHaveLength(3);
+    expect(radios).toHaveLength(2);
     const tickRadio = radios.find((r) =>
       r.getAttribute("aria-label")?.toLowerCase().includes("tick"),
     );
     expect(tickRadio?.getAttribute("aria-checked")).toBe("true");
+    // No Time chip (C-m4f-013)
+    expect(
+      within(group)
+        .queryAllByRole("radio")
+        .find((r) =>
+          r.getAttribute("aria-label")?.toLowerCase().includes("time"),
+        ),
+    ).toBeUndefined();
   });
 
   it("no per-type fields render under default Tick selection", () => {
@@ -102,36 +111,21 @@ describe("C-m3-014: AddBrickSheet type selector", () => {
     expect(screen.queryByRole("spinbutton", { name: /duration/i })).toBeNull();
   });
 
-  it("clicking Goal changes aria-checked; reveals target + unit inputs", async () => {
+  it("clicking Units changes aria-checked; reveals target + unit inputs (C-m4f-014)", async () => {
     const user = userEvent.setup();
     render(<AddBrickSheet {...defaultProps()} />);
     const group = screen.getByRole("radiogroup");
-    const goalRadio = within(group)
+    const unitsRadio = within(group)
       .getAllByRole("radio")
       .find((r) =>
-        r.getAttribute("aria-label")?.toLowerCase().includes("goal"),
+        r.getAttribute("aria-label")?.toLowerCase().includes("units"),
       );
-    await user.click(goalRadio!);
-    expect(goalRadio?.getAttribute("aria-checked")).toBe("true");
+    await user.click(unitsRadio!);
+    expect(unitsRadio?.getAttribute("aria-checked")).toBe("true");
     expect(
       screen.getByRole("spinbutton", { name: /target/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: /unit/i })).toBeInTheDocument();
-  });
-
-  it("clicking Time reveals durationMin input and hides Goal fields", async () => {
-    const user = userEvent.setup();
-    render(<AddBrickSheet {...defaultProps()} />);
-    const group = screen.getByRole("radiogroup");
-    const radios = within(group).getAllByRole("radio");
-    const timeRadio = radios.find((r) =>
-      r.getAttribute("aria-label")?.toLowerCase().includes("time"),
-    );
-    await user.click(timeRadio!);
-    expect(
-      screen.getByRole("spinbutton", { name: /duration/i }),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole("spinbutton", { name: /target/i })).toBeNull();
   });
 
   it("clicking back to Tick hides all per-type fields", async () => {
@@ -139,34 +133,35 @@ describe("C-m3-014: AddBrickSheet type selector", () => {
     render(<AddBrickSheet {...defaultProps()} />);
     const group = screen.getByRole("radiogroup");
     const radios = within(group).getAllByRole("radio");
-    const goalRadio = radios.find((r) =>
-      r.getAttribute("aria-label")?.toLowerCase().includes("goal"),
+    const unitsRadio = radios.find((r) =>
+      r.getAttribute("aria-label")?.toLowerCase().includes("units"),
     );
     const tickRadio = radios.find((r) =>
       r.getAttribute("aria-label")?.toLowerCase().includes("tick"),
     );
-    await user.click(goalRadio!);
+    await user.click(unitsRadio!);
     await user.click(tickRadio!);
     expect(screen.queryByRole("spinbutton", { name: /target/i })).toBeNull();
     expect(screen.queryByRole("spinbutton", { name: /duration/i })).toBeNull();
   });
 });
 
-// ─── C-m3-015: Goal validation (target ≥ 1) ───────────────────────────────────
+// ─── C-m3-015: Units validation (target ≥ 1) ──────────────────────────────────
+// M4f: Goal renamed to Units (ADR-043). Same validation semantics.
 
-describe("C-m3-015: AddBrickSheet Goal validation", () => {
-  it("Save disabled when Goal target is 0 (even with valid Title)", async () => {
+describe("C-m3-015: AddBrickSheet Units validation (M4f: was Goal validation)", () => {
+  it("Save disabled when Units target is 0 (even with valid Title)", async () => {
     const user = userEvent.setup();
     render(<AddBrickSheet {...defaultProps()} />);
     await user.type(screen.getByRole("textbox", { name: /title/i }), "brick A");
-    // Switch to Goal
+    // Switch to Units
     const group = screen.getByRole("radiogroup");
-    const goalRadio = within(group)
+    const unitsRadio = within(group)
       .getAllByRole("radio")
       .find((r) =>
-        r.getAttribute("aria-label")?.toLowerCase().includes("goal"),
+        r.getAttribute("aria-label")?.toLowerCase().includes("units"),
       );
-    await user.click(goalRadio!);
+    await user.click(unitsRadio!);
     // Clear target field and set to 0
     const targetInput = screen.getByRole("spinbutton", { name: /target/i });
     await user.clear(targetInput);
@@ -178,17 +173,17 @@ describe("C-m3-015: AddBrickSheet Goal validation", () => {
     ).toBe("true");
   });
 
-  it("Save enabled when Goal target is 1", async () => {
+  it("Save enabled when Units target is 1", async () => {
     const user = userEvent.setup();
     render(<AddBrickSheet {...defaultProps()} />);
     await user.type(screen.getByRole("textbox", { name: /title/i }), "brick A");
     const group = screen.getByRole("radiogroup");
-    const goalRadio = within(group)
+    const unitsRadio = within(group)
       .getAllByRole("radio")
       .find((r) =>
-        r.getAttribute("aria-label")?.toLowerCase().includes("goal"),
+        r.getAttribute("aria-label")?.toLowerCase().includes("units"),
       );
-    await user.click(goalRadio!);
+    await user.click(unitsRadio!);
     const targetInput = screen.getByRole("spinbutton", { name: /target/i });
     await user.clear(targetInput);
     await user.type(targetInput, "1");
@@ -199,17 +194,17 @@ describe("C-m3-015: AddBrickSheet Goal validation", () => {
     ).toBe("false");
   });
 
-  it("Save enabled when Goal target=100 and unit is blank (unit is optional)", async () => {
+  it("Save enabled when Units target=100 and unit is blank (unit is optional)", async () => {
     const user = userEvent.setup();
     render(<AddBrickSheet {...defaultProps()} />);
     await user.type(screen.getByRole("textbox", { name: /title/i }), "brick A");
     const group = screen.getByRole("radiogroup");
-    const goalRadio = within(group)
+    const unitsRadio = within(group)
       .getAllByRole("radio")
       .find((r) =>
-        r.getAttribute("aria-label")?.toLowerCase().includes("goal"),
+        r.getAttribute("aria-label")?.toLowerCase().includes("units"),
       );
-    await user.click(goalRadio!);
+    await user.click(unitsRadio!);
     const targetInput = screen.getByRole("spinbutton", { name: /target/i });
     await user.clear(targetInput);
     await user.type(targetInput, "100");
@@ -221,51 +216,9 @@ describe("C-m3-015: AddBrickSheet Goal validation", () => {
   });
 });
 
-// ─── C-m3-016: Time validation (durationMin ≥ 1) ─────────────────────────────
-
-describe("C-m3-016: AddBrickSheet Time validation", () => {
-  it("Save disabled when Time durationMin is 0", async () => {
-    const user = userEvent.setup();
-    render(<AddBrickSheet {...defaultProps()} />);
-    await user.type(screen.getByRole("textbox", { name: /title/i }), "brick C");
-    const group = screen.getByRole("radiogroup");
-    const timeRadio = within(group)
-      .getAllByRole("radio")
-      .find((r) =>
-        r.getAttribute("aria-label")?.toLowerCase().includes("time"),
-      );
-    await user.click(timeRadio!);
-    const durationInput = screen.getByRole("spinbutton", { name: /duration/i });
-    await user.clear(durationInput);
-    await user.type(durationInput, "0");
-    expect(
-      screen
-        .getByRole("button", { name: /save/i })
-        .getAttribute("aria-disabled"),
-    ).toBe("true");
-  });
-
-  it("Save enabled when Time durationMin is 30", async () => {
-    const user = userEvent.setup();
-    render(<AddBrickSheet {...defaultProps()} />);
-    await user.type(screen.getByRole("textbox", { name: /title/i }), "brick C");
-    const group = screen.getByRole("radiogroup");
-    const timeRadio = within(group)
-      .getAllByRole("radio")
-      .find((r) =>
-        r.getAttribute("aria-label")?.toLowerCase().includes("time"),
-      );
-    await user.click(timeRadio!);
-    const durationInput = screen.getByRole("spinbutton", { name: /duration/i });
-    await user.clear(durationInput);
-    await user.type(durationInput, "30");
-    expect(
-      screen
-        .getByRole("button", { name: /save/i })
-        .getAttribute("aria-disabled"),
-    ).toBe("false");
-  });
-});
+// C-m3-016: AddBrickSheet Time validation — RETIRED in M4f (ADR-043).
+// kind:"time" removed from the schema; durationMin field no longer exists.
+// Coverage replaced by C-m4f-016 (Units invalid target → Save disabled).
 
 // ─── C-m3-017: CategoryPicker pre-fill ────────────────────────────────────────
 
@@ -491,6 +444,7 @@ describe("C-m4e-004: Toggle OFF hides time fields; Save produces hasDuration:fal
 });
 
 // ─── C-m4e-005: Save with toggle ON writes hasDuration:true + all time fields ─
+// M4f: "goal" radio renamed to "units" in kind selector.
 
 describe("C-m4e-005: Save with toggle ON produces hasDuration:true brick", () => {
   it("onSave called with hasDuration:true, start, end, recurrence", async () => {
@@ -500,14 +454,14 @@ describe("C-m4e-005: Save with toggle ON produces hasDuration:true brick", () =>
       <AddBrickSheet {...defaultProps({ state: emptyState(), onSave })} />,
     );
     await user.type(screen.getByRole("textbox", { name: /title/i }), "Run");
-    // Switch to Goal type
+    // Switch to Units type (M4f: was Goal)
     const group = screen.getByRole("radiogroup", { name: /brick type/i });
-    const goalRadio = within(group)
+    const unitsRadio = within(group)
       .getAllByRole("radio")
       .find((r) =>
-        r.getAttribute("aria-label")?.toLowerCase().includes("goal"),
+        r.getAttribute("aria-label")?.toLowerCase().includes("units"),
       );
-    await user.click(goalRadio!);
+    await user.click(unitsRadio!);
     await user.type(screen.getByRole("spinbutton", { name: /target/i }), "5");
     // Toggle ON
     fireEvent.click(screen.getByRole("switch", { name: /duration/i }));

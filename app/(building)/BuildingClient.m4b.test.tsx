@@ -1,11 +1,13 @@
-// app/(building)/BuildingClient.m4b.test.tsx — M4b BuildingClient integration
-// Covers: C-m4b-022 (day-100 cross-up via onGoalLog)
+// app/(building)/BuildingClient.m4b.test.tsx — M4f BuildingClient integration
+// Covers: C-m4f-009 (day-100 cross-up via onUnitsOpenSheet/UnitsEntrySheet/SET_UNITS_DONE)
+// M4f: migrated from C-m4b-022 (goal → units, count → done, LOG_GOAL_BRICK → SET_UNITS_DONE).
+//      Tap is now chip-tap → UnitsEntrySheet → Save with done=10 (target).
 // Lives in a separate file because it must mock defaultState() with a seeded
-// AppState containing one goal brick at 9/10 — that mock would break the empty
+// AppState containing one units brick at done:9/target:10 — that mock would break the empty
 // state expected by the rest of BuildingClient.test.tsx.
 
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BuildingClient } from "./BuildingClient";
 
@@ -42,9 +44,9 @@ vi.mock("@/lib/data", async () => {
             {
               id: "g1",
               name: "pushups",
-              kind: "goal",
+              kind: "units",
               hasDuration: false,
-              count: 9,
+              done: 9,
               target: 10,
               unit: "reps",
               categoryId: "c1",
@@ -55,13 +57,12 @@ vi.mock("@/lib/data", async () => {
       ],
       looseBricks: [],
       categories: [{ id: "c1", name: "Health", color: "#34d399" }],
-      runningTimerBrickId: null,
     }),
   };
 });
 
-describe("C-m4b-022: BuildingClient + on goal at 9/10 dispatches LOG_GOAL_BRICK; day-100 fires", () => {
-  it("after tap, haptics.notification fires once; playChime fires; Fireworks active", async () => {
+describe("C-m4f-009: BuildingClient + on units at done:9/target:10 dispatches SET_UNITS_DONE; day-100 fires", () => {
+  it("after tap chip → UnitsEntrySheet → Save 10, haptics.notification fires once; playChime fires; Fireworks active", async () => {
     const { haptics } = await import("@/lib/haptics");
     const { playChime } = await import("@/lib/audio");
     vi.clearAllMocks();
@@ -75,10 +76,24 @@ describe("C-m4b-022: BuildingClient + on goal at 9/10 dispatches LOG_GOAL_BRICK;
     expect(card).not.toBeNull();
     await user.click(card);
 
-    const plus = await screen.findByRole("button", {
-      name: "Increase pushups",
+    // M4f: units chip is a simple button (no stepper); tap opens UnitsEntrySheet
+    const chipBtn = await screen.findByRole("button", {
+      name: /pushups.*units/i,
     });
-    await user.click(plus);
+    await user.click(chipBtn);
+
+    // UnitsEntrySheet should be open
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toBeInTheDocument();
+
+    // Clear and type "10" (target) to trigger cross-up
+    const input = screen.getByRole("spinbutton");
+    await user.clear(input);
+    await user.type(input, "10");
+
+    // Click Save
+    const saveBtn = screen.getByRole("button", { name: /^save$/i });
+    await user.click(saveBtn);
 
     expect(haptics.notification).toHaveBeenCalledTimes(1);
     // playChime fires for both block-100 and day-100 cross-up cascades

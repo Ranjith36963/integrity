@@ -1,5 +1,11 @@
-// components/BrickChip.test.tsx — M3 component tests for new BrickChip
+// components/BrickChip.test.tsx — M4f: collapsed to tick + units (ADR-043).
 // Covers: C-m3-001..005, C-m4a-001..009
+// M4f: C-m3-002 goal→units; C-m3-003 time deleted (kind removed);
+//      C-m4a-002 goal→units; C-m4a-003 time→units;
+//      C-m4b-001..019 retired (stepper deleted per SG-m4f-02);
+//      C-m4c-001..006 retired (timer deleted per ADR-043);
+//      C-m4e-015 goal→units; C-m4e-016 time→units; C-m4e-017 time variant deleted;
+//      C-m4f-009..012 added (units chip design).
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
@@ -21,8 +27,9 @@ function makeTick(done: boolean, categoryId: string | null = "c1"): Brick {
   };
 }
 
-function makeGoal(
-  count: number,
+// M4f: goal→units rename; count→done
+function makeUnits(
+  done: number,
   target: number,
   unit: string,
   categoryId: string | null = "c1",
@@ -30,28 +37,11 @@ function makeGoal(
   return {
     id: "r2",
     name: "brick B",
-    kind: "goal",
+    kind: "units",
     hasDuration: false,
-    count,
+    done,
     target,
     unit,
-    categoryId,
-    parentBlockId: "b1",
-  };
-}
-
-function makeTime(
-  minutesDone: number,
-  durationMin: number,
-  categoryId: string | null = "c1",
-): Brick {
-  return {
-    id: "r3",
-    name: "brick C",
-    kind: "time",
-    hasDuration: false,
-    minutesDone,
-    durationMin,
     categoryId,
     parentBlockId: "b1",
   };
@@ -100,18 +90,20 @@ describe("C-m3-001: BrickChip tick render", () => {
   });
 });
 
-// ─── C-m3-002: goal render; count/target/unit display; foreground width ───────
+// ─── C-m3-002: units render (M4f: goal→units, count→done) ────────────────────
 
-describe("C-m3-002: BrickChip goal render", () => {
+describe("C-m3-002: BrickChip units render (M4f: goal renamed to units)", () => {
   it("displays title 'brick B' and badge '50 / 100 reps'", () => {
-    render(<BrickChip brick={makeGoal(50, 100, "reps")} categories={[cat1]} />);
+    render(
+      <BrickChip brick={makeUnits(50, 100, "reps")} categories={[cat1]} />,
+    );
     expect(screen.getByText("brick B")).toBeInTheDocument();
     expect(screen.getByText("50 / 100 reps")).toBeInTheDocument();
   });
 
   it("foreground gradient overlay width is 50%", () => {
     const { container } = render(
-      <BrickChip brick={makeGoal(50, 100, "reps")} categories={[cat1]} />,
+      <BrickChip brick={makeUnits(50, 100, "reps")} categories={[cat1]} />,
     );
     const fill = container.querySelector(
       "[data-testid='brick-fill']",
@@ -119,42 +111,18 @@ describe("C-m3-002: BrickChip goal render", () => {
     expect(fill?.style.width).toBe("50%");
   });
 
-  it("aria-label includes '50 of 100 reps' (M4b: on group wrapper, not button)", () => {
-    render(<BrickChip brick={makeGoal(50, 100, "reps")} categories={[cat1]} />);
-    // M4b: goal chip uses <div role="group"> wrapper; aria-label is on the group
-    const group = screen.getByRole("group");
-    expect(group.getAttribute("aria-label")).toContain("50 of 100 reps");
+  it("aria-label includes '50 of 100 reps' (M4f: on outer chip button)", () => {
+    render(
+      <BrickChip brick={makeUnits(50, 100, "reps")} categories={[cat1]} />,
+    );
+    // M4f: units chip is a single <button> (no group wrapper)
+    const btn = screen.getByRole("button");
+    expect(btn.getAttribute("aria-label")).toContain("50 of 100 reps");
   });
 
   it("with unit blank, badge renders '50 / 100' (no trailing space)", () => {
-    render(<BrickChip brick={makeGoal(50, 100, "")} categories={[cat1]} />);
+    render(<BrickChip brick={makeUnits(50, 100, "")} categories={[cat1]} />);
     expect(screen.getByText("50 / 100")).toBeInTheDocument();
-  });
-});
-
-// ─── C-m3-003: time render; minutesDone/durationMin display ───────────────────
-
-describe("C-m3-003: BrickChip time render", () => {
-  it("displays title 'brick C' and badge '15 / 30 m' with play icon", () => {
-    render(<BrickChip brick={makeTime(15, 30)} categories={[cat1]} />);
-    expect(screen.getByText("brick C")).toBeInTheDocument();
-    expect(screen.getByText(/15 \/ 30 m/)).toBeInTheDocument();
-  });
-
-  it("foreground gradient overlay width is 50%", () => {
-    const { container } = render(
-      <BrickChip brick={makeTime(15, 30)} categories={[cat1]} />,
-    );
-    const fill = container.querySelector(
-      "[data-testid='brick-fill']",
-    ) as HTMLElement;
-    expect(fill?.style.width).toBe("50%");
-  });
-
-  it("aria-label includes '15 of 30 minutes'", () => {
-    render(<BrickChip brick={makeTime(15, 30)} categories={[cat1]} />);
-    const btn = screen.getByRole("button");
-    expect(btn.getAttribute("aria-label")).toContain("15 of 30 minutes");
   });
 });
 
@@ -247,64 +215,57 @@ describe("C-m4a-001: tick chip calls onTickToggle and haptics.light on click", (
   });
 });
 
-// ─── C-m4a-002: goal chip is no-op for onTickToggle ─────────────────────────
-// Updated for M4b: goal chip is now <div role="group"> with stepper buttons.
-// Selector updated from getByRole("button") to getByRole("group") per plan.md
-// § Migration / obsolete IDs (VERIFIER drift flag).
+// ─── C-m4a-002: units chip is a single button (M4f: no group wrapper) ─────────
+// M4f update: units chip is a simple button (no stepper group), so we verify
+// it has a single button and does NOT call onTickToggle.
 
-describe("C-m4a-002: goal chip does not call onTickToggle (M4b: group wrapper, not button)", () => {
+describe("C-m4a-002: units chip does not call onTickToggle; single button, no group", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("onTickToggle NOT called when goal chip group is queried; group has role='group'", async () => {
+  it("onTickToggle NOT called when units chip is tapped; no role='group'", async () => {
     const onTickToggle = vi.fn();
-    render(
+    const user = userEvent.setup();
+    const { container } = render(
       <BrickChip
-        brick={makeGoal(2, 5, "")}
+        brick={makeUnits(2, 5, "")}
         categories={[cat1]}
         onTickToggle={onTickToggle}
+        onUnitsOpenSheet={vi.fn()}
       />,
     );
-    // M4b: goal chip uses <div role="group"> wrapper, not a single <button>
-    const group = screen.getByRole("group");
-    expect(group).toBeInTheDocument();
+    // M4f: units chip is a single <button>, no group wrapper
+    expect(container.querySelector("[role='group']")).toBeNull();
+    const btns = screen.getAllByRole("button");
+    expect(btns).toHaveLength(1);
+    await user.click(btns[0]);
     expect(onTickToggle).not.toHaveBeenCalled();
   });
 });
 
-// ─── C-m4a-003: time chip tap does NOT fire onTickToggle ─────────────────────
-// M4c update: time chips now fire haptics.light on tap (timer toggle path),
-// but onTickToggle is still never called for time chips.
+// ─── C-m4a-003: units chip tap does NOT fire onTickToggle ─────────────────────
+// M4f update: time kind removed; units chip tap fires onUnitsOpenSheet, not tick
 
-describe("C-m4a-003: time chip tap does NOT call onTickToggle (M4c: timer path only)", () => {
+describe("C-m4a-003: units chip tap does NOT call onTickToggle (M4f: units opens sheet)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.useFakeTimers();
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("onTickToggle NOT called when time chip tapped (M4c: timer toggle path, not tick)", async () => {
+  it("onTickToggle NOT called when units chip tapped; onUnitsOpenSheet called instead", async () => {
     const onTickToggle = vi.fn();
+    const onUnitsOpenSheet = vi.fn();
+    const user = userEvent.setup();
     render(
       <BrickChip
-        brick={makeTime(0, 600000)}
+        brick={makeUnits(0, 10, "reps")}
         categories={[cat1]}
         onTickToggle={onTickToggle}
-        running={false}
-        onTimerToggle={vi.fn()}
-        onTimerOpenSheet={vi.fn()}
+        onUnitsOpenSheet={onUnitsOpenSheet}
       />,
     );
     const btn = screen.getByRole("button");
-    fireEvent.pointerDown(btn);
-    act(() => {
-      vi.advanceTimersByTime(200);
-    });
-    fireEvent.pointerUp(btn);
+    await user.click(btn);
     expect(onTickToggle).not.toHaveBeenCalled();
   });
 });
@@ -436,833 +397,140 @@ describe("C-m4a-009: keyboard Enter and Space activate onTickToggle on tick chip
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// M4b component tests — goal chip stepper variant
+// M4f component tests — C-m4f-009..012
+// M4b stepper-on-chip tests (C-m4b-001..019) retired per SG-m4f-02 (ADR-043).
+// M4c timer-on-chip tests (C-m4c-001..006) retired per ADR-043.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function makeGoalBrick(
-  id: string,
-  name: string,
-  count: number,
-  target: number,
-  unit = "",
-): import("@/lib/types").Brick {
-  return {
-    id,
-    name,
-    kind: "goal",
-    hasDuration: false,
-    count,
-    target,
-    unit,
-    categoryId: "c1",
-    parentBlockId: "b1",
-  };
-}
+// ─── C-m4f-009: units chip primary line text; no ±1 stepper buttons ──────────
 
-// ─── C-m4b-001: goal chip renders group + two stepper buttons ────────────────
-
-describe("C-m4b-001: goal chip renders <div role='group'> with Decrease/Increase buttons", () => {
-  it("outer wrapper is role='group'; exactly two stepper buttons with correct aria-labels", () => {
+describe("C-m4f-009: units chip renders done/target/unit text; no stepper buttons", () => {
+  it("primary line text is '20 / 30 minutes'; no Increase/Decrease buttons", () => {
     render(
       <BrickChip
-        brick={makeGoalBrick("g1", "pushups", 2, 10, "reps")}
-        categories={[cat1]}
+        brick={{
+          id: "u1",
+          kind: "units",
+          target: 30,
+          unit: "minutes",
+          done: 20,
+          name: "Meditate",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+        }}
+        categories={[]}
+        onUnitsOpenSheet={vi.fn()}
       />,
     );
-    const group = screen.getByRole("group");
-    expect(group).toBeInTheDocument();
+    expect(screen.getByText("20 / 30 minutes")).toBeInTheDocument();
+    // C-m4f-009 per tests.md: no stepper buttons at all
     expect(
-      screen.getByRole("button", { name: "Decrease pushups" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Increase pushups" }),
-    ).toBeInTheDocument();
+      screen.queryAllByRole("button", { name: /increment|decrement|\+1|-1/i }),
+    ).toHaveLength(0);
+    expect(screen.queryByRole("button", { name: /decrease/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /increase/i })).toBeNull();
   });
 });
 
-// ─── C-m4b-002: stepper buttons meet 44px touch target (ADR-031) ─────────────
+// ─── C-m4f-010: tap units chip → onUnitsOpenSheet called + haptics.light ────
 
-describe("C-m4b-002: goal chip stepper buttons have min-width >= 44px and min-height >= 44px", () => {
-  it("each stepper button's inline style shows minWidth and minHeight of 44px", () => {
-    const { container } = render(
-      <BrickChip
-        brick={makeGoalBrick("g1", "pushups", 2, 10, "reps")}
-        categories={[cat1]}
-      />,
-    );
-    const buttons = container.querySelectorAll("button");
-    expect(buttons.length).toBe(2);
-    buttons.forEach((btn) => {
-      expect(btn.style.minWidth).toBe("44px");
-      expect(btn.style.minHeight).toBe("44px");
-    });
-  });
-});
-
-// ─── C-m4b-003: − disabled at count === 0 ─────────────────────────────────────
-
-describe("C-m4b-003: goal chip − button is disabled when count === 0", () => {
-  it("minus button has disabled attribute; plus button does not", () => {
-    render(
-      <BrickChip
-        brick={makeGoalBrick("g1", "pushups", 0, 10)}
-        categories={[cat1]}
-      />,
-    );
-    const minus = screen.getByRole("button", { name: "Decrease pushups" });
-    const plus = screen.getByRole("button", { name: "Increase pushups" });
-    expect(minus).toBeDisabled();
-    expect(plus).not.toBeDisabled();
-  });
-});
-
-// ─── C-m4b-004: + disabled at count === target ─────────────────────────────────
-
-describe("C-m4b-004: goal chip + button is disabled when count === target", () => {
-  it("plus button has disabled attribute; minus button does not", () => {
-    render(
-      <BrickChip
-        brick={makeGoalBrick("g1", "pushups", 10, 10)}
-        categories={[cat1]}
-      />,
-    );
-    const minus = screen.getByRole("button", { name: "Decrease pushups" });
-    const plus = screen.getByRole("button", { name: "Increase pushups" });
-    expect(plus).toBeDisabled();
-    expect(minus).not.toBeDisabled();
-  });
-});
-
-// ─── C-m4b-005: tap + dispatches onGoalLog once with delta:1 + light haptic ──
-
-describe("C-m4b-005: single tap on + calls onGoalLog(id, 1) and haptics.light once", () => {
+describe("C-m4f-010: tap units chip fires onUnitsOpenSheet(brick.id) + haptics.light", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("onGoalLog called once with ('g1', 1); haptics.light once; no medium", async () => {
+  it("onUnitsOpenSheet called once with 'u1'; haptics.light called once", async () => {
     const { haptics } = await import("@/lib/haptics");
-    const onGoalLog = vi.fn();
+    const onUnitsOpenSheet = vi.fn();
     const user = userEvent.setup();
     render(
       <BrickChip
-        brick={makeGoalBrick("g1", "pushups", 3, 10)}
-        categories={[cat1]}
-        onGoalLog={onGoalLog}
+        brick={{
+          id: "u1",
+          kind: "units",
+          target: 30,
+          unit: "minutes",
+          done: 20,
+          name: "Meditate",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+        }}
+        categories={[]}
+        onUnitsOpenSheet={onUnitsOpenSheet}
       />,
     );
-    const plus = screen.getByRole("button", { name: "Increase pushups" });
-    await user.pointer({ keys: "[MouseLeft>]", target: plus });
-    await user.pointer({ keys: "[/MouseLeft]", target: plus });
-    expect(onGoalLog).toHaveBeenCalledTimes(1);
-    expect(onGoalLog).toHaveBeenCalledWith("g1", 1);
+    const btn = screen.getByRole("button");
+    await user.click(btn);
+    expect(onUnitsOpenSheet).toHaveBeenCalledTimes(1);
+    expect(onUnitsOpenSheet).toHaveBeenCalledWith("u1");
     expect(haptics.light).toHaveBeenCalledTimes(1);
-    expect(haptics.medium).not.toHaveBeenCalled();
   });
 });
 
-// ─── C-m4b-006: tap − dispatches onGoalLog once with delta:-1 + light haptic ─
+// ─── C-m4f-011: tick chip unchanged post-collapse ─────────────────────────────
 
-describe("C-m4b-006: single tap on - calls onGoalLog(id, -1) and haptics.light once", () => {
+describe("C-m4f-011: tick chip is byte-identical post-collapse; aria-pressed retained", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("onGoalLog called once with ('g1', -1); haptics.light once; no medium", async () => {
-    const { haptics } = await import("@/lib/haptics");
-    const onGoalLog = vi.fn();
-    const user = userEvent.setup();
-    render(
-      <BrickChip
-        brick={makeGoalBrick("g1", "pushups", 3, 10)}
-        categories={[cat1]}
-        onGoalLog={onGoalLog}
-      />,
-    );
-    const minus = screen.getByRole("button", { name: "Decrease pushups" });
-    await user.pointer({ keys: "[MouseLeft>]", target: minus });
-    await user.pointer({ keys: "[/MouseLeft]", target: minus });
-    expect(onGoalLog).toHaveBeenCalledTimes(1);
-    expect(onGoalLog).toHaveBeenCalledWith("g1", -1);
-    expect(haptics.light).toHaveBeenCalledTimes(1);
-    expect(haptics.medium).not.toHaveBeenCalled();
-  });
-});
-
-// ─── C-m4b-007: clamp haptic (medium) at ceiling; no dispatch ─────────────────
-// Note: <button disabled> doesn't receive pointer events in real browsers/JSDOM.
-// The clamp haptic path is tested by using fireEvent which bypasses the disabled
-// constraint — simulates the "press path" per plan.md § Components > BrickChip.
-// The component's fireTick(1) fires medium when isAtCeil=true.
-// For production: the enabled=false guard in useLongPressRepeat prevents auto-
-// repeat ticks from firing after the cap is reached mid-press (defense-in-depth).
-
-describe("C-m4b-007: clamp haptic fires medium when pressed at count===target", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("haptics.medium called; onGoalLog NOT called; no light haptic (ceiling clamp)", async () => {
-    const { haptics } = await import("@/lib/haptics");
-    const onGoalLog = vi.fn();
-    // We use a wrapper with a button that triggers fireTick(1) at isAtCeil=true.
-    // Since <button disabled> blocks pointer events, we test via the clamp logic
-    // by rendering count=9,target=10 (enabled) and calling with a manual check:
-    // Actually, test the fireTick clamp path by rendering count=10,target=10
-    // and using fireEvent.pointerDown to bypass JSDOM disabled-button filter.
-    render(
-      <BrickChip
-        brick={makeGoalBrick("g1", "pushups", 10, 10)}
-        categories={[cat1]}
-        onGoalLog={onGoalLog}
-      />,
-    );
-    const plus = screen.getByRole("button", { name: "Increase pushups" });
-    // fireEvent dispatches the event even on disabled buttons (bypasses browser filter)
-    fireEvent.pointerDown(plus);
-    expect(onGoalLog).not.toHaveBeenCalled();
-    expect(haptics.light).not.toHaveBeenCalled();
-    expect(haptics.medium).toHaveBeenCalledTimes(1);
-  });
-});
-
-// ─── C-m4b-008: clamp haptic (medium) at floor on −; no dispatch ──────────────
-
-describe("C-m4b-008: clamp haptic fires medium when − pressed at count===0", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("haptics.medium called; onGoalLog NOT called; no light haptic (floor clamp)", async () => {
-    const { haptics } = await import("@/lib/haptics");
-    const onGoalLog = vi.fn();
-    render(
-      <BrickChip
-        brick={makeGoalBrick("g1", "pushups", 0, 10)}
-        categories={[cat1]}
-        onGoalLog={onGoalLog}
-      />,
-    );
-    const minus = screen.getByRole("button", { name: "Decrease pushups" });
-    fireEvent.pointerDown(minus);
-    expect(onGoalLog).not.toHaveBeenCalled();
-    expect(haptics.light).not.toHaveBeenCalled();
-    expect(haptics.medium).toHaveBeenCalledTimes(1);
-  });
-});
-
-// ─── C-m4b-009: badge text format ${count} / ${target}${unit ? ' '+unit : ''} ─
-
-describe("C-m4b-009: goal badge text format honors unit presence/absence", () => {
-  it("renders '3 / 10 reps' when unit is non-empty", () => {
-    const { container } = render(
-      <BrickChip
-        brick={makeGoalBrick("g1", "pushups", 3, 10, "reps")}
-        categories={[cat1]}
-      />,
-    );
-    const badge = container.querySelector(
-      "[role='group'] > div span[aria-hidden='true']",
-    );
-    expect(badge).not.toBeNull();
-    expect(badge!.textContent).toBe("3 / 10 reps");
-  });
-
-  it("renders '3 / 10' with no trailing whitespace when unit is empty", () => {
-    const { container } = render(
-      <BrickChip
-        brick={makeGoalBrick("g1", "pushups", 3, 10, "")}
-        categories={[cat1]}
-      />,
-    );
-    const badge = container.querySelector(
-      "[role='group'] > div span[aria-hidden='true']",
-    );
-    expect(badge).not.toBeNull();
-    expect(badge!.textContent).toBe("3 / 10");
-    expect(badge!.textContent).not.toMatch(/\s$/);
-  });
-});
-
-// ─── C-m4b-010: goal brick-fill width = (count/target)*100% with brickFill ────
-
-describe("C-m4b-010: goal brick-fill is 30% wide and transitions width 600ms ease-in-out", () => {
-  it("width is 30% and transition includes 'width 600ms ease-in-out' when reduced-motion=false", async () => {
-    const { useReducedMotion } = await import("motion/react");
-    vi.mocked(useReducedMotion).mockReturnValue(false);
-    const { container } = render(
-      <BrickChip
-        brick={makeGoalBrick("g1", "pushups", 3, 10)}
-        categories={[cat1]}
-      />,
-    );
-    const fill = container.querySelector(
-      "[data-testid='brick-fill']",
-    ) as HTMLElement;
-    expect(fill.style.width).toBe("30%");
-    expect(fill.style.transition).toContain("width 600ms ease-in-out");
-  });
-});
-
-// ─── C-m4b-011: reduced-motion collapses goal brick-fill transition ──────────
-
-describe("C-m4b-011: goal brick-fill transition collapses to 'none' when reduced-motion=true", () => {
-  it("transition is 'none' but width is still 30%", async () => {
-    const { useReducedMotion } = await import("motion/react");
-    vi.mocked(useReducedMotion).mockReturnValue(true);
-    const { container } = render(
-      <BrickChip
-        brick={makeGoalBrick("g1", "pushups", 3, 10)}
-        categories={[cat1]}
-      />,
-    );
-    const fill = container.querySelector(
-      "[data-testid='brick-fill']",
-    ) as HTMLElement;
-    expect(fill.style.width).toBe("30%");
-    expect(fill.style.transition).toBe("none");
-  });
-});
-
-// ─── C-m4b-012: long-press auto-repeat fires onTick + light haptic per tick ──
-
-describe("C-m4b-012: + long-press fires 1 initial + 1 at HOLD_MS + 4 intervals = 6 ticks", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("onGoalLog called 6 times with ('g1', 1); haptics.light 6×; haptics.medium 0×", async () => {
-    const { haptics } = await import("@/lib/haptics");
-    const onGoalLog = vi.fn();
-    render(
-      <BrickChip
-        brick={makeGoalBrick("g1", "pushups", 3, 10)}
-        categories={[cat1]}
-        onGoalLog={onGoalLog}
-      />,
-    );
-    const plus = screen.getByRole("button", { name: "Increase pushups" });
-    fireEvent.pointerDown(plus);
-    vi.advanceTimersByTime(500); // HOLD_MS — auto-repeat starts (+1 tick)
-    vi.advanceTimersByTime(50);
-    vi.advanceTimersByTime(50);
-    vi.advanceTimersByTime(50);
-    vi.advanceTimersByTime(50);
-    fireEvent.pointerUp(plus);
-
-    expect(onGoalLog).toHaveBeenCalledTimes(6);
-    onGoalLog.mock.calls.forEach((args) => {
-      expect(args).toEqual(["g1", 1]);
-    });
-    expect(haptics.light).toHaveBeenCalledTimes(6);
-    expect(haptics.medium).not.toHaveBeenCalled();
-  });
-});
-
-// ─── C-m4b-013: pointerup mid-burst halts auto-repeat ────────────────────────
-
-describe("C-m4b-013: pointerup mid-burst stops auto-repeat ticks", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("after pointerup mid-burst, no further onGoalLog/haptics fire even after 500ms", async () => {
-    const { haptics } = await import("@/lib/haptics");
-    const onGoalLog = vi.fn();
-    render(
-      <BrickChip
-        brick={makeGoalBrick("g1", "pushups", 3, 10)}
-        categories={[cat1]}
-        onGoalLog={onGoalLog}
-      />,
-    );
-    const plus = screen.getByRole("button", { name: "Increase pushups" });
-    fireEvent.pointerDown(plus);
-    vi.advanceTimersByTime(500); // HOLD_MS
-    vi.advanceTimersByTime(50);
-    vi.advanceTimersByTime(50);
-    vi.advanceTimersByTime(50);
-    vi.advanceTimersByTime(50);
-    const dispatchesBeforeRelease = onGoalLog.mock.calls.length;
-    const lightBeforeRelease = vi.mocked(haptics.light).mock.calls.length;
-
-    fireEvent.pointerUp(plus);
-    vi.advanceTimersByTime(500);
-
-    expect(onGoalLog).toHaveBeenCalledTimes(dispatchesBeforeRelease);
-    expect(haptics.light).toHaveBeenCalledTimes(lightBeforeRelease);
-  });
-});
-
-// ─── C-m4b-014: scale-press visual feedback on active stepper, ~80ms ─────────
-
-describe("C-m4b-014: + auto-repeat tick applies transform scale(0.95) for ~80ms", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("active + transform=scale(0.95) at tick; back to scale(1) after 80ms; − unaffected", async () => {
-    const { useReducedMotion } = await import("motion/react");
-    vi.mocked(useReducedMotion).mockReturnValue(false);
-    render(
-      <BrickChip
-        brick={makeGoalBrick("g1", "pushups", 3, 10)}
-        categories={[cat1]}
-        onGoalLog={vi.fn()}
-      />,
-    );
-    const plus = screen.getByRole("button", {
-      name: "Increase pushups",
-    }) as HTMLButtonElement;
-    const minus = screen.getByRole("button", {
-      name: "Decrease pushups",
-    }) as HTMLButtonElement;
-
-    fireEvent.pointerDown(plus);
-    expect(plus.style.transform).toBe("scale(0.95)");
-    expect(minus.style.transform).toBe("scale(1)");
-
-    act(() => {
-      vi.advanceTimersByTime(80);
-    });
-    expect(plus.style.transform).toBe("scale(1)");
-    expect(minus.style.transform).toBe("scale(1)");
-
-    fireEvent.pointerUp(plus);
-  });
-});
-
-// ─── C-m4b-015: scale-press suppressed under reduced-motion; haptics still ──
-
-describe("C-m4b-015: reduced-motion suppresses scale-press transform; haptics+dispatch unaffected", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("no scale(0.95) on either button at any point; haptics.light+onGoalLog still fire", async () => {
-    const { useReducedMotion } = await import("motion/react");
-    const { haptics } = await import("@/lib/haptics");
-    vi.mocked(useReducedMotion).mockReturnValue(true);
-    const onGoalLog = vi.fn();
-    render(
-      <BrickChip
-        brick={makeGoalBrick("g1", "pushups", 3, 10)}
-        categories={[cat1]}
-        onGoalLog={onGoalLog}
-      />,
-    );
-    const plus = screen.getByRole("button", {
-      name: "Increase pushups",
-    }) as HTMLButtonElement;
-    const minus = screen.getByRole("button", {
-      name: "Decrease pushups",
-    }) as HTMLButtonElement;
-
-    fireEvent.pointerDown(plus);
-    expect(plus.style.transform).toBe("scale(1)");
-    expect(minus.style.transform).toBe("scale(1)");
-
-    act(() => {
-      vi.advanceTimersByTime(500); // HOLD_MS — auto-repeat tick
-    });
-    expect(plus.style.transform).toBe("scale(1)");
-    expect(minus.style.transform).toBe("scale(1)");
-
-    expect(onGoalLog).toHaveBeenCalled();
-    expect(haptics.light).toHaveBeenCalled();
-    expect(haptics.medium).not.toHaveBeenCalled();
-
-    fireEvent.pointerUp(plus);
-  });
-});
-
-// ─── C-m4b-016: keyboard Enter/Space fires once per activation; no auto-repeat ─
-
-describe("C-m4b-016: keyboard Enter/Space on + fires onGoalLog once per press; no auto-repeat", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("Enter and Space each fire one onGoalLog; 2 total; no extra ticks after 2s", async () => {
-    const onGoalLog = vi.fn();
-    render(
-      <BrickChip
-        brick={makeGoalBrick("g1", "pushups", 3, 10)}
-        categories={[cat1]}
-        onGoalLog={onGoalLog}
-      />,
-    );
-    const plus = screen.getByRole("button", { name: "Increase pushups" });
-    plus.focus();
-    // Simulate keyboard click — detail===0 marks it as keyboard-activated
-    fireEvent.click(plus, { detail: 0 });
-    fireEvent.click(plus, { detail: 0 });
-    act(() => {
-      vi.advanceTimersByTime(2000);
-    });
-    expect(onGoalLog).toHaveBeenCalledTimes(2);
-    onGoalLog.mock.calls.forEach((args) => {
-      expect(args).toEqual(["g1", 1]);
-    });
-  });
-});
-
-// ─── C-m4b-017: aria-labels and aria-hidden icons on goal stepper buttons ────
-
-describe("C-m4b-017: stepper button aria-labels and icon aria-hidden are correct", () => {
-  it("- aria-label='Decrease pushups'; + aria-label='Increase pushups'; icons aria-hidden", () => {
-    const { container } = render(
-      <BrickChip
-        brick={makeGoalBrick("g1", "pushups", 3, 10, "reps")}
-        categories={[cat1]}
-      />,
-    );
-    const minus = screen.getByRole("button", { name: "Decrease pushups" });
-    const plus = screen.getByRole("button", { name: "Increase pushups" });
-    expect(minus.getAttribute("aria-label")).toBe("Decrease pushups");
-    expect(plus.getAttribute("aria-label")).toBe("Increase pushups");
-
-    const icons = container.querySelectorAll(
-      "button > svg.lucide-minus, button > svg.lucide-plus",
-    );
-    expect(icons.length).toBeGreaterThanOrEqual(2);
-    icons.forEach((icon) => {
-      expect(icon.getAttribute("aria-hidden")).toBe("true");
-    });
-  });
-});
-
-// ─── C-m4b-018: tick chip regression — single <button>, no goal stepper ─────
-
-describe("C-m4b-018: tick chip remains a single <button>; onTickToggle fires; onGoalLog NOT", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("clicking the tick button calls onTickToggle, not onGoalLog; no role=group", async () => {
+  it("tapping tick chip calls onTickToggle; onUnitsOpenSheet NOT called; aria-pressed present", async () => {
     const onTickToggle = vi.fn();
-    const onGoalLog = vi.fn();
+    const onUnitsOpenSheet = vi.fn();
     const user = userEvent.setup();
-    const { container } = render(
+    render(
       <BrickChip
         brick={makeTick(false)}
         categories={[cat1]}
         onTickToggle={onTickToggle}
-        onGoalLog={onGoalLog}
-      />,
-    );
-    expect(container.querySelector("[role='group']")).toBeNull();
-    const buttons = screen.getAllByRole("button");
-    expect(buttons).toHaveLength(1);
-    await user.click(buttons[0]);
-    expect(onTickToggle).toHaveBeenCalledTimes(1);
-    expect(onTickToggle).toHaveBeenCalledWith("r1");
-    expect(onGoalLog).not.toHaveBeenCalled();
-  });
-});
-
-// ─── C-m4b-019: time chip regression — single inert button, no stepper ──────
-
-describe("C-m4b-019: time chip remains a single inert <button>; no − or + buttons", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("clicking time chip calls neither onGoalLog nor onTickToggle; no Decrease/Increase buttons", async () => {
-    const onTickToggle = vi.fn();
-    const onGoalLog = vi.fn();
-    const user = userEvent.setup();
-    render(
-      <BrickChip
-        brick={makeTime(0, 10)}
-        categories={[cat1]}
-        onTickToggle={onTickToggle}
-        onGoalLog={onGoalLog}
-      />,
-    );
-    expect(screen.queryByRole("button", { name: /Decrease/i })).toBeNull();
-    expect(screen.queryByRole("button", { name: /Increase/i })).toBeNull();
-    const buttons = screen.getAllByRole("button");
-    expect(buttons).toHaveLength(1);
-    await user.click(buttons[0]);
-    expect(onTickToggle).not.toHaveBeenCalled();
-    expect(onGoalLog).not.toHaveBeenCalled();
-  });
-});
-
-// ─── C-m4c-001: time chip stopped — Play glyph, aria-pressed=false ────────────
-
-describe("C-m4c-001: time chip stopped renders Play icon, aria-pressed=false, badge, aria-label", () => {
-  it("single button with aria-pressed=false, Play icon, badge '5 / 25 m', accessible name per AC#28", () => {
-    render(
-      <BrickChip
-        brick={{
-          id: "t1",
-          kind: "time",
-          hasDuration: false,
-          durationMin: 25,
-          minutesDone: 5,
-          name: "Read",
-          categoryId: null,
-          parentBlockId: null,
-        }}
-        categories={[]}
-        running={false}
-        onTimerToggle={vi.fn()}
-        onTimerOpenSheet={vi.fn()}
+        onUnitsOpenSheet={onUnitsOpenSheet}
       />,
     );
     const btn = screen.getByRole("button");
-    expect(btn).toBeInTheDocument();
     expect(btn.getAttribute("aria-pressed")).toBe("false");
-    // Badge text
-    expect(screen.getByText(/5\s*\/\s*25\s*m/)).toBeInTheDocument();
-    // Accessible name per AC #28
-    expect(btn.getAttribute("aria-label")).toBe(
-      "Read, 5 of 25 minutes, stopped, tap to start",
-    );
+    await user.click(btn);
+    expect(onTickToggle).toHaveBeenCalledTimes(1);
+    expect(onUnitsOpenSheet).not.toHaveBeenCalled();
   });
 });
 
-// ─── C-m4c-002: time chip running — Pause glyph, aria-pressed=true ───────────
+// ─── C-m4f-012: units chip with hasDuration:true shows time-window badge ─────
 
-describe("C-m4c-002: time chip running renders Pause icon, aria-pressed=true, updated badge", () => {
-  it("aria-pressed=true; badge '12 / 25 m'; accessible name matches running variant", () => {
+describe("C-m4f-012: units chip hasDuration:true renders time-window badge; two variants only", () => {
+  it("data-testid=brick-time-window shows '06:00–06:40'; no time-kind branch", () => {
     render(
       <BrickChip
         brick={{
-          id: "t1",
-          kind: "time",
-          hasDuration: false,
-          durationMin: 25,
-          minutesDone: 12,
-          name: "Read",
+          id: "u1",
+          kind: "units",
+          target: 30,
+          unit: "minutes",
+          done: 10,
+          name: "Meditate",
           categoryId: null,
           parentBlockId: null,
+          hasDuration: true,
+          start: "06:00",
+          end: "06:40",
+          recurrence: { kind: "just-today", date: "2026-05-14" },
         }}
         categories={[]}
-        running={true}
-        onTimerToggle={vi.fn()}
-        onTimerOpenSheet={vi.fn()}
+        onUnitsOpenSheet={vi.fn()}
       />,
     );
-    const btn = screen.getByRole("button");
-    expect(btn.getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByText(/12\s*\/\s*25\s*m/)).toBeInTheDocument();
-    expect(btn.getAttribute("aria-label")).toBe(
-      "Read, 12 of 25 minutes, running, tap to stop",
-    );
-  });
-});
-
-// ─── C-m4c-003: time chip tap fires onTimerToggle + haptics.light ─────────────
-
-describe("C-m4c-003: tap on stopped time chip calls onTimerToggle once; haptics.light once", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.useFakeTimers();
-  });
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("onTimerToggle called with 't1'; onTimerOpenSheet NOT called; haptics.light once", async () => {
-    const { haptics } = await import("@/lib/haptics");
-    const onTimerToggle = vi.fn();
-    const onTimerOpenSheet = vi.fn();
-
-    render(
-      <BrickChip
-        brick={{
-          id: "t1",
-          kind: "time",
-          hasDuration: false,
-          durationMin: 25,
-          minutesDone: 0,
-          name: "Read",
-          categoryId: null,
-          parentBlockId: null,
-        }}
-        categories={[]}
-        running={false}
-        onTimerToggle={onTimerToggle}
-        onTimerOpenSheet={onTimerOpenSheet}
-      />,
-    );
-
-    const btn = screen.getByRole("button");
-    fireEvent.pointerDown(btn);
-    act(() => {
-      vi.advanceTimersByTime(200);
-    });
-    fireEvent.pointerUp(btn);
-
-    expect(onTimerToggle).toHaveBeenCalledTimes(1);
-    expect(onTimerToggle).toHaveBeenCalledWith("t1");
-    expect(onTimerOpenSheet).not.toHaveBeenCalled();
-    expect(haptics.light).toHaveBeenCalledTimes(1);
-  });
-});
-
-// ─── C-m4c-004: running time chip tap fires onTimerToggle ────────────────────
-
-describe("C-m4c-004: tap on running time chip calls onTimerToggle once; haptics.light once", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.useFakeTimers();
-  });
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("running chip: onTimerToggle called with 't1'; haptics.light once", async () => {
-    const { haptics } = await import("@/lib/haptics");
-    const onTimerToggle = vi.fn();
-
-    render(
-      <BrickChip
-        brick={{
-          id: "t1",
-          kind: "time",
-          hasDuration: false,
-          durationMin: 25,
-          minutesDone: 8,
-          name: "Read",
-          categoryId: null,
-          parentBlockId: null,
-        }}
-        categories={[]}
-        running={true}
-        onTimerToggle={onTimerToggle}
-        onTimerOpenSheet={vi.fn()}
-      />,
-    );
-
-    const btn = screen.getByRole("button");
-    fireEvent.pointerDown(btn);
-    act(() => {
-      vi.advanceTimersByTime(200);
-    });
-    fireEvent.pointerUp(btn);
-
-    expect(onTimerToggle).toHaveBeenCalledTimes(1);
-    expect(onTimerToggle).toHaveBeenCalledWith("t1");
-    expect(haptics.light).toHaveBeenCalledTimes(1);
-  });
-});
-
-// ─── C-m4c-005: long-press on time chip opens sheet ──────────────────────────
-
-describe("C-m4c-005: long-press (>=500ms) calls onTimerOpenSheet; onTimerToggle NOT called; haptics.medium once", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.useFakeTimers();
-  });
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("long-press fires onTimerOpenSheet('t1'); haptics.medium once; toggle NOT called", async () => {
-    const { haptics } = await import("@/lib/haptics");
-    const onTimerToggle = vi.fn();
-    const onTimerOpenSheet = vi.fn();
-
-    render(
-      <BrickChip
-        brick={{
-          id: "t1",
-          kind: "time",
-          hasDuration: false,
-          durationMin: 25,
-          minutesDone: 0,
-          name: "Read",
-          categoryId: null,
-          parentBlockId: null,
-        }}
-        categories={[]}
-        running={false}
-        onTimerToggle={onTimerToggle}
-        onTimerOpenSheet={onTimerOpenSheet}
-      />,
-    );
-
-    const btn = screen.getByRole("button");
-    fireEvent.pointerDown(btn);
-    act(() => {
-      vi.advanceTimersByTime(500);
-    });
-    fireEvent.pointerUp(btn);
-
-    expect(onTimerOpenSheet).toHaveBeenCalledTimes(1);
-    expect(onTimerOpenSheet).toHaveBeenCalledWith("t1");
-    expect(onTimerToggle).not.toHaveBeenCalled();
-    expect(haptics.medium).toHaveBeenCalledTimes(1);
-  });
-});
-
-// ─── C-m4c-006: reduced motion suppresses pulse animation ────────────────────
-
-describe("C-m4c-006: reduced motion suppresses chip running-state pulse animation", () => {
-  it("running chip: aria-pressed=true and badge work normally; pulse suppressed under reduced motion", () => {
-    // useReducedMotion from motion/react returns null/false in test env.
-    // When running=true, the chip applies animation CSS. Under reduced motion it would be absent.
-    // This test validates the observable outcome: aria-pressed and badge are always correct.
-    // The actual animation suppression is verified via A-m4c-004 (Playwright + computed style).
-    render(
-      <BrickChip
-        brick={{
-          id: "t1",
-          kind: "time",
-          hasDuration: false,
-          durationMin: 25,
-          minutesDone: 5,
-          name: "Read",
-          categoryId: null,
-          parentBlockId: null,
-        }}
-        categories={[]}
-        running={true}
-        onTimerToggle={vi.fn()}
-        onTimerOpenSheet={vi.fn()}
-      />,
-    );
-
-    const btn = screen.getByRole("button");
-    // aria-pressed and badge always work regardless of motion setting
-    expect(btn.getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByText(/5\s*\/\s*25\s*m/)).toBeInTheDocument();
+    const badge = screen.getByTestId("brick-time-window");
+    expect(badge.textContent).toBe("06:00–06:40");
+    // Units primary badge still present
+    expect(screen.getByText("10 / 30 minutes")).toBeInTheDocument();
   });
 });
 
 // ─── C-m4e-014: tick with hasDuration:true shows time-window badge ────────────
 
 describe("C-m4e-014: tick chip with hasDuration:true shows brick-time-window", () => {
-  it("data-testid=brick-time-window contains '06:00–06:40'; name above it in DOM", () => {
+  it("data-testid=brick-time-window is present when hasDuration:true", () => {
     render(
       <BrickChip
         brick={{
@@ -1282,22 +550,22 @@ describe("C-m4e-014: tick chip with hasDuration:true shows brick-time-window", (
       />,
     );
     const badge = screen.getByTestId("brick-time-window");
-    expect(badge).toBeInTheDocument();
-    expect(badge.textContent).toBe("06:00–06:40"); // en-dash
+    expect(badge.textContent).toBe("06:00–06:40");
   });
 });
 
-// ─── C-m4e-015: goal with hasDuration:true shows time-window + count badge ────
+// ─── C-m4e-015: units with hasDuration:true shows time-window + count badge ───
+// M4f: goal→units; count→done
 
-describe("C-m4e-015: goal chip with hasDuration:true shows time-window + count badge", () => {
+describe("C-m4e-015: units chip with hasDuration:true shows time-window + count badge", () => {
   it("data-testid=brick-time-window present; count/target badge still rendered", () => {
     render(
       <BrickChip
         brick={{
           id: "r1",
-          kind: "goal",
+          kind: "units",
           target: 5,
-          count: 3,
+          done: 3,
           unit: "reps",
           name: "Pushups",
           categoryId: null,
@@ -1308,7 +576,7 @@ describe("C-m4e-015: goal chip with hasDuration:true shows time-window + count b
           recurrence: { kind: "just-today", date: "2026-05-14" },
         }}
         categories={[]}
-        onGoalLog={vi.fn()}
+        onUnitsOpenSheet={vi.fn()}
       />,
     );
     const badge = screen.getByTestId("brick-time-window");
@@ -1318,17 +586,19 @@ describe("C-m4e-015: goal chip with hasDuration:true shows time-window + count b
   });
 });
 
-// ─── C-m4e-016: time with hasDuration:true shows time-window + performance badge
+// ─── C-m4e-016: units (was time) hasDuration:true shows time-window + performance badge
+// M4f: kind:"time" removed; map to kind:"units" with unit:"minutes"
 
-describe("C-m4e-016: time chip with hasDuration:true shows time-window + performance badge", () => {
-  it("data-testid=brick-time-window present; performance badge '5 / 25 m' still rendered", () => {
+describe("C-m4e-016: units chip (was time) with hasDuration:true shows time-window + units badge", () => {
+  it("data-testid=brick-time-window present; units badge '5 / 25 minutes' still rendered", () => {
     render(
       <BrickChip
         brick={{
           id: "t1",
-          kind: "time",
-          durationMin: 25,
-          minutesDone: 5,
+          kind: "units",
+          target: 25,
+          done: 5,
+          unit: "minutes",
           name: "Read",
           categoryId: null,
           parentBlockId: null,
@@ -1338,14 +608,12 @@ describe("C-m4e-016: time chip with hasDuration:true shows time-window + perform
           recurrence: { kind: "just-today", date: "2026-05-14" },
         }}
         categories={[]}
-        running={false}
-        onTimerToggle={vi.fn()}
-        onTimerOpenSheet={vi.fn()}
+        onUnitsOpenSheet={vi.fn()}
       />,
     );
     const badge = screen.getByTestId("brick-time-window");
     expect(badge.textContent).toBe("08:00–08:30");
-    expect(screen.getByText(/5\s*\/\s*25\s*m/)).toBeInTheDocument();
+    expect(screen.getByText("5 / 25 minutes")).toBeInTheDocument();
   });
 });
 
@@ -1371,14 +639,14 @@ describe("C-m4e-017: chip with hasDuration:false has no brick-time-window", () =
     expect(screen.queryByTestId("brick-time-window")).toBeNull();
   });
 
-  it("goal hasDuration:false: no time-window badge", () => {
+  it("units hasDuration:false: no time-window badge", () => {
     render(
       <BrickChip
         brick={{
           id: "r1",
-          kind: "goal",
+          kind: "units",
           target: 5,
-          count: 3,
+          done: 3,
           unit: "reps",
           name: "Pushups",
           categoryId: null,
@@ -1386,29 +654,7 @@ describe("C-m4e-017: chip with hasDuration:false has no brick-time-window", () =
           hasDuration: false,
         }}
         categories={[]}
-        onGoalLog={vi.fn()}
-      />,
-    );
-    expect(screen.queryByTestId("brick-time-window")).toBeNull();
-  });
-
-  it("time hasDuration:false: no time-window badge", () => {
-    render(
-      <BrickChip
-        brick={{
-          id: "t1",
-          kind: "time",
-          durationMin: 25,
-          minutesDone: 5,
-          name: "Read",
-          categoryId: null,
-          parentBlockId: null,
-          hasDuration: false,
-        }}
-        categories={[]}
-        running={false}
-        onTimerToggle={vi.fn()}
-        onTimerOpenSheet={vi.fn()}
+        onUnitsOpenSheet={vi.fn()}
       />,
     );
     expect(screen.queryByTestId("brick-time-window")).toBeNull();

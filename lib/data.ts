@@ -5,6 +5,8 @@
  * M3: adds looseBricks: [] to defaultState and ADD_BRICK case to reducer.
  * Reducer implements ADD_BLOCK + ADD_CATEGORY + ADD_BRICK with assertNever exhaustiveness.
  * M4e: ADD_BRICK arm enforces hasDuration presence invariant. Exports withDurationDefaults.
+ * M4f: collapsed to 5 action arms (removed START/STOP/TICK/SET_TIMER_MINUTES + LOG_GOAL_BRICK;
+ *      added SET_UNITS_DONE). defaultState drops runningTimerBrickId. Adds findUnitsBrickById.
  *
  * ADD_BRICK routing: parentBlockId === null → looseBricks[]; else → matching block.bricks[].
  * No persistence in M3. Page refresh clears state. M8 lands localStorage rehydration.
@@ -36,8 +38,33 @@ export function defaultState(): AppState {
     blocks: [],
     categories: [],
     looseBricks: [],
-    runningTimerBrickId: null,
   };
+}
+
+/**
+ * findUnitsBrickById — M4f helper (mirrors deleted findTimeBrickById from lib/timer.ts).
+ * Searches looseBricks first, then block.bricks. Returns the units-kind brick with
+ * the given id, or null if not found or if the brick is a tick kind.
+ */
+export function findUnitsBrickById(
+  state: AppState,
+  id: string,
+): Extract<Brick, { kind: "units" }> | null {
+  // Search loose bricks
+  for (const b of state.looseBricks) {
+    if (b.id === id && b.kind === "units") {
+      return b as Extract<Brick, { kind: "units" }>;
+    }
+  }
+  // Search nested bricks
+  for (const block of state.blocks) {
+    for (const b of block.bricks) {
+      if (b.id === id && b.kind === "units") {
+        return b as Extract<Brick, { kind: "units" }>;
+      }
+    }
+  }
+  return null;
 }
 
 /**
@@ -53,6 +80,10 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, categories: [...state.categories, action.category] };
     case "ADD_BRICK": {
       const b = action.brick;
+      // M4f: defensive kind guard (runtime defense-in-depth against stale fixtures).
+      // TypeScript prevents kind:"goal"/"time" at compile time, but old fixtures may slip through.
+      const k = b.kind as string;
+      if (k !== "tick" && k !== "units") return state;
       // M4e: Presence invariant guard (defense-in-depth — UI should never construct an invalid action).
       // hasDuration === true IFF all three of start/end/recurrence are present.
       const allPresent =
@@ -97,16 +128,18 @@ export function reducer(state: AppState, action: Action): AppState {
         looseBricks: state.looseBricks.map(flip),
       };
     }
-    case "LOG_GOAL_BRICK": {
-      // Clamp-increment/decrement count on matching goal brick.
-      // Identity short-circuit: returns original state reference on no-op (clamp or id miss).
-      // Block-array and loose-array references are preserved when their contents don't change.
+    case "SET_UNITS_DONE": {
+      // Absolute-value write: sets done = Math.max(0, Math.floor(action.done)).
+      // Identity short-circuit: returns original state reference when done is unchanged.
+      // No-op: returns original state when brickId not found or brick is tick kind.
+      const clamped = Math.max(0, Math.floor(action.done));
       const apply = (b: Brick): Brick => {
-        if (b.id !== action.brickId || b.kind !== "goal") return b;
-        const next = Math.max(0, Math.min(b.target, b.count + action.delta));
-        if (next === b.count) return b; // clamp no-op — preserve identity
-        return { ...b, count: next };
+        if (b.id !== action.brickId) return b;
+        if (b.kind !== "units") return b; // AC #9: no-op on tick brick
+        if (b.done === clamped) return b; // identity short-circuit
+        return { ...b, done: clamped };
       };
+      // Same array-identity preservation pattern as the old LOG_GOAL_BRICK arm.
       let blocksChanged = false;
       const newBlocks = state.blocks.map((bl) => {
         let blockChanged = false;
@@ -125,90 +158,11 @@ export function reducer(state: AppState, action: Action): AppState {
         if (out !== br) looseChanged = true;
         return out;
       });
-      if (!blocksChanged && !looseChanged) return state;
+      if (!blocksChanged && !looseChanged) return state; // AC #8: missing id ⇒ unchanged
       return {
         ...state,
         blocks: blocksChanged ? newBlocks : state.blocks,
         looseBricks: looseChanged ? newLoose : state.looseBricks,
-      };
-    }
-    case "START_TIMER": {
-      // Single-running invariant: just write the new id. No separate stop for the prior running brick;
-      // the field is single-valued, the swap IS the stop. lib/timer.ts captures the new startedAt
-      // off the change in state.runningTimerBrickId.
-      if (state.runningTimerBrickId === action.brickId) return state; // already running — true no-op
-      return { ...state, runningTimerBrickId: action.brickId };
-    }
-    case "STOP_TIMER": {
-      if (state.runningTimerBrickId === null) return state;
-      if (state.runningTimerBrickId !== action.brickId) return state; // stopping a non-running brick is a no-op
-      return { ...state, runningTimerBrickId: null };
-    }
-    case "TICK_TIMER": {
-      // Identity short-circuit when minutesDone is unchanged (avoids spurious cross-up effect re-runs).
-      const applyTick = (b: Brick): Brick => {
-        if (b.id !== action.brickId || b.kind !== "time") return b;
-        if (b.minutesDone === action.minutesDone) return b;
-        return { ...b, minutesDone: action.minutesDone };
-      };
-      // Same array-identity preservation pattern as LOG_GOAL_BRICK.
-      let tickBlocksChanged = false;
-      const tickNewBlocks = state.blocks.map((bl) => {
-        let changed = false;
-        const bricks = bl.bricks.map((br) => {
-          const out = applyTick(br);
-          if (out !== br) changed = true;
-          return out;
-        });
-        if (!changed) return bl;
-        tickBlocksChanged = true;
-        return { ...bl, bricks };
-      });
-      let tickLooseChanged = false;
-      const tickNewLoose = state.looseBricks.map((br) => {
-        const out = applyTick(br);
-        if (out !== br) tickLooseChanged = true;
-        return out;
-      });
-      if (!tickBlocksChanged && !tickLooseChanged) return state;
-      return {
-        ...state,
-        blocks: tickBlocksChanged ? tickNewBlocks : state.blocks,
-        looseBricks: tickLooseChanged ? tickNewLoose : state.looseBricks,
-      };
-    }
-    case "SET_TIMER_MINUTES": {
-      // Clamp at the reducer level (defense-in-depth alongside the sheet's own clamp).
-      const applySet = (b: Brick): Brick => {
-        if (b.id !== action.brickId || b.kind !== "time") return b;
-        const clamped = Math.max(0, Math.min(b.durationMin, action.minutes));
-        if (b.minutesDone === clamped) return b;
-        return { ...b, minutesDone: clamped };
-      };
-      // Same array-identity preservation pattern as TICK_TIMER.
-      let setBlocksChanged = false;
-      const setNewBlocks = state.blocks.map((bl) => {
-        let changed = false;
-        const bricks = bl.bricks.map((br) => {
-          const out = applySet(br);
-          if (out !== br) changed = true;
-          return out;
-        });
-        if (!changed) return bl;
-        setBlocksChanged = true;
-        return { ...bl, bricks };
-      });
-      let setLooseChanged = false;
-      const setNewLoose = state.looseBricks.map((br) => {
-        const out = applySet(br);
-        if (out !== br) setLooseChanged = true;
-        return out;
-      });
-      if (!setBlocksChanged && !setLooseChanged) return state;
-      return {
-        ...state,
-        blocks: setBlocksChanged ? setNewBlocks : state.blocks,
-        looseBricks: setLooseChanged ? setNewLoose : state.looseBricks,
       };
     }
     default:

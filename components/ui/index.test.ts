@@ -1,11 +1,12 @@
 /**
- * C-m0-023: components/ui/index.ts re-exports exactly the 10 primitives
+ * C-m0-023: components/ui/index.ts re-exports the 9 M0 primitives
  *           and their associated cva variant functions.
+ * M4f: BrickChip removed from ui barrel (ADR-043) — components/BrickChip.tsx is the source.
  */
 import { describe, it, expect } from "vitest";
 import * as ui from "./index";
 
-describe("C-m0-023: barrel export re-exports all 10 primitives", () => {
+describe("C-m0-023: barrel export re-exports all 9 M0 primitives (M4f: BrickChip moved)", () => {
   it("exports Button and buttonVariants", () => {
     // Button uses React.forwardRef so typeof is "object" with render function
     expect(ui.Button).toBeTruthy();
@@ -45,8 +46,9 @@ describe("C-m0-023: barrel export re-exports all 10 primitives", () => {
     expect(typeof ui.BlockCard).toBe("function");
   });
 
-  it("exports BrickChip", () => {
-    expect(typeof ui.BrickChip).toBe("function");
+  it("does NOT export BrickChip (M4f: ADR-043 removed from ui barrel)", () => {
+    // BrickChip is now at components/BrickChip.tsx, not in the ui/ barrel
+    expect((ui as Record<string, unknown>).BrickChip).toBeUndefined();
   });
 
   it("exports exactly the named exports and no unlisted extras", () => {
@@ -63,7 +65,6 @@ describe("C-m0-023: barrel export re-exports all 10 primitives", () => {
       "Toggle",
       "EmptyState",
       "BlockCard",
-      "BrickChip",
     ];
     for (const name of expected) {
       expect(exported).toContain(name);

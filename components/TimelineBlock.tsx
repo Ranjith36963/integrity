@@ -23,12 +23,17 @@ interface Props {
   categories: Category[];
   onAddBrick?: (parentBlockId: string) => void;
   onTickToggle?: (brickId: string) => void;
+  /** M4f: called with brickId when a units chip is tapped (opens UnitsEntrySheet). */
+  onUnitsOpenSheet?: (brickId: string) => void;
+  /** @deprecated use onUnitsOpenSheet; kept for backwards-compat prop shape; ignored */
+  onUnitsLog?: (brickId: string, delta: 1 | -1) => void;
+  /** @deprecated use onUnitsOpenSheet; kept for backwards-compat prop shape; ignored */
   onGoalLog?: (brickId: string, delta: 1 | -1) => void;
-  /** M4c: current running timer brick id for computing running=true on time chips */
+  /** @deprecated M4c removed; kept for backwards-compat prop shape; ignored */
   runningTimerBrickId?: string | null;
-  /** M4c: tap a time chip to start/stop */
+  /** @deprecated M4c removed; kept for backwards-compat prop shape; ignored */
   onTimerToggle?: (brickId: string) => void;
-  /** M4c: long-press a time chip to open manual-entry sheet */
+  /** @deprecated M4c removed; kept for backwards-compat prop shape; ignored */
   onTimerOpenSheet?: (brickId: string) => void;
 }
 
@@ -37,10 +42,7 @@ export function TimelineBlock({
   categories,
   onAddBrick,
   onTickToggle,
-  onGoalLog,
-  runningTimerBrickId = null,
-  onTimerToggle,
-  onTimerOpenSheet,
+  onUnitsOpenSheet,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [bloomKey, setBloomKey] = useState(0);
@@ -247,10 +249,7 @@ export function TimelineBlock({
                         categories={categories}
                         size="md"
                         onTickToggle={onTickToggle}
-                        onGoalLog={onGoalLog}
-                        running={runningTimerBrickId === brick.id}
-                        onTimerToggle={onTimerToggle}
-                        onTimerOpenSheet={onTimerOpenSheet}
+                        onUnitsOpenSheet={onUnitsOpenSheet}
                       />
                     </li>
                   ))}

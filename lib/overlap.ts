@@ -66,7 +66,7 @@ export function findOverlaps(
 export function selectAllTimedItems(state: AppState): TimedItem[] {
   const out: TimedItem[] = [];
   for (const bl of state.blocks) {
-    if (!bl.end) continue; // skip no-end blocks (matches blockValidation.overlapsExistingBlock)
+    if (!bl.end) continue; // skip no-end blocks
     out.push({
       kind: "block",
       id: bl.id,

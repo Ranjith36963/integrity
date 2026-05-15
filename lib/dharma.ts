@@ -24,20 +24,15 @@ export function duration(block: Block): number {
 }
 
 /**
- * brickPct — M3 updated to use new Brick schema field names.
+ * brickPct — M4f: collapsed to 2-arm switch (tick + units) per ADR-043.
  * tick: done ? 100 : 0
- * goal: Math.min(count / target, 1) * 100  (zero-target guard)
- * time: Math.min(minutesDone / durationMin, 1) * 100  (zero-duration guard)
+ * units: Math.min(done / target, 1) * 100  (zero-target guard)
  */
 export function brickPct(b: Brick): number {
   if (b.kind === "tick") return b.done ? 100 : 0;
-  if (b.kind === "goal") {
-    if (b.target <= 0) return 0;
-    return Math.min(b.count / b.target, 1) * 100;
-  }
-  // time
-  if (b.durationMin <= 0) return 0;
-  return Math.min(b.minutesDone / b.durationMin, 1) * 100;
+  // units (kind === "units" by exhaustiveness)
+  if (b.target <= 0) return 0;
+  return Math.min(b.done / b.target, 1) * 100;
 }
 
 export function blockPct(block: Block): number {
@@ -126,10 +121,10 @@ export function blockStatus(
   return "future";
 }
 
+// M4f: 2-arm collapse; units arm renders done/target unit (no "min" suffix — unit is in data)
 export function brickLabel(b: Brick): string {
   if (b.kind === "tick") return b.done ? "done" : "—";
-  if (b.kind === "time") return `${b.minutesDone}/${b.durationMin} min`;
-  return `${b.count}/${b.target}${b.unit ? " " + b.unit : ""}`;
+  return `${b.done}/${b.target}${b.unit ? " " + b.unit : ""}`;
 }
 
 /**

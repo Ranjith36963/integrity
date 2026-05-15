@@ -15,12 +15,12 @@ function makeTick(done: boolean): Brick {
   };
 }
 
-function makeGoal(count: number, target: number): Brick {
+function makeUnits(done: number, target: number): Brick {
   return {
     id: "g",
     name: "x",
-    kind: "goal",
-    count,
+    kind: "units",
+    done,
     target,
     unit: "",
     categoryId: null,
@@ -42,7 +42,7 @@ function makeBlock(
 }
 
 function toState(blocks: Block[]): AppState {
-  return { blocks, categories: [], looseBricks: [], runningTimerBrickId: null };
+  return { blocks, categories: [], looseBricks: [] };
 }
 
 // U-bld-010: Two blocks of unequal duration with percentages 50 and 100
@@ -106,7 +106,7 @@ describe("U-bld-011 (inline fixture): dayPct equals equal-weighted mean", () => 
         start: "05:00",
         end: "06:00",
         name: "B",
-        bricks: [makeGoal(3, 4)], // 75%
+        bricks: [makeUnits(3, 4)], // 75%
       }),
       makeBlock({
         start: "06:00",
@@ -129,7 +129,6 @@ describe("U-bld-012: dayPct(emptyState) returns 0 without division by zero", () 
         blocks: [],
         categories: [],
         looseBricks: [],
-        runningTimerBrickId: null,
       }),
     ).toBe(0);
   });
@@ -143,7 +142,6 @@ describe("buildingPct is an alias for dayPct", () => {
         blocks: [],
         categories: [],
         looseBricks: [],
-        runningTimerBrickId: null,
       }),
     ).toBe(0);
   });

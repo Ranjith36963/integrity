@@ -12,8 +12,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { uuid } from "@/lib/uuid";
 import type { AppState, Brick, Category, Recurrence } from "@/lib/types";
 import {
-  isValidBrickGoal,
-  isValidBrickTime,
+  isValidBrickUnitsTarget,
   endAfterStart,
   isValidCustomRange,
 } from "@/lib/blockValidation";
@@ -62,7 +61,7 @@ interface Props {
 }
 
 type View = "brick" | "newCategory";
-type BrickKind = "tick" | "goal" | "time";
+type BrickKind = "tick" | "units";
 
 export function AddBrickSheet({
   open,
@@ -79,7 +78,6 @@ export function AddBrickSheet({
   const [kind, setKind] = useState<BrickKind>("tick");
   const [targetStr, setTargetStr] = useState("");
   const [unit, setUnit] = useState("");
-  const [durationStr, setDurationStr] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
     defaultCategoryId,
   );
@@ -214,13 +212,10 @@ export function AddBrickSheet({
   // Validation
   const titleValid = title.trim().length > 0;
   const target = parseInt(targetStr, 10);
-  const durationMin = parseInt(durationStr, 10);
-  const goalValid = kind !== "goal" || isValidBrickGoal(target);
-  const timeValid = kind !== "time" || isValidBrickTime(durationMin);
+  const unitsValid = kind !== "units" || isValidBrickUnitsTarget(target);
   const isValid =
     titleValid &&
-    goalValid &&
-    timeValid &&
+    unitsValid &&
     startEndValid &&
     !timeAlertMsg &&
     recurrenceValid &&
@@ -239,23 +234,13 @@ export function AddBrickSheet({
       : ({ hasDuration: false } as const);
 
     let brick: Brick;
-    if (kind === "tick") {
+    if (kind === "units") {
       brick = {
         id: uuid(),
         name: title.trim(),
-        kind: "tick",
-        done: false,
-        categoryId: selectedCategoryId,
-        parentBlockId,
-        ...durationFields,
-      };
-    } else if (kind === "goal") {
-      brick = {
-        id: uuid(),
-        name: title.trim(),
-        kind: "goal",
+        kind: "units",
         target,
-        count: 0,
+        done: 0,
         unit: unit.trim(),
         categoryId: selectedCategoryId,
         parentBlockId,
@@ -265,9 +250,8 @@ export function AddBrickSheet({
       brick = {
         id: uuid(),
         name: title.trim(),
-        kind: "time",
-        durationMin,
-        minutesDone: 0,
+        kind: "tick",
+        done: false,
         categoryId: selectedCategoryId,
         parentBlockId,
         ...durationFields,
@@ -350,13 +334,13 @@ export function AddBrickSheet({
               />
             </div>
 
-            {/* Type selector */}
+            {/* Type selector — M4f: tick + units only (ADR-043) */}
             <div
               role="radiogroup"
               aria-label="Brick type"
               style={{ display: "flex", gap: "8px" }}
             >
-              {(["tick", "goal", "time"] as BrickKind[]).map((k) => (
+              {(["tick", "units"] as BrickKind[]).map((k) => (
                 <button
                   key={k}
                   type="button"
@@ -388,8 +372,8 @@ export function AddBrickSheet({
               ))}
             </div>
 
-            {/* Per-type fields */}
-            {kind === "goal" && (
+            {/* Per-type fields — M4f: units fields (target + unit) */}
+            {kind === "units" && (
               <div style={{ display: "flex", gap: "8px" }}>
                 <div
                   style={{
@@ -469,44 +453,6 @@ export function AddBrickSheet({
                     }}
                   />
                 </div>
-              </div>
-            )}
-
-            {kind === "time" && (
-              <div
-                style={{ display: "flex", flexDirection: "column", gap: "4px" }}
-              >
-                <label
-                  htmlFor="brick-duration"
-                  style={{
-                    fontFamily: "var(--font-ui)",
-                    fontSize: "var(--fs-12)",
-                    color: "var(--ink-dim)",
-                  }}
-                >
-                  Duration (minutes)
-                </label>
-                <input
-                  id="brick-duration"
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  value={durationStr}
-                  onChange={(e) => setDurationStr(e.target.value)}
-                  placeholder="e.g. 30"
-                  aria-label="Duration in minutes"
-                  style={{
-                    height: "44px",
-                    borderRadius: "8px",
-                    border: "1px solid var(--ink-dim)",
-                    background: "var(--bg-elev)",
-                    color: "var(--ink)",
-                    fontFamily: "var(--font-ui)",
-                    fontSize: "var(--fs-14)",
-                    padding: "0 12px",
-                    width: "100%",
-                  }}
-                />
               </div>
             )}
 

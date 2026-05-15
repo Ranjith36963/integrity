@@ -30,7 +30,6 @@ let seedState: AppState = {
   blocks: [],
   looseBricks: [],
   categories: [],
-  runningTimerBrickId: null,
 };
 
 vi.mock("@/lib/data", async () => {
@@ -93,7 +92,6 @@ describe("C-m4e-027: tray shows non-timed brick only; timeline shows block + Tim
         },
       ],
       categories: [],
-      runningTimerBrickId: null,
     };
     vi.clearAllMocks();
   });
@@ -150,7 +148,6 @@ describe("C-m4e-028: tray hidden when looseBricks all have hasDuration=true and 
         },
       ],
       categories: [],
-      runningTimerBrickId: null,
     };
     vi.clearAllMocks();
   });
@@ -191,7 +188,6 @@ describe("C-m4e-029: pre-M4e brick without hasDuration gets hasDuration:false vi
         } as unknown as Brick,
       ],
       categories: [],
-      runningTimerBrickId: null,
     };
     vi.clearAllMocks();
   });

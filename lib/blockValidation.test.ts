@@ -3,12 +3,10 @@ import {
   isValidStart,
   isValidEnd,
   endAfterStart,
-  overlapsExistingBlock,
   isValidCustomRange,
-  isValidBrickGoal,
-  isValidBrickTime,
+  isValidBrickUnitsTarget,
 } from "./blockValidation";
-import type { Block } from "./types";
+import { intervalsOverlap } from "./overlap";
 
 // U-m2-001: isValidStart — HH:MM regex (two-digit hour 00–23, two-digit minute 00–59)
 describe("U-m2-001: isValidStart validates HH:MM format", () => {
@@ -63,69 +61,61 @@ describe("U-m2-003: endAfterStart validates temporal ordering", () => {
   });
 });
 
-// Helper factory for Block fixtures in tests (test-only, not production code)
-function makeBlock(
-  start: string,
-  end: string,
-  id = "b1",
-): Pick<
-  Block,
-  "id" | "name" | "start" | "end" | "recurrence" | "categoryId" | "bricks"
-> {
-  return {
-    id,
-    name: "Test",
-    start,
-    end,
-    recurrence: { kind: "just-today", date: "2026-05-06" },
-    categoryId: null,
-    bricks: [],
-  };
-}
-
-// U-m2-004: overlapsExistingBlock — half-open [start, end) intervals (ADR-006)
-describe("U-m2-004: overlapsExistingBlock uses half-open intervals", () => {
-  const existing = [makeBlock("10:00", "11:00")] as Block[];
-
-  it("back-to-back blocks do NOT overlap (touching at 11:00)", () => {
-    const result = overlapsExistingBlock(existing, {
-      start: "11:00",
-      end: "12:00",
-    });
-    expect(result).toBeNull();
+// U-m2-004: intervalsOverlap — half-open [start, end) intervals (ADR-006)
+// Re-pointed from overlapsExistingBlock to intervalsOverlap per M4f / SG-m4f-03.
+describe("U-m2-004: intervalsOverlap uses half-open intervals (ADR-006)", () => {
+  it("back-to-back intervals do NOT overlap (touching boundary)", () => {
+    // candidate [11:00, 12:00) vs existing [10:00, 11:00) — touching at 11:00
+    expect(
+      intervalsOverlap(
+        { start: "11:00", end: "12:00" },
+        { start: "10:00", end: "11:00" },
+      ),
+    ).toBe(false);
   });
 
-  it("overlapping interval returns the existing block", () => {
-    const result = overlapsExistingBlock(existing, {
-      start: "10:30",
-      end: "11:30",
-    });
-    expect(result).not.toBeNull();
-    expect(result?.id).toBe("b1");
+  it("overlapping interval returns true", () => {
+    // candidate [10:30, 11:30) vs existing [10:00, 11:00) — overlap at [10:30, 11:00)
+    expect(
+      intervalsOverlap(
+        { start: "10:30", end: "11:30" },
+        { start: "10:00", end: "11:00" },
+      ),
+    ).toBe(true);
   });
 
-  it("touching from below (candidate ends at 10:00) does NOT overlap", () => {
-    const result = overlapsExistingBlock(existing, {
-      start: "09:00",
-      end: "10:00",
-    });
-    expect(result).toBeNull();
+  it("touching from below does NOT overlap (candidate ends at 10:00)", () => {
+    expect(
+      intervalsOverlap(
+        { start: "09:00", end: "10:00" },
+        { start: "10:00", end: "11:00" },
+      ),
+    ).toBe(false);
   });
 });
 
-// U-m2-005: overlapsExistingBlock — no-end candidate treated as 1-minute marker
-describe("U-m2-005: overlapsExistingBlock with no-end candidate", () => {
-  const existing = [makeBlock("10:00", "11:00")] as Block[];
-
-  it("no-end candidate inside existing block overlaps", () => {
-    const result = overlapsExistingBlock(existing, { start: "10:30" });
-    expect(result).not.toBeNull();
-    expect(result?.id).toBe("b1");
+// U-m2-005: intervalsOverlap — no-end candidate is treated as [start, start+1)
+// Re-pointed from overlapsExistingBlock per M4f / SG-m4f-03.
+// Note: intervalsOverlap requires explicit end. A no-end candidate uses start+1 convention
+// which is now the caller's responsibility (AddBlockSheet/overlap.ts handles this).
+// These tests validate the base intervalsOverlap function boundary semantics.
+describe("U-m2-005: intervalsOverlap — boundary semantics for single-minute marker", () => {
+  it("candidate [10:30, 10:31) inside existing [10:00, 11:00) overlaps", () => {
+    expect(
+      intervalsOverlap(
+        { start: "10:30", end: "10:31" },
+        { start: "10:00", end: "11:00" },
+      ),
+    ).toBe(true);
   });
 
-  it("no-end candidate exactly at 11:00 (half-open boundary) does NOT overlap", () => {
-    const result = overlapsExistingBlock(existing, { start: "11:00" });
-    expect(result).toBeNull();
+  it("candidate [11:00, 11:01) at boundary of [10:00, 11:00) does NOT overlap", () => {
+    expect(
+      intervalsOverlap(
+        { start: "11:00", end: "11:01" },
+        { start: "10:00", end: "11:00" },
+      ),
+    ).toBe(false);
   });
 });
 
@@ -179,36 +169,19 @@ describe("U-m2-006: isValidCustomRange validates custom-range recurrence", () =>
   });
 });
 
-// ─── U-m3-013: isValidBrickGoal (integer ≥ 1) ─────────────────────────────────
+// ─── U-m4f-016 / U-m3-013: isValidBrickUnitsTarget (renamed from isValidBrickGoal) ─────
 
-describe("U-m3-013: isValidBrickGoal validates target is integer ≥ 1", () => {
+describe("U-m4f-016: isValidBrickUnitsTarget validates target is integer ≥ 1", () => {
   it("returns true for 1, 100, 9999", () => {
-    expect(isValidBrickGoal(1)).toBe(true);
-    expect(isValidBrickGoal(100)).toBe(true);
-    expect(isValidBrickGoal(9999)).toBe(true);
+    expect(isValidBrickUnitsTarget(1)).toBe(true);
+    expect(isValidBrickUnitsTarget(100)).toBe(true);
+    expect(isValidBrickUnitsTarget(9999)).toBe(true);
   });
 
   it("returns false for 0, negative, non-integer, NaN", () => {
-    expect(isValidBrickGoal(0)).toBe(false);
-    expect(isValidBrickGoal(-1)).toBe(false);
-    expect(isValidBrickGoal(1.5)).toBe(false);
-    expect(isValidBrickGoal(NaN)).toBe(false);
-  });
-});
-
-// ─── U-m3-014: isValidBrickTime (integer ≥ 1) ─────────────────────────────────
-
-describe("U-m3-014: isValidBrickTime validates durationMin is integer ≥ 1", () => {
-  it("returns true for 1, 30, 1440", () => {
-    expect(isValidBrickTime(1)).toBe(true);
-    expect(isValidBrickTime(30)).toBe(true);
-    expect(isValidBrickTime(1440)).toBe(true);
-  });
-
-  it("returns false for 0, negative, non-integer, NaN", () => {
-    expect(isValidBrickTime(0)).toBe(false);
-    expect(isValidBrickTime(-5)).toBe(false);
-    expect(isValidBrickTime(2.5)).toBe(false);
-    expect(isValidBrickTime(NaN)).toBe(false);
+    expect(isValidBrickUnitsTarget(0)).toBe(false);
+    expect(isValidBrickUnitsTarget(-1)).toBe(false);
+    expect(isValidBrickUnitsTarget(1.5)).toBe(false);
+    expect(isValidBrickUnitsTarget(NaN)).toBe(false);
   });
 });

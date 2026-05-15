@@ -4,10 +4,11 @@
 // - outer wrapper: data-testid="timed-loose-brick", position:absolute,
 //   top = timeToOffsetPx(brick.start), height = timeToOffsetPx(end) - timeToOffsetPx(start)
 //   border: dashed 1.5px in category color (or var(--ink-dim) when uncategorized)
-// - inner: <BrickChip> which is fully interactive (onTickToggle/onGoalLog pass-through)
+// - inner: <BrickChip> which is fully interactive (onTickToggle/onUnitsLog pass-through)
 //
 // ADR-031: chip touch target preserved inside the card.
 // hasDuration === true is a precondition (caller should only pass timed bricks).
+// M4f: onGoalLog → onUnitsLog; timer props removed (ADR-043).
 
 import type { Brick, Category } from "@/lib/types";
 import { HOUR_HEIGHT_PX, timeToOffsetPx } from "@/lib/timeOffset";
@@ -18,12 +19,12 @@ interface Props {
   categories: Category[];
   /** Called with brick.id when a tick brick chip is tapped. */
   onTickToggle?: (brickId: string) => void;
-  /** Called with (brickId, delta) when a goal brick stepper is tapped. */
+  /** M4f: called with brickId when a units chip is tapped (opens UnitsEntrySheet). */
+  onUnitsOpenSheet?: (brickId: string) => void;
+  /** @deprecated use onUnitsOpenSheet; kept for backwards-compat prop shape; ignored */
+  onUnitsLog?: (brickId: string, delta: 1 | -1) => void;
+  /** @deprecated use onUnitsOpenSheet; kept for backwards-compat prop shape; ignored */
   onGoalLog?: (brickId: string, delta: 1 | -1) => void;
-  /** M4c timer props (for time bricks nested inside the card). */
-  running?: boolean;
-  onTimerToggle?: (brickId: string) => void;
-  onTimerOpenSheet?: (brickId: string) => void;
 }
 
 function resolveBorderColor(brick: Brick, categories: Category[]): string {
@@ -36,10 +37,7 @@ export function TimedLooseBrickCard({
   brick,
   categories,
   onTickToggle,
-  onGoalLog,
-  running = false,
-  onTimerToggle,
-  onTimerOpenSheet,
+  onUnitsOpenSheet,
 }: Props) {
   const start = brick.hasDuration ? (brick.start ?? "") : "";
   const end = brick.hasDuration ? (brick.end ?? "") : "";
@@ -72,10 +70,7 @@ export function TimedLooseBrickCard({
         categories={categories}
         size="sm"
         onTickToggle={onTickToggle}
-        onGoalLog={onGoalLog}
-        running={running}
-        onTimerToggle={onTimerToggle}
-        onTimerOpenSheet={onTimerOpenSheet}
+        onUnitsOpenSheet={onUnitsOpenSheet}
       />
     </div>
   );

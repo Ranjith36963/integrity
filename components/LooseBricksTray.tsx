@@ -17,13 +17,12 @@ interface Props {
   categories: Category[];
   onAddBrick: () => void;
   onTickToggle?: (brickId: string) => void;
+  /** M4f: called with brickId when a units chip is tapped (opens UnitsEntrySheet). */
+  onUnitsOpenSheet?: (brickId: string) => void;
+  /** @deprecated use onUnitsOpenSheet; kept for backwards-compat prop shape; ignored */
+  onUnitsLog?: (brickId: string, delta: 1 | -1) => void;
+  /** @deprecated use onUnitsOpenSheet; kept for backwards-compat prop shape; ignored */
   onGoalLog?: (brickId: string, delta: 1 | -1) => void;
-  /** M4c: current running timer brick id for computing running=true on time chips */
-  runningTimerBrickId?: string | null;
-  /** M4c: tap a time chip to start/stop */
-  onTimerToggle?: (brickId: string) => void;
-  /** M4c: long-press a time chip to open manual-entry sheet */
-  onTimerOpenSheet?: (brickId: string) => void;
   /**
    * M4e: whether any blocks exist in state.
    * Used to determine tray visibility: hidden when looseBricks is empty AND blocksExist is false.
@@ -37,10 +36,7 @@ export function LooseBricksTray({
   categories,
   onAddBrick,
   onTickToggle,
-  onGoalLog,
-  runningTimerBrickId = null,
-  onTimerToggle,
-  onTimerOpenSheet,
+  onUnitsOpenSheet,
   blocksExist = true,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
@@ -152,10 +148,7 @@ export function LooseBricksTray({
                   categories={categories}
                   size="md"
                   onTickToggle={onTickToggle}
-                  onGoalLog={onGoalLog}
-                  running={runningTimerBrickId === brick.id}
-                  onTimerToggle={onTimerToggle}
-                  onTimerOpenSheet={onTimerOpenSheet}
+                  onUnitsOpenSheet={onUnitsOpenSheet}
                 />
               </li>
             ))}
@@ -181,10 +174,7 @@ export function LooseBricksTray({
                 categories={categories}
                 size="sm"
                 onTickToggle={onTickToggle}
-                onGoalLog={onGoalLog}
-                running={runningTimerBrickId === brick.id}
-                onTimerToggle={onTimerToggle}
-                onTimerOpenSheet={onTimerOpenSheet}
+                onUnitsOpenSheet={onUnitsOpenSheet}
               />
             </div>
           ))}
