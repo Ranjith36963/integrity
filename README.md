@@ -60,6 +60,7 @@ npm run test:e2e:install
 | M4c — Time Brick Timer           | Shipped to preview — awaiting Gate #2 tap-test |
 | M4e — Brick Duration + Overlap   | Shipped to preview — awaiting Gate #2 tap-test |
 | M4f — Two Brick Kinds; Rip Timer | Shipped to preview — awaiting Gate #2 tap-test |
+| M4g — Timer-era Dead-code Sweep  | Shipped to preview — awaiting Gate #2 tap-test |
 
 Latest preview: `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (branch alias; auto-tracks `claude/verify-m0-deployment-s4XRy`). Vercel Deployment Protection active — open in browser while signed in to Vercel.
 

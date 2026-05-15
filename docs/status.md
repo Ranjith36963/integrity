@@ -6,9 +6,9 @@
 
 ## Snapshot
 
-- **Branch:** `claude/verify-m0-deployment-s4XRy` at `bc90e2f` · `main` at `c3ef9f1` (feature branch not yet merged)
-- **Last ship:** M4f — Collapse to two brick kinds; rip the timer — commit `bc90e2f` — branch `claude/verify-m0-deployment-s4XRy`.
-- **Last preview URL:** `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (stable branch alias; auto-tracks latest deployment for this branch). Sandbox `curl -I` returns HTTP 403 `x-deny-reason: host_not_allowed` (Vercel Deployment Protection — same as M0–M4f; not a failure; signed-in browser sessions serve normally).
+- **Branch:** `claude/verify-m0-deployment-s4XRy` at `ad28ec9` · `main` at `c3ef9f1` (feature branch not yet merged)
+- **Last ship:** M4g — Timer-era dead-code sweep — commit `ad28ec9` — branch `claude/verify-m0-deployment-s4XRy`.
+- **Last preview URL:** `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (stable branch alias; auto-tracks latest deployment for this branch). Sandbox `curl -I` returns HTTP 403 `x-deny-reason: host_not_allowed` (Vercel Deployment Protection — same as M0–M4g; not a failure; signed-in browser sessions serve normally).
 - **Methodology:** The Loop (SDD-outside, TDD-inside) per ADR-025; **single human gate** (preview tap-test only) per ADR-041 — the VERIFIER agent now replaces the planning gate; per-phase commit prefixes per ADR-027.
 
 ## Plan in force
@@ -30,7 +30,8 @@
 | **M4c — Time Brick Timer**         | **Retired by M4f (ADR-043)**                       | Timer verb for time bricks (M4c) was shipped to preview; the time kind and all timer infrastructure were removed in M4f per ADR-043. M4c test IDs (25) explicitly retired in tests.md.                                                                                                                                                                                                                   |
 | **M4e — Brick Duration + Overlap** | **Shipped to preview — awaiting Gate #2 tap-test** | Universal `hasDuration` toggle on every brick kind. `lib/overlap.ts` half-open overlap engine. Overlap warning chip in AddBrickSheet + AddBlockSheet with Save-disable. `<TimedLooseBrickCard>`, `<BrickChip>` time-window badge. `selectTimelineItems` + `selectTrayBricks` selectors. ADR-042 locked. M2 block↔block enforcement closed retroactively. 731/731 vitest. 9 e2e/a11y deferred to preview. |
 | **M4f — Brick Model Rework**       | **Shipped to preview — awaiting Gate #2 tap-test** | Collapsed bricks to two kinds (tick + units, free-text unit); removed M4c timer; manual-number entry via UnitsEntrySheet. `kind:"goal"`→`units`; `count`→`done`; `kind:"time"` removed; `runningTimerBrickId` removed; 4 timer actions + `LOG_GOAL_BRICK` removed; `SET_UNITS_DONE` added. 682/682 vitest across 56 files. 44 M4f IDs added; 25 M4c IDs retired. ADR-043.                                |
-| M5 — Edit Mode + Delete            | Not started                                        | "Just today" delete writes to `deletions[date:blockId]` per locked schema.                                                                                                                                                                                                                                                                                                                               |
+| **M4g — Dead-code Sweep**          | **Shipped to preview — awaiting Gate #2 tap-test** | Removed 10 inert `@deprecated` props across 5 components; relabelled mislabelled test `U-m4f-016` → `U-m3-013`; removed stale `lib/timer.ts` reference in `lib/data.ts` comment. Net +3/−35 LOC. Zero behavior change. 682/682 vitest (unchanged). Pre-M5 cleanup complete.                                                                                                                              |
+| M5 — Edit Mode + Delete            | Not started — **unblocked by M4g**                 | "Just today" delete writes to `deletions[date:blockId]` per locked schema. Dead prop surface cleared by M4g.                                                                                                                                                                                                                                                                                             |
 | M6 — Drag Reorder                  | Not started                                        | Framer Motion layout animations.                                                                                                                                                                                                                                                                                                                                                                         |
 | M7 — Polish Layer                  | Not started                                        | Cinematic. 60fps target. `prefers-reduced-motion` respected.                                                                                                                                                                                                                                                                                                                                             |
 | M8 — Persistence                   | Not started                                        | localStorage `dharma:v1` with separate `logs` / `timers` / `deletions` keyed maps (ADR-018). DST fixtures required.                                                                                                                                                                                                                                                                                      |
@@ -48,16 +49,18 @@
 - **`harness.md` MCP rows still MISSING** for Vercel + Context7 + Playwright — wired in user's Claude account, not loaded into this session.
 - **`lib/dharma.ts:duration()` returns 0 for no-end blocks** — intentional design; documented in CHANGELOG.
 - **The Loop is now single-gate (ADR-041).** VERIFIER agent replaces Gate #1. Gate #2 (preview tap-test) is the only human gate.
-- **`public/sounds/chime.mp3` is a 431-byte placeholder (SG-m4f-05).** Replace with a real royalty-free chime before any M4a/M4b/M4c/M4d/M4f preview is user-facing. M4f kept the chime but did not replace the placeholder — M7 concern.
-- **Vacuous-pass debt: ~35 post-M4f.** 9 new deferred-to-preview items (E-m4f-001..005, A-m4f-001..004); 9 M4c deferred items retired with `tests/e2e/m4c.*.spec.ts` deletions → net flat. Deterministic-seed helper still owed (ADR-022 + ADR-039).
+- **`public/sounds/chime.mp3` is a 431-byte placeholder (SG-m4f-05).** Replace with a real royalty-free chime before any M4a/M4b/M4d/M4f/M4g preview is user-facing. M7 concern.
+- **Vacuous-pass debt: ~35 post-M4f/M4g.** 9 deferred-to-preview items (E-m4f-001..005, A-m4f-001..004); M4g adds no new e2e/a11y items (pure subtraction). Deterministic-seed helper still owed (ADR-022 + ADR-039).
 - **`BrickBase` type module-private to `lib/types.ts`.** AddBrickSheet uses `as const` literals. Log if a third surface needs the shape.
-- **`Timeline.tsx` prop rename `blocks → items: TimelineItem[]`.** All internal call sites migrated (`BuildingClient.tsx`, both Timeline test files).
 - **C-m4e-030 shares green commit with C-m4e-027..029.** Defensible per M4c precedent; minor ADR-027 one-green-per-ID deviation.
-- **`@deprecated` dead props on `<TimelineBlock>` and peer components** (`<Timeline>`, `<LooseBricksTray>`, `<BrickChip>`, `<TimedLooseBrickCard>`) — `runningTimerBrickId`, `onTimerToggle`, `onTimerOpenSheet`, `onUnitsLog`, `onGoalLog` — kept as inert prop-shape cruft. Flag for M5 decision: drop them once no caller passes them.
-- **JC1 (non-blocking):** `lib/blockValidation.test.ts:199` `describe` is labelled `U-m4f-016` but tests `isValidBrickUnitsTarget`; tests.md's `U-m4f-016` classic-overlap G/W/T is covered under `U-m2-004`. Cosmetic label hygiene — fix in M5 cleanup.
 - **JC2 (non-blocking):** `C-m4f-013`/`C-m4f-014` are inline `it()` blocks inside the `C-m3-014` describe rather than standalone — acceptable, IDs traceable by test-name annotation.
-- **Cosmetic:** `lib/data.ts:45` has a doc comment referencing the deleted `lib/timer.ts` (`findTimeBrickById`) — harmless, clean up opportunistically.
 - **3 lint warnings in `lib/longPress.ts`** (lines 104, 111, 118) — `_e` underscore-prefixed unused params. Fix via `argsIgnorePattern: "^_"`. Deferred M5/M7.
+
+**Resolved by M4g (closed loops):**
+
+- **`@deprecated` dead props on `<TimelineBlock>` and peer components** — `runningTimerBrickId`, `onTimerToggle`, `onTimerOpenSheet`, `onUnitsLog`, `onGoalLog` across `BrickChip`, `TimelineBlock`, `Timeline`, `LooseBricksTray`, `TimedLooseBrickCard` — props deleted. M5 decision no longer needed.
+- **JC1 — mislabelled test `U-m4f-016`** in `lib/blockValidation.test.ts` — relabelled `U-m3-013` (its true M3 ancestral ID). Cosmetic label hygiene resolved.
+- **`lib/data.ts:45` stale `lib/timer.ts` comment** (`findTimeBrickById`) — reworded; stale reference removed.
 
 **Resolved by M4f (closed loops):**
 
@@ -66,20 +69,20 @@
 - `lib/blockValidation.ts:overlapsExistingBlock` dead production code — deleted in M4f.
 - M4f architectural rework open loop — shipped.
 
-## Quality gates (last full Evaluator PASS on `d4e83c8` — M4f, retry 1)
+## Quality gates (last full Evaluator PASS on `ad28ec9` — M4g)
 
-| Gate                       | Result                                                                                                                                                                     |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ESLint                     | 0 errors, 13 warnings (down from 16 at M4c baseline; 3 resolved with M4f deletions; all non-blocking; deferred M5/M7)                                                      |
-| `tsc --noEmit`             | clean — 0 errors                                                                                                                                                           |
-| Vitest                     | 682/682 passed across 56 files (was 731/731 at end of M4e; net: 44 M4f IDs added, 25 M4c IDs retired, dead test files deleted)                                             |
-| Playwright (mobile-chrome) | deferred to Vercel preview — sandbox `next dev` socket bind failure (M0–M4f pattern); test files at `tests/e2e/m4f.spec.ts` (5 IDs) + `tests/e2e/m4f.a11y.spec.ts` (4 IDs) |
-| Playwright (mobile-safari) | not run — WebKit unavailable (ADR-010)                                                                                                                                     |
-| axe-core                   | deferred to Vercel preview                                                                                                                                                 |
-| Lighthouse                 | not measured — no prod URL reachable from sandbox                                                                                                                          |
+| Gate                       | Result                                                                                          |
+| -------------------------- | ----------------------------------------------------------------------------------------------- |
+| ESLint                     | 0 errors, 13 warnings (unchanged from M4f baseline; all non-blocking; deferred M5/M7)           |
+| `tsc --noEmit`             | clean — 0 errors                                                                                |
+| Vitest                     | 682/682 passed across 56 files (unchanged — M4g is pure subtraction; no tests added or removed) |
+| Playwright (mobile-chrome) | deferred to Vercel preview — sandbox `next dev` socket bind failure (M0–M4g pattern)            |
+| Playwright (mobile-safari) | not run — WebKit unavailable (ADR-010)                                                          |
+| axe-core                   | deferred to Vercel preview                                                                      |
+| Lighthouse                 | not measured — no prod URL reachable from sandbox                                               |
 
 ## Next intended action
 
-**Gate #2 (M4f):** user must open the Vercel preview and tap-test M4f. Verify: kind selector shows exactly "Tick" and "Units" chips (no "Time"); tapping a units brick chip opens `<UnitsEntrySheet>` with the brick name, "Today's \<unit\>" sub-heading, and a pre-filled numeric input; saving dispatches and closes the sheet; tapping a tick chip toggles done directly without opening a sheet; no live timer anywhere; block/day chimes still play on completion.
+**Gate #2 (M4g):** M4g has no user-facing behavior change (pure dead-code removal). Gate #2 tap-test can be combined with the standing M4f tap-test: verify kind selector shows exactly "Tick" and "Units"; units chip opens `<UnitsEntrySheet>`; tick chip toggles done directly; no live timer anywhere; block/day chimes still play on completion.
 
-**After Gate #2 on M4f:** author M5 spec entry in `docs/spec.md` (edit mode + delete: "just today" delete, `deletions[date:blockId]` per locked schema), then `/feature m5`.
+**After Gate #2:** author M5 spec entry in `docs/spec.md` (edit mode + delete: "just today" delete, `deletions[date:blockId]` per locked schema), then `/feature m5`. M5 is unblocked — the dead prop surface cleared by M4g removes the last M4-era cruft that would have complicated M5 edit-mode prop threading.
