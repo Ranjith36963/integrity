@@ -24,6 +24,9 @@ vi.mock("@/lib/audio", () => ({
 beforeEach(() => {
   // Ensure real timers are active before each test (guards against fake-timer leakage)
   vi.useRealTimers();
+  // M8: clear localStorage before each test — usePersistedState writes dharma:v1 after
+  // every dispatch; without clearing, tests that add blocks/bricks would leak state.
+  localStorage.clear();
 });
 
 afterEach(() => {

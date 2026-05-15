@@ -7,6 +7,13 @@ import type { PersistedState } from "@/lib/persist";
 
 vi.mock("@/lib/uuid", () => ({ uuid: () => "uuid-1" }));
 
+// M8: clear localStorage before each test to prevent saveState cross-test pollution.
+// usePersistedState writes dharma:v1 after every dispatch; without clearing, tests that
+// dispatch actions (add block, add brick) would leak state into subsequent tests.
+beforeEach(() => {
+  localStorage.clear();
+});
+
 // C-bld-034 (re-authored M2): BuildingClient initializes with empty blocks
 describe("C-bld-034 (re-authored M2): BuildingClient initializes with empty blocks", () => {
   it("renders locked SPEC empty-state copy when no blocks are present", () => {
@@ -188,10 +195,7 @@ describe("C-m2-016: Empty-state card unmounts when blocks.length > 0 (re-authore
       screen.queryByText("Tap any slot to lay your first block."),
     ).toBeNull();
 
-    // Timeline block should be in DOM
-    render(<BuildingClient />);
-    // (state is per-component instance; this is a fresh render of an empty state)
-    // The prior rendered instance has the block — check in same render context:
+    // Timeline block should be in DOM (first render instance)
     expect(
       document.querySelectorAll('[data-component="timeline-block"]'),
     ).toHaveLength(1);
@@ -233,8 +237,8 @@ describe("C-m2-020: BuildingClient wires reducer + sheet + onSave (re-authored M
     // Hero 0% unchanged
     expect(screen.getByText("0%")).toBeInTheDocument();
 
-    // No localStorage writes (no accidental persistence)
-    expect(localStorage.length).toBe(0);
+    // M8: localStorage now has dharma:v1 (persistence is intentional post-M8)
+    expect(localStorage.getItem("dharma:v1")).not.toBeNull();
   });
 
   it("Add button opens chooser; Cancel closes without adding block", async () => {

@@ -12,11 +12,11 @@
 // - roundDownToHour: 1-line local helper — string slice, no Date math (SG-m2-04)
 // M4f: removed handleUnitsLog stepper; added handleUnitsOpenSheet → UnitsEntrySheet → handleUnitsSave.
 
-import { useReducer, useState, useCallback } from "react";
-import { today, dateLabel, dayPct } from "@/lib/dharma";
-import { dayOfYear, daysInYear } from "@/lib/dayOfYear";
+import { useState, useCallback } from "react";
+import { today, dateLabel, dayPct, dayNumber } from "@/lib/dharma";
+import { daysInYear } from "@/lib/dayOfYear";
 import { useNow } from "@/lib/useNow";
-import { reducer, defaultState, withDurationDefaults } from "@/lib/data";
+import { usePersistedState } from "@/lib/usePersistedState";
 import { selectTrayBricks, selectTimelineItems } from "@/lib/overlap";
 import { useCrossUpEffect } from "@/lib/celebrations";
 import { haptics } from "@/lib/haptics";
@@ -70,19 +70,9 @@ interface UnitsSheetState {
 }
 
 export function BuildingClient() {
-  // M4e: lazy initializer runs once, applies withDurationDefaults to every brick
-  // (defensive migration for pre-M4e brick literals that may lack hasDuration — SG-m4e-06).
-  const [state, dispatch] = useReducer(reducer, undefined, () => {
-    const initial = defaultState();
-    return {
-      ...initial,
-      blocks: initial.blocks.map((bl) => ({
-        ...bl,
-        bricks: bl.bricks.map(withDurationDefaults),
-      })),
-      looseBricks: initial.looseBricks.map(withDurationDefaults),
-    };
-  });
+  // M8: usePersistedState replaces useReducer — owns two-pass hydration + save-on-dispatch.
+  // The hook's dispatch is byte-identical to useReducer's dispatch at all call sites below.
+  const [state, dispatch] = usePersistedState();
   const [sheetState, setSheetState] = useState<SheetState>({
     open: false,
     defaultStart: "00:00",
@@ -107,9 +97,11 @@ export function BuildingClient() {
   const now = useNow();
   const todayIso = today();
 
-  // M1 day semantics: dayOfYear(new Date()) returns 1..365|366 (SG-m1-07).
-  // M8 replaces with dayNumber(programStart, today) once programStart is persisted.
-  const dayNumberValue = dayOfYear(new Date());
+  // M8: dayNumber(programStart, todayIso) replaces dayOfYear(new Date()) (AC #13).
+  // programStart comes from persisted AppState (set to today on first run, preserved thereafter).
+  // dayNumber returns number | undefined; undefined only if programStart is empty (never in practice).
+  // totalDays keeps daysInYear — the program is a one-year arc.
+  const dayNumberValue = dayNumber(state.programStart, todayIso);
   const totalDays = daysInYear(new Date());
   const dateLabelValue = dateLabel(todayIso);
 
