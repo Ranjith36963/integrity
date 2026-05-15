@@ -16,7 +16,6 @@ const CATEGORY_LABEL: Record<Category, string> = {
   passive: "Passive",
 };
 import { blockPct, fmtRange } from "@/lib/dharma";
-import { Brick as BrickComponent } from "./Brick";
 import type { Brick } from "@/lib/types";
 
 // Local legacy block type — M2 Block no longer has `category` or `end` required.
@@ -34,7 +33,7 @@ interface Props {
   onLogBrick: (index: number, updated: Brick) => void;
 }
 
-export function NowCard({ block, onLogBrick }: Props) {
+export function NowCard({ block, onLogBrick: _onLogBrick }: Props) {
   const pct = Math.round(
     blockPct(block as unknown as Parameters<typeof blockPct>[0]),
   );
@@ -112,16 +111,15 @@ export function NowCard({ block, onLogBrick }: Props) {
           </div>
         </div>
 
+        {/* Brick rendering removed in M4f (ADR-043 — Brick.tsx deleted). NowCard is obsolete. */}
         <div className="mt-4 flex flex-wrap gap-1.5">
-          {block.bricks.map((b, i) => (
-            <BrickComponent
+          {block.bricks.map((b) => (
+            <span
               key={`${block.start}-${b.name}-${b.kind}`}
-              brick={b}
-              color={color}
-              index={i}
-              onLog={(updated) => onLogBrick(i, updated)}
-              editMode={false}
-            />
+              className="text-xs text-[--ink-dim]"
+            >
+              {b.name}
+            </span>
           ))}
         </div>
       </div>

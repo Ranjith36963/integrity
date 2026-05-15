@@ -387,9 +387,9 @@ describe("C-m4e-025: AddBlockSheet detects overlap with timed loose brick", () =
     const timedBrick: Brick = {
       id: "r1",
       name: "Pushups",
-      kind: "goal",
+      kind: "units",
       target: 5,
-      count: 0,
+      done: 0,
       unit: "reps",
       hasDuration: true,
       start: "09:30",

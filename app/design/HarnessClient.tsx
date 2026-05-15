@@ -15,8 +15,9 @@ import {
   Toggle,
   EmptyState,
   BlockCard,
-  BrickChip,
 } from "@/components/ui";
+// BrickChip removed from ui barrel in M4f (ADR-043); import from components/BrickChip if needed.
+import { BrickChip } from "@/components/BrickChip";
 
 export function HarnessClient() {
   const [modalOpen, setModalOpen] = useState(false);
@@ -253,37 +254,46 @@ export function HarnessClient() {
           {/* wrapper div provides the data-testid for e2e targeting */}
           <div data-testid="brick-chip">
             <BrickChip
-              kind="tick"
-              name="meditate"
-              done={false}
-              onToggle={() => {}}
-              category="mind"
+              brick={{
+                id: "h-tick-1",
+                kind: "tick",
+                name: "meditate",
+                done: false,
+                hasDuration: false,
+                categoryId: "c-mind",
+                parentBlockId: null,
+              }}
+              categories={[{ id: "c-mind", name: "Mind", color: "#c4b5fd" }]}
+              onTickToggle={() => {}}
             />
           </div>
           <BrickChip
-            kind="tick"
-            name="journal"
-            done
-            onToggle={() => {}}
-            category="mind"
+            brick={{
+              id: "h-tick-2",
+              kind: "tick",
+              name: "journal",
+              done: true,
+              hasDuration: false,
+              categoryId: "c-mind",
+              parentBlockId: null,
+            }}
+            categories={[{ id: "c-mind", name: "Mind", color: "#c4b5fd" }]}
+            onTickToggle={() => {}}
           />
           <BrickChip
-            kind="goal"
-            name="pushups"
-            current={30}
-            target={50}
-            unit="reps"
-            onCommit={() => {}}
-            category="health"
-          />
-          <BrickChip
-            kind="time"
-            name="deep work"
-            accumulatedSec={1800}
-            targetSec={5400}
-            running={false}
-            onToggle={() => {}}
-            category="career"
+            brick={{
+              id: "h-units-1",
+              kind: "units",
+              name: "pushups",
+              done: 30,
+              target: 50,
+              unit: "reps",
+              hasDuration: false,
+              categoryId: "c-health",
+              parentBlockId: null,
+            }}
+            categories={[{ id: "c-health", name: "Health", color: "#34d399" }]}
+            onUnitsOpenSheet={() => {}}
           />
         </div>
       </section>
