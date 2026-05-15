@@ -210,3 +210,64 @@ describe("C-m4e-029: pre-M4e brick without hasDuration gets hasDuration:false vi
     expect(timeWindow).toBeNull();
   });
 });
+
+// ─── U-m4f-018: M4e duration-toggle tests re-pointed to kind:"units" stay green ─
+// Production behavior landed in 7b34777 (migration of kind:"time" → kind:"units").
+// This is a coverage backfill asserting the M4e hasDuration:true contract holds
+// for units bricks with unit:"minutes". Covers SPEC AC #37.
+
+describe("U-m4f-018: M4e duration-axis assertions hold for kind:units with hasDuration:true", () => {
+  beforeEach(() => {
+    // Re-pointed from M4e time-kind brick: hasDuration:true, start/end on units brick
+    seedState = {
+      blocks: [],
+      looseBricks: [
+        {
+          id: "timed-units-1",
+          name: "Morning run",
+          kind: "units",
+          target: 30,
+          unit: "minutes",
+          done: 0,
+          hasDuration: true,
+          start: "06:00",
+          end: "06:40",
+          recurrence: { kind: "just-today", date: "2026-05-15" },
+          categoryId: null,
+          parentBlockId: null,
+        } as Brick,
+      ],
+      categories: [],
+    };
+    vi.clearAllMocks();
+  });
+
+  it("timed units brick renders as TimedLooseBrickCard (NOT in tray) when hasDuration:true", () => {
+    const { container } = render(<BuildingClient />);
+    // Timed brick should NOT be in the LooseBricksTray
+    const tray = container.querySelector('[data-testid="loose-bricks-tray"]');
+    expect(tray).toBeNull();
+    // Should appear on the timeline as a timed card
+    const timedCard = container.querySelector(
+      '[data-testid="timed-loose-brick"]',
+    );
+    expect(timedCard).not.toBeNull();
+  });
+
+  it("timed units brick has time-window badge showing start–end", () => {
+    const { container } = render(<BuildingClient />);
+    const badge = container.querySelector('[data-testid="brick-time-window"]');
+    expect(badge).not.toBeNull();
+    expect(badge!.textContent).toBe("06:00–06:40");
+  });
+
+  it("timed units brick positioned at correct top offset (timeToOffsetPx)", () => {
+    const { container } = render(<BuildingClient />);
+    const timedCard = container.querySelector(
+      '[data-testid="timed-loose-brick"]',
+    ) as HTMLElement | null;
+    expect(timedCard).not.toBeNull();
+    const expectedTop = timeToOffsetPx("06:00", HOUR_HEIGHT_PX);
+    expect(timedCard!.style.top).toBe(`${expectedTop}px`);
+  });
+});
