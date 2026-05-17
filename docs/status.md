@@ -6,9 +6,9 @@
 
 ## Snapshot
 
-- **Branch:** `claude/verify-m0-deployment-s4XRy` at `9cdd7ee` · `main` at `c3ef9f1` (feature branch not yet merged)
-- **Last ship:** M8 — Persistence — commit `9cdd7ee` — branch `claude/verify-m0-deployment-s4XRy`.
-- **Last preview URL:** `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (stable branch alias; auto-tracks latest deployment for this branch). Sandbox `curl -I` returns HTTP 403 `x-deny-reason: host_not_allowed` (Vercel Deployment Protection — same as M0–M8; not a failure; signed-in browser sessions serve normally).
+- **Branch:** `claude/verify-m0-deployment-s4XRy` at `<ship-commit>` · `main` at `c3ef9f1` (feature branch not yet merged)
+- **Last ship:** M9a — appliesOn recurrence resolver — commit `<ship-commit>` — branch `claude/verify-m0-deployment-s4XRy`.
+- **Last preview URL:** `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (stable branch alias; auto-tracks latest deployment for this branch). Sandbox `curl -I` returns HTTP 403 `x-deny-reason: host_not_allowed` (Vercel Deployment Protection — same as M0–M9a; not a failure; signed-in browser sessions serve normally).
 - **Methodology:** The Loop (SDD-outside, TDD-inside) per ADR-025; **single human gate** (preview tap-test only) per ADR-041 — the VERIFIER agent now replaces the planning gate; per-phase commit prefixes per ADR-027.
 
 ## Plan in force
@@ -32,10 +32,11 @@
 | **M4f — Brick Model Rework**       | **Shipped to preview — awaiting Gate #2 tap-test** | Collapsed bricks to two kinds (tick + units, free-text unit); removed M4c timer; manual-number entry via UnitsEntrySheet. `kind:"goal"`→`units`; `count`→`done`; `kind:"time"` removed; `runningTimerBrickId` removed; 4 timer actions + `LOG_GOAL_BRICK` removed; `SET_UNITS_DONE` added. 682/682 vitest across 56 files. 44 M4f IDs added; 25 M4c IDs retired. ADR-043.                                |
 | **M4g — Dead-code Sweep**          | **Shipped to preview — awaiting Gate #2 tap-test** | Removed 10 inert `@deprecated` props across 5 components; relabelled mislabelled test `U-m4f-016` → `U-m3-013`; removed stale `lib/timer.ts` reference in `lib/data.ts` comment. Net +3/−35 LOC. Zero behavior change. 682/682 vitest (unchanged). Pre-M5 cleanup complete.                                                                                                                              |
 | **M8 — Persistence**               | **Shipped to preview — awaiting Gate #2 tap-test** | `lib/persist.ts` (`loadState`/`saveState`/`PersistedState`/`dharma:v1` key); `usePersistedState()` hook; two-pass hydration in BuildingClient; `AppState.programStart` (ISO date, first-run stamp); `schemaVersion: 1`; top-bar day number now `programStart`-relative ("Building N"). ADR-044. 722/722 vitest across 58 files (+40/+2). Zero UI surface change. **RESOLVES: page refresh wipes state.** |
+| **M9a — appliesOn resolver**       | **Shipped to preview — awaiting Gate #2 tap-test** | Pure `appliesOn(recurrence, date): boolean` in `lib/appliesOn.ts`. Branches on all four `Recurrence` kinds. TZ-safe `parseLocalDate` helper. TZ-pinned test infra: `lib/appliesOn.tz.test.ts` + `vitest.tz.config.ts` + `npm run test:tz`. 760/760 vitest default suite (59 files); 11/11 TZ-pinned suite. First of five M9 chunks. M4e stored recurrence but never resolved it — M9a closes that gap.   |
 | M5 — Edit Mode + Delete            | Not started — **unblocked by M4g**                 | "Just today" delete writes to `deletions[date:blockId]` per locked schema. Dead prop surface cleared by M4g.                                                                                                                                                                                                                                                                                             |
 | M6 — Drag Reorder                  | Not started                                        | Framer Motion layout animations.                                                                                                                                                                                                                                                                                                                                                                         |
 | M7 — Polish Layer                  | Not started                                        | Cinematic. 60fps target. `prefers-reduced-motion` respected.                                                                                                                                                                                                                                                                                                                                             |
-| M9 — Calendar Nav                  | Not started — **unblocked by M8**                  | Helpers: `appliesOn(rec, date)` and `currentDayBlocks(today, state)`. Now has real durable data to render (persistence landed).                                                                                                                                                                                                                                                                          |
+| M9 — Calendar Nav (in progress)    | **M9a shipped; M9b–M9e pending**                   | Five chunks: M9a resolver (done) → M9b rollover+history+schemaVersion2 → M9c month/Kingdom view → M9d week/Castle view → M9e year/Empire view. **M9b is now unblocked** (resolver exists; M9b adds day rollover, the `history` map, and `schemaVersion → 2` bump).                                                                                                                                       |
 | M10 — Voice Log                    | Not started                                        | Claude API round-trip. Failure mode SG-bld-19 unresolved.                                                                                                                                                                                                                                                                                                                                                |
 
 ## Open loops
@@ -50,23 +51,26 @@
 - **`lib/dharma.ts:duration()` returns 0 for no-end blocks** — intentional design; documented in CHANGELOG.
 - **The Loop is now single-gate (ADR-041).** VERIFIER agent replaces Gate #1. Gate #2 (preview tap-test) is the only human gate.
 - **`public/sounds/chime.mp3` is a 431-byte placeholder (SG-m4f-05).** Replace with a real royalty-free chime before any M4a/M4b/M4d/M4f/M4g preview is user-facing. M7 concern.
-- **Vacuous-pass debt: ~39 post-M8.** 9 deferred-to-preview items (E-m4f-001..005, A-m4f-001..004); M4g adds no new e2e/a11y items; M8 adds E-m8-001..003 + A-m8-001 (4 items, deferred-to-preview). Deterministic-seed helper still owed (ADR-022 + ADR-039).
+- **Vacuous-pass debt: ~43 post-M9a.** 9 deferred-to-preview items (E-m4f-001..005, A-m4f-001..004); M4g adds no new e2e/a11y items; M8 adds E-m8-001..003 + A-m8-001 (4 items, deferred-to-preview); M9a adds no e2e/a11y items. Deterministic-seed helper still owed (ADR-022 + ADR-039).
 - **`BrickBase` type module-private to `lib/types.ts`.** AddBrickSheet uses `as const` literals. Log if a third surface needs the shape.
 - **C-m4e-030 shares green commit with C-m4e-027..029.** Defensible per M4c precedent; minor ADR-027 one-green-per-ID deviation.
 - **JC2 (non-blocking):** `C-m4f-013`/`C-m4f-014` are inline `it()` blocks inside the `C-m3-014` describe rather than standalone — acceptable, IDs traceable by test-name annotation.
 - **3 lint warnings in `lib/longPress.ts`** (lines 104, 111, 118) — `_e` underscore-prefixed unused params. Fix via `argsIgnorePattern: "^_"`. Deferred M5/M7.
-- **Coverage debt (minor, non-blocking — M8):** `C-m4e-029` no longer seeds a `hasDuration`-missing brick after the M8 test migration — the legacy-brick defensive-render path is now only implicitly exercised. A future hardening pass could add a `migrate()`-level test that loads a persisted brick lacking `hasDuration` and asserts it renders non-timed.
-- **M8 process note:** BUILDER committed per test-group (`U-m8-*` / `C-m8-*` batched red+green pairs) — `plan.md` § Feature grouping sanctions this ("one feature group: m8"); not a deviation.
+- **Coverage debt (minor, non-blocking — M8):** `C-m4e-029` no longer seeds a `hasDuration`-missing brick after the M8 test migration — the legacy-brick defensive-render path is now only implicitly exercised. A future hardening pass could add a `migrate()`-level test.
+- **M8 process note:** BUILDER committed per test-group (`U-m8-*` / `C-m8-*` batched red+green pairs) — `plan.md` § Feature grouping sanctions this; not a deviation.
+- **New TZ-test pattern (M9a).** Future timezone-sensitive code must follow the M9a pattern: a `*.tz.test.ts` file excluded from the default Vitest config and run via a `TZ=`-pinned dedicated config (`vitest.tz.config.ts` / `npm run test:tz`). Runtime `getTimezoneOffset` mocks are vacuous against V8/ICU and must not be used for TZ tests. (M9a's first attempt shipped vacuous TZ mocks and was caught at EVAL — hence this pattern.)
+- **Pending ADR — exhaustiveness guard:** `lib/appliesOn.ts` inlines `const _exhaustive: never = recurrence` instead of calling a shared `assertNever`, to keep its import surface type-only. Worth an ADR to standardize one form across the codebase.
+- **Pending doc fix — ADR-019 drift:** ADR-019's embedded code snippet shows pre-rename `custom-range` field names `from`/`to`/`weekdays?`; the live `lib/types.ts` uses `start`/`end`/`weekdays`. A future `docs(harness)` touch-up should align the snippet.
 
 **Resolved by M8 (closed loops):**
 
-- **Page refresh wipes the day / "state is lost on refresh"** — the standing limitation noted in M2, M3, M4a, and later specs. `localStorage` persistence under `dharma:v1` with `schemaVersion: 1` now survives tab close + reopen. Blocks, categories, loose bricks, and every brick's completion state all persist. `programStart` ISO date stamped on first run. **RESOLVED.**
+- **Page refresh wipes the day / "state is lost on refresh"** — `localStorage` persistence under `dharma:v1` with `schemaVersion: 1` now survives tab close + reopen. **RESOLVED.**
 
 **Resolved by M4g (closed loops):**
 
-- **`@deprecated` dead props on `<TimelineBlock>` and peer components** — `runningTimerBrickId`, `onTimerToggle`, `onTimerOpenSheet`, `onUnitsLog`, `onGoalLog` across `BrickChip`, `TimelineBlock`, `Timeline`, `LooseBricksTray`, `TimedLooseBrickCard` — props deleted. M5 decision no longer needed.
-- **JC1 — mislabelled test `U-m4f-016`** in `lib/blockValidation.test.ts` — relabelled `U-m3-013` (its true M3 ancestral ID). Cosmetic label hygiene resolved.
-- **`lib/data.ts:45` stale `lib/timer.ts` comment** (`findTimeBrickById`) — reworded; stale reference removed.
+- **`@deprecated` dead props on `<TimelineBlock>` and peer components** — props deleted. M5 decision no longer needed.
+- **JC1 — mislabelled test `U-m4f-016`** — relabelled `U-m3-013`. Cosmetic label hygiene resolved.
+- **`lib/data.ts:45` stale `lib/timer.ts` comment** — reworded; stale reference removed.
 
 **Resolved by M4f (closed loops):**
 
@@ -75,20 +79,21 @@
 - `lib/blockValidation.ts:overlapsExistingBlock` dead production code — deleted in M4f.
 - M4f architectural rework open loop — shipped.
 
-## Quality gates (last full Evaluator PASS on `6f136e1` — M8)
+## Quality gates (last full Evaluator PASS on `e5db789` — M9a)
 
-| Gate                       | Result                                                                              |
-| -------------------------- | ----------------------------------------------------------------------------------- |
-| ESLint                     | 0 errors, 12 warnings (down 1 from M4g baseline; all non-blocking; deferred M5/M7)  |
-| `tsc --noEmit`             | clean — 0 errors                                                                    |
-| Vitest                     | 722/722 passed across 58 files (+40 tests / +2 files vs M4g's 682/56)               |
-| Playwright (mobile-chrome) | deferred to Vercel preview — sandbox `next dev` socket bind failure (M0–M8 pattern) |
-| Playwright (mobile-safari) | not run — WebKit unavailable (ADR-010)                                              |
-| axe-core                   | deferred to Vercel preview                                                          |
-| Lighthouse                 | not measured — no prod URL reachable from sandbox                                   |
+| Gate                       | Result                                                                                              |
+| -------------------------- | --------------------------------------------------------------------------------------------------- |
+| ESLint                     | 0 errors, warnings non-blocking (same baseline as M8)                                               |
+| `tsc --noEmit`             | clean — 0 errors                                                                                    |
+| Vitest (default)           | 760/760 passed across 59 files (+38 tests / +1 file vs M8's 722/58)                                 |
+| Vitest (TZ-pinned)         | 11/11 passed (`npm run test:tz` — `TZ=America/Los_Angeles vitest run --config vitest.tz.config.ts`) |
+| Playwright (mobile-chrome) | deferred to Vercel preview — sandbox `next dev` socket bind failure (M0–M9a pattern)                |
+| Playwright (mobile-safari) | not run — WebKit unavailable (ADR-010)                                                              |
+| axe-core                   | deferred to Vercel preview                                                                          |
+| Lighthouse                 | not measured — no prod URL reachable from sandbox                                                   |
 
 ## Next intended action
 
-**Gate #2 (M8):** Open the preview in a signed-in Vercel browser session. Add a block and a brick, mark the brick done, then close the tab and reopen — confirm the day's state is exactly as left. Verify the "Building N" counter in the top bar is `programStart`-relative (not calendar day-of-year). No UI surface changes otherwise; prior M4a/M4b/M4d/M4e/M4f/M4g tap-tests still apply.
+**Gate #2 (M9a):** Open the preview in a signed-in Vercel browser session. Verify the app still works — add a block, add a brick, tick it. Note: M9a has **no UI surface** — nothing visibly changed; the tap-test is a regression check only. The real user-visible M9 payoff arrives with M9c (month/Kingdom view).
 
-**After Gate #2:** M9 (Calendar Nav) is now unblocked — persistence gives the calendar/history views (Castle/Kingdom/Empire) real durable data to render. Author M9 spec entry in `docs/spec.md`, then `/feature m9`.
+**After Gate #2:** `/feature m9b` — M9b adds day rollover, the `history` map, and the `schemaVersion → 2` bump. The `appliesOn` resolver (M9a) is its core dependency and is now available.

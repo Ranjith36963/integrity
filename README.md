@@ -34,6 +34,7 @@ npm run lint         # ESLint
 npm run typecheck    # tsc --noEmit
 npm run test         # Vitest unit tests (run once)
 npm run test:watch   # Vitest in watch mode
+npm run test:tz      # Vitest TZ-pinned timezone suite (TZ=America/Los_Angeles)
 npm run test:e2e     # Playwright e2e suite (mobile-chrome)
 npm run test:a11y    # Playwright axe-core accessibility suite
 npm run verify       # lint + typecheck + unit tests (pre-ship check)
@@ -48,20 +49,21 @@ npm run test:e2e:install
 
 ## Status
 
-| Milestone                        | State                                          |
-| -------------------------------- | ---------------------------------------------- |
-| M0 — Design System               | Shipped + tap-tested                           |
-| M1 — Empty Building Shell        | Shipped + tap-tested                           |
-| M2 — Add Block Flow              | Shipped + tap-tested                           |
-| M3 — Add Brick + Live Scoring    | Shipped + tap-tested                           |
-| M4a — Tick Brick Logging         | Shipped to preview — awaiting Gate #2 tap-test |
-| M4b — Goal Brick Stepper         | Shipped to preview — awaiting Gate #2 tap-test |
-| M4d — Add Chooser Sheet          | Shipped to preview — awaiting Gate #2 tap-test |
-| M4c — Time Brick Timer           | Shipped to preview — awaiting Gate #2 tap-test |
-| M4e — Brick Duration + Overlap   | Shipped to preview — awaiting Gate #2 tap-test |
-| M4f — Two Brick Kinds; Rip Timer | Shipped to preview — awaiting Gate #2 tap-test |
-| M4g — Timer-era Dead-code Sweep  | Shipped to preview — awaiting Gate #2 tap-test |
-| M8 — Persistence                 | Shipped to preview — awaiting Gate #2 tap-test |
+| Milestone                           | State                                          |
+| ----------------------------------- | ---------------------------------------------- |
+| M0 — Design System                  | Shipped + tap-tested                           |
+| M1 — Empty Building Shell           | Shipped + tap-tested                           |
+| M2 — Add Block Flow                 | Shipped + tap-tested                           |
+| M3 — Add Brick + Live Scoring       | Shipped + tap-tested                           |
+| M4a — Tick Brick Logging            | Shipped to preview — awaiting Gate #2 tap-test |
+| M4b — Goal Brick Stepper            | Shipped to preview — awaiting Gate #2 tap-test |
+| M4d — Add Chooser Sheet             | Shipped to preview — awaiting Gate #2 tap-test |
+| M4c — Time Brick Timer              | Shipped to preview — awaiting Gate #2 tap-test |
+| M4e — Brick Duration + Overlap      | Shipped to preview — awaiting Gate #2 tap-test |
+| M4f — Two Brick Kinds; Rip Timer    | Shipped to preview — awaiting Gate #2 tap-test |
+| M4g — Timer-era Dead-code Sweep     | Shipped to preview — awaiting Gate #2 tap-test |
+| M8 — Persistence                    | Shipped to preview — awaiting Gate #2 tap-test |
+| M9a — appliesOn recurrence resolver | Shipped to preview — awaiting Gate #2 tap-test |
 
 Latest preview: `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (branch alias; auto-tracks `claude/verify-m0-deployment-s4XRy`). Vercel Deployment Protection active — open in browser while signed in to Vercel.
 
@@ -97,6 +99,7 @@ lib/                 Domain logic: types, data, scoring, utilities
   timeOffset.ts      Exports HOUR_HEIGHT_PX — single source of truth for timeline geometry
   blockValidation.ts Pure validators (title, end time, overflow, recurrence, overlap, brick fields)
   uuid.ts            crypto.randomUUID() mockable seam
+  appliesOn.ts       Pure recurrence resolver: appliesOn(recurrence, date) → boolean (M9a)
 tests/
   e2e/               Playwright specs (e2e + a11y)
 docs/
