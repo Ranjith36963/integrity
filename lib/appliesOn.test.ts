@@ -1,6 +1,6 @@
 // lib/appliesOn.test.ts — M9a: appliesOn recurrence resolver
 // U-m9a-001..016
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { appliesOn } from "./appliesOn";
 import type { Recurrence } from "@/lib/types";
 
@@ -219,120 +219,13 @@ describe("U-m9a-010: custom-range with empty weekdays returns false for every in
 
 // ─────────────────────────────────────────────────────────────────────────────
 // U-m9a-011 — timezone safety, negative-offset zone (America/Los_Angeles)
-// U-m9a-012 — timezone safety, positive-offset zone (Asia/Tokyo)
+// U-m9a-012 — cross-zone invariance assertion
 //
-// parseLocalDate uses new Date(y, m-1, d) — the multi-arg local-time constructor.
-// This is timezone-invariant: for any ISO YYYY-MM-DD, getDay() returns the same
-// weekday integer regardless of the runtime timezone. We demonstrate this by
-// mocking Date.prototype.getTimezoneOffset to simulate negative and positive
-// offset zones and confirm identical verdicts.
+// AC #8 coverage lives in lib/appliesOn.tz.test.ts.
+// These tests MUST run under TZ=America/Los_Angeles pinned at process start,
+// which is not achievable via in-test mocks (getTimezoneOffset does not
+// re-initialise V8/ICU). Run via: npm run test:tz
 // ─────────────────────────────────────────────────────────────────────────────
-describe("U-m9a-011: timezone safety — negative-offset zone (America/Los_Angeles UTC-7/8)", () => {
-  let originalGetTimezoneOffset: () => number;
-
-  beforeEach(() => {
-    originalGetTimezoneOffset = Date.prototype.getTimezoneOffset;
-    // Simulate UTC-8 (Los Angeles, PST): getTimezoneOffset returns +480
-    Date.prototype.getTimezoneOffset = function () {
-      return 480;
-    };
-  });
-
-  afterEach(() => {
-    Date.prototype.getTimezoneOffset = originalGetTimezoneOffset;
-  });
-
-  it("returns false for Sunday 2026-05-17 (getDay 0) under negative-offset zone", () => {
-    // The naive new Date("2026-05-17") would be UTC midnight, which in UTC-8
-    // would appear as Sat 2026-05-16. parseLocalDate avoids this.
-    expect(appliesOn({ kind: "every-weekday" }, "2026-05-17")).toBe(false);
-  });
-
-  it("returns true for Monday 2026-05-18 (getDay 1) under negative-offset zone", () => {
-    expect(appliesOn({ kind: "every-weekday" }, "2026-05-18")).toBe(true);
-  });
-
-  it("returns true for custom-range Sunday 2026-05-17 (weekday 0 in [0]) under negative-offset zone", () => {
-    const rec: Recurrence = {
-      kind: "custom-range",
-      start: "2026-05-17",
-      end: "2026-05-23",
-      weekdays: [0], // Sunday
-    };
-    expect(appliesOn(rec, "2026-05-17")).toBe(true);
-  });
-});
-
-describe("U-m9a-012: timezone safety — positive-offset zone (Asia/Tokyo UTC+9) — identical verdict", () => {
-  let originalGetTimezoneOffset: () => number;
-
-  beforeEach(() => {
-    originalGetTimezoneOffset = Date.prototype.getTimezoneOffset;
-    // Simulate UTC+9 (Tokyo, JST): getTimezoneOffset returns -540
-    Date.prototype.getTimezoneOffset = function () {
-      return -540;
-    };
-  });
-
-  afterEach(() => {
-    Date.prototype.getTimezoneOffset = originalGetTimezoneOffset;
-  });
-
-  it("returns false for Sunday 2026-05-17 (getDay 0) under positive-offset zone", () => {
-    expect(appliesOn({ kind: "every-weekday" }, "2026-05-17")).toBe(false);
-  });
-
-  it("returns true for Monday 2026-05-18 (getDay 1) under positive-offset zone", () => {
-    expect(appliesOn({ kind: "every-weekday" }, "2026-05-18")).toBe(true);
-  });
-
-  it("returns true for custom-range Sunday 2026-05-17 (weekday 0 in [0]) under positive-offset zone", () => {
-    const rec: Recurrence = {
-      kind: "custom-range",
-      start: "2026-05-17",
-      end: "2026-05-23",
-      weekdays: [0], // Sunday
-    };
-    expect(appliesOn(rec, "2026-05-17")).toBe(true);
-  });
-
-  it("verdicts are identical to the negative-offset zone run (cross-zone equality)", () => {
-    // Collect verdicts under positive offset (already active via beforeEach)
-    const positiveResults = [
-      appliesOn({ kind: "every-weekday" }, "2026-05-17"),
-      appliesOn({ kind: "every-weekday" }, "2026-05-18"),
-      appliesOn(
-        {
-          kind: "custom-range",
-          start: "2026-05-17",
-          end: "2026-05-23",
-          weekdays: [0],
-        },
-        "2026-05-17",
-      ),
-    ];
-
-    // Simulate negative offset in this closure
-    Date.prototype.getTimezoneOffset = function () {
-      return 480; // UTC-8
-    };
-    const negativeResults = [
-      appliesOn({ kind: "every-weekday" }, "2026-05-17"),
-      appliesOn({ kind: "every-weekday" }, "2026-05-18"),
-      appliesOn(
-        {
-          kind: "custom-range",
-          start: "2026-05-17",
-          end: "2026-05-23",
-          weekdays: [0],
-        },
-        "2026-05-17",
-      ),
-    ];
-
-    expect(positiveResults).toEqual(negativeResults);
-  });
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // U-m9a-013 — purity (no mutation, no clock, deterministic)
