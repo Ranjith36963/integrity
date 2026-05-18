@@ -241,11 +241,17 @@ describe("C-m9e-003: YearView — prev/next year nav updates year label + cells 
     expect(list).toBeInTheDocument();
   });
 
-  it("clicking Next year twice shows '2027' with all no-data cells", async () => {
+  it("prev once then next twice shows '2027' with all no-data cells", async () => {
     const user = userEvent.setup();
     render(<YearView state={makeStandingState()} onOpenMonth={vi.fn()} />);
+    // Start at 2026, go back to 2025, then forward twice to 2027
+    await act(async () => {
+      await user.click(screen.getByRole("button", { name: /previous year/i }));
+    });
     await act(async () => {
       await user.click(screen.getByRole("button", { name: /next year/i }));
+    });
+    await act(async () => {
       await user.click(screen.getByRole("button", { name: /next year/i }));
     });
     const h2 = screen.getByRole("heading", { level: 2 });
