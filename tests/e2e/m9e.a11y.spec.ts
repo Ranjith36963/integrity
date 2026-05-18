@@ -64,13 +64,13 @@ test("A-m9e-001: year view is axe-clean, role=list 'Months of <year>', MonthCell
     const label = await firstBtn.getAttribute("aria-label");
     expect(typeof label).toBe("string");
     expect(label!.length).toBeGreaterThan(0);
-    // label contains month name + year + score or no-data
-    const isValidLabel =
-      /score \d+ percent/i.test(label!) ||
-      /no data/i.test(label!) ||
-      /current month/i.test(label!);
-    // At minimum the label should describe the month
+    // label must contain year and either a score, no-data, or current-month marker
     expect(label).toMatch(/\d{4}/); // contains year
+    expect(
+      /score \d+ percent/i.test(label!) ||
+        /no data/i.test(label!) ||
+        /current month/i.test(label!),
+    ).toBe(true);
   }
 
   // Prev/Next year buttons carry aria-labels and are keyboard-operable
