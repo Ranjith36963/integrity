@@ -1,12 +1,20 @@
 /**
  * lib/history.test.ts — M9b rollover unit tests + M9c dayScore unit tests.
  * Covers U-m9b-010..021, U-m9c-007..012.
+ * M9e: monthScore/yearScore unit tests appended (U-m9e-004..009). No m9b/m9c/m9d ID touched.
  * Pure unit tests — no localStorage, no clock reads.
  * rollover(state, todayISO) and dayScore(state, isoDate) are called directly.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { rollover, dayScore, weekScore, NO_DATA } from "./history";
+import {
+  rollover,
+  dayScore,
+  weekScore,
+  monthScore,
+  yearScore,
+  NO_DATA,
+} from "./history";
 import type { PersistedState } from "./persist";
 import type { ArchivedDay } from "./types";
 import type { AppState } from "./types";
@@ -1839,5 +1847,654 @@ describe("U-m9d-009: weekScore — fully-past week; missed vs 0-archived both co
     const result = weekScore(stateMissed, "2026-05-13");
     // Same as before: 400/7 ≈ 57.143 — missed and 0-archived are indistinguishable to weekScore
     expect(result).toBeCloseTo(57.143, 2);
+  });
+});
+
+// ─── M9e monthScore / yearScore helper tests ─────────────────────────────────
+//
+// monthScore(state, year, monthIndex) and yearScore(state, year) — pure period aggregates.
+// "Today" derived from state.currentDate, NEVER from new Date().
+//
+// Named fixtures:
+//   F-monthwin: programStart="2026-06-08", currentDate="2026-06-11"
+//               history={06-08: dayPct90, 06-09: dayPct30}
+//               06-10 and 06-11 have no history entry (in-range past/today, missed → 0)
+//               Window: 4 in-range days (06-08..06-11), 2 scored, 2 missed
+//               monthScore(2026, 5) = (90+30+0+0)/4 = 30
+//
+//   F-yearwin:  programStart="2026-02-20", currentDate="2026-03-15"
+//               history={02-25: dayPct100, 03-05: dayPct0, 03-10: dayPct0}
+//               All other in-range days are un-archived (missed → 0)
+//               yearScore(2026): day-averaged = (100+0+0) / (total in-range days) — NOT mean of monthScores
+//               Feb in-range: 02-20..02-28 = 9 days; 02-25 scored 100, others missed (0)
+//               Mar in-range: 03-01..03-15 = 15 days; 03-05 scored 0, 03-10 scored 0, others missed (0)
+//               Total in-range days: 9 + 15 = 24
+//               Numerator: 100 + 0 + 0 = 100
+//               yearScore = 100/24 ≈ 4.167 — but tests.md simplifies to just the 3 named days
+//               The key property: yearScore ≠ mean(monthScore(Feb), monthScore(Mar)) = (100/1 + 0/1)/2 = 50
+//               Wait — re-reading tests.md U-m9e-007: "with only 02-25 (100), 03-05 (0), 03-10 (0) in-range"
+//               The fixture archives ALSO every other in-range day... let me re-read carefully.
+//               tests.md says: "the fixture sets history to ALSO archive every other in-range day at dayPct 100
+//               so the only 'low' days are the two 0-scoring March days AND narrows the comparison to the three
+//               named days by an explicit assertion"
+//               Actually the tests.md description is complex. The mutation-resistance note says:
+//               "Feb monthScore = 100 (its one in-range day), Mar monthScore = 0 (its two in-range days both 0)"
+//               This means: only 02-25, 03-05, 03-10 are in-range? No — programStart=02-20, currentDate=03-15.
+//               The fixture makes all other in-range days have no history (missed→0 in the average).
+//               yearScore = (100+0+0 + 0*(other missed days)) / 24 — this won't equal 33.333.
+//               Actually re-reading tests.md more carefully:
+//               "with only 02-25 (100), 03-05 (0), 03-10 (0) in-range and scored and ALL OTHER DATES
+//               PRE-PROGRAMSTART OR FUTURE OR EXPLICITLY EXCLUDED, yearScore averages the three in-range
+//               non-future scored days directly → (100+0+0)/3 = 33.33…"
+//               So the fixture is: programStart=02-20? No — that would make many days in-range.
+//               The fixture needs programStart and currentDate chosen so that ONLY those 3 dates are in-range.
+//               The tests.md says: "with only 02-25 (100), 03-05 (0), 03-10 (0) in-range"
+//               So I'll set programStart="2026-02-25" and currentDate="2026-03-10" so only those 3 dates
+//               fall in the unique scored positions.
+//               WAIT — but tests.md says "programStart: 2026-02-20, currentDate: 2026-03-15" for F-yearwin.
+//               That means all days 02-20..03-15 are in-range (24 days).
+//               BUT the mutation-resistance note says yearScore = 33.333 and NOT 50.
+//               Let me re-read: "Feb monthScore = 100 (its one in-range day)"
+//               This means ONLY ONE day of Feb is in-range → programStart must be 02-28 or 02-25..?
+//               Actually: "Feb in-range: 02-25 only" — so programStart="2026-02-25" makes more sense
+//               for Feb to have only 1 in-range day (02-25).
+//               "Mar in-range: 03-05 and 03-10 only" — currentDate="2026-03-10"?
+//               That gives: Feb in-range: 02-25..02-28 = 4 days; Mar in-range: 03-01..03-10 = 10 days = 14 total
+//               "Feb monthScore = 100 (its ONE in-range day)" — this only works if programStart=02-25.
+//               But the fixture table says programStart=02-20!
+//               I think the tests.md mutation-resistance note is describing a simplified/idealized scenario.
+//               The REAL fixture: programStart=02-20, currentDate=03-15.
+//               In that case: Feb in-range = 02-20..02-28 = 9 days.
+//               Feb history: 02-25 → 100, everything else missed (→ 0).
+//               Feb monthScore = (0+0+0+0+0+100+0+0+0) / 9 = 100/9 ≈ 11.11 (NOT 100!)
+//               That contradicts "Feb monthScore = 100 (its one in-range day)".
+//               CONCLUSION: the "three named days" scenario in the test requires programStart/currentDate
+//               that leave ONLY 3 in-range dates. The F-yearwin fixture table is approximate.
+//               For U-m9e-007, I'll use: programStart="2026-02-25", currentDate="2026-03-10"
+//               so that Feb in-range = 02-25..02-28 = 4 days, Mar in-range = 03-01..03-10 = 10 days = 14 total.
+//               WAIT — that still gives Feb monthScore = 100/4 = 25, not 100.
+//               The ONLY way "Feb monthScore = 100 (its one in-range day)" is:
+//               programStart = "2026-02-25" AND currentDate either covers only 02-25 in Feb
+//               OR we use history for ONLY that day and the description means "one scored day".
+//               Actually re-reading: "monthScore(2026, 1) (Feb) = 100 (its one in-range day)"
+//               I think "in-range day" here means the one day that's actually SCORED (has a history entry),
+//               and the missed days contribute 0 so they drag the average down.
+//               The sentence means month score based on one scored day = 100, but that's wrong too
+//               because missed days also count with 0.
+//               RE-READING VERY CAREFULLY:
+//               "Feb monthScore = 100 (its one in-range day), Mar monthScore = 0 (its two in-range days both 0)"
+//               "the other ten months = NO_DATA → averaging the two non-null month scores gives (100+0)/2=50"
+//               For Feb monthScore = 100, we need ONLY one in-range day in Feb (02-25), which scores 100.
+//               denominator=1, numerator=100, result=100. ✓
+//               For programStart="2026-02-25" and Feb→ only 02-25..02-28 = 4 days in range (not 1!)
+//               UNLESS programStart="2026-02-25" AND currentDate="2026-02-25" for Feb only.
+//               This is getting complex. The simplest approach: use a fixture where:
+//               - programStart = "2026-02-25" (starts at 02-25)
+//               - currentDate = "2026-03-10"
+//               - history = {02-25: 100%, 03-05: 0%, 03-10: 0%}
+//               - All other in-range days (02-26..02-28, 03-01..03-04, 03-06..03-09) are missed (→0)
+//               Feb in-range: 02-25..02-28 = 4 days, numerator=100, denominator=4 → monthScore=25
+//               Mar in-range: 03-01..03-10 = 10 days, numerator=0, denominator=10 → monthScore=0
+//               mean(25, 0) = 12.5 (not 50)
+//               yearScore = (100+0+0) / 14 = 7.14 (not 33.333)
+//               STILL doesn't match. The only way to get yearScore=33.333 is 3 in-range days total.
+//               SO: programStart="2026-02-25", currentDate="2026-03-10", AND
+//               all days 02-26..02-28 and 03-01..03-04 and 03-06..03-09 are EXCLUDED.
+//               The only way to exclude them without being future or pre-start is... they can't be.
+//               FINAL CONCLUSION: The fixture for U-m9e-007 must have EXACTLY 3 in-range days.
+//               Use: programStart="2026-02-25", currentDate="2026-02-25" for Feb (only 1 day)
+//               Then a separate fixture? No — it's one fixture.
+//               OR: use 3 days programStart="2026-02-25", currentDate="2026-02-27" (3 days: 02-25, 02-26, 02-27)
+//               with history = {02-25: 100%, 02-26: 0%, 02-27: 0%}?
+//               That's 3 in-range days, yearScore = (100+0+0)/3 = 33.33 ✓
+//               And monthScore(Feb) = 100/3 ≈ 33.33, mean of monthScores = 33.33 — no divergence!
+//               The divergence requires DIFFERENT MONTHS. Let me use:
+//               programStart="2026-02-25", currentDate="2026-03-02"
+//               history={02-25:100%, 03-01:0%, 03-02:0%} — all other days missed
+//               Feb in-range: 02-25, 02-26, 02-27, 02-28 = 4 days; 02-25=100, others missed=0
+//               monthScore(Feb) = 100/4 = 25
+//               Mar in-range: 03-01, 03-02 = 2 days; 03-01=0, 03-02=0 (archived)
+//               monthScore(Mar) = 0/2 = 0
+//               mean of non-null = (25+0)/2 = 12.5
+//               yearScore = (100+0+0+0+0+0)/6 = 100/6 ≈ 16.67
+//               Still not a clean divergence. Let me just use:
+//               programStart="2026-02-25", currentDate="2026-03-02", all non-archived in-range = missed
+//               yearScore = 100/6 ≈ 16.67, meanOfMonths = (25+0)/2 = 12.5 — divergence exists but messy.
+//               SIMPLEST CLEAN FIXTURE for mutation resistance:
+//               programStart="2026-02-25", currentDate="2026-02-25" — 1 in-range day in Feb only
+//               history={} — live day dayPct=100
+//               yearScore(2026) = 100/1 = 100
+//               monthScore(2026, 1) = 100 — same! No divergence.
+//               The cleanest way to show divergence: 2 months with different day counts.
+//               programStart = "2026-01-31", currentDate = "2026-03-01"
+//               history = {01-31: 100, 02-01: 0}
+//               Feb: all 28 days are in-range, 02-01 scored 0, 02-02..02-28 missed (0) → monthScore = 0/28 = 0
+//               Jan: 01-31 = 1 day in-range, scored 100 → monthScore = 100
+//               Mar: 03-01 is currentDate, no history → live dayPct (we need 0 for clean math)
+//               Let me use a state where live day = 0 (empty blocks)
+//               yearScore = (100 + 0*28 + 0) / 30 = 100/30 = 3.33
+//               mean of months: Jan=100, Feb=0, Mar=0 → (100+0+0)/3 = 33.33
+//               3.33 ≠ 33.33 — divergence! And the test can assert yearScore ≈ 3.33 and NOT 33.33.
+//               This matches the tests.md description "33.333" being the yearScore — wait, no, my calc gives 3.33.
+//               Let me re-examine. With only 1 day in Jan and 28 days in Feb = 29 in-range days + 1 = 30.
+//               yearScore = 100/30 = 3.33 ≠ 33.33.
+//               THE TESTS.MD SAYS yearScore = 33.333. Let me work backward:
+//               3 in-range days total, 1 scoring 100 → 100/3 = 33.33
+//               So I need EXACTLY 3 in-range days, spread across ≥2 months.
+//               programStart = "2026-01-31", currentDate = "2026-02-01" (2 days in-range: 01-31 and 02-01)
+//               Only 2 — not 3. Add 02-02: currentDate="2026-02-02".
+//               But then: Jan: 1 in-range day (01-31); Feb: 2 in-range days (02-01, 02-02)
+//               history = {01-31: 100, 02-01: 0, 02-02: 0}
+//               monthScore(Jan) = 100/1 = 100, monthScore(Feb) = 0/2 = 0
+//               mean = (100+0)/2 = 50 ✓
+//               yearScore = 100/3 = 33.33 ✓
+//               PERFECT! This matches tests.md exactly!
+//               So the F-yearwin fixture for U-m9e-007:
+//               programStart = "2026-01-31"
+//               currentDate = "2026-02-02"
+//               history = {01-31: dayPct100, 02-01: dayPct0, 02-02: dayPct0}
+//               (archived 0-score, not missed — both give 0 but archived is explicit)
+
+/**
+ * ArchivedDay scoring dayPct = 100%: 1 tick brick, done=true
+ * Reuses the existing makeArchivedDay100 pattern (defined at the top of this file for M9c tests).
+ * These helpers are defined here for M9e to avoid re-declaring already-defined symbols.
+ */
+function makeM9eDay100(): ArchivedDay {
+  return {
+    blocks: [],
+    categories: [],
+    looseBricks: [
+      {
+        id: "m9e100a",
+        name: "a",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: true,
+      },
+    ],
+  };
+}
+
+/** ArchivedDay scoring dayPct = 0%: 1 tick brick, done=false */
+function makeM9eDay0(): ArchivedDay {
+  return {
+    blocks: [],
+    categories: [],
+    looseBricks: [
+      {
+        id: "m9e0a",
+        name: "a",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: false,
+      },
+    ],
+  };
+}
+
+/** ArchivedDay scoring dayPct = 90%: 10 tick bricks, 9 done */
+function makeM9eDay90(): ArchivedDay {
+  const bricks = Array.from({ length: 10 }, (_, i) => ({
+    id: `m9e90-${i}`,
+    name: `b${i}`,
+    categoryId: null as null,
+    parentBlockId: null as null,
+    hasDuration: false,
+    kind: "tick" as const,
+    done: i < 9,
+  }));
+  return { blocks: [], categories: [], looseBricks: bricks };
+}
+
+/** ArchivedDay scoring dayPct = 30%: 10 tick bricks, 3 done */
+function makeM9eDay30(): ArchivedDay {
+  const bricks = Array.from({ length: 10 }, (_, i) => ({
+    id: `m9e30-${i}`,
+    name: `b${i}`,
+    categoryId: null as null,
+    parentBlockId: null as null,
+    hasDuration: false,
+    kind: "tick" as const,
+    done: i < 3,
+  }));
+  return { blocks: [], categories: [], looseBricks: bricks };
+}
+
+/** ArchivedDay scoring dayPct = 70%: 10 tick bricks, 7 done */
+function makeM9eDay70(): ArchivedDay {
+  const bricks = Array.from({ length: 10 }, (_, i) => ({
+    id: `m9e70-${i}`,
+    name: `b${i}`,
+    categoryId: null as null,
+    parentBlockId: null as null,
+    hasDuration: false,
+    kind: "tick" as const,
+    done: i < 7,
+  }));
+  return { blocks: [], categories: [], looseBricks: bricks };
+}
+
+/** ArchivedDay scoring dayPct = 40%: 5 tick bricks, 2 done */
+function makeM9eDay40(): ArchivedDay {
+  return {
+    blocks: [],
+    categories: [],
+    looseBricks: Array.from({ length: 5 }, (_, i) => ({
+      id: `m9e40-${i}`,
+      name: `b${i}`,
+      categoryId: null as null,
+      parentBlockId: null as null,
+      hasDuration: false,
+      kind: "tick" as const,
+      done: i < 2,
+    })),
+  };
+}
+
+// ─── U-m9e-004: monthScore — THE honest-month-average contract, missed = 0, mutation-resistant ──
+
+describe("U-m9e-004: monthScore — honest-month-average contract, missed = 0, mutation-resistant", () => {
+  // F-monthwin: programStart="2026-06-08", currentDate="2026-06-11"
+  // history={06-08: dayPct90, 06-09: dayPct30}
+  // 06-10 and 06-11: in-range, no history entry → dayScore returns NO_DATA → contributes 0 AND counted
+  // June dates: 06-01..06-07 pre-start (excluded); 06-08..06-11 in-range (4 days); 06-12..06-30 future (excluded)
+  // numerator = 90+30+0+0 = 120; denominator = 4; result = 30
+  it("F-monthwin: monthScore(state, 2026, 5) = 30 — exact, mutation-resistant (NOT 60)", () => {
+    const state: AppState = {
+      programStart: "2026-06-08",
+      currentDate: "2026-06-11",
+      history: {
+        "2026-06-08": makeM9eDay90(),
+        "2026-06-09": makeM9eDay30(),
+      },
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+    };
+    // monthIndex 5 = June (0-indexed)
+    expect(monthScore(state, 2026, 5)).toBe(30);
+  });
+
+  it("F-monthwin: value is 30, NOT 60 — a mutant dropping missed days would return 60", () => {
+    const state: AppState = {
+      programStart: "2026-06-08",
+      currentDate: "2026-06-11",
+      history: {
+        "2026-06-08": makeM9eDay90(),
+        "2026-06-09": makeM9eDay30(),
+      },
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+    };
+    const result = monthScore(state, 2026, 5);
+    expect(result).not.toBe(60); // 60 is (90+30)/2 — the mutant result
+    expect(result).toBe(30); // honest average including 2 missed in-range days
+  });
+
+  it("F-monthwin: pre-start days (06-01..06-07) are excluded from both numerator and denominator", () => {
+    // Verifies that programStart is honored — the 7 pre-start June days don't inflate the denominator
+    const state: AppState = {
+      programStart: "2026-06-08",
+      currentDate: "2026-06-11",
+      history: {
+        "2026-06-08": makeM9eDay90(),
+        "2026-06-09": makeM9eDay30(),
+      },
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+    };
+    // If pre-start days were included in denominator, result would be (90+30+0+0) / (7+4) = 120/11 ≈ 10.9
+    // If pre-start days were included in numerator too (all 0), same: 120/11 ≈ 10.9
+    // Correct: 120/4 = 30
+    expect(monthScore(state, 2026, 5)).toBe(30);
+    expect(monthScore(state, 2026, 5)).not.toBeCloseTo(10.9, 0);
+  });
+});
+
+// ─── U-m9e-005: monthScore — current month is partial; today's live dayPct counts ──
+
+describe("U-m9e-005: monthScore — current month is partial; today's live dayPct counts", () => {
+  // F-standing: programStart="2026-05-01", currentDate="2026-05-18"
+  // history: 05-01..05-17 each dayPct70 (17 archived days)
+  // live in-progress day: dayPct = 40 (2/5 done via makeM9eDay40 live blocks)
+  // In-range non-future days of May 2026: 05-01..05-18 = 18 days
+  // Future days 05-19..05-31 excluded
+  // numerator = 70*17 + 40 = 1190 + 40 = 1230; denominator = 18
+  // result = 1230/18 = 68.333...
+
+  function makeStandingState(): AppState {
+    const history: Record<string, ArchivedDay> = {};
+    for (let d = 1; d <= 17; d++) {
+      const dd = String(d).padStart(2, "0");
+      history[`2026-05-${dd}`] = makeM9eDay70();
+    }
+    return {
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history,
+      // Live in-progress day scoring 40% (2/5 done)
+      blocks: [],
+      categories: [],
+      looseBricks: [
+        {
+          id: "live-a",
+          name: "a",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: true,
+        },
+        {
+          id: "live-b",
+          name: "b",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: true,
+        },
+        {
+          id: "live-c",
+          name: "c",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: false,
+        },
+        {
+          id: "live-d",
+          name: "d",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: false,
+        },
+        {
+          id: "live-e",
+          name: "e",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: false,
+        },
+      ],
+    };
+  }
+
+  it("F-standing: monthScore(state, 2026, 4) ≈ 68.333 — averages 18 in-range days incl. live day", () => {
+    const state = makeStandingState();
+    expect(monthScore(state, 2026, 4)).toBeCloseTo(68.333, 2);
+  });
+
+  it("F-standing: future month (June 2026) returns null — every day > currentDate", () => {
+    const state = makeStandingState();
+    // June 2026: all 30 days > currentDate "2026-05-18" → future → denominator = 0 → NO_DATA
+    expect(monthScore(state, 2026, 5)).toBe(null);
+  });
+});
+
+// ─── U-m9e-006: monthScore — no-data sentinel for fully-future / fully-pre-start months ──
+
+describe("U-m9e-006: monthScore — no-data sentinel: fully-future / fully-pre-start → null", () => {
+  // F-standing: programStart="2026-05-01", currentDate="2026-05-18"
+
+  it("July 2026 (fully future) → exact null, NOT 0", () => {
+    const state: AppState = {
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: {},
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+    };
+    // monthIndex 6 = July
+    const result = monthScore(state, 2026, 6);
+    expect(result).toBe(null);
+    // Strict null check — must not be falsy-but-not-null
+    expect(result === null).toBe(true);
+    expect(result).not.toBe(0);
+  });
+
+  it("April 2026 (fully pre-start) → exact null, NOT 0", () => {
+    const state: AppState = {
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: {},
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+    };
+    // monthIndex 3 = April — every day < programStart "2026-05-01"
+    const result = monthScore(state, 2026, 3);
+    expect(result).toBe(null);
+    expect(result === null).toBe(true);
+    expect(result).not.toBe(0);
+  });
+
+  it("NO_DATA sentinel is exported and equals null", () => {
+    expect(NO_DATA).toBe(null);
+    expect(NO_DATA === null).toBe(true);
+  });
+});
+
+// ─── U-m9e-007: yearScore — averages DAYS directly, NOT the twelve monthScores ──
+
+describe("U-m9e-007: yearScore — averages DAYS directly, NOT the twelve monthScores — SG-m9e-01 guard", () => {
+  // Fixture for divergence proof:
+  // programStart = "2026-01-31", currentDate = "2026-02-02"
+  // history = {01-31: dayPct100, 02-01: dayPct0(archived), 02-02: dayPct0(archived)}
+  // Jan in-range: 01-31 only (1 day); Feb in-range: 02-01, 02-02 (2 days)
+  // monthScore(Jan=0) = 100/1 = 100
+  // monthScore(Feb=1) = (0+0)/2 = 0
+  // mean of non-null monthScores = (100+0)/2 = 50
+  // yearScore(2026) = (100+0+0) / 3 = 33.333... (day-averaging)
+  // 33.333 ≠ 50 — divergence confirms day-averaging vs month-averaging
+
+  function makeDivergenceState(): AppState {
+    return {
+      programStart: "2026-01-31",
+      currentDate: "2026-02-02",
+      history: {
+        "2026-01-31": makeM9eDay100(),
+        "2026-02-01": makeM9eDay0(),
+        "2026-02-02": makeM9eDay0(),
+      },
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+    };
+  }
+
+  it("yearScore(state, 2026) ≈ 33.333 (day-averaged over 3 in-range days)", () => {
+    const state = makeDivergenceState();
+    expect(yearScore(state, 2026)).toBeCloseTo(33.333, 2);
+  });
+
+  it("yearScore is NOT 50 — 50 is what month-averaging would yield; day-averaging gives 33.333", () => {
+    const state = makeDivergenceState();
+    const ys = yearScore(state, 2026);
+    expect(ys).not.toBeCloseTo(50, 1);
+    expect(ys).toBeCloseTo(33.333, 2);
+  });
+
+  it("monthScore(Jan) = 100 and monthScore(Feb) = 0 — divergence confirmed by month scores", () => {
+    const state = makeDivergenceState();
+    // monthIndex 0 = January: 1 in-range day (01-31), scored 100
+    expect(monthScore(state, 2026, 0)).toBe(100);
+    // monthIndex 1 = February: 2 in-range days (02-01, 02-02), both scored 0
+    expect(monthScore(state, 2026, 1)).toBe(0);
+    // Mean of the two non-null monthScores = 50 — different from yearScore
+    const meanOfMonths = (100 + 0) / 2;
+    expect(meanOfMonths).toBe(50);
+    const ys = yearScore(state, 2026);
+    expect(ys).not.toBeCloseTo(meanOfMonths, 1);
+  });
+});
+
+// ─── U-m9e-008: yearScore — no-data sentinel + first-run single-day year ──────
+
+describe("U-m9e-008: yearScore — no-data sentinel + first-run single-day year", () => {
+  it("fully-future year (2027) against F-standing → exact null", () => {
+    const state: AppState = {
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: {},
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+    };
+    const result = yearScore(state, 2027);
+    expect(result).toBe(null);
+    expect(result === null).toBe(true);
+    expect(result).not.toBe(0);
+  });
+
+  it("fully-pre-start year (2025) against F-standing → exact null", () => {
+    const state: AppState = {
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: {},
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+    };
+    const result = yearScore(state, 2025);
+    expect(result).toBe(null);
+    expect(result === null).toBe(true);
+    expect(result).not.toBe(0);
+  });
+
+  it("F-firstrun: yearScore(2026) = 50 — only today (programStart=currentDate) is in-range", () => {
+    // F-firstrun: programStart="2026-05-18", currentDate="2026-05-18", history={}
+    // Live in-progress day scoring dayPct=50 (1/2 done)
+    const state: AppState = {
+      programStart: "2026-05-18",
+      currentDate: "2026-05-18",
+      history: {},
+      blocks: [],
+      categories: [],
+      looseBricks: [
+        {
+          id: "fr-a",
+          name: "a",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: true,
+        },
+        {
+          id: "fr-b",
+          name: "b",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: false,
+        },
+      ],
+    };
+    // 2026-05-18 is the only in-range day: dayScore = live dayPct = 50
+    // All days before 05-18 are pre-start; all days after are future
+    // yearScore = 50 / 1 = 50
+    expect(yearScore(state, 2026)).toBe(50);
+  });
+});
+
+// ─── U-m9e-009: monthScore / yearScore — purity, clock-independence, mutation-resistant ──
+
+describe("U-m9e-009: monthScore/yearScore — purity, clock-independence, frozen-state safe", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function makeFrozenStandingState(): Readonly<AppState> {
+    const history: Record<string, ArchivedDay> = {};
+    for (let d = 1; d <= 17; d++) {
+      const dd = String(d).padStart(2, "0");
+      const day = makeM9eDay70();
+      history[`2026-05-${dd}`] = Object.freeze(day) as ArchivedDay;
+    }
+    Object.freeze(history);
+
+    const state: AppState = {
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history,
+      blocks: Object.freeze([]) as AppState["blocks"],
+      categories: Object.freeze([]) as AppState["categories"],
+      looseBricks: Object.freeze([
+        {
+          id: "live-a",
+          name: "a",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: true,
+        },
+        {
+          id: "live-b",
+          name: "b",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: false,
+        },
+      ]) as AppState["looseBricks"],
+    };
+    return Object.freeze(state) as Readonly<AppState>;
+  }
+
+  it("monthScore does not throw when state is deeply frozen", () => {
+    const frozenState = makeFrozenStandingState();
+    expect(() => monthScore(frozenState, 2026, 4)).not.toThrow();
+  });
+
+  it("yearScore does not throw when state is deeply frozen", () => {
+    const frozenState = makeFrozenStandingState();
+    expect(() => yearScore(frozenState, 2026)).not.toThrow();
+  });
+
+  it("monthScore returns identical results before and after advancing the system clock", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-05-18T12:00:00"));
+
+    const frozenState = makeFrozenStandingState();
+    const result1 = monthScore(frozenState, 2026, 4);
+
+    // Advance clock by 2 years
+    vi.setSystemTime(new Date("2028-05-18T12:00:00"));
+    const result2 = monthScore(frozenState, 2026, 4);
+
+    expect(result1).toEqual(result2);
+    expect(typeof result1).toBe("number");
+  });
+
+  it("yearScore returns identical results before and after advancing the system clock", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-05-18T12:00:00"));
+
+    const frozenState = makeFrozenStandingState();
+    const result1 = yearScore(frozenState, 2026);
+
+    // Advance clock to a later year
+    vi.setSystemTime(new Date("2029-01-01T00:00:00"));
+    const result2 = yearScore(frozenState, 2026);
+
+    expect(result1).toEqual(result2);
+    expect(typeof result1).toBe("number");
   });
 });
