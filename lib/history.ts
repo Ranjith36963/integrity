@@ -1,17 +1,62 @@
 /**
  * lib/history.ts — M9b: pure rollover function + ArchivedDay re-export.
+ * M9c: additive dayScore(state, isoDate) helper (ADR-045 — history read-only).
  * ADR-045: rollover(state, todayISO) archives the in-progress day and seeds a fresh one.
  * Pure module — no React, no localStorage, no clock reads.
  * The clock is read once at the usePersistedState boundary; todayISO is passed in.
  */
 
 import type { PersistedState } from "./persist";
-import type { ArchivedDay, Block, Brick } from "./types";
+import type { AppState, ArchivedDay, Block, Brick } from "./types";
+import { dayPct } from "./dharma";
 import { appliesOn } from "./appliesOn";
 import { uuid } from "./uuid";
 
 // Re-export ArchivedDay for caller convenience
 export type { ArchivedDay };
+
+/**
+ * NO_DATA — explicit no-data sentinel for dayScore.
+ * A cell with no history entry and not today returns null (not 0).
+ * Callers must use strict === null to distinguish a real 0-score archived day.
+ */
+export const NO_DATA = null;
+
+/**
+ * dayScore(state, isoDate) — M9c: pure per-day score lookup (ADR-045 read-only).
+ *
+ * Return contract:
+ *   - isoDate in state.history → dayPct over that ArchivedDay (number in [0,100])
+ *   - isoDate === state.currentDate → dayPct(state) over the live in-progress day
+ *   - neither → NO_DATA (null)
+ *
+ * Precedence: history is checked first. In practice a date is in exactly one branch,
+ * but when both match, the archived snapshot wins (the finished record is authoritative).
+ *
+ * Pure: reads no clock, writes nothing, mutates nothing. state may be frozen.
+ */
+export function dayScore(state: AppState, isoDate: string): number | null {
+  // Branch 1: archived day — history wins even if currentDate also matches
+  if (isoDate in state.history) {
+    const archived = state.history[isoDate]!;
+    // Build a structurally complete AppState-shaped object so dayPct is called
+    // type-safely. dayPct reads only .blocks and .looseBricks (lib/dharma.ts:49).
+    return dayPct({
+      ...state,
+      blocks: archived.blocks,
+      categories: archived.categories,
+      looseBricks: archived.looseBricks,
+    });
+  }
+
+  // Branch 2: today's live in-progress day
+  if (isoDate === state.currentDate) {
+    return dayPct(state);
+  }
+
+  // Branch 3: future / pre-start / past-missed — no data
+  return NO_DATA;
+}
 
 /**
  * rollover(state, todayISO) — pure function that transitions the persisted state
