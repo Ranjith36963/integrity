@@ -1,33 +1,38 @@
 /**
- * lib/persist.ts — M8: localStorage persistence module.
- * ADR-044: persisted shape { schemaVersion: 1, programStart, blocks, categories, looseBricks }.
+ * lib/persist.ts — M9b: schema v2 persistence module.
+ * ADR-045: persisted shape { schemaVersion: 2, programStart, currentDate, history, blocks, categories, looseBricks }.
+ * ADR-044: schema v1 migration path retained.
  * ADR-018: single dharma:v1 key, two-pass load, synchronous save.
  * Pure module — no React.
  */
 
-import type { Block, Category, Brick } from "./types";
+import type { Block, Category, Brick, ArchivedDay } from "./types";
 import { today } from "./dharma";
 
 export const STORAGE_KEY = "dharma:v1";
-export const SCHEMA_VERSION = 1 as const;
+export const SCHEMA_VERSION = 2 as const;
 
 export type PersistedState = {
-  schemaVersion: 1;
+  schemaVersion: 2;
   programStart: string; // ISO YYYY-MM-DD, stamped once on first run
+  currentDate: string; // ISO YYYY-MM-DD — the date of the in-progress day
+  history: Record<string, ArchivedDay>; // keyed by ISO YYYY-MM-DD
   blocks: Block[];
   categories: Category[];
   looseBricks: Brick[];
 };
 
 /**
- * defaultPersisted() — fresh empty state with programStart = today().
+ * defaultPersisted() — fresh empty v2 state with programStart = currentDate = today().
  * Called on: no-key / corrupt / unknown-version paths inside loadState.
  * Returns a fresh object on every call (no shared mutable arrays).
  */
 export function defaultPersisted(): PersistedState {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     programStart: today(),
+    currentDate: today(),
+    history: {},
     blocks: [],
     categories: [],
     looseBricks: [],
@@ -35,8 +40,10 @@ export function defaultPersisted(): PersistedState {
 }
 
 /**
- * migrate(raw) — the single version-logic site (ADR-044 scaffold).
- * M5 will extend this with a case 2 + migrateV1toV2.
+ * migrate(raw) — the single version-logic site (ADR-044/ADR-045 scaffold).
+ * case 1: v1 → v2 migration (ADR-045).
+ * case 2: v2 load + defensive coercion.
+ * default: unknown / future schemaVersion → null.
  * Returns PersistedState on success, null on unknown/invalid input.
  */
 export function migrate(raw: unknown): PersistedState | null {
@@ -49,6 +56,7 @@ export function migrate(raw: unknown): PersistedState | null {
 
   switch (obj.schemaVersion) {
     case 1: {
+      // v1 → v2 migration (ADR-045).
       // Defensive coercion: absent/non-array collections → []
       const blocks = Array.isArray(obj.blocks) ? (obj.blocks as Block[]) : [];
       const categories = Array.isArray(obj.categories)
@@ -59,16 +67,51 @@ export function migrate(raw: unknown): PersistedState | null {
         : [];
       const programStart =
         typeof obj.programStart === "string" ? obj.programStart : today();
+      // v1 stored no currentDate — the v1 day's true date is unrecoverable.
+      // Accepted one-time migration approximation per ADR-045 / spec Edge case.
+      const currentDate = today();
       return {
-        schemaVersion: 1,
+        schemaVersion: 2,
         programStart,
+        currentDate,
+        history: {},
+        blocks,
+        categories,
+        looseBricks,
+      };
+    }
+    case 2: {
+      // v2 load with defensive coercion (ADR-045 § case 2 arm).
+      const blocks = Array.isArray(obj.blocks) ? (obj.blocks as Block[]) : [];
+      const categories = Array.isArray(obj.categories)
+        ? (obj.categories as Category[])
+        : [];
+      const looseBricks = Array.isArray(obj.looseBricks)
+        ? (obj.looseBricks as Brick[])
+        : [];
+      const programStart =
+        typeof obj.programStart === "string" ? obj.programStart : today();
+      const currentDate =
+        typeof obj.currentDate === "string" ? obj.currentDate : today();
+      // history must be a non-null, non-array object; otherwise coerce to {}.
+      const history: Record<string, ArchivedDay> =
+        obj.history !== null &&
+        typeof obj.history === "object" &&
+        !Array.isArray(obj.history)
+          ? (obj.history as Record<string, ArchivedDay>)
+          : {};
+      return {
+        schemaVersion: 2,
+        programStart,
+        currentDate,
+        history,
         blocks,
         categories,
         looseBricks,
       };
     }
     default:
-      // Unknown or absent schemaVersion — forward-incompatible data not guessed at
+      // Unknown or future schemaVersion (≥3, non-numeric, absent) — never guessed at.
       return null;
   }
 }
@@ -93,12 +136,15 @@ export function loadState(): PersistedState {
 /**
  * saveState(state) — serialize and write to localStorage.
  * Synchronous (SG-m8-01 — no debounce). Swallows all errors (quota, disabled).
+ * Writes the full v2 shape per ADR-045.
  */
 export function saveState(state: PersistedState): void {
   try {
     const json = JSON.stringify({
       schemaVersion: SCHEMA_VERSION,
       programStart: state.programStart,
+      currentDate: state.currentDate,
+      history: state.history,
       blocks: state.blocks,
       categories: state.categories,
       looseBricks: state.looseBricks,
