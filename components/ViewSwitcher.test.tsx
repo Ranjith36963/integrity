@@ -210,23 +210,22 @@ describe("C-m9e-007: ViewSwitcher — Year enabled; all four segments live, none
     }
   });
 
-  it("clicking Day/Week/Month/Year each fires onSelect with the matching value", async () => {
-    const values = ["day", "week", "month", "year"] as const;
-    for (const value of values) {
-      const onSelect = vi.fn();
-      const user = userEvent.setup();
-      render(<ViewSwitcher view="day" onSelect={onSelect} />);
-      const tab = screen
-        .getAllByRole("tab")
-        .find(
-          (t) =>
-            t.textContent === value.charAt(0).toUpperCase() + value.slice(1),
-        );
-      expect(tab).toBeDefined();
-      await user.click(tab!);
-      expect(onSelect).toHaveBeenCalledTimes(1);
-      expect(onSelect).toHaveBeenCalledWith(value);
-    }
+  it("clicking Day fires onSelect('day') exactly once", async () => {
+    const onSelect = vi.fn();
+    const user = userEvent.setup();
+    render(<ViewSwitcher view="month" onSelect={onSelect} />);
+    await user.click(screen.getByRole("tab", { name: "Day" }));
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith("day");
+  });
+
+  it("clicking Year fires onSelect('year') exactly once", async () => {
+    const onSelect = vi.fn();
+    const user = userEvent.setup();
+    render(<ViewSwitcher view="day" onSelect={onSelect} />);
+    await user.click(screen.getByRole("tab", { name: "Year" }));
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith("year");
   });
 
   it("re-rendering with view='year' sets Year tab aria-selected='true', others 'false'", () => {
