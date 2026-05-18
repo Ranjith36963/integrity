@@ -5,8 +5,8 @@
  * rollover(state, todayISO) and dayScore(state, isoDate) are called directly.
  */
 
-import { describe, it, expect } from "vitest";
-import { rollover, dayScore, NO_DATA } from "./history";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { rollover, dayScore, weekScore, NO_DATA } from "./history";
 import type { PersistedState } from "./persist";
 import type { ArchivedDay } from "./types";
 import type { AppState } from "./types";
@@ -1133,5 +1133,711 @@ describe("U-m9c-012: dayScore — result depends only on blocks+looseBricks of A
     expect(score).toBeGreaterThanOrEqual(0);
     expect(score).toBeLessThanOrEqual(100);
     expect(score).toBe(100); // makeArchivedDay100() has 1 done tick brick → 100%
+  });
+});
+
+// ─── M9d weekScore helper tests ───────────────────────────────────────────────
+//
+// weekScore(state, anchorISO) — pure period aggregate (ADR-045 read-only).
+// "Today" derived from state.currentDate, NEVER from new Date().
+//
+// Fixture dates (verified against the proleptic Gregorian calendar):
+//   programStart: "2026-05-01" (Fri)
+//   currentDate:  "2026-05-18" (Mon)
+//   W-today:      "2026-05-17"…"2026-05-23" (Sun→Sat, contains today)
+//   W-past:       "2026-05-10"…"2026-05-16" (fully past, fully in-range)
+//   W-future:     "2026-05-24"…"2026-05-30" (fully future)
+//   W-prestart:   "2026-04-26"…"2026-05-02" (straddles programStart)
+
+/** ArchivedDay scoring dayPct = 80%: 4 tick bricks, 4 done (simplest: units done/target) */
+function makeArchivedDay80(): ArchivedDay {
+  return {
+    blocks: [],
+    categories: [],
+    looseBricks: [
+      {
+        id: "w80a",
+        name: "a",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: true,
+      },
+      {
+        id: "w80b",
+        name: "b",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: true,
+      },
+      {
+        id: "w80c",
+        name: "c",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: true,
+      },
+      {
+        id: "w80d",
+        name: "d",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: true,
+      },
+      {
+        id: "w80e",
+        name: "e",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: false,
+      },
+    ],
+  };
+}
+
+/** ArchivedDay scoring 40%: 5 tick bricks, 2 done */
+function makeArchivedDay40(): ArchivedDay {
+  return {
+    blocks: [],
+    categories: [],
+    looseBricks: [
+      {
+        id: "w40a",
+        name: "a",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: true,
+      },
+      {
+        id: "w40b",
+        name: "b",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: true,
+      },
+      {
+        id: "w40c",
+        name: "c",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: false,
+      },
+      {
+        id: "w40d",
+        name: "d",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: false,
+      },
+      {
+        id: "w40e",
+        name: "e",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: false,
+      },
+    ],
+  };
+}
+
+/** ArchivedDay scoring 90%: 10 tick bricks, 9 done */
+function makeArchivedDay90(): ArchivedDay {
+  const bricks = Array.from({ length: 10 }, (_, i) => ({
+    id: `w90-${i}`,
+    name: `b${i}`,
+    categoryId: null as null,
+    parentBlockId: null as null,
+    hasDuration: false,
+    kind: "tick" as const,
+    done: i < 9,
+  }));
+  return { blocks: [], categories: [], looseBricks: bricks };
+}
+
+/** ArchivedDay scoring 30%: 10 tick bricks, 3 done */
+function makeArchivedDay30(): ArchivedDay {
+  const bricks = Array.from({ length: 10 }, (_, i) => ({
+    id: `w30-${i}`,
+    name: `b${i}`,
+    categoryId: null as null,
+    parentBlockId: null as null,
+    hasDuration: false,
+    kind: "tick" as const,
+    done: i < 3,
+  }));
+  return { blocks: [], categories: [], looseBricks: bricks };
+}
+
+/** ArchivedDay scoring 70%: 10 tick bricks, 7 done */
+function makeArchivedDay70(): ArchivedDay {
+  const bricks = Array.from({ length: 10 }, (_, i) => ({
+    id: `w70-${i}`,
+    name: `b${i}`,
+    categoryId: null as null,
+    parentBlockId: null as null,
+    hasDuration: false,
+    kind: "tick" as const,
+    done: i < 7,
+  }));
+  return { blocks: [], categories: [], looseBricks: bricks };
+}
+
+/** ArchivedDay scoring 50%: 2 tick bricks, 1 done */
+function makeArchivedDay50(): ArchivedDay {
+  return {
+    blocks: [],
+    categories: [],
+    looseBricks: [
+      {
+        id: "w50a",
+        name: "a",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: true,
+      },
+      {
+        id: "w50b",
+        name: "b",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: false,
+      },
+    ],
+  };
+}
+
+// ─── U-m9d-004: weekScore — honest-week-average, missed = 0, mutation-resistant ─
+
+describe("U-m9d-004: weekScore — THE honest-week-average contract, missed = 0, mutation-resistant", () => {
+  it("returns 36 — the honest average including 2 missed-in-range days as 0", () => {
+    // programStart "2026-05-12" so 05-10/05-11 are pre-start (excluded)
+    // history: 05-12 (80), 05-13 (60), 05-14 (40); 05-15/05-16 missed (no entry)
+    // included: 05-12(80), 05-13(60), 05-14(40), 05-15(0), 05-16(0) → 5 days
+    // numerator: 80+60+40+0+0 = 180; denominator: 5; result: 36
+    const state: AppState = {
+      programStart: "2026-05-12",
+      currentDate: "2026-05-18",
+      history: {
+        "2026-05-12": makeArchivedDay80(),
+        "2026-05-13": makeArchivedDay60(),
+        "2026-05-14": makeArchivedDay40(),
+        // 05-15 and 05-16 have NO entry → missed → contribute 0
+      },
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+    };
+    expect(weekScore(state, "2026-05-13")).toBe(36);
+  });
+
+  it("returns 36 NOT 60 — a mutant excluding missed days from denominator yields 60", () => {
+    const state: AppState = {
+      programStart: "2026-05-12",
+      currentDate: "2026-05-18",
+      history: {
+        "2026-05-12": makeArchivedDay80(),
+        "2026-05-13": makeArchivedDay60(),
+        "2026-05-14": makeArchivedDay40(),
+      },
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+    };
+    // 36, not 60 (the inflated average if missed days were excluded from denominator)
+    expect(weekScore(state, "2026-05-13")).not.toBe(60);
+    expect(weekScore(state, "2026-05-13")).toBe(36);
+  });
+});
+
+// ─── U-m9d-005: weekScore — purity + clock-independence, mutation-resistant ────
+
+describe("U-m9d-005: weekScore — purity, clock-independence, frozen-state safe", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-05-18T12:00:00"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("does not throw or mutate a deeply frozen state", () => {
+    // W-today fixture: history["2026-05-17"] scores 100, live day scores 40
+    const frozenState = Object.freeze({
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: Object.freeze({
+        "2026-05-17": Object.freeze(makeArchivedDay100()) as ArchivedDay,
+      }) as Record<string, ArchivedDay>,
+      blocks: Object.freeze([]) as AppState["blocks"],
+      categories: Object.freeze([]) as AppState["categories"],
+      looseBricks: Object.freeze([
+        Object.freeze({
+          id: "lb1",
+          name: "A",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick" as const,
+          done: true,
+        }),
+        Object.freeze({
+          id: "lb2",
+          name: "B",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick" as const,
+          done: true,
+        }),
+        Object.freeze({
+          id: "lb3",
+          name: "C",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick" as const,
+          done: false,
+        }),
+        Object.freeze({
+          id: "lb4",
+          name: "D",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick" as const,
+          done: false,
+        }),
+        Object.freeze({
+          id: "lb5",
+          name: "E",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick" as const,
+          done: false,
+        }),
+      ]) as AppState["looseBricks"],
+    }) as unknown as AppState;
+
+    expect(() => weekScore(frozenState, "2026-05-20")).not.toThrow();
+
+    // State is unchanged after the call
+    expect(frozenState.currentDate).toBe("2026-05-18");
+    expect(Object.keys(frozenState.history)).toHaveLength(1);
+  });
+
+  it("returns 70 twice with identical args even after the system clock is advanced — no clock read", () => {
+    // W-today: 05-17 (100) + 05-18 today (40) = (100+40)/2 = 70; 05-19..05-23 future excluded
+    const liveState: AppState = {
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: {
+        "2026-05-17": makeArchivedDay100(),
+      },
+      blocks: [],
+      categories: [],
+      looseBricks: [
+        {
+          id: "lb1",
+          name: "A",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: true,
+        },
+        {
+          id: "lb2",
+          name: "B",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: true,
+        },
+        {
+          id: "lb3",
+          name: "C",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: false,
+        },
+        {
+          id: "lb4",
+          name: "D",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: false,
+        },
+        {
+          id: "lb5",
+          name: "E",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: false,
+        },
+      ],
+    };
+
+    const result1 = weekScore(liveState, "2026-05-20");
+
+    // Advance system clock by 2 days — weekScore must still derive "today" from state.currentDate
+    vi.setSystemTime(new Date("2026-05-20T12:00:00"));
+
+    const result2 = weekScore(liveState, "2026-05-20");
+
+    expect(result1).toBe(70);
+    expect(result2).toBe(70);
+    expect(result1).toBe(result2);
+  });
+});
+
+// ─── U-m9d-006: weekScore — no-data sentinel for fully-future / fully-pre-start weeks ─
+
+describe("U-m9d-006: weekScore — no-data sentinel: fully-future / fully-pre-start → null", () => {
+  it("W-future (2026-05-24…2026-05-30, all > currentDate) → strict null", () => {
+    const state: AppState = {
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: {},
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+    };
+    expect(weekScore(state, "2026-05-27")).toBe(null);
+  });
+
+  it("fully-pre-programStart week (anchor 2026-04-15, week 04-12…04-18) → strict null", () => {
+    const state: AppState = {
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: {},
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+    };
+    expect(weekScore(state, "2026-04-15")).toBe(null);
+  });
+
+  it("returns strict null, NOT 0 — 0 is reserved for 'the week happened and scored zero'", () => {
+    const state: AppState = {
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: {},
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+    };
+    const result = weekScore(state, "2026-05-27");
+    expect(result).toBe(null); // strict === null
+    expect(result).not.toBe(0); // NOT the number 0
+  });
+
+  it("NO_DATA is exported and === null", () => {
+    expect(NO_DATA).toBe(null);
+  });
+});
+
+// ─── U-m9d-007: weekScore — today's live dayPct contributes to the aggregate ───
+
+describe("U-m9d-007: weekScore — today's live dayPct contributes to the aggregate", () => {
+  it("W-today: 05-17(100) + 05-18(today,40) → (100+40)/2 = 70; future days excluded", () => {
+    // W-today: 2026-05-17…2026-05-23. today = 2026-05-18.
+    // Included: 05-17 (archived 100) + 05-18 (today, live 40). Future 05-19..05-23 excluded.
+    const state: AppState = {
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: {
+        "2026-05-17": makeArchivedDay100(),
+      },
+      blocks: [],
+      categories: [],
+      looseBricks: [
+        {
+          id: "lb1",
+          name: "A",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: true,
+        },
+        {
+          id: "lb2",
+          name: "B",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: true,
+        },
+        {
+          id: "lb3",
+          name: "C",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: false,
+        },
+        {
+          id: "lb4",
+          name: "D",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: false,
+        },
+        {
+          id: "lb5",
+          name: "E",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: false,
+        },
+      ],
+    };
+    expect(weekScore(state, "2026-05-18")).toBe(70);
+  });
+
+  it("when the live day's dayPct rises to 80, weekScore updates to (100+80)/2 = 90", () => {
+    // Same fixture but 4/5 loose bricks done → dayPct = 80
+    const state80: AppState = {
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: {
+        "2026-05-17": makeArchivedDay100(),
+      },
+      blocks: [],
+      categories: [],
+      looseBricks: [
+        {
+          id: "lb1",
+          name: "A",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: true,
+        },
+        {
+          id: "lb2",
+          name: "B",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: true,
+        },
+        {
+          id: "lb3",
+          name: "C",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: true,
+        },
+        {
+          id: "lb4",
+          name: "D",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: true,
+        },
+        {
+          id: "lb5",
+          name: "E",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: false,
+        },
+      ],
+    };
+    expect(weekScore(state80, "2026-05-18")).toBe(90);
+  });
+});
+
+// ─── U-m9d-008: weekScore — empty history first run; straddling programStart ───
+
+describe("U-m9d-008: weekScore — empty history first run + straddling programStart", () => {
+  it("(a) first-run: 05-10..05-12 pre-start, 05-13/05-14 missed, 05-15 today(50), 05-16 future → (0+0+50)/3 ≈ 16.667", () => {
+    // state: programStart=2026-05-13, currentDate=2026-05-15, history={}
+    // week for anchor 2026-05-15: 2026-05-10…2026-05-16
+    // 05-10/11/12 < programStart → excluded
+    // 05-13/14 in-range past, no history → missed → 0
+    // 05-15 = currentDate → live dayPct = 50 (1 done, 1 undone = 50%)
+    // 05-16 > currentDate → future → excluded
+    // numerator = 0+0+50 = 50; denominator = 3; result = 50/3 ≈ 16.667
+    const state: AppState = {
+      programStart: "2026-05-13",
+      currentDate: "2026-05-15",
+      history: {},
+      blocks: [],
+      categories: [],
+      looseBricks: [
+        {
+          id: "x1",
+          name: "a",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: true,
+        },
+        {
+          id: "x2",
+          name: "b",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: false,
+        },
+      ],
+    };
+    const result = weekScore(state, "2026-05-15");
+    expect(result).not.toBeNull();
+    expect(result).toBeCloseTo(16.667, 2);
+  });
+
+  it("does not crash on empty history map", () => {
+    const state: AppState = {
+      programStart: "2026-05-13",
+      currentDate: "2026-05-15",
+      history: {},
+      blocks: [],
+      categories: [],
+      looseBricks: [
+        {
+          id: "x1",
+          name: "a",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: true,
+        },
+        {
+          id: "x2",
+          name: "b",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: false,
+        },
+      ],
+    };
+    expect(() => weekScore(state, "2026-05-15")).not.toThrow();
+  });
+
+  it("(b) W-prestart (anchor 2026-04-29, week 04-26…05-02): 04-26..04-30 pre-start, 05-01 archived(90), 05-02 missed → (90+0)/2 = 45", () => {
+    // programStart=2026-05-01, currentDate=2026-05-18
+    // week 04-26…05-02: 04-26/27/28/29/30 < programStart → excluded
+    // 05-01 archived (90) → included
+    // 05-02 in-range past, no entry → missed → 0
+    // numerator = 90+0 = 90; denominator = 2; result = 45
+    const state: AppState = {
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: {
+        "2026-05-01": makeArchivedDay90(),
+      },
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+    };
+    expect(weekScore(state, "2026-04-29")).toBe(45);
+  });
+});
+
+// ─── U-m9d-009: weekScore — fully-past week + missed vs 0-archived identical contribution ─
+
+describe("U-m9d-009: weekScore — fully-past week; missed vs 0-archived both contribute 0", () => {
+  it("W-past all 7 days in-range with various dayPcts: (70+0+50+100+30+90+60)/7 ≈ 57.143", () => {
+    // programStart=2026-05-01, currentDate=2026-05-18, W-past: 05-10…05-16
+    // All 7 days in-range (all <= currentDate, all >= programStart)
+    // dayPcts: 05-10=70, 05-11=0(0-archived), 05-12=50, 05-13=100, 05-14=30, 05-15=90, 05-16=60
+    // sum = 400; denominator = 7; result = 400/7 ≈ 57.143
+    const state: AppState = {
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: {
+        "2026-05-10": makeArchivedDay70(),
+        "2026-05-11": makeArchivedDay0(), // 0-scored archived day
+        "2026-05-12": makeArchivedDay50(),
+        "2026-05-13": makeArchivedDay100(),
+        "2026-05-14": makeArchivedDay30(),
+        "2026-05-15": makeArchivedDay90(),
+        "2026-05-16": makeArchivedDay60(),
+      },
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+    };
+    const result = weekScore(state, "2026-05-13");
+    expect(result).toBeCloseTo(57.143, 2);
+  });
+
+  it("missed-day and 0-archived-day contribute identical 0 to the average", () => {
+    // sibling fixture: remove 05-11's ArchivedDay → becomes missed
+    // sum still 400 (0 contribution unchanged), denominator still 7
+    const stateMissed: AppState = {
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: {
+        "2026-05-10": makeArchivedDay70(),
+        // 05-11 omitted → missed → contributes 0
+        "2026-05-12": makeArchivedDay50(),
+        "2026-05-13": makeArchivedDay100(),
+        "2026-05-14": makeArchivedDay30(),
+        "2026-05-15": makeArchivedDay90(),
+        "2026-05-16": makeArchivedDay60(),
+      },
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+    };
+    const result = weekScore(stateMissed, "2026-05-13");
+    // Same as before: 400/7 ≈ 57.143 — missed and 0-archived are indistinguishable to weekScore
+    expect(result).toBeCloseTo(57.143, 2);
   });
 });
