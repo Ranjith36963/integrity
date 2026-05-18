@@ -1,6 +1,7 @@
 /**
  * lib/history.ts — M9b: pure rollover function + ArchivedDay re-export.
  * M9c: additive dayScore(state, isoDate) helper (ADR-045 — history read-only).
+ * M9d: additive weekScore(state, anchorISO) helper (ADR-045 — read-only, pure).
  * ADR-045: rollover(state, todayISO) archives the in-progress day and seeds a fresh one.
  * Pure module — no React, no localStorage, no clock reads.
  * The clock is read once at the usePersistedState boundary; todayISO is passed in.
@@ -8,6 +9,7 @@
 
 import type { PersistedState } from "./persist";
 import type { AppState, ArchivedDay, Block, Brick } from "./types";
+import { weekDates } from "./weekGrid";
 import { dayPct } from "./dharma";
 import { appliesOn } from "./appliesOn";
 import { uuid } from "./uuid";
@@ -56,6 +58,50 @@ export function dayScore(state: AppState, isoDate: string): number | null {
 
   // Branch 3: future / pre-start / past-missed — no data
   return NO_DATA;
+}
+
+/**
+ * weekScore(state, anchorISO) — M9d: pure period aggregate (ADR-045 read-only).
+ *
+ * Returns the average dayScore over the week's seven Sun→Sat dates,
+ * applying the honest-scoreboard rule (SG-m9d-01):
+ *   - In-range non-future days are INCLUDED.
+ *     * dayScore returns a number  → contribute that number.
+ *     * dayScore returns NO_DATA (missed in-range past day) → contribute 0,
+ *       AND count in the denominator (honest average, not inflated).
+ *   - Future days (> state.currentDate) → EXCLUDED from both numerator and denominator.
+ *   - Pre-start days (< state.programStart) → EXCLUDED from both.
+ *   - Denominator === 0 (fully-future or fully-pre-start week) → returns NO_DATA.
+ *
+ * "Today" is state.currentDate — the clock is NEVER read here.
+ * Pure function of (state, anchorISO). state may be frozen.
+ */
+export function weekScore(state: AppState, anchorISO: string): number | null {
+  const dates = weekDates(anchorISO);
+  const today = state.currentDate;
+  const start = state.programStart;
+
+  let numerator = 0;
+  let denominator = 0;
+
+  for (const d of dates) {
+    // Exclude future days and pre-start days
+    if (d > today) continue; // future
+    if (d < start) continue; // pre-start
+
+    // In-range non-future day — included
+    denominator += 1;
+    const score = dayScore(state, d);
+    if (score !== null) {
+      numerator += score;
+    }
+    // score === null (missed in-range past day) → contributes 0 (already default)
+  }
+
+  // No qualifying day → no-data sentinel (never divide by zero)
+  if (denominator === 0) return NO_DATA;
+
+  return numerator / denominator;
 }
 
 /**
