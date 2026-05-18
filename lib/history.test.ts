@@ -2432,8 +2432,8 @@ describe("U-m9e-009: monthScore/yearScore — purity, clock-independence, frozen
       programStart: "2026-05-01",
       currentDate: "2026-05-18",
       history,
-      blocks: Object.freeze([]) as AppState["blocks"],
-      categories: Object.freeze([]) as AppState["categories"],
+      blocks: Object.freeze([]) as unknown as AppState["blocks"],
+      categories: Object.freeze([]) as unknown as AppState["categories"],
       looseBricks: Object.freeze([
         {
           id: "live-a",
