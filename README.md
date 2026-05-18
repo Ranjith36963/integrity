@@ -66,6 +66,7 @@ npm run test:e2e:install
 | M9a — appliesOn recurrence resolver        | Shipped to preview — awaiting Gate #2 tap-test |
 | M9b — Day rollover + history store         | Shipped to preview — awaiting Gate #2 tap-test |
 | M9c — Month view (Kingdom) + view switcher | Shipped to preview — awaiting Gate #2 tap-test |
+| M9d — Week view (Castle) + period scoring  | Shipped to preview — awaiting Gate #2 tap-test |
 
 Latest preview: `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (branch alias; auto-tracks `claude/verify-m0-deployment-s4XRy`). Vercel Deployment Protection active — open in browser while signed in to Vercel.
 
@@ -95,8 +96,10 @@ components/          Shared UI components + unit tests
   LooseBricksTray    Pinned tray above dock; lists loose bricks + "+ Brick" pill
   MonthView.tsx      Calendar-month grid of per-day score cells (heat-fill + numeral); prev/next navigation (M9c)
   DayCell.tsx        Single day cell inside MonthView — heat-fill intensity by score, tappable (M9c)
-  ViewSwitcher.tsx   Day / Week / Month / Year segmented control; Week + Year disabled until M9d/M9e (M9c)
+  ViewSwitcher.tsx   Day / Week / Month / Year segmented control; Week live, Year disabled until M9e (M9d)
   PastDayDetail.tsx  Read-only detail sheet for a tapped past day with archived history (M9c)
+  WeekView.tsx       Castle view — seven-day (Sun→Sat) layout with per-day scores and week aggregate (M9d)
+  WeekDayCell.tsx    Single day cell inside WeekView — score bar + numeral + tap-to-detail (M9d)
 lib/                 Domain logic: types, data, scoring, utilities
   celebrations.ts    useCrossUpEffect hook — one-shot cross-up detection for bloom/fireworks
   audio.ts           playChime() — lazy HTMLAudioElement for /sounds/chime.mp3; SSR + iOS guard
@@ -107,8 +110,9 @@ lib/                 Domain logic: types, data, scoring, utilities
   blockValidation.ts Pure validators (title, end time, overflow, recurrence, overlap, brick fields)
   uuid.ts            crypto.randomUUID() mockable seam
   appliesOn.ts       Pure recurrence resolver: appliesOn(recurrence, date) → boolean (M9a)
-  history.ts         Pure rollover engine: rollover(state, todayISO) → archives finished day + seeds fresh day; dayScore() + NO_DATA helpers (M9b/M9c)
+  history.ts         Pure rollover engine: rollover(state, todayISO) → archives finished day + seeds fresh day; dayScore() + NO_DATA + weekScore() helpers (M9b/M9c/M9d)
   monthGrid.ts       UTC-drift-free month date math: monthGridCells(), addMonth(), subMonth() (M9c)
+  weekGrid.ts        UTC-drift-free week date math: weekGridDays(), addWeek(), subWeek(); anchor-to-Sunday logic (M9d)
 tests/
   e2e/               Playwright specs (e2e + a11y)
 docs/
