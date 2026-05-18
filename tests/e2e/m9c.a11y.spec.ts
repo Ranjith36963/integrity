@@ -154,7 +154,7 @@ test("A-m9c-001: month grid is axe-clean, role=grid with row/gridcell/columnhead
 
 // ─── A-m9c-002: ViewSwitcher — axe clean, tablist keyboard semantics ─────────
 
-test("A-m9c-002: ViewSwitcher is axe-clean, tablist aria-label, Day/Month tabs aria-selected, Week/Year aria-disabled", async ({
+test("A-m9c-002: ViewSwitcher is axe-clean, tablist aria-label, Day tab aria-selected, all four tabs live (M9e: Year and Week now enabled)", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 430, height: 932 });
@@ -182,18 +182,16 @@ test("A-m9c-002: ViewSwitcher is axe-clean, tablist aria-label, Day/Month tabs a
     await expect(dayTab).toHaveAttribute("aria-selected", "true");
   }
 
-  // Week and Year tabs are aria-disabled
+  // All four tabs are live — no aria-disabled on any (M9e: Week and Year now enabled)
   const weekTab = page.getByRole("tab", { name: /^week$/i });
   const yearTab = page.getByRole("tab", { name: /^year$/i });
+  const monthTab = page.getByRole("tab", { name: /^month$/i });
   if ((await weekTab.count()) > 0) {
-    await expect(weekTab).toHaveAttribute("aria-disabled", "true");
+    expect(await weekTab.getAttribute("aria-disabled")).toBeNull();
   }
   if ((await yearTab.count()) > 0) {
-    await expect(yearTab).toHaveAttribute("aria-disabled", "true");
+    expect(await yearTab.getAttribute("aria-disabled")).toBeNull();
   }
-
-  // Month tab is NOT disabled
-  const monthTab = page.getByRole("tab", { name: /^month$/i });
   if ((await monthTab.count()) > 0) {
     expect(await monthTab.getAttribute("aria-disabled")).toBeNull();
   }

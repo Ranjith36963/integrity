@@ -163,7 +163,7 @@ test("A-m9d-001: week view is axe-clean, role=list/listitem semantics, keyboard-
 
 // ─── A-m9d-002: WeekAggregate ring + ViewSwitcher — axe clean, contrast, tablist keyboard ──
 
-test("A-m9d-002: WeekAggregate ring and ViewSwitcher are axe-clean; ring is role=img; Day/Week/Month tabs live; Year disabled", async ({
+test("A-m9d-002: WeekAggregate ring and ViewSwitcher are axe-clean; ring is role=img; all four tabs live (M9e: Year now enabled)", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 430, height: 932 });
@@ -223,10 +223,10 @@ test("A-m9d-002: WeekAggregate ring and ViewSwitcher are axe-clean; ring is role
     expect(await monthTab.getAttribute("aria-disabled")).toBeNull();
   }
 
-  // Year tab is still aria-disabled
+  // Year tab is now live (M9e: all four tabs enabled — no aria-disabled)
   const yearTab = page.getByRole("tab", { name: /^year$/i });
   if ((await yearTab.count()) > 0) {
-    await expect(yearTab).toHaveAttribute("aria-disabled", "true");
+    expect(await yearTab.getAttribute("aria-disabled")).toBeNull();
   }
 
   // Hit areas ≥ 44px tall (ADR-031)
