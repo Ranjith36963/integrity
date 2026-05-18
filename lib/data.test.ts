@@ -27,6 +27,8 @@ describe("U-m2-008: reducer ADD_BLOCK appends immutably", () => {
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const next = reducer(state, { type: "ADD_BLOCK", block: testBlock });
     expect(next).not.toBe(state);
@@ -40,6 +42,8 @@ describe("U-m2-008: reducer ADD_BLOCK appends immutably", () => {
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     reducer(state, { type: "ADD_BLOCK", block: testBlock });
     expect(state.blocks).toHaveLength(0);
@@ -52,6 +56,8 @@ describe("U-m2-008: reducer ADD_BLOCK appends immutably", () => {
       categories: cats,
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const next = reducer(state, { type: "ADD_BLOCK", block: testBlock });
     expect(next.categories).toBe(cats);
@@ -66,6 +72,8 @@ describe("U-m2-009: reducer ADD_CATEGORY, assertNever, and defaultState", () => 
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const next = reducer(state, {
       type: "ADD_CATEGORY",
@@ -82,6 +90,8 @@ describe("U-m2-009: reducer ADD_CATEGORY, assertNever, and defaultState", () => 
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     expect(() =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -91,12 +101,15 @@ describe("U-m2-009: reducer ADD_CATEGORY, assertNever, and defaultState", () => 
 
   it("defaultState() returns { blocks: [], categories: [], looseBricks: [] }", () => {
     const s = defaultState();
-    // M8: programStart added to AppState (ADR-044); toEqual includes it
+    // M8: programStart added to AppState (ADR-044)
+    // M9b: currentDate + history added (ADR-045)
     expect(s).toEqual({
       blocks: [],
       categories: [],
       looseBricks: [],
       programStart: s.programStart, // ISO date — exact value is clock-dependent
+      currentDate: s.currentDate, // M9b — clock-dependent
+      history: {}, // M9b — empty on first run
     });
     expect(typeof s.programStart).toBe("string");
   });
@@ -120,6 +133,8 @@ describe("U-m3-009: reducer ADD_BRICK routes to block.bricks when parentBlockId 
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const next = reducer(state, {
       type: "ADD_BRICK",
@@ -143,6 +158,8 @@ describe("U-m3-009: reducer ADD_BRICK routes to block.bricks when parentBlockId 
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     reducer(state, {
       type: "ADD_BRICK",
@@ -165,6 +182,8 @@ describe("U-m3-009: reducer ADD_BRICK routes to block.bricks when parentBlockId 
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const next = reducer(state, {
       type: "ADD_BRICK",
@@ -187,6 +206,8 @@ describe("U-m3-009: reducer ADD_BRICK routes to block.bricks when parentBlockId 
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const next = reducer(state, {
       type: "ADD_BRICK",
@@ -214,6 +235,8 @@ describe("U-m3-010: reducer ADD_BRICK routes to looseBricks when parentBlockId =
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const next = reducer(state, {
       type: "ADD_BRICK",
@@ -240,6 +263,8 @@ describe("U-m3-010: reducer ADD_BRICK routes to looseBricks when parentBlockId =
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const next = reducer(state, {
       type: "ADD_BRICK",
@@ -264,6 +289,8 @@ describe("U-m3-010: reducer ADD_BRICK routes to looseBricks when parentBlockId =
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     reducer(state, {
       type: "ADD_BRICK",
@@ -292,6 +319,8 @@ describe("U-m3-011: assertNever exhaustiveness + defaultState looseBricks", () =
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     expect(() =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -302,11 +331,14 @@ describe("U-m3-011: assertNever exhaustiveness + defaultState looseBricks", () =
   it("defaultState() returns { blocks: [], categories: [], looseBricks: [] } (M4f: no runningTimerBrickId)", () => {
     const s = defaultState();
     // M8: programStart added to AppState (ADR-044)
+    // M9b: currentDate + history added (ADR-045)
     expect(s).toEqual({
       blocks: [],
       categories: [],
       looseBricks: [],
       programStart: s.programStart,
+      currentDate: s.currentDate, // M9b
+      history: {}, // M9b
     });
   });
 });
@@ -339,6 +371,8 @@ describe("U-m4a-001: LOG_TICK_BRICK flips done false→true for brick inside a b
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const next = reducer(state, { type: "LOG_TICK_BRICK", brickId: "b1" });
     const brick = next.blocks[0].bricks[0];
@@ -379,6 +413,8 @@ describe("U-m4a-002: LOG_TICK_BRICK flips done true→false (toggle, not one-way
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const next = reducer(state, { type: "LOG_TICK_BRICK", brickId: "b1" });
     expect(asTick(next.blocks[0].bricks[0]).done).toBe(false);
@@ -404,6 +440,8 @@ describe("U-m4a-003: LOG_TICK_BRICK flips done on looseBricks (no blocks)", () =
         },
       ],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const next = reducer(state, { type: "LOG_TICK_BRICK", brickId: "lb1" });
     expect(asTick(next.looseBricks[0]).done).toBe(true);
@@ -448,6 +486,8 @@ describe("U-m4a-004: LOG_TICK_BRICK is a no-op when brickId does not match any b
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const next = reducer(state, {
       type: "LOG_TICK_BRICK",
@@ -488,6 +528,8 @@ describe("U-m4a-005: LOG_TICK_BRICK is a no-op when brick kind is not tick", () 
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const next = reducer(state, { type: "LOG_TICK_BRICK", brickId: "g1" });
     const brick = next.blocks[0].bricks[0] as unknown as {
@@ -529,6 +571,8 @@ describe("U-m4a-006: LOG_TICK_BRICK returns new top-level reference; no in-place
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const originalBlocks = prevState.blocks;
     const nextState = reducer(prevState, {
@@ -554,6 +598,8 @@ describe("U-m4a-007: assertNever fires for unknown action shape (exhaustiveness)
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     expect(() => reducer(state, { type: "__never__" } as never)).toThrow();
   });
@@ -568,6 +614,8 @@ describe("U-m4e-015: ADD_BRICK with hasDuration:true and all three fields presen
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const next = reducer(state, {
       type: "ADD_BRICK",
@@ -607,6 +655,8 @@ describe("U-m4e-016: ADD_BRICK with hasDuration:true but missing end/start/recur
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const out = reducer(state, {
       type: "ADD_BRICK",
@@ -632,6 +682,8 @@ describe("U-m4e-016: ADD_BRICK with hasDuration:true but missing end/start/recur
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const out = reducer(state, {
       type: "ADD_BRICK",
@@ -657,6 +709,8 @@ describe("U-m4e-016: ADD_BRICK with hasDuration:true but missing end/start/recur
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const out = reducer(state, {
       type: "ADD_BRICK",
@@ -686,6 +740,8 @@ describe("U-m4e-017: ADD_BRICK with hasDuration:false but time fields present �
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const out = reducer(state, {
       type: "ADD_BRICK",
@@ -709,6 +765,8 @@ describe("U-m4e-017: ADD_BRICK with hasDuration:false but time fields present �
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const out = reducer(state, {
       type: "ADD_BRICK",
@@ -732,6 +790,8 @@ describe("U-m4e-017: ADD_BRICK with hasDuration:false but time fields present �
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const out = reducer(state, {
       type: "ADD_BRICK",
@@ -759,6 +819,8 @@ describe("U-m4e-018: ADD_BRICK with hasDuration:false and no time fields — val
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const next = reducer(state, {
       type: "ADD_BRICK",
@@ -851,6 +913,8 @@ describe("U-m4e-021: assertNever exhaustiveness preserved after M4e; defaultStat
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(() => reducer(state, { type: "NOPE" } as any)).toThrow();
@@ -858,12 +922,15 @@ describe("U-m4e-021: assertNever exhaustiveness preserved after M4e; defaultStat
 
   it("defaultState() deep-equal matches expected shape (no new AppState fields in M4e)", () => {
     const s = defaultState();
-    // M8: programStart added to AppState (ADR-044); shape verified here
+    // M8: programStart added to AppState (ADR-044)
+    // M9b: currentDate + history added (ADR-045)
     expect(s).toEqual({
       blocks: [],
       categories: [],
       looseBricks: [],
       programStart: s.programStart,
+      currentDate: s.currentDate, // M9b
+      history: {}, // M9b
     });
   });
 });
@@ -889,6 +956,8 @@ describe("U-m4f-001: SET_UNITS_DONE updates done on loose units brick", () => {
         } as unknown as Brick,
       ],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const next = reducer(state, {
       type: "SET_UNITS_DONE",
@@ -937,6 +1006,8 @@ describe("U-m4f-002: SET_UNITS_DONE updates done on a nested units brick inside 
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const next = reducer(state, {
       type: "SET_UNITS_DONE",
@@ -974,6 +1045,8 @@ describe("U-m4f-003: SET_UNITS_DONE applies Math.max(0, Math.floor(done)) clamp"
         } as unknown as Brick,
       ],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     } satisfies AppState;
   }
 
@@ -1029,6 +1102,8 @@ describe("U-m4f-004: SET_UNITS_DONE returns same state reference when done is un
         } as unknown as Brick,
       ],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const next = reducer(state, {
       type: "SET_UNITS_DONE",
@@ -1060,6 +1135,8 @@ describe("U-m4f-005: SET_UNITS_DONE is a no-op when brickId does not exist", () 
         } as unknown as Brick,
       ],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const next = reducer(state, {
       type: "SET_UNITS_DONE",
@@ -1089,6 +1166,8 @@ describe("U-m4f-006: SET_UNITS_DONE is a no-op when targeting a tick brick", () 
         },
       ],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const next = reducer(state, {
       type: "SET_UNITS_DONE",
@@ -1112,6 +1191,8 @@ describe("U-m4f-007: ADD_BRICK defensively rejects stale kind literals", () => {
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const goalBrick = {
       id: "g1",
@@ -1134,6 +1215,8 @@ describe("U-m4f-007: ADD_BRICK defensively rejects stale kind literals", () => {
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const timeBrick = {
       id: "tm1",
@@ -1159,6 +1242,8 @@ describe("U-m4f-008: ADD_BRICK accepts both units and tick variants; M4e invaria
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const unitsBrick = {
       id: "u1",
@@ -1191,6 +1276,8 @@ describe("U-m4f-008: ADD_BRICK accepts both units and tick variants; M4e invaria
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const next = reducer(state, {
       type: "ADD_BRICK",
@@ -1214,6 +1301,8 @@ describe("U-m4f-008: ADD_BRICK accepts both units and tick variants; M4e invaria
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const malformed = {
       id: "u1",
@@ -1253,6 +1342,8 @@ describe("U-m4f-009: LOG_TICK_BRICK behavior unchanged by schema collapse", () =
         },
       ],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const next1 = reducer(state, { type: "LOG_TICK_BRICK", brickId: "t1" });
     expect(
@@ -1274,6 +1365,8 @@ describe("U-m4f-010: assertNever exhaustiveness + defaultState shape post-M4f", 
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(() => reducer(state, { type: "NOPE" } as any)).toThrow();
@@ -1283,11 +1376,14 @@ describe("U-m4f-010: assertNever exhaustiveness + defaultState shape post-M4f", 
     const s = defaultState();
     expect("runningTimerBrickId" in s).toBe(false);
     // M8: programStart added to AppState (ADR-044)
+    // M9b: currentDate + history added (ADR-045)
     expect(s).toEqual({
       blocks: [],
       categories: [],
       looseBricks: [],
       programStart: s.programStart,
+      currentDate: s.currentDate, // M9b
+      history: {}, // M9b
     });
   });
 });
@@ -1312,6 +1408,8 @@ describe("U-m4f-011: findUnitsBrickById returns correct brick or null", () => {
       categories: [],
       looseBricks: [unitsBrick],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const found = findUnitsBrickById(state, "u1");
     expect(found).not.toBeNull();
@@ -1344,6 +1442,8 @@ describe("U-m4f-011: findUnitsBrickById returns correct brick or null", () => {
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     const found = findUnitsBrickById(state, "n1");
     expect(found).not.toBeNull();
@@ -1366,6 +1466,8 @@ describe("U-m4f-011: findUnitsBrickById returns correct brick or null", () => {
         },
       ],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     expect(findUnitsBrickById(state, "t1")).toBeNull();
   });
@@ -1376,6 +1478,8 @@ describe("U-m4f-011: findUnitsBrickById returns correct brick or null", () => {
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     expect(findUnitsBrickById(state, "missing")).toBeNull();
   });

@@ -8,6 +8,7 @@
  * M4f: collapsed to 5 action arms (removed START/STOP/TICK/SET_TIMER_MINUTES + LOG_GOAL_BRICK;
  *      added SET_UNITS_DONE). defaultState drops runningTimerBrickId. Adds findUnitsBrickById.
  * M8: persistence wired — defaultState gains programStart: today() (ADR-044).
+ * M9b: schema v2 — day rollover + history. defaultState gains currentDate + history (ADR-045).
  *
  * ADD_BRICK routing: parentBlockId === null → looseBricks[]; else → matching block.bricks[].
  */
@@ -40,6 +41,8 @@ export function defaultState(): AppState {
     categories: [],
     looseBricks: [],
     programStart: today(), // M8 — stamped to today on first run (ADR-044)
+    currentDate: today(), // M9b — in-progress day date (ADR-045)
+    history: {}, // M9b — archived days map (ADR-045)
   };
 }
 

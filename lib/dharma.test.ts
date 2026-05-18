@@ -74,6 +74,8 @@ function emptyState(): AppState {
     categories: [],
     looseBricks: [],
     programStart: "2026-01-01",
+    currentDate: "2026-01-01",
+    history: {},
   };
 }
 
@@ -360,6 +362,8 @@ it("U-m3-007: dayPct(state) averages blocks+looseBricks correctly", () => {
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     }),
   ).toBe(100);
 
@@ -371,6 +375,8 @@ it("U-m3-007: dayPct(state) averages blocks+looseBricks correctly", () => {
       categories: [],
       looseBricks: [looseBrick0],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     }),
   ).toBe(50);
 
@@ -387,6 +393,8 @@ it("U-m3-007: dayPct(state) averages blocks+looseBricks correctly", () => {
       categories: [],
       looseBricks: [looseBrick50],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     }),
   ).toBeCloseTo((100 + 100 + 50) / 3, 2);
 
@@ -398,6 +406,8 @@ it("U-m3-007: dayPct(state) averages blocks+looseBricks correctly", () => {
       categories: [],
       looseBricks: [looseBrick40],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     }),
   ).toBe(40);
 });
@@ -439,6 +449,8 @@ it("U-m3-008: categoryDayPct filters by category; null excluded; non-existent â†
     categories: [],
     looseBricks: [looseC1, looseNull],
     programStart: "2026-01-01",
+    currentDate: "2026-01-01",
+    history: {},
   };
 
   // c1: block (categoryId=c1 â†’ blockPct=50%), c1 brick inside block (100%), loose c1 brick (50%)
@@ -521,6 +533,8 @@ describe("U-m4f-015: brickLabel post-M4f collapse (tick + units only)", () => {
       categories: [],
       looseBricks: [],
       programStart: "2026-01-01",
+      currentDate: "2026-01-01",
+      history: {},
     };
     expect(dayPct(state)).toBeCloseTo(75);
   });

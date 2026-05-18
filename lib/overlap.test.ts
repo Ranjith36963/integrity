@@ -20,6 +20,8 @@ function makeState(partial: Partial<AppState> = {}): AppState {
     categories: [],
     looseBricks: [],
     programStart: "2026-01-01",
+    currentDate: "2026-01-01",
+    history: {},
     ...partial,
   };
 }

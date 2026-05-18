@@ -47,6 +47,8 @@ function toState(blocks: Block[]): AppState {
     categories: [],
     looseBricks: [],
     programStart: "2026-01-01",
+    currentDate: "2026-01-01",
+    history: {},
   };
 }
 
@@ -135,6 +137,8 @@ describe("U-bld-012: dayPct(emptyState) returns 0 without division by zero", () 
         categories: [],
         looseBricks: [],
         programStart: "2026-01-01",
+        currentDate: "2026-01-01",
+        history: {},
       }),
     ).toBe(0);
   });
@@ -149,6 +153,8 @@ describe("buildingPct is an alias for dayPct", () => {
         categories: [],
         looseBricks: [],
         programStart: "2026-01-01",
+        currentDate: "2026-01-01",
+        history: {},
       }),
     ).toBe(0);
   });
