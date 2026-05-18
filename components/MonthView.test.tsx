@@ -428,3 +428,60 @@ describe("C-m9c-016: MonthView — day-open interaction (today → onOpenDay; pa
     expect(onOpenDay).not.toHaveBeenCalled();
   });
 });
+
+// ─── C-m9e-011: MonthView — additive initialMonth prop; omitting it is byte-identical ──
+
+describe("C-m9e-011: MonthView — initialMonth prop: seeds displayed month; omitting is byte-identical", () => {
+  // Both renders use the same fixture state, fake clock at 2026-05-18
+
+  it("with initialMonth={year:2026, month:2}: displays March 2026 as initial month", () => {
+    render(
+      <MonthView
+        state={makeFixtureState()}
+        onOpenDay={vi.fn()}
+        initialMonth={{ year: 2026, month: 2 }}
+      />,
+    );
+    // The month label should read "March 2026"
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
+      "March 2026",
+    );
+  });
+
+  it("without initialMonth: displays today's month (May 2026) — byte-identical to M9c", () => {
+    render(<MonthView state={makeFixtureState()} onOpenDay={vi.fn()} />);
+    // The month label should read the current month "May 2026"
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
+      "May 2026",
+    );
+  });
+
+  it("with initialMonth: prev/next still freely mutate displayed (prop only seeds initial)", async () => {
+    const user = userEvent.setup();
+    render(
+      <MonthView
+        state={makeFixtureState()}
+        onOpenDay={vi.fn()}
+        initialMonth={{ year: 2026, month: 2 }}
+      />,
+    );
+    // Initially March 2026
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
+      "March 2026",
+    );
+    // Click Next month → April 2026
+    await act(async () => {
+      await user.click(screen.getByRole("button", { name: /next month/i }));
+    });
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
+      "April 2026",
+    );
+    // Click Previous month → back to March 2026
+    await act(async () => {
+      await user.click(screen.getByRole("button", { name: /previous month/i }));
+    });
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
+      "March 2026",
+    );
+  });
+});
