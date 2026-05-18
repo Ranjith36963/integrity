@@ -3,6 +3,7 @@
 // M3: Full Brick discriminated union with id/categoryId/parentBlockId per locked schema.
 // M4e: BrickBase gains universal duration axis (ADR-042).
 // M4f: Brick union collapsed to two kinds (tick + units); timer infrastructure removed (ADR-043).
+// M9b: AppState gains currentDate + history; ArchivedDay type added (ADR-045).
 
 // Brick — REPLACES M3's three-kind union. Collapses to tick + units per ADR-043.
 // count → done rename; kind:"goal" → kind:"units"; kind:"time" removed.
@@ -50,13 +51,24 @@ export type Block = {
   bricks: Brick[]; // populated in M3 via ADD_BRICK action
 };
 
+// ArchivedDay — M9b: deep snapshot of one finished day (ADR-045).
+// No stored score — day/week/month/year scores are always computed on read via lib/dharma.ts.
+export type ArchivedDay = {
+  blocks: Block[];
+  categories: Category[];
+  looseBricks: Brick[];
+};
+
 // AppState — M4f: runningTimerBrickId removed (ADR-043). M8: programStart added.
+// M9b: currentDate + history added (ADR-045; runtime-needed, must round-trip through AppState).
 export type AppState = {
   blocks: Block[];
   categories: Category[];
   looseBricks: Brick[]; // M3 — bricks with parentBlockId === null
   // runningTimerBrickId: REMOVED in M4f (ADR-043)
   programStart: string; // M8 — ISO YYYY-MM-DD, stamped once on first run (ADR-044)
+  currentDate: string; // M9b — ISO YYYY-MM-DD, the date of the in-progress day (ADR-045)
+  history: Record<string, ArchivedDay>; // M9b — keyed by ISO YYYY-MM-DD (ADR-045)
 };
 
 // Action — M4f: collapsed to 5 variants; 5 timer/goal actions removed (ADR-043)
