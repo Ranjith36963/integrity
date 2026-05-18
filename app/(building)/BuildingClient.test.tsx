@@ -498,8 +498,10 @@ describe("C-m8-007: BuildingClient feeds dayNumber(programStart, todayIso) to He
   it("Hero renders 'Building 15 of <daysInYear>' when programStart='2026-05-01' and today='2026-05-15'", async () => {
     // Pre-seed dharma:v1 with programStart: "2026-05-01"
     const persisted: PersistedState = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       programStart: "2026-05-01",
+      currentDate: "2026-05-15",
+      history: {},
       blocks: [],
       categories: [],
       looseBricks: [],
@@ -534,5 +536,70 @@ describe("C-m8-007: BuildingClient feeds dayNumber(programStart, todayIso) to He
     const text = dayCounter?.textContent?.replace(/\s+/g, " ").trim();
     // dayNumber("2026-05-15", "2026-05-15") === 1 (day 1 of program)
     expect(text).toBe("Building 1 of 365");
+  });
+});
+
+// ─── C-m9b-006: BuildingClient renders rolled-over day after rollover boot ───
+
+describe("C-m9b-006: BuildingClient renders freshly-seeded day after next-day rollover boot", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it("freshly-seeded block is in the timeline after rollover; no component change needed", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-18T10:00:00"));
+
+    // Pre-seed with yesterday's currentDate and a ticked every-day brick
+    const persisted: PersistedState = {
+      schemaVersion: 2,
+      programStart: "2026-05-01",
+      currentDate: "2026-05-17", // yesterday → rollover fires on mount
+      history: {},
+      blocks: [
+        {
+          id: "blk1",
+          name: "Morning",
+          start: "06:00",
+          recurrence: { kind: "every-day" },
+          categoryId: null,
+          bricks: [
+            {
+              id: "ev1",
+              name: "DailyMeditate",
+              categoryId: null,
+              parentBlockId: "blk1",
+              hasDuration: true,
+              start: "06:00",
+              end: "06:30",
+              recurrence: { kind: "every-day" },
+              kind: "tick",
+              done: true, // ticked yesterday
+            },
+          ],
+        },
+      ],
+      categories: [],
+      looseBricks: [],
+    };
+    saveState(persisted);
+
+    const { container } = render(<BuildingClient />);
+    await act(async () => {});
+
+    // The building view renders the freshly-seeded day (same Building components, rolled-over data).
+    // The block card should appear in the timeline — confirming rollover seeded the block.
+    const timelineBlocks = container.querySelectorAll(
+      '[data-component="timeline-block"]',
+    );
+    expect(timelineBlocks.length).toBeGreaterThan(0);
+
+    // The block name "Morning" is in the DOM (the seeded block was carried forward)
+    expect(screen.getByText("Morning")).toBeInTheDocument();
+
+    // No empty-state placeholder — the day has content (AC #8, AC #14: zero-UI-delta).
+    // The empty-state element is absent when blocks are present.
+    expect(container.querySelector('[data-testid="empty-state"]')).toBeNull();
   });
 });
