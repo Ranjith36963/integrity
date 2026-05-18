@@ -185,3 +185,59 @@ describe("C-m9d-010: ViewSwitcher — Week segment enabled, selectable, fires on
     expect(onSelect).toHaveBeenCalledWith("year");
   });
 });
+
+// ─── C-m9e-007: ViewSwitcher — Year enabled; ALL FOUR segments live, none disabled ─────────────
+
+describe("C-m9e-007: ViewSwitcher — Year enabled; all four segments live, none disabled", () => {
+  it("all four segments render inside role='tablist' aria-label='Calendar view'", () => {
+    render(<ViewSwitcher view="day" onSelect={vi.fn()} />);
+    const tablist = screen.getByRole("tablist");
+    expect(tablist).toHaveAttribute("aria-label", "Calendar view");
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs).toHaveLength(4);
+    expect(tabs[0]).toHaveTextContent("Day");
+    expect(tabs[1]).toHaveTextContent("Week");
+    expect(tabs[2]).toHaveTextContent("Month");
+    expect(tabs[3]).toHaveTextContent("Year");
+  });
+
+  it("NO segment carries aria-disabled='true' and NO segment is disabled", () => {
+    render(<ViewSwitcher view="day" onSelect={vi.fn()} />);
+    const tabs = screen.getAllByRole("tab");
+    for (const tab of tabs) {
+      expect(tab).not.toHaveAttribute("aria-disabled", "true");
+      expect(tab).not.toBeDisabled();
+    }
+  });
+
+  it("clicking Day/Week/Month/Year each fires onSelect with the matching value", async () => {
+    const values = ["day", "week", "month", "year"] as const;
+    for (const value of values) {
+      const onSelect = vi.fn();
+      const user = userEvent.setup();
+      render(<ViewSwitcher view="day" onSelect={onSelect} />);
+      const tab = screen
+        .getAllByRole("tab")
+        .find(
+          (t) =>
+            t.textContent === value.charAt(0).toUpperCase() + value.slice(1),
+        );
+      expect(tab).toBeDefined();
+      await user.click(tab!);
+      expect(onSelect).toHaveBeenCalledTimes(1);
+      expect(onSelect).toHaveBeenCalledWith(value);
+    }
+  });
+
+  it("re-rendering with view='year' sets Year tab aria-selected='true', others 'false'", () => {
+    render(<ViewSwitcher view="year" onSelect={vi.fn()} />);
+    const yearTab = screen.getByRole("tab", { name: "Year" });
+    expect(yearTab).toHaveAttribute("aria-selected", "true");
+    const dayTab = screen.getByRole("tab", { name: "Day" });
+    const weekTab = screen.getByRole("tab", { name: "Week" });
+    const monthTab = screen.getByRole("tab", { name: "Month" });
+    expect(dayTab).toHaveAttribute("aria-selected", "false");
+    expect(weekTab).toHaveAttribute("aria-selected", "false");
+    expect(monthTab).toHaveAttribute("aria-selected", "false");
+  });
+});
