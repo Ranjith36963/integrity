@@ -49,22 +49,23 @@ npm run test:e2e:install
 
 ## Status
 
-| Milestone                           | State                                          |
-| ----------------------------------- | ---------------------------------------------- |
-| M0 — Design System                  | Shipped + tap-tested                           |
-| M1 — Empty Building Shell           | Shipped + tap-tested                           |
-| M2 — Add Block Flow                 | Shipped + tap-tested                           |
-| M3 — Add Brick + Live Scoring       | Shipped + tap-tested                           |
-| M4a — Tick Brick Logging            | Shipped to preview — awaiting Gate #2 tap-test |
-| M4b — Goal Brick Stepper            | Shipped to preview — awaiting Gate #2 tap-test |
-| M4d — Add Chooser Sheet             | Shipped to preview — awaiting Gate #2 tap-test |
-| M4c — Time Brick Timer              | Shipped to preview — awaiting Gate #2 tap-test |
-| M4e — Brick Duration + Overlap      | Shipped to preview — awaiting Gate #2 tap-test |
-| M4f — Two Brick Kinds; Rip Timer    | Shipped to preview — awaiting Gate #2 tap-test |
-| M4g — Timer-era Dead-code Sweep     | Shipped to preview — awaiting Gate #2 tap-test |
-| M8 — Persistence                    | Shipped to preview — awaiting Gate #2 tap-test |
-| M9a — appliesOn recurrence resolver | Shipped to preview — awaiting Gate #2 tap-test |
-| M9b — Day rollover + history store  | Shipped to preview — awaiting Gate #2 tap-test |
+| Milestone                                  | State                                          |
+| ------------------------------------------ | ---------------------------------------------- |
+| M0 — Design System                         | Shipped + tap-tested                           |
+| M1 — Empty Building Shell                  | Shipped + tap-tested                           |
+| M2 — Add Block Flow                        | Shipped + tap-tested                           |
+| M3 — Add Brick + Live Scoring              | Shipped + tap-tested                           |
+| M4a — Tick Brick Logging                   | Shipped to preview — awaiting Gate #2 tap-test |
+| M4b — Goal Brick Stepper                   | Shipped to preview — awaiting Gate #2 tap-test |
+| M4d — Add Chooser Sheet                    | Shipped to preview — awaiting Gate #2 tap-test |
+| M4c — Time Brick Timer                     | Shipped to preview — awaiting Gate #2 tap-test |
+| M4e — Brick Duration + Overlap             | Shipped to preview — awaiting Gate #2 tap-test |
+| M4f — Two Brick Kinds; Rip Timer           | Shipped to preview — awaiting Gate #2 tap-test |
+| M4g — Timer-era Dead-code Sweep            | Shipped to preview — awaiting Gate #2 tap-test |
+| M8 — Persistence                           | Shipped to preview — awaiting Gate #2 tap-test |
+| M9a — appliesOn recurrence resolver        | Shipped to preview — awaiting Gate #2 tap-test |
+| M9b — Day rollover + history store         | Shipped to preview — awaiting Gate #2 tap-test |
+| M9c — Month view (Kingdom) + view switcher | Shipped to preview — awaiting Gate #2 tap-test |
 
 Latest preview: `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (branch alias; auto-tracks `claude/verify-m0-deployment-s4XRy`). Vercel Deployment Protection active — open in browser while signed in to Vercel.
 
@@ -73,7 +74,8 @@ Latest preview: `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-
 ```
 app/                 Next.js App Router — pages, layouts, manifest
   (building)/        Page 1: Building view (today's routine)
-                       BuildingClient.tsx — composes the seven M1 regions
+                       AppShell.tsx — owns in-app view state (Day/Month); calls usePersistedState once (M9c)
+                       BuildingClient.tsx — composes the seven M1 regions; receives state/dispatch as props (M9c)
   design/            M0 design-system harness page (all primitives in every state)
 components/          Shared UI components + unit tests
   NowLine.tsx        Amber now-line, consumes useNow() (ADR-023)
@@ -91,6 +93,10 @@ components/          Shared UI components + unit tests
   CategoryPicker.tsx Category selector chip row with inline NewCategoryForm sub-view
   HeroRing.tsx       SVG arc around the Hero numeral; stroke tracks dayPct%
   LooseBricksTray    Pinned tray above dock; lists loose bricks + "+ Brick" pill
+  MonthView.tsx      Calendar-month grid of per-day score cells (heat-fill + numeral); prev/next navigation (M9c)
+  DayCell.tsx        Single day cell inside MonthView — heat-fill intensity by score, tappable (M9c)
+  ViewSwitcher.tsx   Day / Week / Month / Year segmented control; Week + Year disabled until M9d/M9e (M9c)
+  PastDayDetail.tsx  Read-only detail sheet for a tapped past day with archived history (M9c)
 lib/                 Domain logic: types, data, scoring, utilities
   celebrations.ts    useCrossUpEffect hook — one-shot cross-up detection for bloom/fireworks
   audio.ts           playChime() — lazy HTMLAudioElement for /sounds/chime.mp3; SSR + iOS guard
@@ -101,7 +107,8 @@ lib/                 Domain logic: types, data, scoring, utilities
   blockValidation.ts Pure validators (title, end time, overflow, recurrence, overlap, brick fields)
   uuid.ts            crypto.randomUUID() mockable seam
   appliesOn.ts       Pure recurrence resolver: appliesOn(recurrence, date) → boolean (M9a)
-  history.ts         Pure rollover engine: rollover(state, todayISO) → archives finished day + seeds fresh day (M9b)
+  history.ts         Pure rollover engine: rollover(state, todayISO) → archives finished day + seeds fresh day; dayScore() + NO_DATA helpers (M9b/M9c)
+  monthGrid.ts       UTC-drift-free month date math: monthGridCells(), addMonth(), subMonth() (M9c)
 tests/
   e2e/               Playwright specs (e2e + a11y)
 docs/
