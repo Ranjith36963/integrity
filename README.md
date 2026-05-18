@@ -49,24 +49,26 @@ npm run test:e2e:install
 
 ## Status
 
-| Milestone                                  | State                                          |
-| ------------------------------------------ | ---------------------------------------------- |
-| M0 — Design System                         | Shipped + tap-tested                           |
-| M1 — Empty Building Shell                  | Shipped + tap-tested                           |
-| M2 — Add Block Flow                        | Shipped + tap-tested                           |
-| M3 — Add Brick + Live Scoring              | Shipped + tap-tested                           |
-| M4a — Tick Brick Logging                   | Shipped to preview — awaiting Gate #2 tap-test |
-| M4b — Goal Brick Stepper                   | Shipped to preview — awaiting Gate #2 tap-test |
-| M4d — Add Chooser Sheet                    | Shipped to preview — awaiting Gate #2 tap-test |
-| M4c — Time Brick Timer                     | Shipped to preview — awaiting Gate #2 tap-test |
-| M4e — Brick Duration + Overlap             | Shipped to preview — awaiting Gate #2 tap-test |
-| M4f — Two Brick Kinds; Rip Timer           | Shipped to preview — awaiting Gate #2 tap-test |
-| M4g — Timer-era Dead-code Sweep            | Shipped to preview — awaiting Gate #2 tap-test |
-| M8 — Persistence                           | Shipped to preview — awaiting Gate #2 tap-test |
-| M9a — appliesOn recurrence resolver        | Shipped to preview — awaiting Gate #2 tap-test |
-| M9b — Day rollover + history store         | Shipped to preview — awaiting Gate #2 tap-test |
-| M9c — Month view (Kingdom) + view switcher | Shipped to preview — awaiting Gate #2 tap-test |
-| M9d — Week view (Castle) + period scoring  | Shipped to preview — awaiting Gate #2 tap-test |
+| Milestone                                    | State                                                                    |
+| -------------------------------------------- | ------------------------------------------------------------------------ |
+| M0 — Design System                           | Shipped + tap-tested                                                     |
+| M1 — Empty Building Shell                    | Shipped + tap-tested                                                     |
+| M2 — Add Block Flow                          | Shipped + tap-tested                                                     |
+| M3 — Add Brick + Live Scoring                | Shipped + tap-tested                                                     |
+| M4a — Tick Brick Logging                     | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M4b — Goal Brick Stepper                     | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M4d — Add Chooser Sheet                      | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M4c — Time Brick Timer                       | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M4e — Brick Duration + Overlap               | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M4f — Two Brick Kinds; Rip Timer             | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M4g — Timer-era Dead-code Sweep              | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M8 — Persistence                             | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M9a — appliesOn recurrence resolver          | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M9b — Day rollover + history store           | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M9c — Month view (Kingdom) + view switcher   | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M9d — Week view (Castle) + period scoring    | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M9e — Year view (Empire) + complete calendar | Shipped to preview — awaiting Gate #2 tap-test                           |
+| **M9 — Calendar Nav**                        | **COMPLETE** — all four switcher segments (Day/Week/Month/Year) now live |
 
 Latest preview: `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (branch alias; auto-tracks `claude/verify-m0-deployment-s4XRy`). Vercel Deployment Protection active — open in browser while signed in to Vercel.
 
@@ -96,10 +98,12 @@ components/          Shared UI components + unit tests
   LooseBricksTray    Pinned tray above dock; lists loose bricks + "+ Brick" pill
   MonthView.tsx      Calendar-month grid of per-day score cells (heat-fill + numeral); prev/next navigation (M9c)
   DayCell.tsx        Single day cell inside MonthView — heat-fill intensity by score, tappable (M9c)
-  ViewSwitcher.tsx   Day / Week / Month / Year segmented control; Week live, Year disabled until M9e (M9d)
+  ViewSwitcher.tsx   Day / Week / Month / Year segmented control; all four segments live as of M9e
   PastDayDetail.tsx  Read-only detail sheet for a tapped past day with archived history (M9c)
   WeekView.tsx       Castle view — seven-day (Sun→Sat) layout with per-day scores and week aggregate (M9d)
   WeekDayCell.tsx    Single day cell inside WeekView — score bar + numeral + tap-to-detail (M9d)
+  YearView.tsx       Empire view — 3×4 twelve-month grid with per-month scores + YearAggregate ring; tapping a month opens MonthView at that month (M9e)
+  MonthCell.tsx      Single month cell inside YearView — heat-fill intensity by score, tappable (M9e)
 lib/                 Domain logic: types, data, scoring, utilities
   celebrations.ts    useCrossUpEffect hook — one-shot cross-up detection for bloom/fireworks
   audio.ts           playChime() — lazy HTMLAudioElement for /sounds/chime.mp3; SSR + iOS guard
@@ -110,9 +114,10 @@ lib/                 Domain logic: types, data, scoring, utilities
   blockValidation.ts Pure validators (title, end time, overflow, recurrence, overlap, brick fields)
   uuid.ts            crypto.randomUUID() mockable seam
   appliesOn.ts       Pure recurrence resolver: appliesOn(recurrence, date) → boolean (M9a)
-  history.ts         Pure rollover engine: rollover(state, todayISO) → archives finished day + seeds fresh day; dayScore() + NO_DATA + weekScore() helpers (M9b/M9c/M9d)
+  history.ts         Pure rollover engine: rollover(state, todayISO) → archives finished day + seeds fresh day; dayScore() + NO_DATA + weekScore() + monthScore() + yearScore() helpers (M9b/M9c/M9d/M9e)
   monthGrid.ts       UTC-drift-free month date math: monthGridCells(), addMonth(), subMonth() (M9c)
   weekGrid.ts        UTC-drift-free week date math: weekGridDays(), addWeek(), subWeek(); anchor-to-Sunday logic (M9d)
+  yearGrid.ts        UTC-drift-free year/month date math: yearGridMonths(), addYear(), subYear() (M9e)
 tests/
   e2e/               Playwright specs (e2e + a11y)
 docs/
