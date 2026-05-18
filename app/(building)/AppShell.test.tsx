@@ -200,3 +200,156 @@ describe("C-m9c-013: BuildingClient prop-refactor — Building view behavior unc
     expect(screen.getByText("Morning")).toBeInTheDocument();
   });
 });
+
+// ─── C-m9d-011: AppShell — selecting Week renders the Castle (WeekView) ────────
+
+describe("C-m9d-011: AppShell — selecting Week renders the Castle week view", () => {
+  it("clicking Week segment renders the week list (role='list' aria-label='Week days')", async () => {
+    saveState(makeSeedState());
+    const user = userEvent.setup();
+    render(<AppShell />);
+    await act(async () => {});
+    await user.click(screen.getByRole("tab", { name: "Week" }));
+    expect(screen.getByRole("list", { name: "Week days" })).toBeInTheDocument();
+    // Building view (Kingdom grid) is not shown
+    expect(screen.queryByRole("grid")).toBeNull();
+  });
+
+  it("Week tab shows aria-selected='true' after clicking Week", async () => {
+    saveState(makeSeedState());
+    const user = userEvent.setup();
+    render(<AppShell />);
+    await act(async () => {});
+    await user.click(screen.getByRole("tab", { name: "Week" }));
+    expect(screen.getByRole("tab", { name: "Week" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("switching Day→Week→Month: each view renders correctly", async () => {
+    saveState(makeSeedState());
+    const user = userEvent.setup();
+    render(<AppShell />);
+    await act(async () => {});
+
+    // Switch to Week
+    await user.click(screen.getByRole("tab", { name: "Week" }));
+    expect(screen.getByRole("list", { name: "Week days" })).toBeInTheDocument();
+
+    // Switch to Month
+    await user.click(screen.getByRole("tab", { name: "Month" }));
+    expect(screen.getByRole("grid")).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Week days" })).toBeNull();
+
+    // Switch back to Day
+    await user.click(screen.getByRole("tab", { name: "Day" }));
+    expect(screen.queryByRole("grid")).toBeNull();
+    expect(screen.queryByRole("list", { name: "Week days" })).toBeNull();
+  });
+
+  it("clicking Year segment does nothing — no view change, no crash", async () => {
+    saveState(makeSeedState());
+    const user = userEvent.setup();
+    render(<AppShell />);
+    await act(async () => {});
+    // In Day view by default
+    expect(screen.queryByRole("grid")).toBeNull();
+    // Click Year — should do nothing
+    await user.click(screen.getByRole("tab", { name: "Year" }));
+    // Still in Day view
+    expect(screen.queryByRole("grid")).toBeNull();
+    expect(screen.queryByRole("list", { name: "Week days" })).toBeNull();
+  });
+});
+
+// ─── C-m9d-012: AppShell — week-view wiring, single usePersistedState preserved ─
+
+describe("C-m9d-012: AppShell — week wiring is purely additive; single usePersistedState", () => {
+  it("switching views does not re-write dharma:v1 more than initial hydration", async () => {
+    saveState(makeSeedState());
+    const user = userEvent.setup();
+    render(<AppShell />);
+    await act(async () => {});
+
+    // Capture localStorage writes before switching views
+    const setItemSpy = vi.spyOn(Storage.prototype, "setItem");
+    const callsBefore = setItemSpy.mock.calls.length;
+
+    // Switch Day→Week→Month→Week→Day
+    await user.click(screen.getByRole("tab", { name: "Week" }));
+    await user.click(screen.getByRole("tab", { name: "Month" }));
+    await user.click(screen.getByRole("tab", { name: "Week" }));
+    await user.click(screen.getByRole("tab", { name: "Day" }));
+
+    // No dharma:v1 writes during view switching (view state is session-only)
+    const newCalls = setItemSpy.mock.calls.slice(callsBefore);
+    const stateWrites = newCalls.filter(([key]) => key === "dharma:v1");
+    expect(stateWrites).toHaveLength(0);
+  });
+
+  it("view state defaults to 'day' after remounting (session-only)", async () => {
+    saveState(makeSeedState());
+    const { unmount } = render(<AppShell />);
+    await act(async () => {});
+
+    // Switch to Week
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("tab", { name: "Week" }));
+    expect(screen.getByRole("list", { name: "Week days" })).toBeInTheDocument();
+
+    // Remount — should reset to Day
+    unmount();
+    render(<AppShell />);
+    await act(async () => {});
+    expect(screen.queryByRole("list", { name: "Week days" })).toBeNull();
+    expect(screen.getByRole("tab", { name: "Day" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("localStorage dharma:v1 does not contain a 'view' field after switching to Week", async () => {
+    saveState(makeSeedState());
+    const user = userEvent.setup();
+    render(<AppShell />);
+    await act(async () => {});
+    await user.click(screen.getByRole("tab", { name: "Week" }));
+    const stored = localStorage.getItem("dharma:v1");
+    if (stored) {
+      const parsed = JSON.parse(stored) as Record<string, unknown>;
+      expect(parsed["view"]).toBeUndefined();
+    }
+  });
+});
+
+// ─── C-m9d-013: AppShell — Day/Month branches unchanged; week wiring is purely additive ─
+
+describe("C-m9d-013: AppShell — Day/Month behavior byte-equivalent after M9d (no-regression)", () => {
+  it("C-m9c-001 behavior unchanged: Day view default, Month shows grid, Day hides grid", async () => {
+    saveState(makeSeedState());
+    const user = userEvent.setup();
+    render(<AppShell />);
+    await act(async () => {});
+
+    // Default: no grid
+    expect(screen.queryByRole("grid")).toBeNull();
+
+    // Switch to Month
+    await user.click(screen.getByRole("tab", { name: "Month" }));
+    expect(screen.getByRole("grid")).toBeInTheDocument();
+
+    // Switch back to Day
+    await user.click(screen.getByRole("tab", { name: "Day" }));
+    expect(screen.queryByRole("grid")).toBeNull();
+  });
+
+  it("C-m9c-002 behavior unchanged: default view is Day; localStorage has no 'view' field", async () => {
+    render(<AppShell />);
+    await act(async () => {});
+    expect(screen.queryByRole("grid")).toBeNull();
+    expect(screen.queryByRole("list", { name: "Week days" })).toBeNull();
+    const dayTab = screen.getByRole("tab", { name: "Day" });
+    expect(dayTab).toHaveAttribute("aria-selected", "true");
+  });
+});

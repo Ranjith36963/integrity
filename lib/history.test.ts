@@ -1392,8 +1392,8 @@ describe("U-m9d-005: weekScore — purity, clock-independence, frozen-state safe
       history: Object.freeze({
         "2026-05-17": Object.freeze(makeArchivedDay100()) as ArchivedDay,
       }) as Record<string, ArchivedDay>,
-      blocks: Object.freeze([]) as AppState["blocks"],
-      categories: Object.freeze([]) as AppState["categories"],
+      blocks: Object.freeze([]) as unknown as AppState["blocks"],
+      categories: Object.freeze([]) as unknown as AppState["categories"],
       looseBricks: Object.freeze([
         Object.freeze({
           id: "lb1",
