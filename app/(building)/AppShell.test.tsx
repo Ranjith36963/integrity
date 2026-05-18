@@ -248,18 +248,22 @@ describe("C-m9d-011: AppShell — selecting Week renders the Castle week view", 
     expect(screen.queryByRole("list", { name: "Week days" })).toBeNull();
   });
 
-  it("clicking Year segment does nothing — no view change, no crash", async () => {
+  // M9e amendment: Year is now live — clicking it renders the Year (Empire) view.
+  it("clicking Year segment renders the Empire year view (Months of <year> list)", async () => {
     saveState(makeSeedState());
     const user = userEvent.setup();
     render(<AppShell />);
     await act(async () => {});
-    // In Day view by default
-    expect(screen.queryByRole("grid")).toBeNull();
-    // Click Year — should do nothing
+    // In Day view by default — no year grid
+    expect(screen.queryByRole("list", { name: /months of/i })).toBeNull();
+    // Click Year — now shows Empire view
     await user.click(screen.getByRole("tab", { name: "Year" }));
-    // Still in Day view
     expect(screen.queryByRole("grid")).toBeNull();
     expect(screen.queryByRole("list", { name: "Week days" })).toBeNull();
+    // Year view renders with "Months of <year>" list
+    expect(
+      screen.getByRole("list", { name: /months of/i }),
+    ).toBeInTheDocument();
   });
 });
 
@@ -351,5 +355,245 @@ describe("C-m9d-013: AppShell — Day/Month behavior byte-equivalent after M9d (
     expect(screen.queryByRole("list", { name: "Week days" })).toBeNull();
     const dayTab = screen.getByRole("tab", { name: "Day" });
     expect(dayTab).toHaveAttribute("aria-selected", "true");
+  });
+});
+
+// ─── C-m9e-008: AppShell — Day↔Week↔Month↔Year round-trip, no view leaks ─────
+
+describe("C-m9e-008: AppShell — Day↔Week↔Month↔Year round-trip, no view leaks", () => {
+  it("selecting Year renders Empire view with 'Months of <year>' list", async () => {
+    saveState(makeSeedState());
+    const user = userEvent.setup();
+    render(<AppShell />);
+    await act(async () => {});
+
+    await user.click(screen.getByRole("tab", { name: "Year" }));
+    // Empire view: role=list "Months of 2026"
+    expect(
+      screen.getByRole("list", { name: /months of/i }),
+    ).toBeInTheDocument();
+    // Year tab is aria-selected
+    expect(screen.getByRole("tab", { name: "Year" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    // Day/Week/Month views not shown
+    expect(screen.queryByRole("grid")).toBeNull();
+    expect(screen.queryByRole("list", { name: "Week days" })).toBeNull();
+  });
+
+  it("Day→Week→Month→Year→Month→Week→Day round-trip — no crash, no view leaks", async () => {
+    saveState(makeSeedState());
+    const user = userEvent.setup();
+    render(<AppShell />);
+    await act(async () => {});
+
+    // Day → Week
+    await user.click(screen.getByRole("tab", { name: "Week" }));
+    expect(screen.getByRole("list", { name: "Week days" })).toBeInTheDocument();
+    // Week → Month
+    await user.click(screen.getByRole("tab", { name: "Month" }));
+    expect(screen.getByRole("grid")).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Week days" })).toBeNull();
+    // Month → Year
+    await user.click(screen.getByRole("tab", { name: "Year" }));
+    expect(
+      screen.getByRole("list", { name: /months of/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("grid")).toBeNull();
+    // Year → Month
+    await user.click(screen.getByRole("tab", { name: "Month" }));
+    expect(screen.getByRole("grid")).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: /months of/i })).toBeNull();
+    // Month → Week
+    await user.click(screen.getByRole("tab", { name: "Week" }));
+    expect(screen.getByRole("list", { name: "Week days" })).toBeInTheDocument();
+    // Week → Day
+    await user.click(screen.getByRole("tab", { name: "Day" }));
+    expect(screen.queryByRole("grid")).toBeNull();
+    expect(screen.queryByRole("list")).toBeNull();
+  });
+});
+
+// ─── C-m9e-009: AppShell — year-branch + monthTarget wiring; single usePersistedState ──
+
+describe("C-m9e-009: AppShell — year-branch + monthTarget; single usePersistedState", () => {
+  it("switching via ViewSwitcher to Month after Year shows today's month (not stale target)", async () => {
+    saveState(makeSeedState());
+    const user = userEvent.setup();
+    render(<AppShell />);
+    await act(async () => {});
+
+    // Switch to Year (no monthTarget set via tap)
+    await user.click(screen.getByRole("tab", { name: "Year" }));
+    expect(
+      screen.getByRole("list", { name: /months of/i }),
+    ).toBeInTheDocument();
+
+    // Switch back to Month directly via switcher — should show today's month (May 2026)
+    await user.click(screen.getByRole("tab", { name: "Month" }));
+    expect(screen.getByRole("grid")).toBeInTheDocument();
+    // Month label should be today's month
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
+      "May 2026",
+    );
+  });
+
+  it("view state defaults to Day on remount — session-only (Year branch doesn't persist)", async () => {
+    saveState(makeSeedState());
+    const user = userEvent.setup();
+    const { unmount } = render(<AppShell />);
+    await act(async () => {});
+
+    await user.click(screen.getByRole("tab", { name: "Year" }));
+    expect(
+      screen.getByRole("list", { name: /months of/i }),
+    ).toBeInTheDocument();
+
+    unmount();
+    render(<AppShell />);
+    await act(async () => {});
+    // Back to Day view
+    expect(screen.queryByRole("list", { name: /months of/i })).toBeNull();
+    expect(screen.getByRole("tab", { name: "Day" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("switching via ViewSwitcher clears monthTarget — direct Month visit shows today's month", async () => {
+    saveState(makeSeedState());
+    const user = userEvent.setup();
+    render(<AppShell />);
+    await act(async () => {});
+
+    // Go to Year then switcher-Month — monthTarget is null → today's month
+    await user.click(screen.getByRole("tab", { name: "Year" }));
+    await user.click(screen.getByRole("tab", { name: "Month" }));
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
+      "May 2026",
+    );
+
+    // Go to Day then switcher-Month — also today's month
+    await user.click(screen.getByRole("tab", { name: "Day" }));
+    await user.click(screen.getByRole("tab", { name: "Month" }));
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
+      "May 2026",
+    );
+  });
+});
+
+// ─── C-m9e-010: AppShell — year→month tap-through opens MonthView at tapped month ──
+
+describe("C-m9e-010: AppShell — tap a month in YearView opens MonthView at that month", () => {
+  it("tapping a MonthCell opens MonthView at the tapped month", async () => {
+    saveState(makeSeedState());
+    const user = userEvent.setup();
+    render(<AppShell />);
+    await act(async () => {});
+
+    // Switch to Year
+    await user.click(screen.getByRole("tab", { name: "Year" }));
+    expect(
+      screen.getByRole("list", { name: /months of/i }),
+    ).toBeInTheDocument();
+
+    // Tap January 2026 (pre-start, no data)
+    const janBtn = screen.getByRole("button", { name: /^January 2026/ });
+    await user.click(janBtn);
+
+    // Should switch to Month view showing January 2026
+    expect(screen.getByRole("grid")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
+      "January 2026",
+    );
+  });
+
+  it("tapping a fully-future month opens MonthView at that month without crash", async () => {
+    saveState(makeSeedState());
+    const user = userEvent.setup();
+    render(<AppShell />);
+    await act(async () => {});
+
+    await user.click(screen.getByRole("tab", { name: "Year" }));
+
+    // Tap December 2026 (fully future)
+    const decBtn = screen.getByRole("button", { name: /^December 2026/ });
+    await user.click(decBtn);
+
+    // Should switch to Month view showing December 2026 — no crash
+    expect(screen.getByRole("grid")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
+      "December 2026",
+    );
+  });
+
+  it("tapping different months re-seeds MonthView each time (key-based remount)", async () => {
+    saveState(makeSeedState());
+    const user = userEvent.setup();
+    render(<AppShell />);
+    await act(async () => {});
+
+    // Go to Year, tap March
+    await user.click(screen.getByRole("tab", { name: "Year" }));
+    await user.click(screen.getByRole("button", { name: /^March 2026/ }));
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
+      "March 2026",
+    );
+
+    // Go back to Year, tap October
+    await user.click(screen.getByRole("tab", { name: "Year" }));
+    const octBtn = screen.getByRole("button", { name: /^October 2026/ });
+    await user.click(octBtn);
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
+      "October 2026",
+    );
+  });
+});
+
+// ─── C-m9e-012: AppShell — Day/Week/Month branches unchanged; year is purely additive ──
+
+describe("C-m9e-012: AppShell — Day/Week/Month behavior byte-equivalent after M9e (no-regression)", () => {
+  it("Day view default, Month shows grid, Day hides grid — unchanged from M9c/M9d", async () => {
+    saveState(makeSeedState());
+    const user = userEvent.setup();
+    render(<AppShell />);
+    await act(async () => {});
+
+    // Default: Day view, no grid
+    expect(screen.queryByRole("grid")).toBeNull();
+
+    // Month shows grid
+    await user.click(screen.getByRole("tab", { name: "Month" }));
+    expect(screen.getByRole("grid")).toBeInTheDocument();
+
+    // Back to Day — no grid
+    await user.click(screen.getByRole("tab", { name: "Day" }));
+    expect(screen.queryByRole("grid")).toBeNull();
+  });
+
+  it("Week view renders correctly after M9e Year wiring", async () => {
+    saveState(makeSeedState());
+    const user = userEvent.setup();
+    render(<AppShell />);
+    await act(async () => {});
+
+    await user.click(screen.getByRole("tab", { name: "Week" }));
+    expect(screen.getByRole("list", { name: "Week days" })).toBeInTheDocument();
+    expect(screen.queryByRole("grid")).toBeNull();
+    expect(screen.queryByRole("list", { name: /months of/i })).toBeNull();
+  });
+
+  it("MonthView via switcher (not tap-through) shows today's month — M9c behavior preserved", async () => {
+    saveState(makeSeedState());
+    const user = userEvent.setup();
+    render(<AppShell />);
+    await act(async () => {});
+
+    await user.click(screen.getByRole("tab", { name: "Month" }));
+    expect(screen.getByRole("grid")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
+      "May 2026",
+    );
   });
 });
