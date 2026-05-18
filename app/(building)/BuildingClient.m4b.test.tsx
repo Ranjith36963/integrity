@@ -10,6 +10,7 @@ import { render, screen, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BuildingClient } from "./BuildingClient";
 import { saveState } from "@/lib/persist";
+import { today } from "@/lib/dharma";
 
 vi.mock("@/lib/uuid", () => ({ uuid: () => "uuid-1" }));
 
@@ -31,8 +32,10 @@ vi.mock("@/lib/audio", () => ({
 beforeEach(() => {
   localStorage.clear();
   saveState({
-    schemaVersion: 1,
+    schemaVersion: 2,
     programStart: "2026-05-09",
+    currentDate: today(), // M9b: rollover no-op (currentDate === today)
+    history: {},
     blocks: [
       {
         id: "b1",

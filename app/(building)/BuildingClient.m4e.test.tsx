@@ -12,6 +12,7 @@ import type { Brick } from "@/lib/types";
 import { HOUR_HEIGHT_PX, timeToOffsetPx } from "@/lib/timeOffset";
 import { saveState } from "@/lib/persist";
 import type { PersistedState } from "@/lib/persist";
+import { today } from "@/lib/dharma";
 
 vi.mock("@/lib/uuid", () => ({ uuid: () => "uuid-1" }));
 
@@ -40,8 +41,10 @@ describe("C-m4e-027: tray shows non-timed brick only; timeline shows block + Tim
   beforeEach(() => {
     // Seed: 1 block (bk1), 1 non-timed loose brick (r1), 1 timed loose brick (r2)
     const seed: PersistedState = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       programStart: "2026-05-14",
+      currentDate: today(), // M9b: rollover no-op (currentDate === today)
+      history: {},
       blocks: [
         {
           id: "bk1",
@@ -130,8 +133,10 @@ describe("C-m4e-027: tray shows non-timed brick only; timeline shows block + Tim
 describe("C-m4e-028: tray hidden when looseBricks all have hasDuration=true and no blocks", () => {
   beforeEach(() => {
     const seed: PersistedState = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       programStart: "2026-05-14",
+      currentDate: today(), // M9b: rollover no-op (currentDate === today)
+      history: {},
       blocks: [],
       looseBricks: [
         {
@@ -193,8 +198,10 @@ describe("C-m4e-029: pre-M4e brick without hasDuration gets hasDuration:false vi
       parentBlockId: null,
     } as Brick;
     const seed: PersistedState = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       programStart: "2026-05-14",
+      currentDate: today(), // M9b: rollover no-op (currentDate === today)
+      history: {},
       blocks: [],
       looseBricks: [legacyBrick],
       categories: [],
@@ -231,8 +238,10 @@ describe("C-m4e-029: pre-M4e brick without hasDuration gets hasDuration:false vi
 describe("U-m4f-018: M4e duration-axis assertions hold for kind:units with hasDuration:true", () => {
   beforeEach(() => {
     const seed: PersistedState = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       programStart: "2026-05-15",
+      currentDate: today(), // M9b: rollover no-op (currentDate === today)
+      history: {},
       blocks: [],
       looseBricks: [
         {
