@@ -6,8 +6,8 @@
 
 ## Snapshot
 
-- **Branch:** `claude/verify-m0-deployment-s4XRy` at `<ship-sha>` · `main` at `c3ef9f1` (feature branch not yet merged)
-- **Last ship:** M9d — week view (Castle) + period scoring — commit `<ship-sha>` — branch `claude/verify-m0-deployment-s4XRy`.
+- **Branch:** `claude/verify-m0-deployment-s4XRy` at `73075ad` · `main` at `c3ef9f1` (feature branch not yet merged)
+- **Last ship:** M9d — week view (Castle) + period scoring — commit `73075ad` — branch `claude/verify-m0-deployment-s4XRy`.
 - **Last preview URL:** `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (stable branch alias; auto-tracks latest deployment for this branch). Sandbox `curl -I` returns HTTP 403 `x-deny-reason: host_not_allowed` (Vercel Deployment Protection — same as M0–M9d; not a failure; signed-in browser sessions serve normally).
 - **Persisted schema: v2** (ADR-045). `AppState` now carries `history: Record<ISO-date, ArchivedDay>` and `currentDate: string`. `loadState` migrates v1 payloads to v2 with no data loss.
 - **ADR-046 added:** period-aggregate helpers are pure — they derive "today" from `state.currentDate`, never the wall clock. All future period helpers (month/year aggregates in M9e) must follow this pattern.
