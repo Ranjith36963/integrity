@@ -1,34 +1,34 @@
 "use client";
 /**
  * ViewSwitcher — M9c: Day·Week·Month·Year segmented control.
- * Day and Month are live segments; Week and Year are disabled (SG-m9c-02).
- * Resolves SG-m9c-02, SG-m9c-05.
+ * M9d: Week segment enabled (live: true). Year remains disabled.
+ * Resolves SG-m9c-02, SG-m9c-05; AC #8 (M9d).
  *
- * Props: { view: "day" | "month"; onSelect: (view: "day" | "month") => void }
+ * Props: { view: "day" | "month" | "week"; onSelect: (view: "day" | "month" | "week") => void }
  *
  * Accessibility:
  *   - container: role="tablist" aria-label="Calendar view"
- *   - live segments: role="tab" aria-selected
- *   - disabled segments: aria-disabled="true", disabled (out of tab order)
+ *   - live segments (Day, Week, Month): role="tab" aria-selected
+ *   - disabled segment (Year only): aria-disabled="true", disabled (out of tab order)
  *
  * Design tokens: --accent (active bg), --bg (active text), --ink-dim (inactive/disabled)
  * ADR-031: segments ≥ 44px tall.
  */
 
 type ViewSwitcherProps = {
-  view: "day" | "month";
-  onSelect: (view: "day" | "month") => void;
+  view: "day" | "month" | "week";
+  onSelect: (view: "day" | "month" | "week") => void;
 };
 
 type Segment =
   | { label: "Day"; value: "day"; live: true }
-  | { label: "Week"; value: "week"; live: false }
+  | { label: "Week"; value: "week"; live: true }
   | { label: "Month"; value: "month"; live: true }
   | { label: "Year"; value: "year"; live: false };
 
 const SEGMENTS: Segment[] = [
   { label: "Day", value: "day", live: true },
-  { label: "Week", value: "week", live: false },
+  { label: "Week", value: "week", live: true },
   { label: "Month", value: "month", live: true },
   { label: "Year", value: "year", live: false },
 ];
@@ -46,7 +46,7 @@ export function ViewSwitcher({ view, onSelect }: ViewSwitcherProps) {
     >
       {SEGMENTS.map((seg) => {
         if (!seg.live) {
-          // Disabled segment — Week or Year
+          // Disabled segment — Year only (M9d: Week is now live)
           return (
             <button
               key={seg.value}
@@ -72,7 +72,7 @@ export function ViewSwitcher({ view, onSelect }: ViewSwitcherProps) {
           );
         }
 
-        // Live segment — Day or Month
+        // Live segment — Day, Week, or Month
         const isActive = view === seg.value;
         return (
           <button
