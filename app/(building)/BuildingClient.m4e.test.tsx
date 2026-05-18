@@ -13,6 +13,17 @@ import { HOUR_HEIGHT_PX, timeToOffsetPx } from "@/lib/timeOffset";
 import { saveState } from "@/lib/persist";
 import type { PersistedState } from "@/lib/persist";
 import { today } from "@/lib/dharma";
+import { usePersistedState } from "@/lib/usePersistedState";
+
+/**
+ * BuildingClientHarness — M9c sanctioned migration.
+ * Thin harness that calls usePersistedState() and renders BuildingClient with props.
+ * Preserves all existing test assertions; only the mount pattern changes.
+ */
+function BuildingClientHarness() {
+  const [state, dispatch] = usePersistedState();
+  return <BuildingClient state={state} dispatch={dispatch} />;
+}
 
 vi.mock("@/lib/uuid", () => ({ uuid: () => "uuid-1" }));
 
@@ -95,7 +106,7 @@ describe("C-m4e-027: tray shows non-timed brick only; timeline shows block + Tim
   });
 
   it("LooseBricksTray renders exactly 1 chip (r1); r2 NOT in tray", async () => {
-    const { container } = render(<BuildingClient />);
+    const { container } = render(<BuildingClientHarness />);
     await act(async () => {});
     const tray = container.querySelector(
       '[data-testid="loose-bricks-tray"]',
@@ -108,7 +119,7 @@ describe("C-m4e-027: tray shows non-timed brick only; timeline shows block + Tim
   });
 
   it("Timeline renders TimedLooseBrickCard for r2 at 10:00 offset", async () => {
-    const { container } = render(<BuildingClient />);
+    const { container } = render(<BuildingClientHarness />);
     await act(async () => {});
     const timedCard = container.querySelector(
       '[data-testid="timed-loose-brick"]',
@@ -119,7 +130,7 @@ describe("C-m4e-027: tray shows non-timed brick only; timeline shows block + Tim
   });
 
   it("Timeline renders TimelineBlock for bk1", async () => {
-    const { container } = render(<BuildingClient />);
+    const { container } = render(<BuildingClientHarness />);
     await act(async () => {});
     const tlBlock = container.querySelector(
       '[data-component="timeline-block"]',
@@ -158,14 +169,14 @@ describe("C-m4e-028: tray hidden when looseBricks all have hasDuration=true and 
   });
 
   it("LooseBricksTray is NOT in the DOM", async () => {
-    const { container } = render(<BuildingClient />);
+    const { container } = render(<BuildingClientHarness />);
     await act(async () => {});
     const tray = container.querySelector('[data-testid="loose-bricks-tray"]');
     expect(tray).toBeNull();
   });
 
   it("Timeline renders TimedLooseBrickCard for the timed brick at 10:00 offset", async () => {
-    const { container } = render(<BuildingClient />);
+    const { container } = render(<BuildingClientHarness />);
     await act(async () => {});
     const timedCard = container.querySelector(
       '[data-testid="timed-loose-brick"]',
@@ -210,7 +221,7 @@ describe("C-m4e-029: pre-M4e brick without hasDuration gets hasDuration:false vi
   });
 
   it("legacy brick renders in tray as non-timed chip (hasDuration:false after migration)", async () => {
-    const { container } = render(<BuildingClient />);
+    const { container } = render(<BuildingClientHarness />);
     await act(async () => {});
     const tray = container.querySelector(
       '[data-testid="loose-bricks-tray"]',
@@ -221,7 +232,7 @@ describe("C-m4e-029: pre-M4e brick without hasDuration gets hasDuration:false vi
   });
 
   it("no brick-time-window badge on the migrated chip (hasDuration:false)", async () => {
-    const { container } = render(<BuildingClient />);
+    const { container } = render(<BuildingClientHarness />);
     await act(async () => {});
     const timeWindow = container.querySelector(
       '[data-testid="brick-time-window"]',
@@ -265,7 +276,7 @@ describe("U-m4f-018: M4e duration-axis assertions hold for kind:units with hasDu
   });
 
   it("timed units brick renders as TimedLooseBrickCard (NOT in tray) when hasDuration:true", async () => {
-    const { container } = render(<BuildingClient />);
+    const { container } = render(<BuildingClientHarness />);
     await act(async () => {});
     // Timed brick should NOT be in the LooseBricksTray
     const tray = container.querySelector('[data-testid="loose-bricks-tray"]');
@@ -278,7 +289,7 @@ describe("U-m4f-018: M4e duration-axis assertions hold for kind:units with hasDu
   });
 
   it("timed units brick has time-window badge showing start–end", async () => {
-    const { container } = render(<BuildingClient />);
+    const { container } = render(<BuildingClientHarness />);
     await act(async () => {});
     const badge = container.querySelector('[data-testid="brick-time-window"]');
     expect(badge).not.toBeNull();
@@ -286,7 +297,7 @@ describe("U-m4f-018: M4e duration-axis assertions hold for kind:units with hasDu
   });
 
   it("timed units brick positioned at correct top offset (timeToOffsetPx)", async () => {
-    const { container } = render(<BuildingClient />);
+    const { container } = render(<BuildingClientHarness />);
     await act(async () => {});
     const timedCard = container.querySelector(
       '[data-testid="timed-loose-brick"]',

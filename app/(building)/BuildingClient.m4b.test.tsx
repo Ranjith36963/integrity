@@ -11,6 +11,17 @@ import userEvent from "@testing-library/user-event";
 import { BuildingClient } from "./BuildingClient";
 import { saveState } from "@/lib/persist";
 import { today } from "@/lib/dharma";
+import { usePersistedState } from "@/lib/usePersistedState";
+
+/**
+ * BuildingClientHarness — M9c sanctioned migration.
+ * Thin harness that calls usePersistedState() and renders BuildingClient with props.
+ * Preserves all existing test assertions; only the mount pattern changes.
+ */
+function BuildingClientHarness() {
+  const [state, dispatch] = usePersistedState();
+  return <BuildingClient state={state} dispatch={dispatch} />;
+}
 
 vi.mock("@/lib/uuid", () => ({ uuid: () => "uuid-1" }));
 
@@ -71,7 +82,7 @@ describe("C-m4f-009: BuildingClient + on units at done:9/target:10 dispatches SE
     vi.clearAllMocks();
 
     const user = userEvent.setup();
-    const { container } = render(<BuildingClient />);
+    const { container } = render(<BuildingClientHarness />);
     // Flush effects so hydration loads the pre-seeded state from localStorage
     await act(async () => {});
 

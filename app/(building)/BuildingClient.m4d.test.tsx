@@ -5,6 +5,17 @@ import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BuildingClient } from "./BuildingClient";
+import { usePersistedState } from "@/lib/usePersistedState";
+
+/**
+ * BuildingClientHarness — M9c sanctioned migration.
+ * Thin harness that calls usePersistedState() and renders BuildingClient with props.
+ * Preserves all existing test assertions; only the mount pattern changes.
+ */
+function BuildingClientHarness() {
+  const [state, dispatch] = usePersistedState();
+  return <BuildingClient state={state} dispatch={dispatch} />;
+}
 
 vi.mock("@/lib/uuid", () => ({ uuid: () => "uuid-1" }));
 
@@ -39,7 +50,7 @@ afterEach(() => {
 describe("C-m4d-009: dock + opens AddChooserSheet, not AddBlockSheet directly", () => {
   it("clicking dock + opens AddChooserSheet (role=dialog aria-label='Add'); AddBlockSheet NOT open", async () => {
     const user = userEvent.setup();
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
 
     // Click the dock + button
     await user.click(screen.getByRole("button", { name: "Add" }));
@@ -54,7 +65,7 @@ describe("C-m4d-009: dock + opens AddChooserSheet, not AddBlockSheet directly", 
 
   it("chooser → 'Add Block' → AddBlockSheet opens; chooser closes", async () => {
     const user = userEvent.setup();
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
 
     // Open chooser
     await user.click(screen.getByRole("button", { name: "Add" }));
@@ -74,7 +85,7 @@ describe("C-m4d-009: dock + opens AddChooserSheet, not AddBlockSheet directly", 
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-05-09T08:47:00"));
     const user = userEvent.setup();
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
 
     await user.click(screen.getByRole("button", { name: "Add" }));
     await user.click(screen.getByRole("button", { name: "Add Block" }));
@@ -90,7 +101,7 @@ describe("C-m4d-009: dock + opens AddChooserSheet, not AddBlockSheet directly", 
 describe("C-m4d-010: dock + → chooser → 'Add Brick' → AddBrickSheet opens with parentBlockId null", () => {
   it("chooser 'Add Brick' opens AddBrickSheet; chooser closes", async () => {
     const user = userEvent.setup();
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
 
     await user.click(screen.getByRole("button", { name: "Add" }));
     await user.click(screen.getByRole("button", { name: "Add Brick" }));
@@ -102,7 +113,7 @@ describe("C-m4d-010: dock + → chooser → 'Add Brick' → AddBrickSheet opens 
 
   it("AddBrickSheet opened from chooser has parentBlockId null (shows 'Loose brick' context)", async () => {
     const user = userEvent.setup();
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
 
     await user.click(screen.getByRole("button", { name: "Add" }));
     await user.click(screen.getByRole("button", { name: "Add Brick" }));
@@ -126,7 +137,7 @@ describe("C-m4d-011: slot tap opens chooser; Add Block gets defaultStart=capture
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-05-09T08:30:00"));
     const user = userEvent.setup();
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
 
     // Click slot at hour 13
     const slot13 = screen.getByRole("button", { name: /Add block at 13:00/i });
@@ -142,7 +153,7 @@ describe("C-m4d-011: slot tap opens chooser; Add Block gets defaultStart=capture
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-05-09T08:30:00"));
     const user = userEvent.setup();
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
 
     // Click slot at hour 13
     const slot13 = screen.getByRole("button", { name: /Add block at 13:00/i });
@@ -161,7 +172,7 @@ describe("C-m4d-011: slot tap opens chooser; Add Block gets defaultStart=capture
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-05-09T08:30:00"));
     const user = userEvent.setup();
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
 
     // Click slot at hour 13
     const slot13 = screen.getByRole("button", { name: /Add block at 13:00/i });
@@ -183,7 +194,7 @@ describe("C-m4d-011: slot tap opens chooser; Add Block gets defaultStart=capture
 describe("C-m4d-012: inside-block '+ Add brick' bypasses chooser; opens AddBrickSheet directly", () => {
   it("+ Add brick in expanded block opens AddBrickSheet directly; AddChooserSheet NOT mounted", async () => {
     const user = userEvent.setup();
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
 
     // Add a block first
     await user.click(screen.getByRole("button", { name: "Add" }));
@@ -219,7 +230,7 @@ describe("C-m4d-012: inside-block '+ Add brick' bypasses chooser; opens AddBrick
 describe("C-m4d-013: tray '+ Brick' pill bypasses chooser; opens AddBrickSheet directly", () => {
   it("tray '+ Brick' pill opens AddBrickSheet directly; AddChooserSheet NOT mounted", async () => {
     const user = userEvent.setup();
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
 
     // Add a block to make the tray visible
     await user.click(screen.getByRole("button", { name: "Add" }));
@@ -245,7 +256,7 @@ describe("C-m4d-013: tray '+ Brick' pill bypasses chooser; opens AddBrickSheet d
 describe("C-m4d-014: empty state → dock + → chooser → Add Brick → save → tray renders", () => {
   it("new brick via chooser from empty state appears in LooseBricksTray; empty-state unmounts", async () => {
     const user = userEvent.setup();
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
 
     // Verify empty state
     expect(
@@ -282,7 +293,7 @@ describe("C-m4d-015: slot tap → chooser → Add Brick → save → loose brick
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-05-09T08:30:00"));
     const user = userEvent.setup();
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
 
     // Click slot at hour 9
     const slot9 = screen.getByRole("button", { name: /Add block at 09:00/i });
@@ -311,7 +322,7 @@ describe("C-m4d-015: slot tap → chooser → Add Brick → save → loose brick
 describe("C-m4d-016: two rapid dock + taps do not double-mount the chooser", () => {
   it("chooser is open exactly once after two rapid taps on dock +", async () => {
     const user = userEvent.setup();
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
 
     await user.click(screen.getByRole("button", { name: "Add" }));
     await user.click(screen.getByRole("button", { name: "Add" }));
@@ -330,7 +341,7 @@ describe("C-m4d-016: two rapid dock + taps do not double-mount the chooser", () 
 describe("C-m4d-017: M2 dock+ → chooser → Add Block → save journey (replaces C-m2-020 direct path)", () => {
   it("saves a block 'Foo' via chooser routing; EmptyBlocks unmounts; block in DOM", async () => {
     const user = userEvent.setup();
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
 
     // Tap dock +
     await user.click(screen.getByRole("button", { name: "Add" }));

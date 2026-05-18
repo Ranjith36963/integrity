@@ -11,12 +11,14 @@
 //   - Tray "+ Brick" pill (handleAddLooseBrick) bypasses chooser — direct path.
 // - roundDownToHour: 1-line local helper — string slice, no Date math (SG-m2-04)
 // M4f: removed handleUnitsLog stepper; added handleUnitsOpenSheet → UnitsEntrySheet → handleUnitsSave.
+// M9c: usePersistedState() call moved up into AppShell; BuildingClient now receives
+//       state + dispatch as props so the hook runs exactly once in the app shell.
 
 import { useState, useCallback } from "react";
+import type { Dispatch } from "react";
 import { today, dateLabel, dayPct, dayNumber } from "@/lib/dharma";
 import { daysInYear } from "@/lib/dayOfYear";
 import { useNow } from "@/lib/useNow";
-import { usePersistedState } from "@/lib/usePersistedState";
 import { selectTrayBricks, selectTimelineItems } from "@/lib/overlap";
 import { useCrossUpEffect } from "@/lib/celebrations";
 import { haptics } from "@/lib/haptics";
@@ -33,7 +35,7 @@ import { AddBrickSheet } from "@/components/AddBrickSheet";
 import { LooseBricksTray } from "@/components/LooseBricksTray";
 import { UnitsEntrySheet } from "@/components/UnitsEntrySheet";
 import { Fireworks } from "@/components/Fireworks";
-import type { Block, Brick, Category } from "@/lib/types";
+import type { AppState, Action, Block, Brick, Category } from "@/lib/types";
 
 /**
  * roundDownToHour — SG-m2-04.
@@ -69,10 +71,15 @@ interface UnitsSheetState {
   brickId: string | null;
 }
 
-export function BuildingClient() {
-  // M8: usePersistedState replaces useReducer — owns two-pass hydration + save-on-dispatch.
-  // The hook's dispatch is byte-identical to useReducer's dispatch at all call sites below.
-  const [state, dispatch] = usePersistedState();
+type BuildingClientProps = {
+  state: AppState;
+  dispatch: Dispatch<Action>;
+};
+
+export function BuildingClient({ state, dispatch }: BuildingClientProps) {
+  // M9c: state + dispatch are now received as props from AppShell.
+  // usePersistedState() was moved to AppShell so it runs exactly once in the app shell.
+  // All logic below is unchanged.
   const [sheetState, setSheetState] = useState<SheetState>({
     open: false,
     defaultStart: "00:00",

@@ -4,6 +4,17 @@ import userEvent from "@testing-library/user-event";
 import { BuildingClient } from "./BuildingClient";
 import { saveState } from "@/lib/persist";
 import type { PersistedState } from "@/lib/persist";
+import { usePersistedState } from "@/lib/usePersistedState";
+
+/**
+ * BuildingClientHarness — M9c sanctioned migration.
+ * Thin harness that calls usePersistedState() and renders BuildingClient with props.
+ * Preserves all existing test assertions; only the mount pattern changes.
+ */
+function BuildingClientHarness() {
+  const [state, dispatch] = usePersistedState();
+  return <BuildingClient state={state} dispatch={dispatch} />;
+}
 
 vi.mock("@/lib/uuid", () => ({ uuid: () => "uuid-1" }));
 
@@ -17,7 +28,7 @@ beforeEach(() => {
 // C-bld-034 (re-authored M2): BuildingClient initializes with empty blocks
 describe("C-bld-034 (re-authored M2): BuildingClient initializes with empty blocks", () => {
   it("renders locked SPEC empty-state copy when no blocks are present", () => {
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
     expect(
       screen.getByText("Tap any slot to lay your first block."),
     ).toBeInTheDocument();
@@ -27,7 +38,7 @@ describe("C-bld-034 (re-authored M2): BuildingClient initializes with empty bloc
 // C-bld-035 (re-authored M2): BlueprintBar IS in the DOM (unconditional)
 describe("C-bld-035 (re-authored M2): BlueprintBar always present even with empty blocks", () => {
   it("BlueprintBar section is in the DOM with empty blocks", () => {
-    const { container } = render(<BuildingClient />);
+    const { container } = render(<BuildingClientHarness />);
     const blueprint = container.querySelector('[aria-label="Day blueprint"]');
     expect(blueprint).not.toBeNull();
   });
@@ -36,7 +47,7 @@ describe("C-bld-035 (re-authored M2): BlueprintBar always present even with empt
 // C-bld-036: NowCard is NOT in the DOM
 describe("C-bld-036: NowCard absent when blocks is empty", () => {
   it("no element with data-component='now-card' is in the DOM", () => {
-    const { container } = render(<BuildingClient />);
+    const { container } = render(<BuildingClientHarness />);
     expect(container.querySelector('[data-component="now-card"]')).toBeNull();
   });
 });
@@ -50,7 +61,7 @@ describe("C-bld-039: BuildingClient shows live dateLabel and now pin", () => {
   it("renders live dateLabel 'Wed, May 6' (not the placeholder '')", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-06T08:30:00"));
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
     expect(screen.getByText("Wed, May 6")).toBeInTheDocument();
     expect(screen.queryByLabelText("Now 00:00")).not.toBeInTheDocument();
   });
@@ -69,7 +80,7 @@ describe("C-bld-040 (re-authored M2, updated M8): BuildingClient Hero shows prog
   it("Hero renders 'Building 1 of 365' on first run (programStart = today = May 6, 2026)", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-06T08:30:00"));
-    const { container } = render(<BuildingClient />);
+    const { container } = render(<BuildingClientHarness />);
     const dayCounter = container.querySelector("section .mt-1");
     expect(dayCounter).not.toBeNull();
     const text = dayCounter?.textContent?.replace(/\s+/g, " ").trim();
@@ -81,7 +92,7 @@ describe("C-bld-040 (re-authored M2, updated M8): BuildingClient Hero shows prog
 // C-m1-019: NowCard NOT in DOM
 describe("C-m1-019: BuildingClient does not render NowCard", () => {
   it("no element with data-component='now-card' is in the DOM", () => {
-    const { container } = render(<BuildingClient />);
+    const { container } = render(<BuildingClientHarness />);
     expect(container.querySelector('[data-component="now-card"]')).toBeNull();
   });
 });
@@ -89,7 +100,7 @@ describe("C-m1-019: BuildingClient does not render NowCard", () => {
 // C-m1-020 (re-authored M2): BuildingClient renders no block cards initially
 describe("C-m1-020 (re-authored M2): BuildingClient renders no block cards initially", () => {
   it("has zero timeline-block and brick-chip elements", () => {
-    const { container } = render(<BuildingClient />);
+    const { container } = render(<BuildingClientHarness />);
     expect(
       container.querySelectorAll('[data-component="timeline-block"]'),
     ).toHaveLength(0);
@@ -99,7 +110,7 @@ describe("C-m1-020 (re-authored M2): BuildingClient renders no block cards initi
   });
 
   it("timeline column contains hour-grid, NowLine, and EmptyBlocks card", () => {
-    const { container } = render(<BuildingClient />);
+    const { container } = render(<BuildingClientHarness />);
     expect(container.querySelector('[data-testid="hour-grid"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="now-line"]')).not.toBeNull();
     expect(
@@ -111,7 +122,7 @@ describe("C-m1-020 (re-authored M2): BuildingClient renders no block cards initi
 // C-m1-021: BlueprintBar always rendered unconditionally
 describe("C-m1-021: BlueprintBar is rendered unconditionally with empty blocks", () => {
   it("exactly one element with aria-label='Day blueprint' is in the DOM", () => {
-    const { container } = render(<BuildingClient />);
+    const { container } = render(<BuildingClientHarness />);
     const blueprints = container.querySelectorAll(
       '[aria-label="Day blueprint"]',
     );
@@ -124,7 +135,7 @@ describe("C-m1-021: BlueprintBar is rendered unconditionally with empty blocks",
 describe("C-m2-012: New category persists if block Cancelled (re-authored M2)", () => {
   it("category exists in state after create+cancel, block does not", async () => {
     const user = userEvent.setup();
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
 
     // Open chooser via dock + button (M4d: dock + → chooser first)
     await user.click(screen.getByRole("button", { name: "Add" }));
@@ -177,7 +188,7 @@ describe("C-m2-012: New category persists if block Cancelled (re-authored M2)", 
 describe("C-m2-016: Empty-state card unmounts when blocks.length > 0 (re-authored M2)", () => {
   it("EmptyBlocks card disappears after saving a block via AddBlockSheet", async () => {
     const user = userEvent.setup();
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
 
     // Initially EmptyBlocks is visible
     expect(
@@ -207,7 +218,7 @@ describe("C-m2-016: Empty-state card unmounts when blocks.length > 0 (re-authore
 describe("C-m2-020: BuildingClient wires reducer + sheet + onSave (re-authored M2)", () => {
   it("saves a block: name='Foo', categoryId=null, bricks=[]", async () => {
     const user = userEvent.setup();
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
 
     // Click dock + → chooser opens (M4d routing)
     await user.click(screen.getByRole("button", { name: "Add" }));
@@ -243,7 +254,7 @@ describe("C-m2-020: BuildingClient wires reducer + sheet + onSave (re-authored M
 
   it("Add button opens chooser; Cancel closes without adding block", async () => {
     const user = userEvent.setup();
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
 
     await user.click(screen.getByRole("button", { name: "Add" }));
     // Chooser dialog is open
@@ -262,14 +273,14 @@ describe("C-m2-020: BuildingClient wires reducer + sheet + onSave (re-authored M
 
 describe("C-m3-009: LooseBricksTray hidden when empty; appears with block or loose brick", () => {
   it("tray is NOT in the DOM when blocks and looseBricks are both empty", () => {
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
     const tray = screen.queryByRole("region", { name: /loose bricks/i });
     expect(tray).toBeNull();
   });
 
   it("tray appears (collapsed) after a block is added", async () => {
     const user = userEvent.setup();
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
 
     // Add a block via chooser → AddBlockSheet (M4d routing)
     await user.click(screen.getByRole("button", { name: "Add" }));
@@ -290,7 +301,7 @@ describe("C-m3-009: LooseBricksTray hidden when empty; appears with block or loo
 describe("C-m3-024: BuildingClient wires AddBrickSheet and ADD_BRICK dispatch", () => {
   it("tap block → + Add brick → save tick brick → brick in block.bricks; sheet closes", async () => {
     const user = userEvent.setup();
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
 
     // First add a block via chooser (M4d routing)
     await user.click(screen.getByRole("button", { name: "Add" }));
@@ -332,7 +343,7 @@ describe("C-m3-024: BuildingClient wires AddBrickSheet and ADD_BRICK dispatch", 
 
   it("+ Brick via LooseBricksTray → brick lands in looseBricks (tray shows chip)", async () => {
     const user = userEvent.setup();
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
 
     // Add a block first (so tray is visible) via chooser (M4d routing)
     await user.click(screen.getByRole("button", { name: "Add" }));
@@ -361,7 +372,7 @@ describe("C-m3-024: BuildingClient wires AddBrickSheet and ADD_BRICK dispatch", 
 
   it("adding a brick re-renders Hero pct in same React tick (no stale 0%)", async () => {
     const user = userEvent.setup();
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
 
     // Add block with a done tick brick via full flow (M4d: via chooser)
     await user.click(screen.getByRole("button", { name: "Add" }));
@@ -433,7 +444,7 @@ describe("C-m4a-015: BuildingClient tap tick chip → LOG_TICK_BRICK → state c
     vi.clearAllMocks();
 
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    const { container } = render(<BuildingClient />);
+    const { container } = render(<BuildingClientHarness />);
 
     // Step 1: Add a block via the + button (BottomBar)
     const addBlockBtn = container.querySelector(
@@ -458,7 +469,7 @@ describe("C-m4a-015: BuildingClient tap tick chip → LOG_TICK_BRICK → state c
   });
 
   it("BuildingClient renders Fireworks component (Fireworks in component tree)", () => {
-    render(<BuildingClient />);
+    render(<BuildingClientHarness />);
     // Fireworks is conditionally rendered (active=false → null initially)
     // The test verifies the component renders without error and the tree is healthy
     expect(screen.queryByTestId("fireworks")).toBeNull(); // not active initially
@@ -511,7 +522,7 @@ describe("C-m8-007: BuildingClient feeds dayNumber(programStart, todayIso) to He
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-15T08:30:00"));
 
-    const { container } = render(<BuildingClient />);
+    const { container } = render(<BuildingClientHarness />);
     // Flush effects so hydration loads the persisted programStart
     await act(async () => {});
 
@@ -528,7 +539,7 @@ describe("C-m8-007: BuildingClient feeds dayNumber(programStart, todayIso) to He
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-15T08:30:00"));
 
-    const { container } = render(<BuildingClient />);
+    const { container } = render(<BuildingClientHarness />);
     await act(async () => {});
 
     const dayCounter = container.querySelector("section .mt-1");
@@ -585,7 +596,7 @@ describe("C-m9b-006: BuildingClient renders freshly-seeded day after next-day ro
     };
     saveState(persisted);
 
-    const { container } = render(<BuildingClient />);
+    const { container } = render(<BuildingClientHarness />);
     await act(async () => {});
 
     // The building view renders the freshly-seeded day (same Building components, rolled-over data).

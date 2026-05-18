@@ -42,11 +42,11 @@ describe("C-m1-022 (re-authored M2): BuildingClient.tsx has clean imports", () =
     expect(source).not.toMatch(/\bEmptyBricks\b/);
   });
 
-  it("does import usePersistedState (M8: replaces useReducer+defaultState direct import)", () => {
-    // M8: BuildingClient delegates state + hydration to usePersistedState hook.
-    // reducer and defaultState are now used inside usePersistedState, not directly by BuildingClient.
-    expect(source).toMatch(/usePersistedState/);
-    expect(source).toMatch(/from.*lib\/usePersistedState/);
+  it("does NOT import usePersistedState (M9c: hook moved to AppShell; BuildingClient is prop-receiving)", () => {
+    // M9c: BuildingClient no longer calls usePersistedState() — it receives [state, dispatch] as props.
+    // AppShell owns the single usePersistedState() call (SG-m9c-01).
+    // This assertion confirms the prop-refactor is clean: the hook import must not reappear here.
+    expect(source).not.toMatch(/from.*lib\/usePersistedState/);
   });
 
   it("does import AddBlockSheet (M2 new component)", () => {
