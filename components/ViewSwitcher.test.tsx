@@ -1,12 +1,13 @@
 /**
- * components/ViewSwitcher.test.tsx — M9c: C-m9c-012 (amended for M9d)
+ * components/ViewSwitcher.test.tsx — M9c: C-m9c-012 (amended for M9d, then M9e)
  * Tests for ViewSwitcher — Day·Week·Month·Year segmented control.
  *
- * M9d amendment (C-m9c-012): Week is now a live segment (AC #8).
+ * M9d amendment (C-m9c-012): Week is now a live segment (AC #8, M9d).
  *   - "Week disabled" sub-test inverted: Week is now live, fires onSelect("week"), aria-selected toggles.
  *   - "Week and Year disabled buttons" sub-test narrowed: only Year is disabled.
- *   - Year-disabled sub-test preserved verbatim.
- *   - All other C-m9c-012 sub-tests (4-segment render, tablist, aria-label, Day/Month live) verbatim.
+ * M9e amendment (C-m9c-012, C-m9d-010): Year is now a live segment (AC #8, M9e).
+ *   - Year-disabled sub-tests inverted: Year is now live, fires onSelect("year"), not disabled.
+ *   - All other C-m9c-012 sub-tests (4-segment render, tablist, aria-label, Day/Month/Week live) verbatim.
  */
 
 import { describe, it, expect, vi } from "vitest";
@@ -14,9 +15,9 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ViewSwitcher } from "./ViewSwitcher";
 
-// ─── C-m9c-012: ViewSwitcher — 4 segments, aria-selected, Day/Month/Week live, Year disabled ──
+// ─── C-m9c-012: ViewSwitcher — 4 segments, aria-selected, all four live (amended M9e) ─────────
 
-describe("C-m9c-012: ViewSwitcher — 4 segments, active indicator, Day/Month live, Week/Year disabled", () => {
+describe("C-m9c-012: ViewSwitcher — 4 segments, active indicator, all four tabs live (M9e: Year enabled)", () => {
   it("renders a tablist with aria-label='Calendar view' containing 4 tabs", () => {
     render(<ViewSwitcher view="day" onSelect={vi.fn()} />);
     const tablist = screen.getByRole("tablist");
@@ -87,31 +88,44 @@ describe("C-m9c-012: ViewSwitcher — 4 segments, active indicator, Day/Month li
     expect(weekTab).toHaveAttribute("aria-selected", "true");
   });
 
-  // Year-disabled sub-test preserved verbatim (Year stays live: false in M9d).
-  it("Year segment is disabled (aria-disabled=true) — clicking it does NOT call onSelect", async () => {
+  // M9e amendment: Year is now a LIVE segment (AC #8, M9e) — inverted from "Year disabled" sub-test.
+  // Year no longer carries aria-disabled; clicking it fires onSelect("year") exactly once.
+  it("Year segment is LIVE (no aria-disabled) — clicking it calls onSelect('year') exactly once", async () => {
     const onSelect = vi.fn();
     const user = userEvent.setup();
     render(<ViewSwitcher view="day" onSelect={onSelect} />);
     const yearTab = screen.getByRole("tab", { name: "Year" });
-    expect(yearTab).toHaveAttribute("aria-disabled", "true");
+    expect(yearTab).not.toHaveAttribute("aria-disabled", "true");
+    expect(yearTab).not.toBeDisabled();
     await user.click(yearTab);
-    expect(onSelect).not.toHaveBeenCalled();
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith("year");
   });
 
-  // M9d amendment: narrowed to assert only Year is the disabled button (Week is now live).
-  it("only the Year tab is rendered as a disabled button (no crash)", () => {
+  // M9e amendment: all four tabs are live — no disabled button (Year now enabled).
+  it("all four tabs are live buttons (no segment is disabled)", () => {
     render(<ViewSwitcher view="day" onSelect={vi.fn()} />);
     const yearTab = screen.getByRole("tab", { name: "Year" });
-    expect(yearTab).toBeDisabled();
-    // Week is now a live tab — not disabled
     const weekTab = screen.getByRole("tab", { name: "Week" });
+    const monthTab = screen.getByRole("tab", { name: "Month" });
+    const dayTab = screen.getByRole("tab", { name: "Day" });
+    expect(yearTab).not.toBeDisabled();
     expect(weekTab).not.toBeDisabled();
+    expect(monthTab).not.toBeDisabled();
+    expect(dayTab).not.toBeDisabled();
+  });
+
+  // Year aria-selected toggles when view="year" (M9e amendment).
+  it("Year segment has aria-selected=true when view='year'", () => {
+    render(<ViewSwitcher view="year" onSelect={vi.fn()} />);
+    const yearTab = screen.getByRole("tab", { name: "Year" });
+    expect(yearTab).toHaveAttribute("aria-selected", "true");
   });
 });
 
-// ─── C-m9d-010: ViewSwitcher — Week now enabled, aria-selected, fires onSelect; Year stays disabled ──
+// ─── C-m9d-010: ViewSwitcher — Week segment enabled; Year now enabled (M9e amendment) ────────────
 
-describe("C-m9d-010: ViewSwitcher — Week segment enabled, selectable, fires onSelect; Year stays disabled", () => {
+describe("C-m9d-010: ViewSwitcher — Week segment enabled, selectable, fires onSelect; Year now enabled", () => {
   it("four segments render — Day, Week, Month, Year — inside role='tablist'", () => {
     render(<ViewSwitcher view="day" onSelect={vi.fn()} />);
     const tablist = screen.getByRole("tablist");
@@ -157,14 +171,17 @@ describe("C-m9d-010: ViewSwitcher — Week segment enabled, selectable, fires on
     expect(monthTab).toHaveAttribute("aria-selected", "false");
   });
 
-  it("Year is the lone remaining disabled button — clicking it fires onSelect zero times", async () => {
+  // M9e amendment: Year is now a LIVE segment — inverted from "Year is the lone remaining
+  // disabled button". Year is now enabled: not disabled, no aria-disabled, fires onSelect("year").
+  it("Year is now a live tab — not disabled, clicking it fires onSelect('year') exactly once", async () => {
     const onSelect = vi.fn();
     const user = userEvent.setup();
     render(<ViewSwitcher view="day" onSelect={onSelect} />);
     const yearTab = screen.getByRole("tab", { name: "Year" });
-    expect(yearTab).toBeDisabled();
-    expect(yearTab).toHaveAttribute("aria-disabled", "true");
+    expect(yearTab).not.toBeDisabled();
+    expect(yearTab).not.toHaveAttribute("aria-disabled", "true");
     await user.click(yearTab);
-    expect(onSelect).not.toHaveBeenCalled();
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith("year");
   });
 });
