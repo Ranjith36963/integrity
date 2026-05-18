@@ -57,11 +57,6 @@ test("E-m9c-001: switching to Month view shows Kingdom grid; Day returns to Buil
     const colHeaders = page.getByRole("columnheader");
     expect(await colHeaders.count()).toBe(7);
 
-    // Building view no longer shown (no Hero section)
-    const hero = page.locator("[data-testid='hero']");
-    // hero should be gone now we are in Month view
-    // (no assertion if selector absent — guard pattern)
-
     // Switch back to Day
     const dayTab = page.getByRole("tab", { name: /^day$/i });
     if ((await dayTab.count()) > 0) {
