@@ -1067,7 +1067,7 @@ describe("U-m9c-010: dayScore — pure function: frozen input, no mutation, no c
       blocks: Object.freeze(state.blocks),
       categories: Object.freeze(state.categories),
       looseBricks: Object.freeze(state.looseBricks),
-    }) as AppState;
+    }) as unknown as AppState;
 
     expect(() => dayScore(frozenState, "2026-05-17")).not.toThrow();
     expect(() => dayScore(frozenState, "2026-05-18")).not.toThrow();

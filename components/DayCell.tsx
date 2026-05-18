@@ -135,7 +135,9 @@ export function DayCell(props: DayCellProps) {
   }
 
   // ── scored ─────────────────────────────────────────────────────────────────
-  const { score, isToday = false, onOpen } = props;
+  // Narrow props to DayCellPropsScored (all other kinds are exhausted above).
+  const scoredProps = props as DayCellPropsScored;
+  const { score, isToday = false, onOpen } = scoredProps;
   const alpha = 0.12 + (score / 100) * 0.78;
   const roundedScore = Math.round(score);
 
