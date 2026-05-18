@@ -64,6 +64,7 @@ npm run test:e2e:install
 | M4g — Timer-era Dead-code Sweep     | Shipped to preview — awaiting Gate #2 tap-test |
 | M8 — Persistence                    | Shipped to preview — awaiting Gate #2 tap-test |
 | M9a — appliesOn recurrence resolver | Shipped to preview — awaiting Gate #2 tap-test |
+| M9b — Day rollover + history store  | Shipped to preview — awaiting Gate #2 tap-test |
 
 Latest preview: `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (branch alias; auto-tracks `claude/verify-m0-deployment-s4XRy`). Vercel Deployment Protection active — open in browser while signed in to Vercel.
 
@@ -100,6 +101,7 @@ lib/                 Domain logic: types, data, scoring, utilities
   blockValidation.ts Pure validators (title, end time, overflow, recurrence, overlap, brick fields)
   uuid.ts            crypto.randomUUID() mockable seam
   appliesOn.ts       Pure recurrence resolver: appliesOn(recurrence, date) → boolean (M9a)
+  history.ts         Pure rollover engine: rollover(state, todayISO) → archives finished day + seeds fresh day (M9b)
 tests/
   e2e/               Playwright specs (e2e + a11y)
 docs/
