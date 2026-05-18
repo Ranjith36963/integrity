@@ -6,8 +6,8 @@
 
 ## Snapshot
 
-- **Branch:** `claude/verify-m0-deployment-s4XRy` at `dd16095` (ship commit TBD) · `main` at `c3ef9f1` (feature branch not yet merged)
-- **Last ship:** M9b — day rollover + history store — branch `claude/verify-m0-deployment-s4XRy`. Ship commit: see HEAD after `docs(ship-m9b)` commit.
+- **Branch:** `claude/verify-m0-deployment-s4XRy` at `b636d03` · `main` at `c3ef9f1` (feature branch not yet merged)
+- **Last ship:** M9b — day rollover + history store — commit `b636d03` — branch `claude/verify-m0-deployment-s4XRy`.
 - **Last preview URL:** `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (stable branch alias; auto-tracks latest deployment for this branch). Sandbox `curl -I` returns HTTP 403 `x-deny-reason: host_not_allowed` (Vercel Deployment Protection — same as M0–M9b; not a failure; signed-in browser sessions serve normally).
 - **Persisted schema: v2** (ADR-045). `AppState` now carries `history: Record<ISO-date, ArchivedDay>` and `currentDate: string`. `loadState` migrates v1 payloads to v2 with no data loss.
 - **Methodology:** The Loop (SDD-outside, TDD-inside) per ADR-025; **single human gate** (preview tap-test only) per ADR-041 — the VERIFIER agent now replaces the planning gate; per-phase commit prefixes per ADR-027.
