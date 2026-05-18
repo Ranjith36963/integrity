@@ -10,6 +10,7 @@
 import type { PersistedState } from "./persist";
 import type { AppState, ArchivedDay, Block, Brick } from "./types";
 import { weekDates } from "./weekGrid";
+import { monthDates } from "./yearGrid";
 import { dayPct } from "./dharma";
 import { appliesOn } from "./appliesOn";
 import { uuid } from "./uuid";
@@ -96,6 +97,98 @@ export function weekScore(state: AppState, anchorISO: string): number | null {
       numerator += score;
     }
     // score === null (missed in-range past day) → contributes 0 (already default)
+  }
+
+  // No qualifying day → no-data sentinel (never divide by zero)
+  if (denominator === 0) return NO_DATA;
+
+  return numerator / denominator;
+}
+
+/**
+ * monthScore(state, year, monthIndex) — M9e: pure period aggregate (ADR-046 read-only).
+ *
+ * Returns the average dayScore over every calendar day of (year, monthIndex),
+ * applying the honest-scoreboard rule (identical to weekScore):
+ *   - In-range non-future days (programStart ≤ d ≤ currentDate) → INCLUDED.
+ *     * dayScore returns a number  → contribute that number.
+ *     * dayScore returns NO_DATA (missed in-range past day) → contribute 0,
+ *       AND count in the denominator (honest average, not inflated).
+ *   - Future days (> state.currentDate) → EXCLUDED from both numerator and denominator.
+ *   - Pre-start days (< state.programStart) → EXCLUDED from both.
+ *   - Denominator === 0 (fully-future or fully-pre-start month) → returns NO_DATA.
+ *
+ * monthIndex is 0-indexed (0 = January … 11 = December), matching Date convention.
+ * "Today" is state.currentDate — the clock is NEVER read here.
+ * Pure function of (state, year, monthIndex). state may be frozen.
+ */
+export function monthScore(
+  state: AppState,
+  year: number,
+  monthIndex: number,
+): number | null {
+  const dates = monthDates(year, monthIndex);
+  const today = state.currentDate;
+  const start = state.programStart;
+
+  let numerator = 0;
+  let denominator = 0;
+
+  for (const d of dates) {
+    if (d > today) continue; // future — excluded
+    if (d < start) continue; // pre-start — excluded
+
+    // In-range non-future day — included
+    denominator += 1;
+    const score = dayScore(state, d);
+    if (score !== null) {
+      numerator += score;
+    }
+    // score === null (missed in-range past day) → contributes 0 (already default)
+  }
+
+  // No qualifying day → no-data sentinel (never divide by zero)
+  if (denominator === 0) return NO_DATA;
+
+  return numerator / denominator;
+}
+
+/**
+ * yearScore(state, year) — M9e: pure period aggregate (ADR-046 read-only).
+ *
+ * Returns the average dayScore over ALL calendar days of the given year,
+ * applying the SAME honest-scoreboard rule as weekScore and monthScore.
+ * This is day-averaging directly — NOT the mean of the twelve monthScore values
+ * (SG-m9e-01: averaging monthScores would over-weight short/sparse months).
+ *
+ * Builds the year's full date list by concatenating monthDates for all 12 months
+ * (365 or 366 dates — leap-year aware automatically), then applies per-date averaging.
+ *
+ * "Today" is state.currentDate — the clock is NEVER read here.
+ * Pure function of (state, year). state may be frozen.
+ */
+export function yearScore(state: AppState, year: number): number | null {
+  const today = state.currentDate;
+  const start = state.programStart;
+
+  let numerator = 0;
+  let denominator = 0;
+
+  // Iterate all 12 months, all days within each month
+  for (let m = 0; m < 12; m++) {
+    const dates = monthDates(year, m);
+    for (const d of dates) {
+      if (d > today) continue; // future — excluded
+      if (d < start) continue; // pre-start — excluded
+
+      // In-range non-future day — included
+      denominator += 1;
+      const score = dayScore(state, d);
+      if (score !== null) {
+        numerator += score;
+      }
+      // score === null (missed in-range past day) → contributes 0 (already default)
+    }
   }
 
   // No qualifying day → no-data sentinel (never divide by zero)
