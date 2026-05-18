@@ -30,6 +30,7 @@ import { PastDayDetail } from "./PastDayDetail";
 type MonthViewProps = {
   state: AppState;
   onOpenDay: (isoDate: string) => void;
+  initialMonth?: { year: number; month: number };
 };
 
 // Weekday headers — 0=Sun..6=Sat (ADR-019)
@@ -51,8 +52,8 @@ const MONTH_NAMES = [
   "December",
 ];
 
-export function MonthView({ state, onOpenDay }: MonthViewProps) {
-  // Displayed month — initialized to today's year/month; session-only, not persisted
+export function MonthView({ state, onOpenDay, initialMonth }: MonthViewProps) {
+  // Displayed month — initialized to initialMonth if provided, else today's year/month; session-only, not persisted
   const todayIso = today();
   const todayYear = Number(todayIso.slice(0, 4));
   const todayMonth = Number(todayIso.slice(5, 7)) - 1; // 0-indexed
@@ -60,10 +61,7 @@ export function MonthView({ state, onOpenDay }: MonthViewProps) {
   const [displayed, setDisplayed] = useState<{
     year: number;
     month: number;
-  }>({
-    year: todayYear,
-    month: todayMonth,
-  });
+  }>(initialMonth ?? { year: todayYear, month: todayMonth });
 
   // Opened past-day detail state
   const [openDate, setOpenDate] = useState<string | null>(null);
