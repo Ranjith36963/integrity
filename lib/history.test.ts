@@ -1,14 +1,15 @@
 /**
- * lib/history.test.ts — M9b rollover unit tests.
- * Covers U-m9b-010..021.
+ * lib/history.test.ts — M9b rollover unit tests + M9c dayScore unit tests.
+ * Covers U-m9b-010..021, U-m9c-007..012.
  * Pure unit tests — no localStorage, no clock reads.
- * rollover(state, todayISO) is called directly with literal todayISO strings.
+ * rollover(state, todayISO) and dayScore(state, isoDate) are called directly.
  */
 
 import { describe, it, expect } from "vitest";
-import { rollover } from "./history";
+import { rollover, dayScore, NO_DATA } from "./history";
 import type { PersistedState } from "./persist";
 import type { ArchivedDay } from "./types";
+import type { AppState } from "./types";
 
 // ─── Fixture helpers ──────────────────────────────────────────────────────────
 
@@ -792,5 +793,345 @@ describe("U-m9b-021: empty fresh day when all bricks are every-weekday and today
     ]); // carry (AC #13)
     expect(result.history["2026-05-16"]).toBeDefined(); // Saturday day archived
     expect(result.currentDate).toBe("2026-05-17");
+  });
+});
+
+// ─── M9c dayScore helper tests ────────────────────────────────────────────────
+//
+// Standing fixture state:
+//   programStart: "2026-05-01"
+//   currentDate:  "2026-05-18"
+//   history:
+//     "2026-05-17" → ArchivedDay scoring 100 (1 block, 1 tick brick done:true)
+//     "2026-05-16" → ArchivedDay scoring 60  (1 block, 3 tick bricks 2 done:true)
+//     "2026-05-15" → ArchivedDay scoring 0   (1 units brick done:0/target:10)
+//   live day (blocks+looseBricks) scoring dayPct === 40  (5 tick bricks, 2 done)
+//
+// dayPct reads only state.blocks and state.looseBricks (dharma.ts:49).
+// ArchivedDay has blocks + looseBricks sufficient to drive the exact pct.
+
+/** Build an AppState that scores dayPct === 40% via 5 tick bricks (2 done). */
+function makeLiveState(overrides: Partial<AppState> = {}): AppState {
+  return {
+    programStart: "2026-05-01",
+    currentDate: "2026-05-18",
+    history: {
+      "2026-05-17": makeArchivedDay100(),
+      "2026-05-16": makeArchivedDay60(),
+      "2026-05-15": makeArchivedDay0(),
+    },
+    // Live day: 5 tick bricks (1 loose, rest in block) → 2 done → 40%
+    // blockPct("b-live") = (done0 + done1) / 4 = 2/4 = 50%
+    // brickPct(loose) = 0 (done:false)
+    // dayPct = (50 + 0) / 2 = 25 ... adjust to hit exactly 40
+    //
+    // Simpler: 2 blocks of 2 bricks each — block1: 2/2=100, block2: 0/2=0
+    //          dayPct = (100 + 0) / 2 = 50 — not 40
+    //
+    // Use 5 loose bricks (2 done:true, 3 done:false)
+    //   dayPct = sum(brickPct) / total = (100+100+0+0+0) / 5 = 40% ✓
+    blocks: [],
+    categories: [],
+    looseBricks: [
+      {
+        id: "lb1",
+        name: "A",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: true,
+      },
+      {
+        id: "lb2",
+        name: "B",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: true,
+      },
+      {
+        id: "lb3",
+        name: "C",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: false,
+      },
+      {
+        id: "lb4",
+        name: "D",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: false,
+      },
+      {
+        id: "lb5",
+        name: "E",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: false,
+      },
+    ],
+    ...overrides,
+  };
+}
+
+/** ArchivedDay scoring 100%: 1 block with 1 tick brick done:true */
+function makeArchivedDay100(): ArchivedDay {
+  return {
+    blocks: [
+      {
+        id: "b-arch100",
+        name: "Morning",
+        start: "06:00",
+        recurrence: { kind: "every-day" },
+        categoryId: null,
+        bricks: [
+          {
+            id: "r-arch100",
+            name: "Meditate",
+            categoryId: null,
+            parentBlockId: "b-arch100",
+            hasDuration: false,
+            kind: "tick",
+            done: true,
+          },
+        ],
+      },
+    ],
+    categories: [],
+    looseBricks: [],
+  };
+}
+
+/** ArchivedDay scoring 60%: 1 block with 3 bricks, 2 done → blockPct=66.7 */
+// Use simpler: 5 loose tick bricks, 3 done → 60%
+function makeArchivedDay60(): ArchivedDay {
+  return {
+    blocks: [],
+    categories: [],
+    looseBricks: [
+      {
+        id: "a1",
+        name: "a",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: true,
+      },
+      {
+        id: "a2",
+        name: "b",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: true,
+      },
+      {
+        id: "a3",
+        name: "c",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: true,
+      },
+      {
+        id: "a4",
+        name: "d",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: false,
+      },
+      {
+        id: "a5",
+        name: "e",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: false,
+      },
+    ],
+  };
+}
+
+/** ArchivedDay scoring 0%: 1 units brick done:0, target:10 */
+function makeArchivedDay0(): ArchivedDay {
+  return {
+    blocks: [],
+    categories: [],
+    looseBricks: [
+      {
+        id: "u1",
+        name: "Units",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "units",
+        target: 10,
+        unit: "reps",
+        done: 0,
+      },
+    ],
+  };
+}
+
+// ─── U-m9c-007: dayScore — archived branch ────────────────────────────────────
+
+describe("U-m9c-007: dayScore — archived-day branch returns dayPct over ArchivedDay", () => {
+  it("history['2026-05-17'] scores 100 — returns number 100", () => {
+    const state = makeLiveState();
+    expect(dayScore(state, "2026-05-17")).toBe(100);
+  });
+
+  it("history['2026-05-16'] scores 60 — returns number 60", () => {
+    const state = makeLiveState();
+    expect(dayScore(state, "2026-05-16")).toBe(60);
+  });
+
+  it("history['2026-05-15'] scores 0 — returns number 0 (not null)", () => {
+    const state = makeLiveState();
+    expect(dayScore(state, "2026-05-15")).toBe(0);
+  });
+});
+
+// ─── U-m9c-008: dayScore — no-data sentinel (mutation-resistant) ──────────────
+
+describe("U-m9c-008: dayScore — no-data sentinel: future/pre-start/missed all return null", () => {
+  it("NO_DATA is exported and === null", () => {
+    expect(NO_DATA).toBe(null);
+  });
+
+  it("future date '2026-05-25' (no history entry, not currentDate) → strict null", () => {
+    const state = makeLiveState();
+    expect(dayScore(state, "2026-05-25")).toBe(null);
+  });
+
+  it("pre-programStart date '2026-04-10' → strict null", () => {
+    const state = makeLiveState();
+    expect(dayScore(state, "2026-04-10")).toBe(null);
+  });
+
+  it("past in-range date '2026-05-13' (no history entry) → strict null", () => {
+    const state = makeLiveState();
+    expect(dayScore(state, "2026-05-13")).toBe(null);
+  });
+
+  it("empty history: no-data date → null (plain `in` check, no crash)", () => {
+    const state = makeLiveState({ history: {}, currentDate: "2026-05-18" });
+    expect(dayScore(state, "2026-05-17")).toBe(null);
+  });
+});
+
+// ─── U-m9c-009: dayScore — currentDate branch + history precedence ────────────
+
+describe("U-m9c-009: dayScore — currentDate branch + history-before-currentDate precedence", () => {
+  it("currentDate '2026-05-18' (not in history) → live dayPct === 40", () => {
+    const state = makeLiveState();
+    expect(dayScore(state, "2026-05-18")).toBe(40);
+  });
+
+  it("date in BOTH history and currentDate: history wins (precedence)", () => {
+    // Should-not-occur case: currentDate === '2026-05-17' and history['2026-05-17'] present.
+    // history branch scores 100; live day scores 40. history must win.
+    const state = makeLiveState({ currentDate: "2026-05-17" });
+    // state.history['2026-05-17'] scores 100; live day (5 bricks 2 done) = 40
+    expect(dayScore(state, "2026-05-17")).toBe(100);
+  });
+});
+
+// ─── U-m9c-010: dayScore — purity, no mutation, no clock read ────────────────
+
+describe("U-m9c-010: dayScore — pure function: frozen input, no mutation, no clock read", () => {
+  it("does not throw when state is deeply frozen", () => {
+    const state = makeLiveState();
+    const frozenState = Object.freeze({
+      ...state,
+      history: Object.freeze({
+        "2026-05-17": Object.freeze(makeArchivedDay100()),
+        "2026-05-16": Object.freeze(makeArchivedDay60()),
+        "2026-05-15": Object.freeze(makeArchivedDay0()),
+      }),
+      blocks: Object.freeze(state.blocks),
+      categories: Object.freeze(state.categories),
+      looseBricks: Object.freeze(state.looseBricks),
+    }) as AppState;
+
+    expect(() => dayScore(frozenState, "2026-05-17")).not.toThrow();
+    expect(() => dayScore(frozenState, "2026-05-18")).not.toThrow();
+  });
+
+  it("calling twice with identical args returns identical results (pure)", () => {
+    const state = makeLiveState();
+    expect(dayScore(state, "2026-05-17")).toBe(dayScore(state, "2026-05-17"));
+    expect(dayScore(state, "2026-05-18")).toBe(dayScore(state, "2026-05-18"));
+  });
+});
+
+// ─── U-m9c-011: dayScore — 0-score archived vs missed day ────────────────────
+
+describe("U-m9c-011: dayScore — 0-score archived (number 0) vs missed day (null) are distinct", () => {
+  it("history['2026-05-15'] scores 0 → returns number 0, not null", () => {
+    const state = makeLiveState();
+    const result = dayScore(state, "2026-05-15");
+    expect(result).toBe(0); // strict number, not null
+    expect(result).not.toBe(null);
+  });
+
+  it("past in-range date with NO history entry ('2026-05-14') → returns null", () => {
+    const state = makeLiveState();
+    const result = dayScore(state, "2026-05-14");
+    expect(result).toBe(null);
+  });
+
+  it("0 (number) and null are distinguishable: 0 === 0 && null !== 0", () => {
+    const state = makeLiveState();
+    const scored = dayScore(state, "2026-05-15");
+    const missed = dayScore(state, "2026-05-14");
+    expect(scored === 0).toBe(true);
+    expect(missed === null).toBe(true);
+    expect(scored === missed).toBe(false);
+  });
+});
+
+// ─── U-m9c-012: dayScore — ArchivedDay → dayPct field contract ────────────────
+
+describe("U-m9c-012: dayScore — result depends only on blocks+looseBricks of ArchivedDay", () => {
+  it("changing categories in ArchivedDay does not change the score", () => {
+    // dayPct reads only blocks + looseBricks — categories are irrelevant
+    const base = makeLiveState();
+    const score1 = dayScore(base, "2026-05-17"); // history['2026-05-17'] → 100
+
+    // Mutate a copy of history with different categories — score must be unchanged
+    const differentCats: ArchivedDay = {
+      ...makeArchivedDay100(),
+      categories: [{ id: "cat-X", name: "SomeCat", color: "#ff0000" }],
+    };
+    const modified = makeLiveState({
+      history: { ...base.history, "2026-05-17": differentCats },
+    });
+    const score2 = dayScore(modified, "2026-05-17");
+    expect(score1).toBe(score2); // categories do not affect result
+  });
+
+  it("score is a number in [0,100] and matches dayPct over the ArchivedDay's blocks+looseBricks", () => {
+    const state = makeLiveState();
+    const score = dayScore(state, "2026-05-17");
+    expect(typeof score).toBe("number");
+    expect(score).toBeGreaterThanOrEqual(0);
+    expect(score).toBeLessThanOrEqual(100);
+    expect(score).toBe(100); // makeArchivedDay100() has 1 done tick brick → 100%
   });
 });
