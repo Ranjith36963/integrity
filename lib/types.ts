@@ -61,6 +61,7 @@ export type ArchivedDay = {
 
 // AppState — M4f: runningTimerBrickId removed (ADR-043). M8: programStart added.
 // M9b: currentDate + history added (ADR-045; runtime-needed, must round-trip through AppState).
+// M5: deletions added (ADR-018 — per-day "just today" override map).
 export type AppState = {
   blocks: Block[];
   categories: Category[];
@@ -69,15 +70,20 @@ export type AppState = {
   programStart: string; // M8 — ISO YYYY-MM-DD, stamped once on first run (ADR-044)
   currentDate: string; // M9b — ISO YYYY-MM-DD, the date of the in-progress day (ADR-045)
   history: Record<string, ArchivedDay>; // M9b — keyed by ISO YYYY-MM-DD (ADR-045)
+  deletions: Record<string, true>; // M5 — key: `${currentDate}:${blockId}` — per-day "just today" overrides (ADR-018)
 };
 
 // Action — M4f: collapsed to 5 variants; 5 timer/goal actions removed (ADR-043)
+// M5: three new delete actions added (exhaustiveness enforced by assertNever in reducer).
 export type Action =
   | { type: "ADD_BLOCK"; block: Block }
   | { type: "ADD_CATEGORY"; category: Category }
   | { type: "ADD_BRICK"; brick: Brick } // M3 — routed by brick.parentBlockId
   | { type: "LOG_TICK_BRICK"; brickId: string } // M4a — flips `done` on the brick with this id
-  | { type: "SET_UNITS_DONE"; brickId: string; done: number }; // M4f — sets done on a units brick
+  | { type: "SET_UNITS_DONE"; brickId: string; done: number } // M4f — sets done on a units brick
+  | { type: "DELETE_BLOCK_TODAY"; blockId: string } // M5 — sets deletions[`${currentDate}:${blockId}`] = true
+  | { type: "DELETE_BLOCK_ALL"; blockId: string } // M5 — removes the template from state.blocks
+  | { type: "DELETE_BRICK"; brickId: string }; // M5 — removes the brick from its block or looseBricks
 // START_TIMER, STOP_TIMER, TICK_TIMER, SET_TIMER_MINUTES: REMOVED in M4f
 // LOG_GOAL_BRICK: REMOVED in M4f
 

@@ -43,6 +43,7 @@ export function defaultState(): AppState {
     programStart: today(), // M8 — stamped to today on first run (ADR-044)
     currentDate: today(), // M9b — in-progress day date (ADR-045)
     history: {}, // M9b — archived days map (ADR-045)
+    deletions: {}, // M5 — per-day block override map (ADR-018)
   };
 }
 
@@ -164,6 +165,49 @@ export function reducer(state: AppState, action: Action): AppState {
         return out;
       });
       if (!blocksChanged && !looseChanged) return state; // AC #8: missing id ⇒ unchanged
+      return {
+        ...state,
+        blocks: blocksChanged ? newBlocks : state.blocks,
+        looseBricks: looseChanged ? newLoose : state.looseBricks,
+      };
+    }
+    case "DELETE_BLOCK_TODAY": {
+      // Sets deletions[`${currentDate}:${blockId}`] = true (ADR-018, ADR-020).
+      // state.blocks is untouched — the template survives (AC #6).
+      // Idempotent: re-dispatching sets the same key again (harmless).
+      // The key is set unconditionally even if blockId is not in state.blocks (harmless).
+      const key = `${state.currentDate}:${action.blockId}`;
+      return {
+        ...state,
+        deletions: { ...state.deletions, [key]: true },
+      };
+    }
+    case "DELETE_BLOCK_ALL": {
+      // Removes the block template from state.blocks only.
+      // state.history is NOT touched (ADR-045 — history is read-only).
+      // state.deletions is NOT pruned — stale keys for the removed block are left in place (SG-m5-06).
+      return {
+        ...state,
+        blocks: state.blocks.filter((b) => b.id !== action.blockId),
+      };
+    }
+    case "DELETE_BRICK": {
+      // Removes the brick with action.brickId from whichever container holds it.
+      // Mirrors the SET_UNITS_DONE array-identity pattern:
+      // returns the original state reference when nothing changed (no-op on missing id).
+      let blocksChanged = false;
+      const newBlocks = state.blocks.map((bl) => {
+        const before = bl.bricks.length;
+        const filtered = bl.bricks.filter((br) => br.id !== action.brickId);
+        if (filtered.length === before) return bl;
+        blocksChanged = true;
+        return { ...bl, bricks: filtered };
+      });
+      const newLoose = state.looseBricks.filter(
+        (br) => br.id !== action.brickId,
+      );
+      const looseChanged = newLoose.length !== state.looseBricks.length;
+      if (!blocksChanged && !looseChanged) return state; // no-op: original reference
       return {
         ...state,
         blocks: blocksChanged ? newBlocks : state.blocks,

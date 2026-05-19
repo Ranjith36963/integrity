@@ -103,6 +103,7 @@ describe("U-m2-009: reducer ADD_CATEGORY, assertNever, and defaultState", () => 
     const s = defaultState();
     // M8: programStart added to AppState (ADR-044)
     // M9b: currentDate + history added (ADR-045)
+    // M5 sanctioned amendment: deletions: {} added (expected M5 collateral)
     expect(s).toEqual({
       blocks: [],
       categories: [],
@@ -110,6 +111,7 @@ describe("U-m2-009: reducer ADD_CATEGORY, assertNever, and defaultState", () => 
       programStart: s.programStart, // ISO date — exact value is clock-dependent
       currentDate: s.currentDate, // M9b — clock-dependent
       history: {}, // M9b — empty on first run
+      deletions: {}, // M5 — empty on first run
     });
     expect(typeof s.programStart).toBe("string");
   });
@@ -332,6 +334,7 @@ describe("U-m3-011: assertNever exhaustiveness + defaultState looseBricks", () =
     const s = defaultState();
     // M8: programStart added to AppState (ADR-044)
     // M9b: currentDate + history added (ADR-045)
+    // M5 sanctioned amendment: deletions: {} added (expected M5 collateral)
     expect(s).toEqual({
       blocks: [],
       categories: [],
@@ -339,6 +342,7 @@ describe("U-m3-011: assertNever exhaustiveness + defaultState looseBricks", () =
       programStart: s.programStart,
       currentDate: s.currentDate, // M9b
       history: {}, // M9b
+      deletions: {}, // M5 — empty on first run
     });
   });
 });
@@ -924,6 +928,7 @@ describe("U-m4e-021: assertNever exhaustiveness preserved after M4e; defaultStat
     const s = defaultState();
     // M8: programStart added to AppState (ADR-044)
     // M9b: currentDate + history added (ADR-045)
+    // M5 sanctioned amendment: deletions: {} added (expected M5 collateral)
     expect(s).toEqual({
       blocks: [],
       categories: [],
@@ -931,6 +936,7 @@ describe("U-m4e-021: assertNever exhaustiveness preserved after M4e; defaultStat
       programStart: s.programStart,
       currentDate: s.currentDate, // M9b
       history: {}, // M9b
+      deletions: {}, // M5 — empty on first run
     });
   });
 });
@@ -1377,6 +1383,7 @@ describe("U-m4f-010: assertNever exhaustiveness + defaultState shape post-M4f", 
     expect("runningTimerBrickId" in s).toBe(false);
     // M8: programStart added to AppState (ADR-044)
     // M9b: currentDate + history added (ADR-045)
+    // M5 sanctioned amendment: deletions: {} added (expected M5 collateral)
     expect(s).toEqual({
       blocks: [],
       categories: [],
@@ -1384,6 +1391,7 @@ describe("U-m4f-010: assertNever exhaustiveness + defaultState shape post-M4f", 
       programStart: s.programStart,
       currentDate: s.currentDate, // M9b
       history: {}, // M9b
+      deletions: {}, // M5 — empty on first run
     });
   });
 });
@@ -1562,5 +1570,388 @@ describe("U-m4f-013: M4e BrickBase fields preserved on units variant; AppState h
   it("defaultState() has no runningTimerBrickId key (runtime anchor for tsc-gate)", () => {
     const s = defaultState();
     expect("runningTimerBrickId" in s).toBe(false);
+  });
+});
+
+// ─── M5 Fixture vocabulary ─────────────────────────────────────────────────────
+
+const m5BlkRecur: Block = {
+  id: "blk-recur",
+  name: "Morning",
+  start: "06:00",
+  recurrence: { kind: "every-day" },
+  categoryId: null,
+  bricks: [
+    {
+      id: "brk-1",
+      name: "Stretch",
+      kind: "tick",
+      hasDuration: false,
+      done: false,
+      categoryId: null,
+      parentBlockId: "blk-recur",
+    },
+    {
+      id: "brk-2",
+      name: "Water",
+      kind: "units",
+      hasDuration: false,
+      target: 8,
+      unit: "glasses",
+      done: 0,
+      categoryId: null,
+      parentBlockId: "blk-recur",
+    },
+  ],
+};
+
+const m5BlkOnce: Block = {
+  id: "blk-once",
+  name: "One-off",
+  start: "09:00",
+  recurrence: { kind: "just-today", date: "2026-05-18" },
+  categoryId: null,
+  bricks: [
+    {
+      id: "brk-3",
+      name: "Task",
+      kind: "tick",
+      hasDuration: false,
+      done: false,
+      categoryId: null,
+      parentBlockId: "blk-once",
+    },
+  ],
+};
+
+const m5BrkLoose: Brick = {
+  id: "brk-loose",
+  name: "Journal",
+  kind: "tick",
+  hasDuration: false,
+  done: false,
+  categoryId: null,
+  parentBlockId: null,
+};
+
+function makeM5State(): AppState {
+  return {
+    blocks: [m5BlkRecur, m5BlkOnce],
+    categories: [],
+    looseBricks: [m5BrkLoose],
+    programStart: "2026-05-01",
+    currentDate: "2026-05-18",
+    history: {},
+    deletions: {},
+  };
+}
+
+// ─── U-m5-001: DELETE_BLOCK_TODAY — exact key + idempotent ────────────────────
+
+describe("U-m5-001: reducer DELETE_BLOCK_TODAY writes exact key, idempotent", () => {
+  it("sets deletions['2026-05-18:blk-recur'] = true; exactly one key added", () => {
+    const state = makeM5State();
+    const next = reducer(state, {
+      type: "DELETE_BLOCK_TODAY",
+      blockId: "blk-recur",
+    });
+    expect(next.deletions["2026-05-18:blk-recur"]).toBe(true);
+    expect(Object.keys(next.deletions)).toHaveLength(1);
+  });
+
+  it("is idempotent — dispatching a second time leaves deletions unchanged", () => {
+    const state = makeM5State();
+    const next1 = reducer(state, {
+      type: "DELETE_BLOCK_TODAY",
+      blockId: "blk-recur",
+    });
+    const next2 = reducer(next1, {
+      type: "DELETE_BLOCK_TODAY",
+      blockId: "blk-recur",
+    });
+    expect(Object.keys(next2.deletions)).toHaveLength(1);
+    expect(next2.deletions["2026-05-18:blk-recur"]).toBe(true);
+    expect(next2).toEqual(next1);
+  });
+});
+
+// ─── U-m5-002: DELETE_BLOCK_TODAY — blocks reference unchanged ────────────────
+
+describe("U-m5-002: reducer DELETE_BLOCK_TODAY leaves state.blocks untouched", () => {
+  it("next.blocks is the same reference as state.blocks — template survives", () => {
+    const state = makeM5State();
+    const next = reducer(state, {
+      type: "DELETE_BLOCK_TODAY",
+      blockId: "blk-recur",
+    });
+    expect(next.blocks).toBe(state.blocks);
+  });
+
+  it("looseBricks, categories, and history are also same references", () => {
+    const state = makeM5State();
+    const next = reducer(state, {
+      type: "DELETE_BLOCK_TODAY",
+      blockId: "blk-recur",
+    });
+    expect(next.looseBricks).toBe(state.looseBricks);
+    expect(next.categories).toBe(state.categories);
+    expect(next.history).toBe(state.history);
+  });
+
+  it("blk-recur still present with both bricks intact in next.blocks", () => {
+    const state = makeM5State();
+    const next = reducer(state, {
+      type: "DELETE_BLOCK_TODAY",
+      blockId: "blk-recur",
+    });
+    const blk = next.blocks.find((b) => b.id === "blk-recur");
+    expect(blk).toBeDefined();
+    expect(blk?.bricks).toHaveLength(2);
+  });
+});
+
+// ─── U-m5-003: DELETE_BLOCK_TODAY — immutable; ghost-id is harmless ──────────
+
+describe("U-m5-003: DELETE_BLOCK_TODAY — immutable; key set even for ghost blockId", () => {
+  it("does not throw under freeze; returns new top-level object", () => {
+    const state = makeM5State();
+    const frozen = Object.freeze({
+      ...state,
+      blocks: Object.freeze(state.blocks.map(Object.freeze)) as Block[],
+      looseBricks: Object.freeze(
+        state.looseBricks.map(Object.freeze),
+      ) as Brick[],
+      deletions: Object.freeze({ ...state.deletions }),
+      categories: Object.freeze([...state.categories]),
+      history: Object.freeze({ ...state.history }),
+    }) as AppState;
+    expect(() =>
+      reducer(frozen, { type: "DELETE_BLOCK_TODAY", blockId: "blk-recur" }),
+    ).not.toThrow();
+    const next = reducer(frozen, {
+      type: "DELETE_BLOCK_TODAY",
+      blockId: "blk-recur",
+    });
+    expect(next).not.toBe(frozen);
+  });
+
+  it("ghost-id still sets the deletion key unconditionally", () => {
+    const state = makeM5State();
+    const next = reducer(state, {
+      type: "DELETE_BLOCK_TODAY",
+      blockId: "ghost-id",
+    });
+    expect(next.deletions["2026-05-18:ghost-id"]).toBe(true);
+    expect(Object.keys(next.deletions)).toHaveLength(1);
+  });
+});
+
+// ─── U-m5-004: DELETE_BLOCK_ALL — removes template; history untouched ─────────
+
+describe("U-m5-004: DELETE_BLOCK_ALL removes template from blocks; history reference unchanged", () => {
+  it("blk-recur absent from next.blocks; blk-once still present", () => {
+    const archivedDay = {
+      blocks: [{ ...m5BlkRecur }],
+      categories: [],
+      looseBricks: [],
+    };
+    const state: AppState = {
+      ...makeM5State(),
+      history: { "2026-05-10": archivedDay },
+    };
+    const next = reducer(state, {
+      type: "DELETE_BLOCK_ALL",
+      blockId: "blk-recur",
+    });
+    expect(next.blocks.find((b) => b.id === "blk-recur")).toBeUndefined();
+    expect(next.blocks.find((b) => b.id === "blk-once")).toBeDefined();
+  });
+
+  it("next.history is the same reference (ADR-045 — history read-only)", () => {
+    const archivedDay = {
+      blocks: [{ ...m5BlkRecur }],
+      categories: [],
+      looseBricks: [],
+    };
+    const state: AppState = {
+      ...makeM5State(),
+      history: { "2026-05-10": archivedDay },
+    };
+    const next = reducer(state, {
+      type: "DELETE_BLOCK_ALL",
+      blockId: "blk-recur",
+    });
+    expect(next.history).toBe(state.history);
+    // Archived day still contains blk-recur
+    expect(next.history["2026-05-10"].blocks[0].id).toBe("blk-recur");
+  });
+
+  it("next.deletions is the same reference (stale keys not pruned, SG-m5-06)", () => {
+    const state: AppState = {
+      ...makeM5State(),
+      deletions: { "2026-05-18:blk-recur": true },
+    };
+    const next = reducer(state, {
+      type: "DELETE_BLOCK_ALL",
+      blockId: "blk-recur",
+    });
+    expect(next.deletions).toBe(state.deletions);
+  });
+});
+
+// ─── U-m5-005: DELETE_BLOCK_ALL — immutable; no-op on ghost id ───────────────
+
+describe("U-m5-005: DELETE_BLOCK_ALL — immutable; no-op on missing blockId", () => {
+  it("does not throw under freeze; returns new object for found id", () => {
+    const state = makeM5State();
+    const frozen = Object.freeze({
+      ...state,
+      blocks: Object.freeze(state.blocks.map(Object.freeze)) as Block[],
+      looseBricks: Object.freeze(
+        state.looseBricks.map(Object.freeze),
+      ) as Brick[],
+      deletions: Object.freeze({ ...state.deletions }),
+      categories: Object.freeze([...state.categories]),
+      history: Object.freeze({ ...state.history }),
+    }) as AppState;
+    expect(() =>
+      reducer(frozen, { type: "DELETE_BLOCK_ALL", blockId: "blk-once" }),
+    ).not.toThrow();
+    const next = reducer(frozen, {
+      type: "DELETE_BLOCK_ALL",
+      blockId: "blk-once",
+    });
+    expect(next).not.toBe(frozen);
+    expect(next.blocks.find((b) => b.id === "blk-once")).toBeUndefined();
+  });
+
+  it("ghost-id returns a state that deep-equals original blocks (filter no-op)", () => {
+    const state = makeM5State();
+    const next = reducer(state, {
+      type: "DELETE_BLOCK_ALL",
+      blockId: "ghost-id",
+    });
+    expect(next.blocks).toHaveLength(state.blocks.length);
+    expect(next.blocks.map((b) => b.id)).toEqual(state.blocks.map((b) => b.id));
+  });
+});
+
+// ─── U-m5-006: DELETE_BRICK — removes from parent block AND from looseBricks ──
+
+describe("U-m5-006: DELETE_BRICK removes a brick from parent block or looseBricks; immutable", () => {
+  it("removes brk-1 from blk-recur.bricks; brk-2 survives; looseBricks unchanged", () => {
+    const state = makeM5State();
+    const frozen = Object.freeze({
+      ...state,
+      blocks: Object.freeze(state.blocks.map(Object.freeze)) as Block[],
+      looseBricks: Object.freeze(
+        state.looseBricks.map(Object.freeze),
+      ) as Brick[],
+      deletions: Object.freeze({ ...state.deletions }),
+      categories: Object.freeze([...state.categories]),
+      history: Object.freeze({ ...state.history }),
+    }) as AppState;
+    expect(() =>
+      reducer(frozen, { type: "DELETE_BRICK", brickId: "brk-1" }),
+    ).not.toThrow();
+    const next = reducer(frozen, { type: "DELETE_BRICK", brickId: "brk-1" });
+    expect(next).not.toBe(frozen);
+    const blkRecur = next.blocks.find((b) => b.id === "blk-recur");
+    expect(blkRecur?.bricks.find((br) => br.id === "brk-1")).toBeUndefined();
+    expect(blkRecur?.bricks.find((br) => br.id === "brk-2")).toBeDefined();
+    expect(next.looseBricks).toHaveLength(1);
+  });
+
+  it("removes brk-loose from looseBricks; state.blocks unchanged", () => {
+    const state = makeM5State();
+    const frozen = Object.freeze({
+      ...state,
+      blocks: Object.freeze(state.blocks.map(Object.freeze)) as Block[],
+      looseBricks: Object.freeze(
+        state.looseBricks.map(Object.freeze),
+      ) as Brick[],
+      deletions: Object.freeze({ ...state.deletions }),
+      categories: Object.freeze([...state.categories]),
+      history: Object.freeze({ ...state.history }),
+    }) as AppState;
+    expect(() =>
+      reducer(frozen, { type: "DELETE_BRICK", brickId: "brk-loose" }),
+    ).not.toThrow();
+    const next = reducer(frozen, {
+      type: "DELETE_BRICK",
+      brickId: "brk-loose",
+    });
+    expect(next.looseBricks).toHaveLength(0);
+    expect(next.blocks).toHaveLength(2);
+    // history is the same reference as the frozen input's history (ADR-045 — history untouched)
+    expect(next.history).toBe(frozen.history);
+  });
+});
+
+// ─── U-m5-007: DELETE_BRICK — no-op on ghost id returns original state ref ───
+
+describe("U-m5-007: DELETE_BRICK — no-op on missing brickId returns original state reference", () => {
+  it("next === state when brickId not found anywhere (array-identity pattern)", () => {
+    const state = makeM5State();
+    const next = reducer(state, {
+      type: "DELETE_BRICK",
+      brickId: "ghost-brick",
+    });
+    expect(next).toBe(state);
+  });
+});
+
+// ─── U-m5-008: Action union exhaustiveness — three new arms compile-force ─────
+
+describe("U-m5-008: Action union exhaustiveness — three new arms are handled", () => {
+  it("DELETE_BLOCK_TODAY dispatches and returns a defined AppState", () => {
+    const state = makeM5State();
+    const next = reducer(state, {
+      type: "DELETE_BLOCK_TODAY",
+      blockId: "blk-recur",
+    });
+    expect(next).toBeDefined();
+    expect(typeof next).toBe("object");
+  });
+
+  it("DELETE_BLOCK_ALL dispatches and returns a defined AppState", () => {
+    const state = makeM5State();
+    const next = reducer(state, {
+      type: "DELETE_BLOCK_ALL",
+      blockId: "blk-recur",
+    });
+    expect(next).toBeDefined();
+  });
+
+  it("DELETE_BRICK dispatches and returns a defined AppState", () => {
+    const state = makeM5State();
+    const next = reducer(state, {
+      type: "DELETE_BRICK",
+      brickId: "brk-1",
+    });
+    expect(next).toBeDefined();
+  });
+
+  it("existing actions still work byte-identically (ADD_BLOCK, LOG_TICK_BRICK)", () => {
+    const state = makeM5State();
+    const newBlock: Block = {
+      id: "new-blk",
+      name: "Evening",
+      start: "20:00",
+      recurrence: { kind: "just-today", date: "2026-05-18" },
+      categoryId: null,
+      bricks: [],
+    };
+    const next = reducer(state, { type: "ADD_BLOCK", block: newBlock });
+    expect(next.blocks).toHaveLength(3);
+    expect(next.blocks[2].id).toBe("new-blk");
+
+    const toggled = reducer(state, {
+      type: "LOG_TICK_BRICK",
+      brickId: "brk-1",
+    });
+    const blk = toggled.blocks.find((b) => b.id === "blk-recur");
+    const brk = blk?.bricks.find((br) => br.id === "brk-1");
+    if (brk?.kind === "tick") expect(brk.done).toBe(true);
   });
 });
