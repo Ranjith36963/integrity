@@ -1,8 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TopBar } from "./TopBar";
 import { EditModeProvider } from "./EditModeProvider";
+import * as hapticsModule from "../lib/haptics";
 
 function renderWithProvider() {
   return render(
@@ -103,5 +104,99 @@ describe("C-m1-003: TopBar Settings button has correct accessibility attrs", () 
     // Has h-11 w-11 classes (44px = meets >=44px bounding box requirement)
     expect(settingsBtn.className).toMatch(/h-11/);
     expect(settingsBtn.className).toMatch(/w-11/);
+  });
+});
+
+// ─── C-m5-001: pencil toggle Locked ↔ Unlocked; aria-pressed + worded aria-label ──
+
+describe("C-m5-001: TopBar pencil toggles Locked ↔ Unlocked; state visually + SR-discernible", () => {
+  it("initial state: aria-pressed=false, aria-label='Edit mode, off'", () => {
+    renderWithProvider();
+    const btn = screen.getByRole("button", { name: /edit mode/i });
+    expect(btn).toHaveAttribute("aria-pressed", "false");
+    expect(btn).toHaveAttribute("aria-label", "Edit mode, off");
+  });
+
+  it("after one click: aria-pressed=true, aria-label='Edit mode, on'", async () => {
+    const user = userEvent.setup();
+    renderWithProvider();
+    const btn = screen.getByRole("button", { name: /edit mode/i });
+    await user.click(btn);
+    expect(btn).toHaveAttribute("aria-pressed", "true");
+    expect(btn).toHaveAttribute("aria-label", "Edit mode, on");
+  });
+
+  it("after two clicks: returns to Locked (aria-pressed=false, aria-label='Edit mode, off')", async () => {
+    const user = userEvent.setup();
+    renderWithProvider();
+    const btn = screen.getByRole("button", { name: /edit mode/i });
+    await user.click(btn);
+    await user.click(btn);
+    expect(btn).toHaveAttribute("aria-pressed", "false");
+    expect(btn).toHaveAttribute("aria-label", "Edit mode, off");
+  });
+
+  it("pencil button hit area is ≥44px (h-11 w-11, ADR-031)", () => {
+    renderWithProvider();
+    const btn = screen.getByRole("button", { name: /edit mode/i });
+    expect(btn.className).toMatch(/h-11/);
+    expect(btn.className).toMatch(/w-11/);
+  });
+});
+
+// ─── C-m5-002: haptic on toggle; Edit Mode NOT persisted, boots Locked ─────────
+
+describe("C-m5-002: TopBar — light haptic on toggle; Edit Mode is NOT persisted, boots Locked", () => {
+  let lightSpy: ReturnType<typeof vi.spyOn>;
+  let setItemSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    lightSpy = vi
+      .spyOn(hapticsModule.haptics, "light")
+      .mockImplementation(() => {});
+    setItemSpy = vi.spyOn(Storage.prototype, "setItem");
+  });
+
+  it("each toggle fires haptics.light() exactly once", async () => {
+    const user = userEvent.setup();
+    renderWithProvider();
+    const btn = screen.getByRole("button", { name: /edit mode/i });
+    await user.click(btn);
+    expect(lightSpy).toHaveBeenCalledTimes(1);
+    await user.click(btn);
+    expect(lightSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("no localStorage.setItem call records an editMode field (SG-m5-04)", async () => {
+    const user = userEvent.setup();
+    renderWithProvider();
+    const btn = screen.getByRole("button", { name: /edit mode/i });
+    await user.click(btn);
+    await user.click(btn);
+    // All setItem calls must not contain editMode
+    const allValues = setItemSpy.mock.calls
+      .map((args) => String(args[1] ?? ""))
+      .join("\n");
+    expect(allValues).not.toMatch(/editMode/i);
+    expect(allValues).not.toMatch(/edit.mode/i);
+  });
+
+  it("freshly re-mounted EditModeProvider boots with editMode === false (Locked)", () => {
+    // First mount and toggle
+    const { unmount } = render(
+      <EditModeProvider>
+        <TopBar />
+      </EditModeProvider>,
+    );
+    unmount();
+    // Re-mount fresh — should be Locked again
+    render(
+      <EditModeProvider>
+        <TopBar />
+      </EditModeProvider>,
+    );
+    const btn = screen.getByRole("button", { name: /edit mode/i });
+    expect(btn).toHaveAttribute("aria-pressed", "false");
+    expect(btn).toHaveAttribute("aria-label", "Edit mode, off");
   });
 });
