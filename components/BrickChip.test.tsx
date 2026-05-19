@@ -11,6 +11,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BrickChip } from "./BrickChip";
+import { EditModeProvider } from "./EditModeProvider";
 import type { Brick, Category } from "@/lib/types";
 
 const cat1: Category = { id: "c1", name: "category 1", color: "#34d399" };
@@ -721,5 +722,146 @@ describe("C-m4e-019: tick chip hasDuration:false accessible name is byte-identic
     const btn = screen.getByRole("button");
     expect(btn.getAttribute("aria-label")).toBe("Run, not done, tap to toggle");
     expect(btn.getAttribute("aria-describedby")).toBeNull();
+  });
+});
+
+// ─── C-m5-006: BrickChip Unlocked — × renders; log suppressed, no double-fire ─
+
+const tickBrick: Brick = {
+  id: "brk-tick",
+  name: "Push-ups",
+  kind: "tick",
+  done: false,
+  hasDuration: false,
+  categoryId: null,
+  parentBlockId: null,
+};
+
+const unitsBrick: Brick = {
+  id: "brk-units",
+  name: "Water",
+  kind: "units",
+  done: 0,
+  target: 8,
+  unit: "glasses",
+  hasDuration: false,
+  categoryId: null,
+  parentBlockId: null,
+};
+
+describe("C-m5-006: BrickChip — Locked mode no × button; Unlocked × appears, log suppressed", () => {
+  it("Locked mode (default): no × delete button renders", () => {
+    render(
+      <EditModeProvider>
+        <BrickChip
+          brick={tickBrick}
+          categories={[]}
+          onTickToggle={vi.fn()}
+          onRequestDeleteBrick={vi.fn()}
+        />
+      </EditModeProvider>,
+    );
+    expect(screen.queryByRole("button", { name: /delete brick/i })).toBeNull();
+  });
+
+  it("Unlocked: × appears with aria-label='Delete brick Push-ups' after toggle", async () => {
+    const user = userEvent.setup();
+    const { TopBar } = await import("./TopBar");
+    render(
+      <EditModeProvider>
+        <TopBar />
+        <BrickChip
+          brick={tickBrick}
+          categories={[]}
+          onTickToggle={vi.fn()}
+          onRequestDeleteBrick={vi.fn()}
+        />
+      </EditModeProvider>,
+    );
+    const pencil = screen.getByRole("button", { name: /edit mode/i });
+    await user.click(pencil);
+    const deleteBtn = screen.getByRole("button", {
+      name: "Delete brick Push-ups",
+    });
+    expect(deleteBtn).toBeInTheDocument();
+  });
+
+  it("Unlocked: tapping chip body fires onTickToggle ZERO times (log suppressed, SG-m5-05)", async () => {
+    const user = userEvent.setup();
+    const onTick = vi.fn();
+    const { TopBar } = await import("./TopBar");
+    render(
+      <EditModeProvider>
+        <TopBar />
+        <BrickChip
+          brick={tickBrick}
+          categories={[]}
+          onTickToggle={onTick}
+          onRequestDeleteBrick={vi.fn()}
+        />
+      </EditModeProvider>,
+    );
+    const pencil = screen.getByRole("button", { name: /edit mode/i });
+    await user.click(pencil);
+    // Click the chip body button (the main tick button)
+    const chipBody = screen.getByRole("button", { name: /push-ups/i });
+    await user.click(chipBody);
+    expect(onTick).toHaveBeenCalledTimes(0);
+  });
+
+  it("Unlocked: tapping × calls onRequestDeleteBrick exactly once (no double-fire)", async () => {
+    const user = userEvent.setup();
+    const onDelete = vi.fn();
+    const { TopBar } = await import("./TopBar");
+    render(
+      <EditModeProvider>
+        <TopBar />
+        <BrickChip
+          brick={tickBrick}
+          categories={[]}
+          onTickToggle={vi.fn()}
+          onRequestDeleteBrick={onDelete}
+        />
+      </EditModeProvider>,
+    );
+    const pencil = screen.getByRole("button", { name: /edit mode/i });
+    await user.click(pencil);
+    const deleteBtn = screen.getByRole("button", {
+      name: "Delete brick Push-ups",
+    });
+    await user.click(deleteBtn);
+    expect(onDelete).toHaveBeenCalledTimes(1);
+    expect(onDelete).toHaveBeenCalledWith("brk-tick");
+  });
+
+  it("units chip: Unlocked — log (onUnitsOpenSheet) suppressed; × fires onRequestDeleteBrick once", async () => {
+    const user = userEvent.setup();
+    const onUnits = vi.fn();
+    const onDelete = vi.fn();
+    const { TopBar } = await import("./TopBar");
+    render(
+      <EditModeProvider>
+        <TopBar />
+        <BrickChip
+          brick={unitsBrick}
+          categories={[]}
+          onUnitsOpenSheet={onUnits}
+          onRequestDeleteBrick={onDelete}
+        />
+      </EditModeProvider>,
+    );
+    const pencil = screen.getByRole("button", { name: /edit mode/i });
+    await user.click(pencil);
+    // Tap chip body — log must be suppressed
+    const chipBody = screen.getByRole("button", { name: /water/i });
+    await user.click(chipBody);
+    expect(onUnits).toHaveBeenCalledTimes(0);
+    // Tap × — delete fires once
+    const deleteBtn = screen.getByRole("button", {
+      name: "Delete brick Water",
+    });
+    await user.click(deleteBtn);
+    expect(onDelete).toHaveBeenCalledTimes(1);
+    expect(onDelete).toHaveBeenCalledWith("brk-units");
   });
 });
