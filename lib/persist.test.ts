@@ -940,3 +940,194 @@ describe("U-m9b-009: partial v2 payload → defensive coercion of missing/non-st
     vi.useRealTimers();
   });
 });
+
+// ─── U-m5-009: v2→v3 migrator — additive, lossless; SCHEMA_VERSION === 3 ─────
+
+describe("U-m5-009: v2→v3 migrator — additive, lossless; SCHEMA_VERSION === 3, mutation-resistant", () => {
+  it("SCHEMA_VERSION is strictly 3", () => {
+    expect(SCHEMA_VERSION).toBe(3);
+  });
+
+  it("migrates a v2 payload: adds deletions:{} and schemaVersion:3, preserves all v2 day-data fields byte-identical", () => {
+    const v2Payload = {
+      schemaVersion: 2,
+      programStart: "2026-04-01",
+      currentDate: "2026-05-18",
+      history: {
+        "2026-05-17": {
+          blocks: [],
+          categories: [],
+          looseBricks: [],
+        },
+      },
+      blocks: [
+        {
+          id: "blk-morning",
+          name: "Morning",
+          start: "07:00",
+          recurrence: { kind: "every-day" },
+          categoryId: null,
+          bricks: [],
+        },
+      ],
+      categories: [{ id: "cat-health", name: "Health", color: "#0f0" }],
+      looseBricks: [
+        {
+          id: "lb-walk",
+          name: "Walk",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "tick",
+          done: false,
+        },
+      ],
+    };
+
+    const result = migrate(v2Payload);
+    expect(result).not.toBeNull();
+    expect(result!.schemaVersion).toBe(3);
+    // deletions is additive and lossless — it was absent in v2, coerced to {}
+    expect(result!.deletions).toEqual({});
+    // Every v2 day-data field is byte-identical (zero data loss)
+    expect(result!.programStart).toBe("2026-04-01");
+    expect(result!.currentDate).toBe("2026-05-18");
+    expect(result!.history).toEqual({
+      "2026-05-17": { blocks: [], categories: [], looseBricks: [] },
+    });
+    expect(result!.blocks).toEqual(v2Payload.blocks);
+    expect(result!.categories).toEqual(v2Payload.categories);
+    expect(result!.looseBricks).toEqual(v2Payload.looseBricks);
+  });
+
+  it("migrates a v1 payload: lands at schemaVersion:3 with deletions:{} and v1 day data preserved", () => {
+    const v1Payload = {
+      schemaVersion: 1,
+      programStart: "2026-03-15",
+      blocks: [
+        {
+          id: "blk-v1",
+          name: "V1 Block",
+          start: "08:00",
+          recurrence: { kind: "every-day" },
+          categoryId: null,
+          bricks: [],
+        },
+      ],
+      categories: [],
+      looseBricks: [],
+    };
+
+    const result = migrate(v1Payload);
+    expect(result).not.toBeNull();
+    // v1→v3 ladder is unbroken (ADR-044/ADR-045 carry-forward)
+    expect(result!.schemaVersion).toBe(3);
+    expect(result!.deletions).toEqual({});
+    expect(result!.programStart).toBe("2026-03-15");
+    expect(result!.blocks).toEqual(v1Payload.blocks);
+    expect(result!.history).toEqual({});
+  });
+
+  it("an unknown/future schemaVersion (e.g. 99) → migrate returns null → loadState falls back to defaultPersisted()", () => {
+    const result = migrate({ schemaVersion: 99 });
+    expect(result).toBeNull();
+  });
+
+  it("absent schemaVersion → migrate returns null → loadState falls back to defaultPersisted()", () => {
+    const result = migrate({ programStart: "2026-05-01", blocks: [] });
+    expect(result).toBeNull();
+  });
+
+  it("v2 payload is not mutated by migrate (mutation-resistant)", () => {
+    const v2Payload = Object.freeze({
+      schemaVersion: 2 as const,
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: Object.freeze({}),
+      blocks: Object.freeze([]) as unknown[],
+      categories: Object.freeze([]) as unknown[],
+      looseBricks: Object.freeze([]) as unknown[],
+    });
+    // Should not throw even with frozen input
+    expect(() => migrate(v2Payload)).not.toThrow();
+    const result = migrate(v2Payload);
+    expect(result!.schemaVersion).toBe(3);
+  });
+});
+
+// ─── U-m5-010: v3 payload round-trips; deletions coerced defensively ──────────
+
+describe("U-m5-010: v3 payload round-trips; deletions coerced defensively", () => {
+  it("well-formed v3 payload round-trips intact — deletions preserved key-for-key", () => {
+    const v3Payload = {
+      schemaVersion: 3,
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: {},
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      deletions: { "2026-05-18:blk-recur": true },
+    };
+
+    const result = migrate(v3Payload);
+    expect(result).not.toBeNull();
+    expect(result!.schemaVersion).toBe(3);
+    expect(result!.deletions).toEqual({ "2026-05-18:blk-recur": true });
+    expect(result!.programStart).toBe("2026-05-01");
+    expect(result!.currentDate).toBe("2026-05-18");
+  });
+
+  it("v3 payload with deletions: null → coerced to {}", () => {
+    const malformed = {
+      schemaVersion: 3,
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: {},
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      deletions: null,
+    };
+    const result = migrate(malformed);
+    expect(result).not.toBeNull();
+    expect(result!.deletions).toEqual({});
+    expect(result!.schemaVersion).toBe(3);
+  });
+
+  it("v3 payload with deletions: [] (array) → coerced to {}", () => {
+    const malformed = {
+      schemaVersion: 3,
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: {},
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      deletions: [],
+    };
+    const result = migrate(malformed);
+    expect(result).not.toBeNull();
+    expect(result!.deletions).toEqual({});
+    expect(result!.schemaVersion).toBe(3);
+  });
+
+  it("v3 payload with deletions: string → coerced to {}", () => {
+    const malformed = {
+      schemaVersion: 3,
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: {},
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      deletions: "bad",
+    };
+    const result = migrate(malformed);
+    expect(result).not.toBeNull();
+    expect(result!.deletions).toEqual({});
+    expect(result!.schemaVersion).toBe(3);
+    // Other day-data fields survive coercion
+    expect(result!.programStart).toBe("2026-05-01");
+  });
+});
