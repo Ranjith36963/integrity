@@ -147,7 +147,7 @@ describe("U-m5-014: currentDayBlocks — empty deletions is identity filter; pur
       categories: Object.freeze([]),
       looseBricks: Object.freeze([]),
       deletions: frozenDeletions,
-    }) as AppState;
+    }) as unknown as AppState;
 
     expect(() => currentDayBlocks(frozenState)).not.toThrow();
     const result = currentDayBlocks(frozenState);

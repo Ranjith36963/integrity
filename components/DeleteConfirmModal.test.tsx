@@ -12,7 +12,8 @@ vi.mock("@/lib/haptics", () => ({
 let hapticsModule: { haptics: { medium: ReturnType<typeof vi.fn> } };
 
 beforeEach(async () => {
-  hapticsModule = (await import("@/lib/haptics")) as typeof hapticsModule;
+  hapticsModule =
+    (await import("@/lib/haptics")) as unknown as typeof hapticsModule;
   vi.clearAllMocks();
 });
 

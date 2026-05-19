@@ -1044,9 +1044,9 @@ describe("U-m5-009: v2→v3 migrator — additive, lossless; SCHEMA_VERSION === 
       programStart: "2026-05-01",
       currentDate: "2026-05-18",
       history: Object.freeze({}),
-      blocks: Object.freeze([]) as unknown[],
-      categories: Object.freeze([]) as unknown[],
-      looseBricks: Object.freeze([]) as unknown[],
+      blocks: Object.freeze([]) as unknown as unknown[],
+      categories: Object.freeze([]) as unknown as unknown[],
+      looseBricks: Object.freeze([]) as unknown as unknown[],
     });
     // Should not throw even with frozen input
     expect(() => migrate(v2Payload)).not.toThrow();

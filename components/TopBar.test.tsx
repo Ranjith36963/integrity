@@ -175,7 +175,7 @@ describe("C-m5-002: TopBar — light haptic on toggle; Edit Mode is NOT persiste
     await user.click(btn);
     // All setItem calls must not contain editMode
     const allValues = setItemSpy.mock.calls
-      .map((args) => String(args[1] ?? ""))
+      .map((args: unknown[]) => String(args[1] ?? ""))
       .join("\n");
     expect(allValues).not.toMatch(/editMode/i);
     expect(allValues).not.toMatch(/edit.mode/i);
