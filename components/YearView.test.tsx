@@ -54,6 +54,7 @@ function makeStandingState(): AppState {
     history,
     blocks: [],
     categories: [],
+    deletions: {}, // M5
     // Live day scoring 40% (2/5 done)
     looseBricks: [
       {

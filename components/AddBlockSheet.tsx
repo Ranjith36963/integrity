@@ -164,6 +164,7 @@ export function AddBlockSheet({
     programStart: "",
     currentDate: "", // M9b — placeholder for overlap detection only
     history: {}, // M9b — placeholder for overlap detection only
+    deletions: {}, // M5 — placeholder for overlap detection only
   };
   const overlaps =
     titleValid && candidate

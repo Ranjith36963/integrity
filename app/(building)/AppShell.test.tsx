@@ -31,7 +31,7 @@ function makeSeedState(
   overrides: Partial<PersistedState> = {},
 ): PersistedState {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     programStart: "2026-05-01",
     currentDate: today(),
     history: {
@@ -74,6 +74,7 @@ function makeSeedState(
     ],
     categories: [],
     looseBricks: [],
+    deletions: {}, // M5
     ...overrides,
   };
 }

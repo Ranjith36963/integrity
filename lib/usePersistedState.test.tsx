@@ -92,6 +92,7 @@ describe("C-m8-001: usePersistedState — no HYDRATE action in Action union; hoo
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
       programStart: "2026-05-01",
       currentDate: "2026-05-01", // M9b
       history: {}, // M9b
@@ -202,10 +203,11 @@ describe("C-m8-002: first-render state is empty default; loadState not called du
 
   it("after effects flush, state contains the persisted values", async () => {
     const persisted: PersistedState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-04-01",
       currentDate: today(),
       history: {},
+      deletions: {}, // M5
       blocks: [
         {
           id: "b1",
@@ -247,10 +249,11 @@ describe("C-m8-003: two-pass ordering — saveState does not clobber persisted s
       bricks: [],
     };
     const persisted: PersistedState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-04-01",
       currentDate: today(),
       history: {},
+      deletions: {}, // M5
       blocks: [block],
       categories: [],
       looseBricks: [],
@@ -280,10 +283,11 @@ describe("C-m8-003: two-pass ordering — saveState does not clobber persisted s
       bricks: [],
     };
     const persisted: PersistedState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-04-01",
       currentDate: today(),
       history: {},
+      deletions: {}, // M5
       blocks: [block],
       categories: [],
       looseBricks: [],
@@ -299,10 +303,11 @@ describe("C-m8-003: two-pass ordering — saveState does not clobber persisted s
   it("only a subsequent dispatch triggers the first saveState after hydration", async () => {
     const saveStateSpy = vi.spyOn(await import("./persist"), "saveState");
     const persisted: PersistedState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-04-01",
       currentDate: today(),
       history: {},
+      deletions: {}, // M5
       blocks: [],
       categories: [],
       looseBricks: [],
@@ -332,10 +337,11 @@ describe("C-m8-003: two-pass ordering — saveState does not clobber persisted s
 describe("C-m8-004: post-mount rehydration restores exact block/brick/category values; no schemaVersion on state", () => {
   it("state after hydration deep-equals persisted data with exact done values", async () => {
     const persisted: PersistedState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-05-01",
       currentDate: today(),
       history: {},
+      deletions: {}, // M5
       blocks: [
         {
           id: "b1",
@@ -461,10 +467,11 @@ describe("C-m8-005: save fires after every mutating dispatch (all 5 action types
   it("SET_UNITS_DONE updates done value in persisted state", async () => {
     // Seed a units brick
     const persisted: PersistedState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: today(),
       currentDate: today(),
       history: {},
+      deletions: {}, // M5
       blocks: [],
       categories: [],
       looseBricks: [
@@ -504,10 +511,11 @@ describe("C-m8-006: full mutate→reload cycle via unmount + remount", () => {
   it("freshly-mounted hook after remount holds the pre-reload units done value", async () => {
     // Seed a units brick with done: 5
     const persisted: PersistedState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: today(),
       currentDate: today(),
       history: {},
+      deletions: {}, // M5
       blocks: [],
       categories: [],
       looseBricks: [
@@ -562,7 +570,7 @@ describe("C-m9b-001: same-day load — rollover(loaded, today()) is a no-op; sta
     vi.setSystemTime(new Date("2026-05-18T10:00:00"));
 
     const persisted: PersistedState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-05-01",
       currentDate: "2026-05-18", // same as today
       history: {
@@ -580,6 +588,7 @@ describe("C-m9b-001: same-day load — rollover(loaded, today()) is a no-op; sta
       ],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     };
     saveState(persisted);
 
@@ -613,10 +622,11 @@ describe("C-m9b-002: next-day load — rollover(loaded, today()) archives yester
     vi.setSystemTime(new Date("2026-05-18T10:00:00"));
 
     const persisted: PersistedState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-05-01",
       currentDate: "2026-05-17", // yesterday
       history: {},
+      deletions: {}, // M5
       blocks: [
         {
           id: "blk1",
@@ -723,10 +733,11 @@ describe("C-m9b-004: first saveState after rollover boot persists the post-rollo
     vi.setSystemTime(new Date("2026-05-18T10:00:00"));
 
     const persisted: PersistedState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-05-01",
       currentDate: "2026-05-17", // yesterday → rollover fires
       history: {},
+      deletions: {}, // M5
       blocks: [
         {
           id: "blk1",

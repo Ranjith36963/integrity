@@ -509,13 +509,14 @@ describe("C-m8-007: BuildingClient feeds dayNumber(programStart, todayIso) to He
   it("Hero renders 'Building 15 of <daysInYear>' when programStart='2026-05-01' and today='2026-05-15'", async () => {
     // Pre-seed dharma:v1 with programStart: "2026-05-01"
     const persisted: PersistedState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-05-01",
       currentDate: "2026-05-15",
       history: {},
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     };
     saveState(persisted);
 
@@ -564,7 +565,7 @@ describe("C-m9b-006: BuildingClient renders freshly-seeded day after next-day ro
 
     // Pre-seed with yesterday's currentDate and a ticked every-day brick
     const persisted: PersistedState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-05-01",
       currentDate: "2026-05-17", // yesterday → rollover fires on mount
       history: {},
@@ -593,6 +594,7 @@ describe("C-m9b-006: BuildingClient renders freshly-seeded day after next-day ro
       ],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     };
     saveState(persisted);
 

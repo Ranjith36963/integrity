@@ -52,7 +52,7 @@ describe("C-m4e-027: tray shows non-timed brick only; timeline shows block + Tim
   beforeEach(() => {
     // Seed: 1 block (bk1), 1 non-timed loose brick (r1), 1 timed loose brick (r2)
     const seed: PersistedState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-05-14",
       currentDate: today(), // M9b: rollover no-op (currentDate === today)
       history: {},
@@ -101,6 +101,7 @@ describe("C-m4e-027: tray shows non-timed brick only; timeline shows block + Tim
         },
       ],
       categories: [],
+      deletions: {}, // M5
     };
     saveState(seed);
   });
@@ -144,7 +145,7 @@ describe("C-m4e-027: tray shows non-timed brick only; timeline shows block + Tim
 describe("C-m4e-028: tray hidden when looseBricks all have hasDuration=true and no blocks", () => {
   beforeEach(() => {
     const seed: PersistedState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-05-14",
       currentDate: today(), // M9b: rollover no-op (currentDate === today)
       history: {},
@@ -164,6 +165,7 @@ describe("C-m4e-028: tray hidden when looseBricks all have hasDuration=true and 
         },
       ],
       categories: [],
+      deletions: {}, // M5
     };
     saveState(seed);
   });
@@ -209,12 +211,13 @@ describe("C-m4e-029: pre-M4e brick without hasDuration gets hasDuration:false vi
       parentBlockId: null,
     } as Brick;
     const seed: PersistedState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-05-14",
       currentDate: today(), // M9b: rollover no-op (currentDate === today)
       history: {},
       blocks: [],
       looseBricks: [legacyBrick],
+      deletions: {}, // M5
       categories: [],
     };
     saveState(seed);
@@ -249,7 +252,7 @@ describe("C-m4e-029: pre-M4e brick without hasDuration gets hasDuration:false vi
 describe("U-m4f-018: M4e duration-axis assertions hold for kind:units with hasDuration:true", () => {
   beforeEach(() => {
     const seed: PersistedState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-05-15",
       currentDate: today(), // M9b: rollover no-op (currentDate === today)
       history: {},
@@ -271,6 +274,7 @@ describe("U-m4f-018: M4e duration-axis assertions hold for kind:units with hasDu
         } as Brick,
       ],
       categories: [],
+      deletions: {}, // M5
     };
     saveState(seed);
   });

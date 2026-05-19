@@ -1,8 +1,9 @@
 /**
- * lib/persist.ts — M9b: schema v2 persistence module.
- * ADR-045: persisted shape { schemaVersion: 2, programStart, currentDate, history, blocks, categories, looseBricks }.
- * ADR-044: schema v1 migration path retained.
+ * lib/persist.ts — M5: schema v3 persistence module.
+ * ADR-045: schema history read-only; v1→v2→v3 additive migration.
  * ADR-018: single dharma:v1 key, two-pass load, synchronous save.
+ * ADR-044: schema version discipline.
+ * M5: schemaVersion bumped 2→3; deletions field added (ADR-018).
  * Pure module — no React.
  */
 
@@ -10,40 +11,43 @@ import type { Block, Category, Brick, ArchivedDay } from "./types";
 import { today } from "./dharma";
 
 export const STORAGE_KEY = "dharma:v1";
-export const SCHEMA_VERSION = 2 as const;
+export const SCHEMA_VERSION = 3 as const;
 
 export type PersistedState = {
-  schemaVersion: 2;
+  schemaVersion: 3;
   programStart: string; // ISO YYYY-MM-DD, stamped once on first run
   currentDate: string; // ISO YYYY-MM-DD — the date of the in-progress day
   history: Record<string, ArchivedDay>; // keyed by ISO YYYY-MM-DD
   blocks: Block[];
   categories: Category[];
   looseBricks: Brick[];
+  deletions: Record<string, true>; // M5 — per-day block override map (ADR-018)
 };
 
 /**
- * defaultPersisted() — fresh empty v2 state with programStart = currentDate = today().
+ * defaultPersisted() — fresh empty v3 state with programStart = currentDate = today().
  * Called on: no-key / corrupt / unknown-version paths inside loadState.
  * Returns a fresh object on every call (no shared mutable arrays).
  */
 export function defaultPersisted(): PersistedState {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     programStart: today(),
     currentDate: today(),
     history: {},
     blocks: [],
     categories: [],
     looseBricks: [],
+    deletions: {}, // M5 — empty on first run (ADR-018)
   };
 }
 
 /**
  * migrate(raw) — the single version-logic site (ADR-044/ADR-045 scaffold).
- * case 1: v1 → v2 migration (ADR-045).
- * case 2: v2 load + defensive coercion.
- * default: unknown / future schemaVersion → null.
+ * case 1: v1 → v3 migration (additive, lossless — ADR-044/ADR-045 chain).
+ * case 2: v2 → v3 migration (additive, lossless — M5 adds deletions: {}).
+ * case 3: v3 load + defensive coercion (M5 new terminus).
+ * default: unknown / future schemaVersion (≥4, non-numeric, absent) → null.
  * Returns PersistedState on success, null on unknown/invalid input.
  */
 export function migrate(raw: unknown): PersistedState | null {
@@ -56,7 +60,7 @@ export function migrate(raw: unknown): PersistedState | null {
 
   switch (obj.schemaVersion) {
     case 1: {
-      // v1 → v2 migration (ADR-045).
+      // v1 → v3 migration (additive, lossless — ADR-044/ADR-045).
       // Defensive coercion: absent/non-array collections → []
       const blocks = Array.isArray(obj.blocks) ? (obj.blocks as Block[]) : [];
       const categories = Array.isArray(obj.categories)
@@ -71,17 +75,18 @@ export function migrate(raw: unknown): PersistedState | null {
       // Accepted one-time migration approximation per ADR-045 / spec Edge case.
       const currentDate = today();
       return {
-        schemaVersion: 2,
+        schemaVersion: 3,
         programStart,
         currentDate,
         history: {},
         blocks,
         categories,
         looseBricks,
+        deletions: {}, // M5 — v1 payloads had no deletions
       };
     }
     case 2: {
-      // v2 load with defensive coercion (ADR-045 § case 2 arm).
+      // v2 → v3 migration (M5 additive, lossless — adds deletions: {} to v2 payload).
       const blocks = Array.isArray(obj.blocks) ? (obj.blocks as Block[]) : [];
       const categories = Array.isArray(obj.categories)
         ? (obj.categories as Category[])
@@ -101,17 +106,56 @@ export function migrate(raw: unknown): PersistedState | null {
           ? (obj.history as Record<string, ArchivedDay>)
           : {};
       return {
-        schemaVersion: 2,
+        schemaVersion: 3,
         programStart,
         currentDate,
         history,
         blocks,
         categories,
         looseBricks,
+        deletions: {}, // M5 — v2 payloads had no deletions; additive and lossless
+      };
+    }
+    case 3: {
+      // v3 load + defensive coercion (M5 new terminus).
+      const blocks = Array.isArray(obj.blocks) ? (obj.blocks as Block[]) : [];
+      const categories = Array.isArray(obj.categories)
+        ? (obj.categories as Category[])
+        : [];
+      const looseBricks = Array.isArray(obj.looseBricks)
+        ? (obj.looseBricks as Brick[])
+        : [];
+      const programStart =
+        typeof obj.programStart === "string" ? obj.programStart : today();
+      const currentDate =
+        typeof obj.currentDate === "string" ? obj.currentDate : today();
+      // history must be a non-null, non-array object; otherwise coerce to {}.
+      const history: Record<string, ArchivedDay> =
+        obj.history !== null &&
+        typeof obj.history === "object" &&
+        !Array.isArray(obj.history)
+          ? (obj.history as Record<string, ArchivedDay>)
+          : {};
+      // deletions must be a non-null, non-array object; otherwise coerce to {}.
+      const deletions: Record<string, true> =
+        obj.deletions !== null &&
+        typeof obj.deletions === "object" &&
+        !Array.isArray(obj.deletions)
+          ? (obj.deletions as Record<string, true>)
+          : {};
+      return {
+        schemaVersion: 3,
+        programStart,
+        currentDate,
+        history,
+        blocks,
+        categories,
+        looseBricks,
+        deletions,
       };
     }
     default:
-      // Unknown or future schemaVersion (≥3, non-numeric, absent) — never guessed at.
+      // Unknown or future schemaVersion (≥4, non-numeric, absent) — never guessed at.
       return null;
   }
 }
@@ -136,7 +180,7 @@ export function loadState(): PersistedState {
 /**
  * saveState(state) — serialize and write to localStorage.
  * Synchronous (SG-m8-01 — no debounce). Swallows all errors (quota, disabled).
- * Writes the full v2 shape per ADR-045.
+ * Writes the full v3 shape per M5.
  */
 export function saveState(state: PersistedState): void {
   try {
@@ -148,9 +192,10 @@ export function saveState(state: PersistedState): void {
       blocks: state.blocks,
       categories: state.categories,
       looseBricks: state.looseBricks,
+      deletions: state.deletions, // M5
     });
     localStorage.setItem(STORAGE_KEY, json);
   } catch {
-    // Swallowed: quota exceeded, storage disabled, etc. (AC #11, SG-m8-05)
+    // Swallowed: quota exceeded, storage disabled, etc. (SG-m8-05)
   }
 }

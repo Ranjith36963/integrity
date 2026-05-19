@@ -24,10 +24,11 @@ import type { AppState } from "./types";
 /** Minimal v2 PersistedState for testing. */
 function makeState(overrides: Partial<PersistedState> = {}): PersistedState {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     programStart: "2026-05-01",
     currentDate: "2026-05-17",
     history: {},
+    deletions: {}, // M5
     blocks: [],
     categories: [],
     looseBricks: [],
@@ -62,6 +63,7 @@ describe("U-m9b-011: rollover ARCHIVE — in-progress day snapshotted into histo
     const state = makeState({
       currentDate: "2026-05-17",
       history: {},
+      deletions: {}, // M5
       blocks: [
         {
           id: "b1",
@@ -840,6 +842,7 @@ function makeLiveState(overrides: Partial<AppState> = {}): AppState {
     //   dayPct = sum(brickPct) / total = (100+100+0+0+0) / 5 = 40% ✓
     blocks: [],
     categories: [],
+    deletions: {}, // M5
     looseBricks: [
       {
         id: "lb1",
@@ -1357,6 +1360,7 @@ describe("U-m9d-004: weekScore — THE honest-week-average contract, missed = 0,
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     };
     expect(weekScore(state, "2026-05-13")).toBe(36);
   });
@@ -1373,6 +1377,7 @@ describe("U-m9d-004: weekScore — THE honest-week-average contract, missed = 0,
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     };
     // 36, not 60 (the inflated average if missed days were excluded from denominator)
     expect(weekScore(state, "2026-05-13")).not.toBe(60);
@@ -1468,6 +1473,7 @@ describe("U-m9d-005: weekScore — purity, clock-independence, frozen-state safe
       },
       blocks: [],
       categories: [],
+      deletions: {}, // M5
       looseBricks: [
         {
           id: "lb1",
@@ -1538,6 +1544,7 @@ describe("U-m9d-006: weekScore — no-data sentinel: fully-future / fully-pre-st
       programStart: "2026-05-01",
       currentDate: "2026-05-18",
       history: {},
+      deletions: {}, // M5
       blocks: [],
       categories: [],
       looseBricks: [],
@@ -1550,6 +1557,7 @@ describe("U-m9d-006: weekScore — no-data sentinel: fully-future / fully-pre-st
       programStart: "2026-05-01",
       currentDate: "2026-05-18",
       history: {},
+      deletions: {}, // M5
       blocks: [],
       categories: [],
       looseBricks: [],
@@ -1562,6 +1570,7 @@ describe("U-m9d-006: weekScore — no-data sentinel: fully-future / fully-pre-st
       programStart: "2026-05-01",
       currentDate: "2026-05-18",
       history: {},
+      deletions: {}, // M5
       blocks: [],
       categories: [],
       looseBricks: [],
@@ -1590,6 +1599,7 @@ describe("U-m9d-007: weekScore — today's live dayPct contributes to the aggreg
       },
       blocks: [],
       categories: [],
+      deletions: {}, // M5
       looseBricks: [
         {
           id: "lb1",
@@ -1651,6 +1661,7 @@ describe("U-m9d-007: weekScore — today's live dayPct contributes to the aggreg
       },
       blocks: [],
       categories: [],
+      deletions: {}, // M5
       looseBricks: [
         {
           id: "lb1",
@@ -1718,6 +1729,7 @@ describe("U-m9d-008: weekScore — empty history first run + straddling programS
       programStart: "2026-05-13",
       currentDate: "2026-05-15",
       history: {},
+      deletions: {}, // M5
       blocks: [],
       categories: [],
       looseBricks: [
@@ -1751,6 +1763,7 @@ describe("U-m9d-008: weekScore — empty history first run + straddling programS
       programStart: "2026-05-13",
       currentDate: "2026-05-15",
       history: {},
+      deletions: {}, // M5
       blocks: [],
       categories: [],
       looseBricks: [
@@ -1792,6 +1805,7 @@ describe("U-m9d-008: weekScore — empty history first run + straddling programS
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     };
     expect(weekScore(state, "2026-04-29")).toBe(45);
   });
@@ -1820,6 +1834,7 @@ describe("U-m9d-009: weekScore — fully-past week; missed vs 0-archived both co
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     };
     const result = weekScore(state, "2026-05-13");
     expect(result).toBeCloseTo(57.143, 2);
@@ -1843,6 +1858,7 @@ describe("U-m9d-009: weekScore — fully-past week; missed vs 0-archived both co
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     };
     const result = weekScore(stateMissed, "2026-05-13");
     // Same as before: 400/7 ≈ 57.143 — missed and 0-archived are indistinguishable to weekScore
@@ -2115,6 +2131,7 @@ describe("U-m9e-004: monthScore — honest-month-average contract, missed = 0, m
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     };
     // monthIndex 5 = June (0-indexed)
     expect(monthScore(state, 2026, 5)).toBe(30);
@@ -2131,6 +2148,7 @@ describe("U-m9e-004: monthScore — honest-month-average contract, missed = 0, m
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     };
     const result = monthScore(state, 2026, 5);
     expect(result).not.toBe(60); // 60 is (90+30)/2 — the mutant result
@@ -2149,6 +2167,7 @@ describe("U-m9e-004: monthScore — honest-month-average contract, missed = 0, m
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     };
     // If pre-start days were included in denominator, result would be (90+30+0+0) / (7+4) = 120/11 ≈ 10.9
     // If pre-start days were included in numerator too (all 0), same: 120/11 ≈ 10.9
@@ -2182,6 +2201,7 @@ describe("U-m9e-005: monthScore — current month is partial; today's live dayPc
       // Live in-progress day scoring 40% (2/5 done)
       blocks: [],
       categories: [],
+      deletions: {}, // M5
       looseBricks: [
         {
           id: "live-a",
@@ -2254,6 +2274,7 @@ describe("U-m9e-006: monthScore — no-data sentinel: fully-future / fully-pre-s
       programStart: "2026-05-01",
       currentDate: "2026-05-18",
       history: {},
+      deletions: {}, // M5
       blocks: [],
       categories: [],
       looseBricks: [],
@@ -2271,6 +2292,7 @@ describe("U-m9e-006: monthScore — no-data sentinel: fully-future / fully-pre-s
       programStart: "2026-05-01",
       currentDate: "2026-05-18",
       history: {},
+      deletions: {}, // M5
       blocks: [],
       categories: [],
       looseBricks: [],
@@ -2313,6 +2335,7 @@ describe("U-m9e-007: yearScore — averages DAYS directly, NOT the twelve monthS
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     };
   }
 
@@ -2350,6 +2373,7 @@ describe("U-m9e-008: yearScore — no-data sentinel + first-run single-day year"
       programStart: "2026-05-01",
       currentDate: "2026-05-18",
       history: {},
+      deletions: {}, // M5
       blocks: [],
       categories: [],
       looseBricks: [],
@@ -2365,6 +2389,7 @@ describe("U-m9e-008: yearScore — no-data sentinel + first-run single-day year"
       programStart: "2026-05-01",
       currentDate: "2026-05-18",
       history: {},
+      deletions: {}, // M5
       blocks: [],
       categories: [],
       looseBricks: [],
@@ -2382,6 +2407,7 @@ describe("U-m9e-008: yearScore — no-data sentinel + first-run single-day year"
       programStart: "2026-05-18",
       currentDate: "2026-05-18",
       history: {},
+      deletions: {}, // M5
       blocks: [],
       categories: [],
       looseBricks: [
@@ -2434,6 +2460,7 @@ describe("U-m9e-009: monthScore/yearScore — purity, clock-independence, frozen
       history,
       blocks: Object.freeze([]) as unknown as AppState["blocks"],
       categories: Object.freeze([]) as unknown as AppState["categories"],
+      deletions: {}, // M5
       looseBricks: Object.freeze([
         {
           id: "live-a",

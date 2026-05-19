@@ -43,7 +43,7 @@ vi.mock("@/lib/audio", () => ({
 beforeEach(() => {
   localStorage.clear();
   saveState({
-    schemaVersion: 2,
+    schemaVersion: 3,
     programStart: "2026-05-09",
     currentDate: today(), // M9b: rollover no-op (currentDate === today)
     history: {},
@@ -71,6 +71,7 @@ beforeEach(() => {
       },
     ],
     looseBricks: [],
+    deletions: {}, // M5
     categories: [{ id: "c1", name: "Health", color: "#34d399" }],
   });
 });

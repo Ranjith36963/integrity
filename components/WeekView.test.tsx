@@ -50,6 +50,7 @@ function makeWTodayState(overrides: Partial<AppState> = {}): AppState {
     },
     blocks: [],
     categories: [],
+    deletions: {}, // M5
     looseBricks: [
       {
         id: "lb1",

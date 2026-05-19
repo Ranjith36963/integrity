@@ -36,22 +36,24 @@ function projectToAppState(p: PersistedState): AppState {
     programStart: p.programStart,
     currentDate: p.currentDate, // M9b — must round-trip (plan § Data model SG-m9b decision)
     history: p.history, // M9b — must round-trip
+    deletions: p.deletions, // M5 — must round-trip (ADR-018)
   };
 }
 
 /**
  * toPersisted — lifts AppState to PersistedState for saveState.
- * schemaVersion: 2 (ADR-045). currentDate + history lifted back from AppState.
+ * schemaVersion: 3 (M5 bump). currentDate + history + deletions lifted back from AppState.
  */
 function toPersisted(s: AppState): PersistedState {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     programStart: s.programStart,
     currentDate: s.currentDate, // M9b
     history: s.history, // M9b
     blocks: s.blocks,
     categories: s.categories,
     looseBricks: s.looseBricks,
+    deletions: s.deletions, // M5 — ADR-018
   };
 }
 

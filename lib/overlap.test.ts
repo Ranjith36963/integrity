@@ -22,6 +22,7 @@ function makeState(partial: Partial<AppState> = {}): AppState {
     programStart: "2026-01-01",
     currentDate: "2026-01-01",
     history: {},
+    deletions: {}, // M5
     ...partial,
   };
 }

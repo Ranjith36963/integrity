@@ -106,6 +106,7 @@ function makeFixtureState(overrides: Partial<AppState> = {}): AppState {
     // Live day: 5 loose bricks (2 done) → 40%
     blocks: [],
     categories: [],
+    deletions: {}, // M5
     looseBricks: [
       {
         id: "lb1",
@@ -328,6 +329,7 @@ describe("C-m9c-011: MonthView — first-run/future month renders without crash"
       programStart: "2026-05-18",
       currentDate: "2026-05-18",
       history: {},
+      deletions: {}, // M5
       blocks: [],
       categories: [],
       looseBricks: [],

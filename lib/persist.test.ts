@@ -79,13 +79,14 @@ describe("U-m8-001: lib/persist.ts module surface", () => {
   it("PersistedState type-checks at compile time (tsc gate)", () => {
     // If this compiles, the v2 type is exported correctly.
     const state: PersistedState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-05-15",
       currentDate: "2026-05-15",
       history: {},
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     };
     expect(state.schemaVersion).toBe(2);
   });
@@ -96,7 +97,7 @@ describe("U-m8-001: lib/persist.ts module surface", () => {
 describe("U-m8-002: saveState/loadState round-trip — exact done value fidelity", () => {
   it("round-trips a full PersistedState with exact block/brick/category/loose-brick values", () => {
     const state: PersistedState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-05-01",
       currentDate: "2026-05-01",
       history: {},
@@ -134,6 +135,7 @@ describe("U-m8-002: saveState/loadState round-trip — exact done value fidelity
           done: true,
         },
       ],
+      deletions: {}, // M5
     };
 
     saveState(state);
@@ -152,13 +154,14 @@ describe("U-m8-002: saveState/loadState round-trip — exact done value fidelity
 
   it("raw localStorage JSON has exactly the 7 v2 keys — schemaVersion, programStart, currentDate, history, blocks, categories, looseBricks — and schemaVersion === 2", () => {
     const state: PersistedState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-05-01",
       currentDate: "2026-05-01",
       history: {},
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     };
 
     saveState(state);
@@ -186,7 +189,7 @@ describe("U-m8-002: saveState/loadState round-trip — exact done value fidelity
 describe("U-m8-003: saveState writes ADR-045 persisted shape — schemaVersion is boundary-only", () => {
   it("persisted JSON has schemaVersion: 2 and the exact 7 v2 keys — no leaked runtime fields", () => {
     const input: PersistedState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-05-01",
       currentDate: "2026-05-01",
       history: {},
@@ -212,6 +215,7 @@ describe("U-m8-003: saveState writes ADR-045 persisted shape — schemaVersion i
           done: false,
         },
       ],
+      deletions: {}, // M5
     };
 
     saveState(input);
@@ -277,13 +281,14 @@ describe("U-m8-006: loadState returns default for unknown/future schemaVersion",
   it("loads schemaVersion: 2 (current version — NOT unknown)", () => {
     // schemaVersion: 2 is the current version; it must load, not fall back to default.
     mockStorage._store[STORAGE_KEY] = JSON.stringify({
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-05-01",
       currentDate: "2026-05-18",
       history: {},
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     });
     expect(() => loadState()).not.toThrow();
     const result = loadState();
@@ -299,6 +304,7 @@ describe("U-m8-006: loadState returns default for unknown/future schemaVersion",
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     });
     expect(() => loadState()).not.toThrow();
     const result = loadState();
@@ -314,6 +320,7 @@ describe("U-m8-006: loadState returns default for unknown/future schemaVersion",
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     });
     expect(() => loadState()).not.toThrow();
     const result = loadState();
@@ -327,6 +334,7 @@ describe("U-m8-006: loadState returns default for unknown/future schemaVersion",
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     });
     expect(() => loadState()).not.toThrow();
     const result = loadState();
@@ -367,6 +375,7 @@ describe("U-m8-007: loadState fills missing/non-array collections with []", () =
       blocks: "oops",
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     });
     const result = loadState();
     expect(result.blocks).toEqual([]);
@@ -391,13 +400,14 @@ describe("U-m8-008: getItem/setItem throwing → no crash", () => {
       throw new DOMException("QuotaExceededError");
     });
     const valid: PersistedState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-05-01",
       currentDate: "2026-05-01",
       history: {},
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     };
     expect(() => saveState(valid)).not.toThrow();
   });
@@ -433,6 +443,7 @@ describe("U-m8-009: migrate — scaffold version-gate; non-object inputs → nul
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     };
     const result = migrate(raw);
     expect(result).not.toBeNull();
@@ -451,6 +462,7 @@ describe("U-m8-010: programStart preserved verbatim from prior session; non-stri
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     });
     const result = loadState();
     expect(result.programStart).toBe("2026-03-10"); // NOT re-stamped to today
@@ -463,6 +475,7 @@ describe("U-m8-010: programStart preserved verbatim from prior session; non-stri
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     });
     const result = loadState();
     expect(result.programStart).toBe(today());
@@ -472,7 +485,7 @@ describe("U-m8-010: programStart preserved verbatim from prior session; non-stri
 // ─── U-m8-011: defaultPersisted() factory ─────────────────────────────────────
 
 describe("U-m8-011: defaultPersisted() is a fresh-object factory", () => {
-  it("returns schemaVersion: 2, empty collections, programStart = today", () => {
+  it("returns schemaVersion: 3, empty collections, programStart = today", () => {
     const result = defaultPersisted();
     expect(result.schemaVersion).toBe(2);
     expect(result.blocks).toEqual([]);
@@ -511,13 +524,14 @@ describe("U-m9b-001: lib/persist.ts v2 module surface", () => {
   it("PersistedState v2 type-checks at compile time (tsc gate)", () => {
     // If this compiles, the v2 type is exported correctly.
     const state: PersistedState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-05-01",
       currentDate: "2026-05-18",
       history: {},
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     };
     expect(state.schemaVersion).toBe(2);
     expect(state.currentDate).toBe("2026-05-18");
@@ -530,7 +544,7 @@ describe("U-m9b-001: lib/persist.ts v2 module surface", () => {
 describe("U-m9b-002: saveState/loadState v2 round-trip", () => {
   it("round-trips a full v2 PersistedState including currentDate and history", () => {
     const state: PersistedState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-05-01",
       currentDate: "2026-05-18",
       history: {
@@ -583,6 +597,7 @@ describe("U-m9b-002: saveState/loadState v2 round-trip", () => {
           done: true,
         },
       ],
+      deletions: {}, // M5
     };
 
     saveState(state);
@@ -602,13 +617,14 @@ describe("U-m9b-002: saveState/loadState v2 round-trip", () => {
 
   it("raw localStorage JSON has exactly the 7 v2 keys and schemaVersion === 2", () => {
     const state: PersistedState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-05-01",
       currentDate: "2026-05-18",
       history: {},
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     };
 
     saveState(state);
@@ -689,6 +705,7 @@ describe("U-m9b-005: loadState migrates schemaVersion:1 payload to v2", () => {
       blocks: [{ id: "b1" }],
       categories: [{ id: "c1" }],
       looseBricks: [{ id: "t1" }],
+      deletions: {}, // M5
     });
 
     const result = loadState();
@@ -719,6 +736,7 @@ describe("U-m9b-006: loadState returns default for unknown/future schemaVersion 
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     });
     expect(() => loadState()).not.toThrow();
     const result = loadState();
@@ -791,13 +809,14 @@ describe("U-m9b-007: loadState handles malformed JSON gracefully", () => {
 describe("U-m9b-008: v2 payload with non-object history → history coerced to {}", () => {
   it("history: 'oops' → coerced to {}", () => {
     mockStorage._store[STORAGE_KEY] = JSON.stringify({
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-05-01",
       currentDate: "2026-05-18",
       history: "oops",
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     });
     expect(() => loadState()).not.toThrow();
     const result = loadState();
@@ -807,13 +826,14 @@ describe("U-m9b-008: v2 payload with non-object history → history coerced to {
 
   it("history: null → coerced to {}", () => {
     mockStorage._store[STORAGE_KEY] = JSON.stringify({
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-05-01",
       currentDate: "2026-05-18",
       history: null,
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     });
     const result = loadState();
     expect(result.history).toEqual({});
@@ -821,13 +841,14 @@ describe("U-m9b-008: v2 payload with non-object history → history coerced to {
 
   it("history: 42 → coerced to {}", () => {
     mockStorage._store[STORAGE_KEY] = JSON.stringify({
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-05-01",
       currentDate: "2026-05-18",
       history: 42,
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     });
     const result = loadState();
     expect(result.history).toEqual({});
@@ -835,13 +856,14 @@ describe("U-m9b-008: v2 payload with non-object history → history coerced to {
 
   it("history: [] (array) → coerced to {}", () => {
     mockStorage._store[STORAGE_KEY] = JSON.stringify({
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-05-01",
       currentDate: "2026-05-18",
       history: [],
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     });
     const result = loadState();
     expect(result.history).toEqual({});
@@ -856,7 +878,7 @@ describe("U-m9b-009: partial v2 payload → defensive coercion of missing/non-st
     vi.setSystemTime(new Date("2026-05-18T10:00:00"));
 
     mockStorage._store[STORAGE_KEY] = JSON.stringify({
-      schemaVersion: 2,
+      schemaVersion: 3,
       history: {},
       blocks: [{ id: "b1" }],
     });
@@ -873,13 +895,14 @@ describe("U-m9b-009: partial v2 payload → defensive coercion of missing/non-st
 
   it("non-array blocks (e.g. 'x') coerced to []", () => {
     mockStorage._store[STORAGE_KEY] = JSON.stringify({
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-05-01",
       currentDate: "2026-05-18",
       history: {},
       blocks: "x",
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     });
     const result = loadState();
     expect(result.blocks).toEqual([]);
@@ -890,13 +913,14 @@ describe("U-m9b-009: partial v2 payload → defensive coercion of missing/non-st
     vi.setSystemTime(new Date("2026-05-18T10:00:00"));
 
     mockStorage._store[STORAGE_KEY] = JSON.stringify({
-      schemaVersion: 2,
+      schemaVersion: 3,
       programStart: "2026-05-01",
       currentDate: 5,
       history: {},
       blocks: [],
       categories: [],
       looseBricks: [],
+      deletions: {}, // M5
     });
     const result = loadState();
     expect(result.currentDate).toBe("2026-05-18");

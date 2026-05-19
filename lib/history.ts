@@ -242,7 +242,7 @@ export function rollover(
   // Step 4: ADVANCE — return a new object with the rolled state.
   return {
     ...state,
-    schemaVersion: 2,
+    schemaVersion: 3, // M5 bump: v2→v3 (PersistedState schemaVersion)
     history: newHistory,
     currentDate: todayISO,
     blocks: freshBlocks,

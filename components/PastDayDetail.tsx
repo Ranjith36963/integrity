@@ -42,6 +42,7 @@ export function PastDayDetail({
       programStart: isoDate,
       currentDate: isoDate,
       history: {},
+      deletions: {}, // M5 — archived day has no per-day deletions
     }),
   );
 
