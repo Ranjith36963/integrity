@@ -238,7 +238,7 @@ export function BrickChip({
         {/* M5: in edit mode render as inert div (no button role); in normal mode render as button */}
         {editMode ? (
           <div
-            aria-hidden="true"
+            data-testid="brick-chip-body"
             style={{ ...chipBodyStyle, cursor: "default" }}
           >
             {unitsChipContent}
@@ -331,7 +331,10 @@ export function BrickChip({
 
       {/* M5: in edit mode render as inert div (no button role); in normal mode render as button */}
       {editMode ? (
-        <div aria-hidden="true" style={{ ...tickBodyStyle, cursor: "default" }}>
+        <div
+          data-testid="brick-chip-body"
+          style={{ ...tickBodyStyle, cursor: "default" }}
+        >
           {tickChipContent}
         </div>
       ) : (
