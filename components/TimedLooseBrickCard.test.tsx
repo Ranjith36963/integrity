@@ -213,9 +213,12 @@ describe("C-m5-007: TimedLooseBrickCard — Unlocked shows × delete; log suppre
     );
     const pencil = screen.getByRole("button", { name: /edit mode/i });
     await user.click(pencil);
-    // In edit mode, delete button is the only accessible button for this brick
-    const cardBtn = screen.getByRole("button", { name: /delete brick run/i });
-    await user.click(cardBtn);
+    // In edit mode, the BrickChip body is a non-interactive div (data-testid="brick-chip-body").
+    // Clicking it must NOT fire onTickToggle — suppression is proven by clicking the real
+    // chip-body surface (not a sibling control). If suppression were off (body became a
+    // live button calling handleClick), this assertion would fail with "expected 0, got 1".
+    const chipBody = screen.getByTestId("brick-chip-body");
+    await user.click(chipBody);
     expect(onTick).toHaveBeenCalledTimes(0);
   });
 

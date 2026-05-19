@@ -803,8 +803,11 @@ describe("C-m5-006: BrickChip — Locked mode no × button; Unlocked × appears,
     );
     const pencil = screen.getByRole("button", { name: /edit mode/i });
     await user.click(pencil);
-    // Click the chip body button (the main tick button)
-    const chipBody = screen.getByRole("button", { name: /push-ups/i });
+    // In edit mode the chip body is a non-interactive div (data-testid="brick-chip-body").
+    // Clicking it must NOT fire onTickToggle — suppression is proven by clicking the real
+    // body surface (not a sibling control). If suppression were off (body became a live
+    // button calling handleClick), this assertion would fail with "expected 0, got 1".
+    const chipBody = screen.getByTestId("brick-chip-body");
     await user.click(chipBody);
     expect(onTick).toHaveBeenCalledTimes(0);
   });
@@ -839,7 +842,7 @@ describe("C-m5-006: BrickChip — Locked mode no × button; Unlocked × appears,
     const onUnits = vi.fn();
     const onDelete = vi.fn();
     const { TopBar } = await import("./TopBar");
-    const { container } = render(
+    render(
       <EditModeProvider>
         <TopBar />
         <BrickChip
@@ -852,13 +855,12 @@ describe("C-m5-006: BrickChip — Locked mode no × button; Unlocked × appears,
     );
     const pencil = screen.getByRole("button", { name: /edit mode/i });
     await user.click(pencil);
-    // In edit mode the chip body becomes an aria-hidden div (not a button).
-    // Click directly on the chip container div to confirm log is suppressed.
-    // Using the data-component attribute to scope the click to the chip body area.
-    const chipContainer = container.querySelector(
-      "[data-component='brick-chip']",
-    ) as HTMLElement;
-    await user.click(chipContainer);
+    // In edit mode the chip body is a non-interactive div (data-testid="brick-chip-body").
+    // Clicking it must NOT fire onUnitsOpenSheet — suppression is proven by clicking the
+    // real body surface. If suppression were off (body became a live button calling
+    // handleUnitsClick), this assertion would fail with "expected 0, got 1".
+    const chipBody = screen.getByTestId("brick-chip-body");
+    await user.click(chipBody);
     expect(onUnits).toHaveBeenCalledTimes(0);
     // Tap × — delete fires once. Use exact string to avoid substring collision.
     const deleteBtn = screen.getByRole("button", {
