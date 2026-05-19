@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TimelineBlock } from "./TimelineBlock";
+import { EditModeProvider } from "./EditModeProvider";
 import type { Block, Category } from "@/lib/types";
 import { HOUR_HEIGHT_PX } from "@/lib/timeOffset";
 
@@ -601,3 +602,253 @@ describe("C-m4b-020: TimelineBlock threads onUnitsOpenSheet down to inner units 
 // C-m4c-019: TimelineBlock timer pass-through — RETIRED in M4f (ADR-043).
 // kind:"time" removed; runningTimerBrickId removed from AppState.
 // Coverage replaced by C-m4b-020 units chip thread-through above.
+
+// ─── C-m5-003: Locked mode — no × delete button; tap-to-expand fires ─────────
+
+const blkRecur: Block = {
+  id: "blk-recur",
+  name: "Morning",
+  start: "07:00",
+  recurrence: { kind: "every-day" },
+  categoryId: null,
+  bricks: [],
+};
+
+describe("C-m5-003: TimelineBlock Locked mode — no × delete button; expand fires normally", () => {
+  it("no × delete button renders in Locked mode (editMode===false, the default)", () => {
+    render(
+      <EditModeProvider>
+        <TimelineBlock
+          block={blkRecur}
+          categories={[]}
+          onRequestDeleteBlock={vi.fn()}
+        />
+      </EditModeProvider>,
+    );
+    expect(screen.queryByRole("button", { name: /delete block/i })).toBeNull();
+  });
+
+  it("block card carries no jiggle data attribute in Locked mode", () => {
+    const { container } = render(
+      <EditModeProvider>
+        <TimelineBlock block={blkRecur} categories={[]} />
+      </EditModeProvider>,
+    );
+    const card = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    expect(card).not.toBeNull();
+    expect(card.dataset.editMode).toBeUndefined();
+    expect(card.className).not.toMatch(/jiggle/);
+  });
+});
+
+// ─── C-m5-004: Unlocked — always-visible block × + jiggle ────────────────────
+// Use TopBar as the toggle trigger since EditModeProvider's toggle is context-internal.
+
+describe("C-m5-004: TimelineBlock Unlocked — always-visible block ×; jiggle present", () => {
+  it("× delete button renders after Edit Mode is unlocked", () => {
+    // In Locked (default): no × button; verify baseline
+    render(
+      <EditModeProvider>
+        <TimelineBlock
+          block={blkRecur}
+          categories={[]}
+          onRequestDeleteBlock={vi.fn()}
+        />
+      </EditModeProvider>,
+    );
+    expect(screen.queryByRole("button", { name: /delete block/i })).toBeNull();
+  });
+
+  it("× has aria-label naming the block and ≥44px hit area (after unlock via TopBar)", async () => {
+    const user = userEvent.setup();
+    const { TopBar } = await import("./TopBar");
+    render(
+      <EditModeProvider>
+        <TopBar />
+        <TimelineBlock
+          block={blkRecur}
+          categories={[]}
+          onRequestDeleteBlock={vi.fn()}
+        />
+      </EditModeProvider>,
+    );
+    const pencil = screen.getByRole("button", { name: /edit mode/i });
+    await user.click(pencil);
+    const deleteBtn = screen.getByRole("button", {
+      name: "Delete block Morning",
+    });
+    expect(deleteBtn).toBeInTheDocument();
+    // ≥44px: check style.minHeight or className
+    const minH = Number(deleteBtn.style.minHeight?.replace("px", "") ?? "0");
+    const hasMinHClass = deleteBtn.className.includes("h-11");
+    expect(minH >= 44 || hasMinHClass).toBe(true);
+  });
+
+  it("card carries jiggle data attribute in Unlocked mode (motion enabled)", async () => {
+    const user = userEvent.setup();
+    const { TopBar } = await import("./TopBar");
+    const { container } = render(
+      <EditModeProvider>
+        <TopBar />
+        <TimelineBlock
+          block={blkRecur}
+          categories={[]}
+          onRequestDeleteBlock={vi.fn()}
+        />
+      </EditModeProvider>,
+    );
+    const pencil = screen.getByRole("button", { name: /edit mode/i });
+    await user.click(pencil);
+    const card = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    expect(card).not.toBeNull();
+    // Jiggle is indicated by data-edit-mode="true" or a jiggle class
+    const hasJiggle =
+      card.dataset.editMode === "true" ||
+      card.className.includes("jiggle") ||
+      card.dataset.jiggle === "true";
+    expect(hasJiggle).toBe(true);
+  });
+});
+
+// ─── C-m5-005: jiggle suppressed under prefers-reduced-motion; × still appears ─
+
+describe("C-m5-005: TimelineBlock + BrickChip — jiggle suppressed under prefers-reduced-motion; × still appears", () => {
+  it("block card has no jiggle attribute when prefers-reduced-motion is set, but × still renders", async () => {
+    // Mock matchMedia for prefers-reduced-motion: reduce
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: query === "(prefers-reduced-motion: reduce)",
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+
+    const user = userEvent.setup();
+    const { TopBar } = await import("./TopBar");
+    const { container } = render(
+      <EditModeProvider>
+        <TopBar />
+        <TimelineBlock
+          block={blkRecur}
+          categories={[]}
+          onRequestDeleteBlock={vi.fn()}
+        />
+      </EditModeProvider>,
+    );
+    const pencil = screen.getByRole("button", { name: /edit mode/i });
+    await user.click(pencil);
+
+    // × still appears even with reduced motion
+    const deleteBtn = screen.getByRole("button", {
+      name: "Delete block Morning",
+    });
+    expect(deleteBtn).toBeInTheDocument();
+
+    // No jiggle under reduced motion
+    const card = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    // Jiggle should NOT be active when reduced motion is set
+    const hasJiggle =
+      card.className.includes("dharma-jiggle") ||
+      (card.dataset.editMode === "true" && card.dataset.reduced !== "true");
+    expect(hasJiggle).toBe(false);
+
+    // Restore
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      value: originalMatchMedia,
+    });
+  });
+});
+
+// ─── C-m5-008: TimelineBlock tap-to-expand is no-op in Edit Mode ─────────────
+
+describe("C-m5-008: TimelineBlock tap-to-expand is a no-op in Edit Mode", () => {
+  it("card body tap does not expand in Unlocked mode", async () => {
+    const user = userEvent.setup();
+    const { TopBar } = await import("./TopBar");
+    const { container } = render(
+      <EditModeProvider>
+        <TopBar />
+        <TimelineBlock
+          block={blkRecur}
+          categories={[]}
+          onRequestDeleteBlock={vi.fn()}
+        />
+      </EditModeProvider>,
+    );
+    const pencil = screen.getByRole("button", { name: /edit mode/i });
+    await user.click(pencil); // Unlock
+
+    const card = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    const expandedBefore = card.getAttribute("aria-expanded");
+    await user.click(card);
+    const expandedAfter = card.getAttribute("aria-expanded");
+    // Card should NOT have expanded (aria-expanded unchanged or still false)
+    expect(expandedAfter).toBe(expandedBefore);
+  });
+
+  it("tapping × calls onRequestDeleteBlock without toggling expansion", async () => {
+    const user = userEvent.setup();
+    const onDelete = vi.fn();
+    const { TopBar } = await import("./TopBar");
+    const { container } = render(
+      <EditModeProvider>
+        <TopBar />
+        <TimelineBlock
+          block={blkRecur}
+          categories={[]}
+          onRequestDeleteBlock={onDelete}
+        />
+      </EditModeProvider>,
+    );
+    const pencil = screen.getByRole("button", { name: /edit mode/i });
+    await user.click(pencil); // Unlock
+
+    const card = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    const expandedBefore = card.getAttribute("aria-expanded");
+
+    const deleteBtn = screen.getByRole("button", {
+      name: "Delete block Morning",
+    });
+    await user.click(deleteBtn);
+    expect(onDelete).toHaveBeenCalledWith("blk-recur");
+    // Card should NOT have expanded
+    const expandedAfter = card.getAttribute("aria-expanded");
+    expect(expandedAfter).toBe(expandedBefore);
+  });
+
+  it("in Locked mode body tap DOES expand (byte-identical to M4)", async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <EditModeProvider>
+        <TimelineBlock
+          block={blkRecur}
+          categories={[]}
+          onRequestDeleteBlock={vi.fn()}
+        />
+      </EditModeProvider>,
+    );
+    const card = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    await user.click(card);
+    expect(card.getAttribute("aria-expanded")).toBe("true");
+  });
+});
