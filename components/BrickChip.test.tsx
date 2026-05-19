@@ -839,7 +839,7 @@ describe("C-m5-006: BrickChip — Locked mode no × button; Unlocked × appears,
     const onUnits = vi.fn();
     const onDelete = vi.fn();
     const { TopBar } = await import("./TopBar");
-    render(
+    const { container } = render(
       <EditModeProvider>
         <TopBar />
         <BrickChip
@@ -852,11 +852,15 @@ describe("C-m5-006: BrickChip — Locked mode no × button; Unlocked × appears,
     );
     const pencil = screen.getByRole("button", { name: /edit mode/i });
     await user.click(pencil);
-    // Tap chip body — log must be suppressed
-    const chipBody = screen.getByRole("button", { name: /water/i });
-    await user.click(chipBody);
+    // In edit mode the chip body becomes an aria-hidden div (not a button).
+    // Click directly on the chip container div to confirm log is suppressed.
+    // Using the data-component attribute to scope the click to the chip body area.
+    const chipContainer = container.querySelector(
+      "[data-component='brick-chip']",
+    ) as HTMLElement;
+    await user.click(chipContainer);
     expect(onUnits).toHaveBeenCalledTimes(0);
-    // Tap × — delete fires once
+    // Tap × — delete fires once. Use exact string to avoid substring collision.
     const deleteBtn = screen.getByRole("button", {
       name: "Delete brick Water",
     });
