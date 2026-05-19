@@ -1131,3 +1131,24 @@ describe("U-m5-010: v3 payload round-trips; deletions coerced defensively", () =
     expect(result!.programStart).toBe("2026-05-01");
   });
 });
+
+// ─── U-m5-011: defaultPersisted() carries deletions:{}; schemaVersion:3 ───────
+
+describe("U-m5-011: defaultPersisted() carries deletions:{} + schemaVersion:3; no editMode field", () => {
+  it("defaultPersisted().deletions is an empty object (no overrides on fresh start)", () => {
+    const p = defaultPersisted();
+    expect(p.deletions).toEqual({});
+  });
+
+  it("defaultPersisted() carries schemaVersion:3 (SG-m8-04 separation: schemaVersion is PersistedState-only)", () => {
+    const p = defaultPersisted();
+    expect(p.schemaVersion).toBe(3);
+  });
+
+  it("defaultPersisted() carries no editMode/edit-mode field (SG-m5-04 — Edit Mode is never persisted)", () => {
+    const p = defaultPersisted() as Record<string, unknown>;
+    expect("editMode" in p).toBe(false);
+    expect("edit_mode" in p).toBe(false);
+    expect("edit-mode" in p).toBe(false);
+  });
+});

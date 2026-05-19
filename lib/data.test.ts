@@ -2001,3 +2001,24 @@ describe("U-m5-008: Action union exhaustiveness — three new arms are handled",
     if (brk?.kind === "tick") expect(brk.done).toBe(true);
   });
 });
+
+// ─── U-m5-011: defaultState carries deletions: {}; no schemaVersion ───────────
+
+describe("U-m5-011: defaultState() carries deletions:{}; schemaVersion is PersistedState-only", () => {
+  it("defaultState().deletions is an empty object (no overrides on fresh start)", () => {
+    const s = defaultState();
+    expect(s.deletions).toEqual({});
+  });
+
+  it("defaultState() does not carry a schemaVersion key (schemaVersion is PersistedState-only — SG-m8-04)", () => {
+    const s = defaultState();
+    expect("schemaVersion" in s).toBe(false);
+  });
+
+  it("defaultState() carries no editMode/edit-mode field (SG-m5-04 — Edit Mode is never persisted)", () => {
+    const s = defaultState();
+    expect("editMode" in s).toBe(false);
+    expect("edit_mode" in s).toBe(false);
+    expect("edit-mode" in s).toBe(false);
+  });
+});
