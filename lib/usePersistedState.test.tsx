@@ -780,7 +780,7 @@ describe("C-m9b-004: first saveState after rollover boot persists the post-rollo
     const raw = mockStorage._store[STORAGE_KEY];
     expect(raw).toBeTruthy();
     const parsedAfter = JSON.parse(raw) as Record<string, unknown>;
-    expect(parsedAfter.schemaVersion).toBe(2);
+    expect(parsedAfter.schemaVersion).toBe(3); // M5 sanctioned amendment
     expect(parsedAfter.currentDate).toBe("2026-05-18");
     // history contains yesterday's archived day
     const history = parsedAfter.history as Record<string, unknown>;

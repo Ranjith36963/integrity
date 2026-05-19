@@ -65,8 +65,8 @@ describe("U-m8-001: lib/persist.ts module surface", () => {
     expect(STORAGE_KEY).toBe("dharma:v1");
   });
 
-  it("SCHEMA_VERSION is the number 2", () => {
-    expect(SCHEMA_VERSION).toBe(2);
+  it("SCHEMA_VERSION is the number 3", () => {
+    expect(SCHEMA_VERSION).toBe(3);
   });
 
   it("loadState, saveState, defaultPersisted, migrate are all functions", () => {
@@ -88,7 +88,7 @@ describe("U-m8-001: lib/persist.ts module surface", () => {
       looseBricks: [],
       deletions: {}, // M5
     };
-    expect(state.schemaVersion).toBe(2);
+    expect(state.schemaVersion).toBe(3);
   });
 });
 
@@ -152,7 +152,8 @@ describe("U-m8-002: saveState/loadState round-trip — exact done value fidelity
     expect(loaded.programStart).toBe("2026-05-01");
   });
 
-  it("raw localStorage JSON has exactly the 7 v2 keys — schemaVersion, programStart, currentDate, history, blocks, categories, looseBricks — and schemaVersion === 2", () => {
+  it("raw localStorage JSON has exactly the 8 v3 keys — schemaVersion, programStart, currentDate, history, blocks, categories, looseBricks, deletions — and schemaVersion === 3", () => {
+    // Sanctioned M5 amendment: schema v2→v3 adds deletions; key count 7→8.
     const state: PersistedState = {
       schemaVersion: 3,
       programStart: "2026-05-01",
@@ -174,20 +175,21 @@ describe("U-m8-002: saveState/loadState round-trip — exact done value fidelity
         "blocks",
         "categories",
         "currentDate",
+        "deletions",
         "history",
         "looseBricks",
         "programStart",
         "schemaVersion",
       ].sort(),
     );
-    expect(parsed.schemaVersion).toBe(2);
+    expect(parsed.schemaVersion).toBe(3);
   });
 });
 
 // ─── U-m8-003: saveState writes ADR-044 boundary shape ───────────────────────
 
 describe("U-m8-003: saveState writes ADR-045 persisted shape — schemaVersion is boundary-only", () => {
-  it("persisted JSON has schemaVersion: 2 and the exact 7 v2 keys — no leaked runtime fields", () => {
+  it("persisted JSON has schemaVersion: 3 and the exact 8 v3 keys — no leaked runtime fields", () => {
     const input: PersistedState = {
       schemaVersion: 3,
       programStart: "2026-05-01",
@@ -222,19 +224,20 @@ describe("U-m8-003: saveState writes ADR-045 persisted shape — schemaVersion i
     const raw = mockStorage._store[STORAGE_KEY];
     const parsed = JSON.parse(raw) as Record<string, unknown>;
 
-    // Exactly these 7 v2 keys — no extra fields
+    // Exactly these 8 v3 keys — no extra fields (M5 sanctioned amendment: deletions added)
     expect(Object.keys(parsed).sort()).toEqual(
       [
         "blocks",
         "categories",
         "currentDate",
+        "deletions",
         "history",
         "looseBricks",
         "programStart",
         "schemaVersion",
       ].sort(),
     );
-    expect(parsed.schemaVersion).toBe(2);
+    expect(parsed.schemaVersion).toBe(3);
     expect(parsed.programStart).toBe("2026-05-01");
   });
 });
@@ -249,7 +252,7 @@ describe("U-m8-004: loadState returns defaultPersisted() on first run (no key)",
     expect(result.blocks).toEqual([]);
     expect(result.categories).toEqual([]);
     expect(result.looseBricks).toEqual([]);
-    expect(result.schemaVersion).toBe(2);
+    expect(result.schemaVersion).toBe(3); // M5 sanctioned amendment
     expect(result.programStart).toBe(today());
   });
 });
@@ -264,7 +267,7 @@ describe("U-m8-005: loadState handles malformed JSON gracefully", () => {
     expect(result.blocks).toEqual([]);
     expect(result.categories).toEqual([]);
     expect(result.looseBricks).toEqual([]);
-    expect(result.schemaVersion).toBe(2);
+    expect(result.schemaVersion).toBe(3); // M5 sanctioned amendment
     expect(result.programStart).toBe(today());
   });
 
@@ -292,12 +295,13 @@ describe("U-m8-006: loadState returns default for unknown/future schemaVersion",
     });
     expect(() => loadState()).not.toThrow();
     const result = loadState();
-    expect(result.schemaVersion).toBe(2);
+    expect(result.schemaVersion).toBe(3); // M5 sanctioned amendment
     expect(result.programStart).toBe("2026-05-01"); // preserved
     expect(result.currentDate).toBe("2026-05-18"); // preserved
   });
 
-  it("returns defaultPersisted() when schemaVersion is 3 (future/unknown)", () => {
+  it("loads v3 payload with defensive coercion when schemaVersion is 3 (M5 terminus, M5 sanctioned amendment)", () => {
+    // schemaVersion 3 is the live terminus in M5 — the case 3 arm loads it correctly.
     mockStorage._store[STORAGE_KEY] = JSON.stringify({
       schemaVersion: 3,
       programStart: "2026-05-01",
@@ -308,9 +312,10 @@ describe("U-m8-006: loadState returns default for unknown/future schemaVersion",
     });
     expect(() => loadState()).not.toThrow();
     const result = loadState();
-    expect(result.schemaVersion).toBe(2);
+    expect(result.schemaVersion).toBe(3);
     expect(result.blocks).toEqual([]);
-    expect(result.programStart).toBe(today());
+    // v3 case preserves programStart from stored value (not a default fallback)
+    expect(result.programStart).toBe("2026-05-01");
   });
 
   it("returns defaultPersisted() when schemaVersion is 0", () => {
@@ -324,7 +329,7 @@ describe("U-m8-006: loadState returns default for unknown/future schemaVersion",
     });
     expect(() => loadState()).not.toThrow();
     const result = loadState();
-    expect(result.schemaVersion).toBe(2);
+    expect(result.schemaVersion).toBe(3); // M5 sanctioned amendment
     expect(result.programStart).toBe(today());
   });
 
@@ -338,7 +343,7 @@ describe("U-m8-006: loadState returns default for unknown/future schemaVersion",
     });
     expect(() => loadState()).not.toThrow();
     const result = loadState();
-    expect(result.schemaVersion).toBe(2);
+    expect(result.schemaVersion).toBe(3); // M5 sanctioned amendment
     expect(result.programStart).toBe(today());
   });
 });
@@ -447,8 +452,8 @@ describe("U-m8-009: migrate — scaffold version-gate; non-object inputs → nul
     };
     const result = migrate(raw);
     expect(result).not.toBeNull();
-    // v1 payload gets migrated to v2
-    expect(result?.schemaVersion).toBe(2);
+    // v1 payload gets migrated to v3 (M5 sanctioned amendment)
+    expect(result?.schemaVersion).toBe(3);
   });
 });
 
@@ -487,7 +492,7 @@ describe("U-m8-010: programStart preserved verbatim from prior session; non-stri
 describe("U-m8-011: defaultPersisted() is a fresh-object factory", () => {
   it("returns schemaVersion: 3, empty collections, programStart = today", () => {
     const result = defaultPersisted();
-    expect(result.schemaVersion).toBe(2);
+    expect(result.schemaVersion).toBe(3); // M5 sanctioned amendment
     expect(result.blocks).toEqual([]);
     expect(result.categories).toEqual([]);
     expect(result.looseBricks).toEqual([]);
@@ -510,8 +515,8 @@ describe("U-m9b-001: lib/persist.ts v2 module surface", () => {
     expect(STORAGE_KEY).toBe("dharma:v1");
   });
 
-  it("SCHEMA_VERSION is the number 2", () => {
-    expect(SCHEMA_VERSION).toBe(2);
+  it("SCHEMA_VERSION is the number 3", () => {
+    expect(SCHEMA_VERSION).toBe(3);
   });
 
   it("loadState, saveState, defaultPersisted, migrate are all functions", () => {
@@ -533,7 +538,7 @@ describe("U-m9b-001: lib/persist.ts v2 module surface", () => {
       looseBricks: [],
       deletions: {}, // M5
     };
-    expect(state.schemaVersion).toBe(2);
+    expect(state.schemaVersion).toBe(3); // M5 sanctioned amendment
     expect(state.currentDate).toBe("2026-05-18");
     expect(state.history).toEqual({});
   });
@@ -615,7 +620,8 @@ describe("U-m9b-002: saveState/loadState v2 round-trip", () => {
     expect(loaded.programStart).toBe("2026-05-01");
   });
 
-  it("raw localStorage JSON has exactly the 7 v2 keys and schemaVersion === 2", () => {
+  it("raw localStorage JSON has exactly the 8 v3 keys and schemaVersion === 3", () => {
+    // Sanctioned M5 amendment: schema v2→v3 adds deletions; key count 7→8.
     const state: PersistedState = {
       schemaVersion: 3,
       programStart: "2026-05-01",
@@ -637,13 +643,14 @@ describe("U-m9b-002: saveState/loadState v2 round-trip", () => {
         "blocks",
         "categories",
         "currentDate",
+        "deletions",
         "history",
         "looseBricks",
         "programStart",
         "schemaVersion",
       ].sort(),
     );
-    expect(parsed.schemaVersion).toBe(2);
+    expect(parsed.schemaVersion).toBe(3);
   });
 });
 
@@ -656,7 +663,7 @@ describe("U-m9b-003: loadState returns v2 default on first run (no key)", () => 
 
     expect(() => loadState()).not.toThrow();
     const result = loadState();
-    expect(result.schemaVersion).toBe(2);
+    expect(result.schemaVersion).toBe(3); // M5 sanctioned amendment
     expect(result.currentDate).toBe("2026-05-18");
     expect(result.programStart).toBe("2026-05-18");
     expect(result.history).toEqual({});
@@ -671,14 +678,15 @@ describe("U-m9b-003: loadState returns v2 default on first run (no key)", () => 
 // ─── U-m9b-004: defaultPersisted() v2 factory ────────────────────────────────
 
 describe("U-m9b-004: defaultPersisted() returns v2 shape with distinct references", () => {
-  it("returns schemaVersion:2, currentDate=today, history={}, all fresh", () => {
+  it("returns schemaVersion:3, currentDate=today, history={}, all fresh", () => {
+    // Sanctioned M5 amendment: schemaVersion 2→3.
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-18T10:00:00"));
 
     const a = defaultPersisted();
     const b = defaultPersisted();
 
-    expect(a.schemaVersion).toBe(2);
+    expect(a.schemaVersion).toBe(3);
     expect(a.currentDate).toBe("2026-05-18");
     expect(a.programStart).toBe("2026-05-18");
     expect(a.history).toEqual({});
@@ -709,7 +717,7 @@ describe("U-m9b-005: loadState migrates schemaVersion:1 payload to v2", () => {
     });
 
     const result = loadState();
-    expect(result.schemaVersion).toBe(2);
+    expect(result.schemaVersion).toBe(3); // M5 sanctioned amendment
     expect(result.programStart).toBe("2026-03-10"); // preserved, NOT re-stamped
     expect(result.currentDate).toBe("2026-05-18"); // set to today
     expect(result.history).toEqual({});
@@ -721,10 +729,13 @@ describe("U-m9b-005: loadState migrates schemaVersion:1 payload to v2", () => {
   });
 });
 
-// ─── U-m9b-006: schemaVersion ≥ 3 or non-numeric → default ──────────────────
+// ─── U-m9b-006: schemaVersion ≥ 4 or non-numeric → default ──────────────────
+// M5 sanctioned amendment: schemaVersion 3 is now the live terminus (case 3 in migrate);
+// the "≥3 is unknown" test is amended to show schemaVersion 3 loads correctly,
+// and the "future/unknown" threshold shifts to ≥4.
 
-describe("U-m9b-006: loadState returns default for unknown/future schemaVersion (≥3 or non-numeric)", () => {
-  it("returns defaultPersisted() for schemaVersion: 3 (future/unknown)", () => {
+describe("U-m9b-006: loadState returns default for unknown/future schemaVersion (≥4 or non-numeric)", () => {
+  it("loads v3 payload correctly — schemaVersion 3 is now the current terminus (M5 sanctioned amendment)", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-18T10:00:00"));
 
@@ -740,9 +751,10 @@ describe("U-m9b-006: loadState returns default for unknown/future schemaVersion 
     });
     expect(() => loadState()).not.toThrow();
     const result = loadState();
-    expect(result.schemaVersion).toBe(2);
+    expect(result.schemaVersion).toBe(3);
     expect(result.blocks).toEqual([]);
-    expect(result.programStart).toBe("2026-05-18");
+    // v3 payload preserves programStart from stored value
+    expect(result.programStart).toBe("2026-05-01");
 
     vi.useRealTimers();
   });
@@ -753,7 +765,7 @@ describe("U-m9b-006: loadState returns default for unknown/future schemaVersion 
 
     mockStorage._store[STORAGE_KEY] = JSON.stringify({ schemaVersion: 4 });
     const result = loadState();
-    expect(result.schemaVersion).toBe(2);
+    expect(result.schemaVersion).toBe(3); // M5 sanctioned amendment
     expect(result.blocks).toEqual([]);
 
     vi.useRealTimers();
@@ -765,7 +777,7 @@ describe("U-m9b-006: loadState returns default for unknown/future schemaVersion 
 
     mockStorage._store[STORAGE_KEY] = JSON.stringify({ schemaVersion: "2" });
     const result = loadState();
-    expect(result.schemaVersion).toBe(2);
+    expect(result.schemaVersion).toBe(3); // M5 sanctioned amendment
     expect(result.blocks).toEqual([]);
 
     vi.useRealTimers();
@@ -780,7 +792,7 @@ describe("U-m9b-006: loadState returns default for unknown/future schemaVersion 
       blocks: [],
     });
     const result = loadState();
-    expect(result.schemaVersion).toBe(2);
+    expect(result.schemaVersion).toBe(3); // M5 sanctioned amendment
 
     vi.useRealTimers();
   });
@@ -796,7 +808,7 @@ describe("U-m9b-007: loadState handles malformed JSON gracefully", () => {
     mockStorage._store[STORAGE_KEY] = "{not valid json";
     expect(() => loadState()).not.toThrow();
     const result = loadState();
-    expect(result.schemaVersion).toBe(2);
+    expect(result.schemaVersion).toBe(3); // M5 sanctioned amendment
     expect(result.blocks).toEqual([]);
     expect(result.history).toEqual({});
 
