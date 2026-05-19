@@ -25,6 +25,8 @@ interface Props {
    * Defaults to true for backward compatibility with pre-M4e callers.
    */
   blocksExist?: boolean;
+  /** M5: called with brickId when a loose brick × is tapped. */
+  onRequestDeleteBrick?: (brickId: string) => void;
 }
 
 export function LooseBricksTray({
@@ -34,6 +36,7 @@ export function LooseBricksTray({
   onTickToggle,
   onUnitsOpenSheet,
   blocksExist = true,
+  onRequestDeleteBrick,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const listId = useId();
@@ -145,6 +148,7 @@ export function LooseBricksTray({
                   size="md"
                   onTickToggle={onTickToggle}
                   onUnitsOpenSheet={onUnitsOpenSheet}
+                  onRequestDeleteBrick={onRequestDeleteBrick}
                 />
               </li>
             ))}
@@ -171,6 +175,7 @@ export function LooseBricksTray({
                 size="sm"
                 onTickToggle={onTickToggle}
                 onUnitsOpenSheet={onUnitsOpenSheet}
+                onRequestDeleteBrick={onRequestDeleteBrick}
               />
             </div>
           ))}

@@ -41,6 +41,10 @@ interface Props {
    * Used by BuildingClient when selectTrayBricks(state).length > 0 (AC #10/#11 — loose bricks
    * fill the day so the block-empty state is no longer relevant). */
   hasLooseBricks?: boolean;
+  /** M5: called with blockId when a block × is tapped. */
+  onRequestDeleteBlock?: (blockId: string) => void;
+  /** M5: called with brickId when a brick × is tapped. */
+  onRequestDeleteBrick?: (brickId: string) => void;
 }
 
 export function Timeline({
@@ -52,6 +56,8 @@ export function Timeline({
   onTickToggle,
   onUnitsOpenSheet,
   hasLooseBricks = false,
+  onRequestDeleteBlock,
+  onRequestDeleteBrick,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -124,6 +130,8 @@ export function Timeline({
                 onAddBrick={onAddBrick}
                 onTickToggle={onTickToggle}
                 onUnitsOpenSheet={onUnitsOpenSheet}
+                onRequestDeleteBlock={onRequestDeleteBlock}
+                onRequestDeleteBrick={onRequestDeleteBrick}
               />
             ) : (
               <TimedLooseBrickCard
@@ -132,6 +140,7 @@ export function Timeline({
                 categories={categories}
                 onTickToggle={onTickToggle}
                 onUnitsOpenSheet={onUnitsOpenSheet}
+                onRequestDeleteBrick={onRequestDeleteBrick}
               />
             ),
           )}

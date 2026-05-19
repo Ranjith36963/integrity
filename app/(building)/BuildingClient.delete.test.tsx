@@ -8,6 +8,7 @@ import { BuildingClient } from "./BuildingClient";
 import { saveState } from "@/lib/persist";
 import type { PersistedState } from "@/lib/persist";
 import { usePersistedState } from "@/lib/usePersistedState";
+import { today } from "@/lib/dharma";
 
 /**
  * BuildingClientHarness — M9c pattern.
@@ -40,7 +41,7 @@ vi.mock("@/lib/audio", () => ({
 const BASE_FIXTURE: PersistedState = {
   schemaVersion: 3,
   programStart: "2026-05-01",
-  currentDate: "2026-05-18",
+  currentDate: today(), // M9b: rollover no-op (currentDate === today)
   history: {},
   deletions: {},
   blocks: [

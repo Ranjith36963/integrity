@@ -13,6 +13,9 @@
 // M4f: removed handleUnitsLog stepper; added handleUnitsOpenSheet → UnitsEntrySheet → handleUnitsSave.
 // M9c: usePersistedState() call moved up into AppShell; BuildingClient now receives
 //       state + dispatch as props so the hook runs exactly once in the app shell.
+// M5: pendingDelete state + DeleteConfirmModal; Timeline fed from currentDayBlocks(state)
+//     (ADR-047). Delete handlers: DELETE_BLOCK_TODAY / DELETE_BLOCK_ALL / DELETE_BRICK.
+//     onRequestDeleteBlock / onRequestDeleteBrick threaded to Timeline + LooseBricksTray.
 
 import { useState, useCallback } from "react";
 import type { Dispatch } from "react";
@@ -20,6 +23,7 @@ import { today, dateLabel, dayPct, dayNumber } from "@/lib/dharma";
 import { daysInYear } from "@/lib/dayOfYear";
 import { useNow } from "@/lib/useNow";
 import { selectTrayBricks, selectTimelineItems } from "@/lib/overlap";
+import { currentDayBlocks } from "@/lib/currentDayBlocks";
 import { useCrossUpEffect } from "@/lib/celebrations";
 import { haptics } from "@/lib/haptics";
 import { playChime } from "@/lib/audio";
@@ -34,6 +38,8 @@ import { AddBlockSheet } from "@/components/AddBlockSheet";
 import { AddBrickSheet } from "@/components/AddBrickSheet";
 import { LooseBricksTray } from "@/components/LooseBricksTray";
 import { UnitsEntrySheet } from "@/components/UnitsEntrySheet";
+import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
+import type { DeleteTarget } from "@/components/DeleteConfirmModal";
 import { Fireworks } from "@/components/Fireworks";
 import type { AppState, Action, Block, Brick, Category } from "@/lib/types";
 
@@ -100,6 +106,13 @@ export function BuildingClient({ state, dispatch }: BuildingClientProps) {
     brickId: null,
   });
 
+  // M5: pendingDelete — set when a × is tapped; cleared on modal confirm/cancel.
+  // Stays open independent of editMode (ADR plan.md § Modal-open + Edit-Mode-toggle).
+  const [pendingDelete, setPendingDelete] = useState<{
+    blockId: string | null;
+    brickId: string | null;
+  } | null>(null);
+
   // Live clock (ADR-023: server-clock paint on SSR, reconciles within 60s)
   const now = useNow();
   const todayIso = today();
@@ -151,6 +164,47 @@ export function BuildingClient({ state, dispatch }: BuildingClientProps) {
   const handleUnitsClose = useCallback(() => {
     setUnitsSheetState({ open: false, brickId: null });
   }, []);
+
+  // M5: block × tapped — set pendingDelete (do NOT dispatch yet; modal confirms first)
+  const handleRequestDeleteBlock = useCallback((blockId: string) => {
+    setPendingDelete({ blockId, brickId: null });
+  }, []);
+
+  // M5: brick × tapped — set pendingDelete
+  const handleRequestDeleteBrick = useCallback((brickId: string) => {
+    setPendingDelete({ blockId: null, brickId });
+  }, []);
+
+  // M5: cancel delete — clear pendingDelete, no dispatch
+  const handleDeleteCancel = useCallback(() => {
+    setPendingDelete(null);
+  }, []);
+
+  // M5: "Just today" — dispatch DELETE_BLOCK_TODAY, close modal
+  const handleConfirmJustToday = useCallback(() => {
+    if (pendingDelete?.blockId) {
+      dispatch({ type: "DELETE_BLOCK_TODAY", blockId: pendingDelete.blockId });
+    }
+    setPendingDelete(null);
+  }, [dispatch, pendingDelete]);
+
+  // M5: "All recurrences" — dispatch DELETE_BLOCK_ALL, close modal
+  const handleConfirmAll = useCallback(() => {
+    if (pendingDelete?.blockId) {
+      dispatch({ type: "DELETE_BLOCK_ALL", blockId: pendingDelete.blockId });
+    }
+    setPendingDelete(null);
+  }, [dispatch, pendingDelete]);
+
+  // M5: single "Delete" — dispatch DELETE_BLOCK_ALL (non-recurring block) or DELETE_BRICK
+  const handleConfirmDelete = useCallback(() => {
+    if (pendingDelete?.blockId) {
+      dispatch({ type: "DELETE_BLOCK_ALL", blockId: pendingDelete.blockId });
+    } else if (pendingDelete?.brickId) {
+      dispatch({ type: "DELETE_BRICK", brickId: pendingDelete.brickId });
+    }
+    setPendingDelete(null);
+  }, [dispatch, pendingDelete]);
 
   // M4d: dock + → open chooser with defaultStart=roundDownToHour(now) captured at open time.
   // Storing the hour at open time avoids stale-closure risk on `now` inside handleChooserPick
@@ -243,12 +297,30 @@ export function BuildingClient({ state, dispatch }: BuildingClientProps) {
     openBrickSheet(null, null);
   }
 
+  // M5: currentDayBlocks filters state.blocks by deletions (ADR-047).
+  // Build a filtered-state view so selectTimelineItems/selectTrayBricks operate on visible blocks.
+  const visibleBlocks = currentDayBlocks(state);
+  const stateForTimeline = { ...state, blocks: visibleBlocks };
+
   // M4e: tray shows only non-timed loose bricks (selectTrayBricks filters out hasDuration:true).
   // showTray: visible when any blocks exist OR any non-timed loose bricks exist (AC #29).
   const trayBricks = selectTrayBricks(state);
-  const showTray = state.blocks.length > 0 || trayBricks.length > 0;
+  const showTray = visibleBlocks.length > 0 || trayBricks.length > 0;
   // M4e: Timeline renders blocks + timed loose bricks via selectTimelineItems (AC #28).
-  const timelineItems = selectTimelineItems(state);
+  // M5: use stateForTimeline so deleted-today blocks are excluded.
+  const timelineItems = selectTimelineItems(stateForTimeline);
+
+  // M5: derive the delete modal target from pendingDelete
+  const pendingDeleteTarget: DeleteTarget | null = (() => {
+    if (!pendingDelete) return null;
+    if (pendingDelete.brickId) return { kind: "brick" };
+    if (pendingDelete.blockId) {
+      const block = state.blocks.find((b) => b.id === pendingDelete.blockId);
+      const recurring = block?.recurrence.kind !== "just-today";
+      return { kind: "block", recurring };
+    }
+    return null;
+  })();
 
   // M4f: find the current units brick for UnitsEntrySheet
   const unitsSheetBrick: Extract<Brick, { kind: "units" }> | null = (() => {
@@ -289,6 +361,8 @@ export function BuildingClient({ state, dispatch }: BuildingClientProps) {
           onTickToggle={handleTickToggle}
           onUnitsOpenSheet={handleUnitsOpenSheet}
           hasLooseBricks={trayBricks.length > 0}
+          onRequestDeleteBlock={handleRequestDeleteBlock}
+          onRequestDeleteBrick={handleRequestDeleteBrick}
         />
         {/* LooseBricksTray: pinned above dock, visible when blocks exist OR non-timed loose bricks exist */}
         {showTray && (
@@ -298,7 +372,8 @@ export function BuildingClient({ state, dispatch }: BuildingClientProps) {
             onAddBrick={handleAddLooseBrick}
             onTickToggle={handleTickToggle}
             onUnitsOpenSheet={handleUnitsOpenSheet}
-            blocksExist={state.blocks.length > 0}
+            blocksExist={visibleBlocks.length > 0}
+            onRequestDeleteBrick={handleRequestDeleteBrick}
           />
         )}
         <BottomBar onAddPress={handleDockAdd} />
@@ -340,6 +415,15 @@ export function BuildingClient({ state, dispatch }: BuildingClientProps) {
         {/* M4a: Fireworks overlay — day-100% celebration */}
         <Fireworks active={fireworksActive} />
       </div>
+      {/* M5: DeleteConfirmModal — pendingDelete drives open/target; independent of editMode */}
+      <DeleteConfirmModal
+        open={pendingDelete !== null}
+        target={pendingDeleteTarget}
+        onConfirmJustToday={handleConfirmJustToday}
+        onConfirmAll={handleConfirmAll}
+        onConfirmDelete={handleConfirmDelete}
+        onCancel={handleDeleteCancel}
+      />
     </EditModeProvider>
   );
 }
