@@ -1,14 +1,15 @@
 "use client";
-// TimelineBlock — M4a extended from M3:
-// - M3 features preserved: absolute position, height, category dot, time range,
+// TimelineBlock — M5: Edit Mode affordances added.
+// - M4a features preserved: absolute position, height, category dot, time range,
 //   fade-in, scaffold left-bar, tap-to-expand, BrickChip list, Add brick button.
-// - M4a NEW: onTickToggle prop threaded to each BrickChip.
-// - M4a NEW: useCrossUpEffect wired for block-100% bloom + chime + haptics.success.
-// - M4a NEW: bloom visual (motion.div) keyed on bloomKey; suppressed under reduced-motion.
+// - M4a: onTickToggle prop; useCrossUpEffect; bloom visual.
+// - M5: consumes useEditMode(). Unlocked: jiggle (suppressed under reduced-motion),
+//   always-visible × delete button (ADR-008, ≥44px). Tap-to-expand suppressed
+//   in Edit Mode (SG-m5-05). New onRequestDeleteBlock prop.
 
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import type { Block, Category } from "@/lib/types";
 import { HOUR_HEIGHT_PX, timeToOffsetPx } from "@/lib/timeOffset";
 import { fmtRange, blockPct } from "@/lib/dharma";
@@ -17,6 +18,7 @@ import { haptics } from "@/lib/haptics";
 import { playChime } from "@/lib/audio";
 import { springConfigs } from "@/lib/motion";
 import { BrickChip } from "./BrickChip";
+import { useEditMode } from "./EditModeProvider";
 
 interface Props {
   block: Block;
@@ -25,6 +27,10 @@ interface Props {
   onTickToggle?: (brickId: string) => void;
   /** M4f: called with brickId when a units chip is tapped (opens UnitsEntrySheet). */
   onUnitsOpenSheet?: (brickId: string) => void;
+  /** M5: called with blockId when the × delete button is tapped. */
+  onRequestDeleteBlock?: (blockId: string) => void;
+  /** M5: called with brickId when a brick × is tapped. */
+  onRequestDeleteBrick?: (brickId: string) => void;
 }
 
 export function TimelineBlock({
@@ -33,10 +39,13 @@ export function TimelineBlock({
   onAddBrick,
   onTickToggle,
   onUnitsOpenSheet,
+  onRequestDeleteBlock,
+  onRequestDeleteBrick,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [bloomKey, setBloomKey] = useState(0);
   const prefersReducedMotion = useReducedMotion();
+  const { editMode } = useEditMode();
 
   const category =
     block.categoryId !== null
@@ -74,6 +83,8 @@ export function TimelineBlock({
   };
 
   function handleCardClick() {
+    // M5: tap-to-expand is suppressed in Edit Mode (SG-m5-05)
+    if (editMode) return;
     setExpanded((e) => !e);
   }
 
@@ -82,19 +93,35 @@ export function TimelineBlock({
     onAddBrick?.(block.id);
   }
 
+  function handleDeleteClick(e: React.MouseEvent) {
+    e.stopPropagation();
+    onRequestDeleteBlock?.(block.id);
+  }
+
+  // M5: jiggle is applied via data-edit-mode when editMode=true and not reduced-motion
+  const jiggleActive = editMode && !prefersReducedMotion;
+
   return (
     <AnimatePresence>
       <motion.div
         data-component="timeline-block"
+        data-edit-mode={editMode ? "true" : undefined}
+        data-reduced={prefersReducedMotion ? "true" : undefined}
         role="article"
         aria-expanded={expanded}
         initial={prefersReducedMotion ? false : "hidden"}
-        animate="visible"
+        animate={
+          jiggleActive
+            ? { rotate: [0, -0.18, 0.18, -0.18, 0], y: [0, 0.4, -0.4, 0.4, 0] }
+            : "visible"
+        }
         variants={prefersReducedMotion ? undefined : variants}
         transition={
-          prefersReducedMotion
-            ? { duration: 0 }
-            : { duration: 0.18, ease: "easeOut" }
+          jiggleActive
+            ? { repeat: Infinity, duration: 0.45, ease: "easeInOut" }
+            : prefersReducedMotion
+              ? { duration: 0 }
+              : { duration: 0.18, ease: "easeOut" }
         }
         onClick={handleCardClick}
         style={{
@@ -112,7 +139,7 @@ export function TimelineBlock({
           alignItems: "flex-start",
           padding: "4px 6px",
           gap: "4px",
-          cursor: "pointer",
+          cursor: editMode ? "default" : "pointer",
           zIndex: 2,
         }}
       >
@@ -166,6 +193,30 @@ export function TimelineBlock({
               zIndex: 3,
             }}
           />
+        )}
+
+        {/* M5: always-visible × delete button — only in Edit Mode (ADR-008, ≥44px) */}
+        {editMode && (
+          <button
+            type="button"
+            aria-label={`Delete block ${block.name}`}
+            onClick={handleDeleteClick}
+            style={{
+              position: "absolute",
+              top: 0,
+              right: 0,
+              display: "grid",
+              placeItems: "center",
+              width: "44px",
+              minHeight: "44px",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              zIndex: 4,
+            }}
+          >
+            <X size={14} color="var(--ink-dim)" />
+          </button>
         )}
 
         {/* Category color dot — 8px circle, only when categoryId !== null */}
@@ -240,6 +291,7 @@ export function TimelineBlock({
                         size="md"
                         onTickToggle={onTickToggle}
                         onUnitsOpenSheet={onUnitsOpenSheet}
+                        onRequestDeleteBrick={onRequestDeleteBrick}
                       />
                     </li>
                   ))}
