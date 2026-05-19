@@ -9,6 +9,7 @@
 // ADR-031: chip touch target preserved inside the card.
 // hasDuration === true is a precondition (caller should only pass timed bricks).
 // M4f: onGoalLog → onUnitsLog; timer props removed (ADR-043).
+// M5: onRequestDeleteBrick threaded through to BrickChip (same × treatment as BrickChip).
 
 import type { Brick, Category } from "@/lib/types";
 import { HOUR_HEIGHT_PX, timeToOffsetPx } from "@/lib/timeOffset";
@@ -21,6 +22,8 @@ interface Props {
   onTickToggle?: (brickId: string) => void;
   /** M4f: called with brickId when a units chip is tapped (opens UnitsEntrySheet). */
   onUnitsOpenSheet?: (brickId: string) => void;
+  /** M5: called with brick.id when the × delete button is tapped. */
+  onRequestDeleteBrick?: (brickId: string) => void;
 }
 
 function resolveBorderColor(brick: Brick, categories: Category[]): string {
@@ -34,6 +37,7 @@ export function TimedLooseBrickCard({
   categories,
   onTickToggle,
   onUnitsOpenSheet,
+  onRequestDeleteBrick,
 }: Props) {
   const start = brick.hasDuration ? (brick.start ?? "") : "";
   const end = brick.hasDuration ? (brick.end ?? "") : "";
@@ -67,6 +71,7 @@ export function TimedLooseBrickCard({
         size="sm"
         onTickToggle={onTickToggle}
         onUnitsOpenSheet={onUnitsOpenSheet}
+        onRequestDeleteBrick={onRequestDeleteBrick}
       />
     </div>
   );

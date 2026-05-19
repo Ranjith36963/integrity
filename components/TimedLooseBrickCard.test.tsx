@@ -190,8 +190,10 @@ describe("C-m5-007: TimedLooseBrickCard — Unlocked shows × delete; log suppre
       name: "Delete brick Run",
     });
     expect(deleteBtn).toBeInTheDocument();
-    const rect = deleteBtn.getBoundingClientRect();
-    expect(rect.width >= 44 || deleteBtn.offsetWidth >= 44).toBe(true);
+    // jsdom has no layout engine; check inline style.minHeight / style.width (like TimelineBlock.test.tsx)
+    const minH = Number(deleteBtn.style.minHeight?.replace("px", "") ?? "0");
+    const w = Number(deleteBtn.style.width?.replace("px", "") ?? "0");
+    expect(minH >= 44 || w >= 44).toBe(true);
   });
 
   it("Unlocked: tapping card body fires onTickToggle ZERO times (log suppressed)", async () => {
