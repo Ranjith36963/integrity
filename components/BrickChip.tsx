@@ -1,5 +1,6 @@
 "use client";
-// BrickChip — M4f: collapsed to tick + units (ADR-043).
+// BrickChip — M5: Edit Mode affordances added.
+// M4f: collapsed to tick + units (ADR-043).
 // M3: static chip rendering for all brick kinds.
 // M4a: tick chips dispatch onTickToggle + haptics.light on tap;
 //       tick chip gains aria-pressed + enriched aria-label.
@@ -7,12 +8,16 @@
 // M4f: goal→units rename; time kind removed entirely (ADR-043).
 //       Units chip is a simple button that fires onUnitsOpenSheet(brick.id).
 //       No stepper buttons (SG-m4f-02). onGoalLog removed from active logic.
+// M5: Unlocked — always-visible × delete button (ADR-008, ≥44px); log gesture
+//     suppressed when editMode=true (SG-m5-05, no log+delete double-fire).
+//     New onRequestDeleteBrick prop.
 
 import { useReducedMotion } from "motion/react";
-import { Square, Check } from "lucide-react";
+import { Square, Check, X } from "lucide-react";
 import { brickPct } from "@/lib/dharma";
 import { haptics } from "@/lib/haptics";
 import type { Brick, Category } from "@/lib/types";
+import { useEditMode } from "./EditModeProvider";
 
 interface Props {
   brick: Brick;
@@ -22,6 +27,8 @@ interface Props {
   onTickToggle?: (brickId: string) => void;
   /** M4f: called with brick.id when a units brick chip is tapped (opens UnitsEntrySheet). */
   onUnitsOpenSheet?: (brickId: string) => void;
+  /** M5: called with brick.id when the × delete button is tapped. */
+  onRequestDeleteBrick?: (brickId: string) => void;
 }
 
 function resolveColor(brick: Brick, categories: Category[]): string | null {
@@ -106,11 +113,13 @@ export function BrickChip({
   size = "md",
   onTickToggle,
   onUnitsOpenSheet,
+  onRequestDeleteBrick,
 }: Props) {
   const pct = brickPct(brick);
   const color = resolveColor(brick, categories);
   const isUncategorized = color === null;
   const prefersReducedMotion = useReducedMotion();
+  const { editMode } = useEditMode();
 
   const bgStyle = isUncategorized ? "var(--surface-2)" : `${color}1f`;
   const fillColor = isUncategorized ? "var(--accent)" : `${color}99`;
@@ -126,6 +135,36 @@ export function BrickChip({
     transition: prefersReducedMotion ? "none" : "width 600ms ease-in-out",
   };
 
+  // M5: delete handler — fires onRequestDeleteBrick, stops propagation
+  function handleDeleteClick(e: React.MouseEvent) {
+    e.stopPropagation();
+    onRequestDeleteBrick?.(brick.id);
+  }
+
+  // M5: always-visible × button — renders only in edit mode (ADR-008)
+  const deleteButton = editMode ? (
+    <button
+      type="button"
+      aria-label={`Delete brick ${brick.name}`}
+      onClick={handleDeleteClick}
+      style={{
+        position: "absolute",
+        top: 0,
+        right: 0,
+        display: "grid",
+        placeItems: "center",
+        width: "44px",
+        minHeight: "44px",
+        background: "transparent",
+        border: "none",
+        cursor: "pointer",
+        zIndex: 4,
+      }}
+    >
+      <X size={12} color="var(--ink-dim)" />
+    </button>
+  ) : null;
+
   // M4f: units chip — simple button that fires onUnitsOpenSheet
   if (brick.kind === "units") {
     function handleUnitsClick() {
@@ -133,120 +172,9 @@ export function BrickChip({
       onUnitsOpenSheet?.(brick.id);
     }
 
-    return (
-      <div
-        data-component="brick-chip"
-        data-uncategorized={isUncategorized ? "true" : undefined}
-        style={{
-          position: "relative",
-          borderRadius: "12px",
-          overflow: "hidden",
-          background: bgStyle,
-          display: "inline-flex",
-          width: "100%",
-        }}
-      >
-        {/* Foreground gradient fill */}
-        <div data-testid="brick-fill" aria-hidden="true" style={fillStyle} />
-
-        {/* Units chip button — taps open UnitsEntrySheet */}
-        <button
-          type="button"
-          aria-label={ariaLabel}
-          onClick={handleUnitsClick}
-          style={{
-            position: "relative",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            width: "100%",
-            minHeight: "44px",
-            padding: size === "sm" ? "8px 10px" : "10px 12px",
-            gap: "8px",
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            fontFamily: "var(--font-ui)",
-            fontSize: size === "sm" ? "var(--fs-12)" : "var(--fs-14)",
-            color: "var(--ink)",
-            textAlign: "left",
-          }}
-        >
-          {/* Title + optional time-window secondary line */}
-          <span
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              flex: 1,
-              minWidth: 0,
-              overflow: "hidden",
-            }}
-          >
-            <span
-              style={{
-                overflow: "hidden",
-                whiteSpace: "nowrap",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {brick.name}
-            </span>
-            <TimeWindowBadge brick={brick} />
-          </span>
-
-          {/* Type badge */}
-          <TypeBadge brick={brick} />
-        </button>
-      </div>
-    );
-  }
-
-  // tick chip — onClick fires haptic + toggle
-  function handleClick() {
-    haptics.light();
-    onTickToggle?.(brick.id);
-  }
-
-  return (
-    <div
-      data-component="brick-chip"
-      data-uncategorized={isUncategorized ? "true" : undefined}
-      style={{
-        position: "relative",
-        borderRadius: "12px",
-        overflow: "hidden",
-        background: bgStyle,
-        display: "inline-flex",
-        width: "100%",
-      }}
-    >
-      {/* Foreground gradient fill */}
-      <div data-testid="brick-fill" aria-hidden="true" style={fillStyle} />
-
-      {/* Chip button — tick: dispatches toggle + haptic */}
-      <button
-        type="button"
-        aria-label={ariaLabel}
-        aria-pressed={brick.done}
-        onClick={handleClick}
-        style={{
-          position: "relative",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          width: "100%",
-          minHeight: "44px",
-          padding: size === "sm" ? "8px 10px" : "10px 12px",
-          gap: "8px",
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          fontFamily: "var(--font-ui)",
-          fontSize: size === "sm" ? "var(--fs-12)" : "var(--fs-14)",
-          color: "var(--ink)",
-          textAlign: "left",
-        }}
-      >
+    // Shared chip body content
+    const unitsChipContent = (
+      <>
         {/* Title + optional time-window secondary line */}
         <span
           style={{
@@ -271,7 +199,155 @@ export function BrickChip({
 
         {/* Type badge */}
         <TypeBadge brick={brick} />
-      </button>
+      </>
+    );
+
+    const chipBodyStyle: React.CSSProperties = {
+      position: "relative",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      width: "100%",
+      minHeight: "44px",
+      padding: size === "sm" ? "8px 10px" : "10px 12px",
+      gap: "8px",
+      background: "transparent",
+      border: "none",
+      fontFamily: "var(--font-ui)",
+      fontSize: size === "sm" ? "var(--fs-12)" : "var(--fs-14)",
+      color: "var(--ink)",
+      textAlign: "left",
+    };
+
+    return (
+      <div
+        data-component="brick-chip"
+        data-uncategorized={isUncategorized ? "true" : undefined}
+        style={{
+          position: "relative",
+          borderRadius: "12px",
+          overflow: "hidden",
+          background: bgStyle,
+          display: "inline-flex",
+          width: "100%",
+        }}
+      >
+        {/* Foreground gradient fill */}
+        <div data-testid="brick-fill" aria-hidden="true" style={fillStyle} />
+
+        {/* M5: in edit mode render as inert div (no button role); in normal mode render as button */}
+        {editMode ? (
+          <div
+            aria-hidden="true"
+            style={{ ...chipBodyStyle, cursor: "default" }}
+          >
+            {unitsChipContent}
+          </div>
+        ) : (
+          <button
+            type="button"
+            aria-label={ariaLabel}
+            onClick={handleUnitsClick}
+            style={{ ...chipBodyStyle, cursor: "pointer" }}
+          >
+            {unitsChipContent}
+          </button>
+        )}
+
+        {/* M5: × delete button */}
+        {deleteButton}
+      </div>
+    );
+  }
+
+  // tick chip — onClick fires haptic + toggle (not reached in edit mode — chip is inert div)
+  function handleClick() {
+    haptics.light();
+    onTickToggle?.(brick.id);
+  }
+
+  // Shared tick chip content
+  const tickChipContent = (
+    <>
+      {/* Title + optional time-window secondary line */}
+      <span
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          minWidth: 0,
+          overflow: "hidden",
+        }}
+      >
+        <span
+          style={{
+            overflow: "hidden",
+            whiteSpace: "nowrap",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {brick.name}
+        </span>
+        <TimeWindowBadge brick={brick} />
+      </span>
+
+      {/* Type badge */}
+      <TypeBadge brick={brick} />
+    </>
+  );
+
+  const tickBodyStyle: React.CSSProperties = {
+    position: "relative",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+    minHeight: "44px",
+    padding: size === "sm" ? "8px 10px" : "10px 12px",
+    gap: "8px",
+    background: "transparent",
+    border: "none",
+    fontFamily: "var(--font-ui)",
+    fontSize: size === "sm" ? "var(--fs-12)" : "var(--fs-14)",
+    color: "var(--ink)",
+    textAlign: "left",
+  };
+
+  return (
+    <div
+      data-component="brick-chip"
+      data-uncategorized={isUncategorized ? "true" : undefined}
+      style={{
+        position: "relative",
+        borderRadius: "12px",
+        overflow: "hidden",
+        background: bgStyle,
+        display: "inline-flex",
+        width: "100%",
+      }}
+    >
+      {/* Foreground gradient fill */}
+      <div data-testid="brick-fill" aria-hidden="true" style={fillStyle} />
+
+      {/* M5: in edit mode render as inert div (no button role); in normal mode render as button */}
+      {editMode ? (
+        <div aria-hidden="true" style={{ ...tickBodyStyle, cursor: "default" }}>
+          {tickChipContent}
+        </div>
+      ) : (
+        <button
+          type="button"
+          aria-label={ariaLabel}
+          aria-pressed={brick.done}
+          onClick={handleClick}
+          style={{ ...tickBodyStyle, cursor: "pointer" }}
+        >
+          {tickChipContent}
+        </button>
+      )}
+
+      {/* M5: × delete button */}
+      {deleteButton}
     </div>
   );
 }
