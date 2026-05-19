@@ -1,9 +1,11 @@
 // components/TimedLooseBrickCard.test.tsx — M4e component tests
-// Covers: C-m4e-020..021
+// Covers: C-m4e-020..021, C-m5-007
 
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { TimedLooseBrickCard } from "./TimedLooseBrickCard";
+import { EditModeProvider } from "./EditModeProvider";
 import type { Brick, Category } from "@/lib/types";
 import { HOUR_HEIGHT_PX, timeToOffsetPx } from "@/lib/timeOffset";
 
@@ -131,5 +133,112 @@ describe("C-m4e-021: TimedLooseBrickCard inner BrickChip is fully interactive", 
     });
     fireEvent.click(chipBtn);
     expect(onUnitsOpenSheet).toHaveBeenCalledWith("r2");
+  });
+});
+
+// ─── C-m5-007: TimedLooseBrickCard Edit Mode — × delete, log suppressed ──────
+
+const looseBrick: Brick = {
+  id: "brk-loose",
+  name: "Run",
+  kind: "tick",
+  done: false,
+  hasDuration: true,
+  start: "07:00",
+  end: "07:30",
+  recurrence: { kind: "just-today", date: "2026-05-14" },
+  categoryId: null,
+  parentBlockId: null,
+};
+
+describe("C-m5-007: TimedLooseBrickCard — Unlocked shows × delete; log suppressed in edit mode", () => {
+  it("Locked (default): no × delete button; tick log fires on tap", () => {
+    const onTick = vi.fn();
+    render(
+      <EditModeProvider>
+        <TimedLooseBrickCard
+          brick={looseBrick}
+          categories={[]}
+          onTickToggle={onTick}
+          onRequestDeleteBrick={vi.fn()}
+        />
+      </EditModeProvider>,
+    );
+    expect(screen.queryByRole("button", { name: /delete brick/i })).toBeNull();
+    const btn = screen.getByRole("button");
+    fireEvent.click(btn);
+    expect(onTick).toHaveBeenCalledWith("brk-loose");
+  });
+
+  it("Unlocked: × appears with aria-label='Delete brick Run'; ≥44px", async () => {
+    const user = userEvent.setup();
+    const { TopBar } = await import("./TopBar");
+    render(
+      <EditModeProvider>
+        <TopBar />
+        <TimedLooseBrickCard
+          brick={looseBrick}
+          categories={[]}
+          onTickToggle={vi.fn()}
+          onRequestDeleteBrick={vi.fn()}
+        />
+      </EditModeProvider>,
+    );
+    const pencil = screen.getByRole("button", { name: /edit mode/i });
+    await user.click(pencil);
+    const deleteBtn = screen.getByRole("button", {
+      name: "Delete brick Run",
+    });
+    expect(deleteBtn).toBeInTheDocument();
+    const rect = deleteBtn.getBoundingClientRect();
+    expect(rect.width >= 44 || deleteBtn.offsetWidth >= 44).toBe(true);
+  });
+
+  it("Unlocked: tapping card body fires onTickToggle ZERO times (log suppressed)", async () => {
+    const user = userEvent.setup();
+    const onTick = vi.fn();
+    const { TopBar } = await import("./TopBar");
+    render(
+      <EditModeProvider>
+        <TopBar />
+        <TimedLooseBrickCard
+          brick={looseBrick}
+          categories={[]}
+          onTickToggle={onTick}
+          onRequestDeleteBrick={vi.fn()}
+        />
+      </EditModeProvider>,
+    );
+    const pencil = screen.getByRole("button", { name: /edit mode/i });
+    await user.click(pencil);
+    // In edit mode, delete button is the only accessible button for this brick
+    const cardBtn = screen.getByRole("button", { name: /delete brick run/i });
+    await user.click(cardBtn);
+    expect(onTick).toHaveBeenCalledTimes(0);
+  });
+
+  it("Unlocked: tapping × calls onRequestDeleteBrick exactly once", async () => {
+    const user = userEvent.setup();
+    const onDelete = vi.fn();
+    const { TopBar } = await import("./TopBar");
+    render(
+      <EditModeProvider>
+        <TopBar />
+        <TimedLooseBrickCard
+          brick={looseBrick}
+          categories={[]}
+          onTickToggle={vi.fn()}
+          onRequestDeleteBrick={onDelete}
+        />
+      </EditModeProvider>,
+    );
+    const pencil = screen.getByRole("button", { name: /edit mode/i });
+    await user.click(pencil);
+    const deleteBtn = screen.getByRole("button", {
+      name: "Delete brick Run",
+    });
+    await user.click(deleteBtn);
+    expect(onDelete).toHaveBeenCalledTimes(1);
+    expect(onDelete).toHaveBeenCalledWith("brk-loose");
   });
 });
