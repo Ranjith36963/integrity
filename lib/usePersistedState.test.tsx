@@ -9,7 +9,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, act, renderHook } from "@testing-library/react";
 import { usePersistedState } from "./usePersistedState";
-import { saveState, STORAGE_KEY } from "./persist";
+import { saveState, loadState, migrate, STORAGE_KEY } from "./persist";
 import { reducer } from "./data";
 import { today } from "./dharma";
 import type { PersistedState } from "./persist";
@@ -845,5 +845,111 @@ describe("C-m9b-005: no ROLLOVER action in Action union; reducer has no new arm"
     const defaultAppState = result.current[0];
     expect("currentDate" in defaultAppState).toBe(true);
     expect("history" in defaultAppState).toBe(true);
+  });
+});
+
+// ─── U-m5-012: persistence round-trip — deletions survive a reload ────────────
+
+describe("U-m5-012: projectToAppState/toPersisted carry deletions; a delete survives a reload", () => {
+  it("a v3 PersistedState with deletions round-trips through saveState/loadState/migrate", () => {
+    // Simulate: save a v3 state with a deletion key, then reload
+    const v3State: PersistedState = {
+      schemaVersion: 3,
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: {},
+      blocks: [
+        {
+          id: "blk-recur",
+          name: "Morning",
+          start: "07:00",
+          recurrence: { kind: "every-day" },
+          categoryId: null,
+          bricks: [],
+        },
+      ],
+      categories: [],
+      looseBricks: [],
+      deletions: { "2026-05-18:blk-recur": true },
+    };
+
+    saveState(v3State);
+    const loaded = loadState();
+
+    // deletions round-trips intact
+    expect(loaded.deletions).toEqual({ "2026-05-18:blk-recur": true });
+    expect(loaded.schemaVersion).toBe(3);
+  });
+
+  it("usePersistedState carries deletions from localStorage through to AppState", async () => {
+    // Pre-seed localStorage with a v3 state that has a deletion
+    const seedState: PersistedState = {
+      schemaVersion: 3,
+      programStart: "2026-05-01",
+      currentDate: today(), // avoids rollover
+      history: {},
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      deletions: { [`${today()}:blk-seed`]: true },
+    };
+    saveState(seedState);
+
+    const { result } = renderHook(() => usePersistedState());
+    await act(async () => {});
+
+    // After hydration, the AppState should carry the deletions
+    expect(result.current[0].deletions).toEqual({
+      [`${today()}:blk-seed`]: true,
+    });
+  });
+
+  it("after DELETE_BLOCK_TODAY dispatch the deletion survives a simulated reload via JSON roundtrip + migrate", () => {
+    // Build an AppState manually and simulate what usePersistedState would persist
+    const initialState: AppState = {
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: {},
+      blocks: [
+        {
+          id: "blk-recur",
+          name: "Morning",
+          start: "07:00",
+          recurrence: { kind: "every-day" },
+          categoryId: null,
+          bricks: [],
+        },
+      ],
+      categories: [],
+      looseBricks: [],
+      deletions: {},
+    };
+
+    // Apply delete
+    const afterDelete = reducer(initialState, {
+      type: "DELETE_BLOCK_TODAY",
+      blockId: "blk-recur",
+    });
+    expect(afterDelete.deletions["2026-05-18:blk-recur"]).toBe(true);
+
+    // Simulate toPersisted + JSON serialize + JSON parse + migrate
+    const persisted: PersistedState = {
+      schemaVersion: 3,
+      programStart: afterDelete.programStart,
+      currentDate: afterDelete.currentDate,
+      history: afterDelete.history,
+      blocks: afterDelete.blocks,
+      categories: afterDelete.categories,
+      looseBricks: afterDelete.looseBricks,
+      deletions: afterDelete.deletions,
+    };
+    const json = JSON.stringify(persisted);
+    const parsed: unknown = JSON.parse(json);
+    const reloaded = migrate(parsed);
+
+    expect(reloaded).not.toBeNull();
+    // The deletion key survives the full round-trip
+    expect(reloaded!.deletions["2026-05-18:blk-recur"]).toBe(true);
+    expect(reloaded!.schemaVersion).toBe(3);
   });
 });
