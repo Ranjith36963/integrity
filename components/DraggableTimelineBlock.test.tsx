@@ -36,6 +36,12 @@ vi.mock("motion/react", async (importOriginal) => {
         onDragStart,
         onDragEnd,
         "data-testid": testId,
+        // Filter out Framer-specific props that React warns about on a plain div
+        dragControls: _dragControls,
+        dragListener: _dragListener,
+        dragConstraints: _dragConstraints,
+        dragMomentum: _dragMomentum,
+        whileDrag: _whileDrag,
         ...rest
       }: {
         children?: React.ReactNode;
@@ -46,12 +52,18 @@ vi.mock("motion/react", async (importOriginal) => {
           info: { point: { y: number } },
         ) => Promise<void> | void;
         "data-testid"?: string;
+        dragControls?: unknown;
+        dragListener?: unknown;
+        dragConstraints?: unknown;
+        dragMomentum?: unknown;
+        whileDrag?: unknown;
         [key: string]: unknown;
       }) => (
         <div
-          data-testid={testId ?? "draggable-block"}
-          data-drag={String(drag)}
+          data-testid={testId}
+          data-drag={drag !== undefined ? String(drag) : undefined}
           data-ondragstart={onDragStart ? "wired" : undefined}
+          data-ondragend={onDragEnd ? "wired" : undefined}
           {...(rest as React.HTMLAttributes<HTMLDivElement>)}
         >
           {children}
@@ -94,7 +106,7 @@ describe("C-m6-006: DraggableTimelineBlock lift + valid drop", () => {
         />
       </EditModeContext.Provider>,
     );
-    const wrapper = screen.getByTestId("draggable-block");
+    const wrapper = screen.getByTestId("draggable-timeline-block");
     expect(wrapper.getAttribute("data-drag")).toBe("y");
   });
 
@@ -110,7 +122,7 @@ describe("C-m6-006: DraggableTimelineBlock lift + valid drop", () => {
         />
       </EditModeContext.Provider>,
     );
-    const wrapper = screen.getByTestId("draggable-block");
+    const wrapper = screen.getByTestId("draggable-timeline-block");
     expect(wrapper.getAttribute("data-drag")).toBe("false");
   });
 });
@@ -187,7 +199,7 @@ describe("C-m6-009: DraggableTimelineBlock same-slot no-op", () => {
       </EditModeContext.Provider>,
     );
     // Component renders without throwing
-    expect(screen.getByTestId("draggable-block")).toBeInTheDocument();
+    expect(screen.getByTestId("draggable-timeline-block")).toBeInTheDocument();
   });
 });
 
@@ -206,7 +218,7 @@ describe("C-m6-010: DraggableTimelineBlock — modalOpen=true suppresses drag", 
         />
       </EditModeContext.Provider>,
     );
-    const wrapper = screen.getByTestId("draggable-block");
+    const wrapper = screen.getByTestId("draggable-timeline-block");
     // modalOpen=true overrides editMode=true → drag disabled
     expect(wrapper.getAttribute("data-drag")).toBe("false");
   });
@@ -234,7 +246,7 @@ describe("C-m6-010: DraggableTimelineBlock — modalOpen=true suppresses drag", 
         />
       </EditModeContext.Provider>,
     );
-    const wrapper = screen.getByTestId("draggable-block");
+    const wrapper = screen.getByTestId("draggable-timeline-block");
     expect(wrapper.getAttribute("data-drag")).toBe("y");
   });
 });
@@ -265,7 +277,7 @@ describe("C-m6-011: DraggableTimelineBlock — Edit Mode toggle rendering", () =
         />
       </EditModeContext.Provider>,
     );
-    const wrapper = screen.getByTestId("draggable-block");
+    const wrapper = screen.getByTestId("draggable-timeline-block");
     expect(wrapper.getAttribute("data-drag")).toBe("false");
   });
 });
