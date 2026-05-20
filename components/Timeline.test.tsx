@@ -1,3 +1,4 @@
+import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -5,6 +6,55 @@ import { Timeline } from "./Timeline";
 import type { TimelineItem } from "./Timeline";
 import { HOUR_HEIGHT_PX, timeToOffsetPx } from "@/lib/timeOffset";
 import type { Block, Brick } from "@/lib/types";
+import { EditModeContext } from "./EditModeProvider";
+
+// M6 Gap 4: mock motion/react so DraggableTimelineBlock's drag prop is readable via data-drag
+vi.mock("motion/react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("motion/react")>();
+  return {
+    ...actual,
+    motion: {
+      ...actual.motion,
+      div: ({
+        children,
+        drag,
+        onDragStart,
+        onDragEnd,
+        "data-testid": testId,
+        dragControls: _dc,
+        dragListener: _dl,
+        dragConstraints: _dcs,
+        dragMomentum: _dm,
+        whileDrag: _wd,
+        ...rest
+      }: {
+        children?: React.ReactNode;
+        drag?: string | boolean;
+        onDragStart?: () => void;
+        onDragEnd?: (e: unknown, info: { point: { y: number } }) => void;
+        "data-testid"?: string;
+        dragControls?: unknown;
+        dragListener?: unknown;
+        dragConstraints?: unknown;
+        dragMomentum?: unknown;
+        whileDrag?: unknown;
+        [key: string]: unknown;
+      }) => (
+        <div
+          data-testid={testId}
+          data-drag={drag !== undefined ? String(drag) : undefined}
+          {...(rest as React.HTMLAttributes<HTMLDivElement>)}
+        >
+          {children}
+        </div>
+      ),
+    },
+    useReducedMotion: vi.fn(() => false),
+    useDragControls: vi.fn(() => ({ start: vi.fn() })),
+    AnimatePresence: ({ children }: { children?: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children),
+  };
+});
 
 // Default props for M2 Timeline (re-authored to add categories + onSlotTap)
 // M4e: `blocks` prop renamed to `items: TimelineItem[]` — use items=[] for the empty case.
@@ -373,5 +423,54 @@ describe("C-m4e-030: Timeline renders TimelineBlock for block items + TimedLoose
     ).toBeNull();
     // Hour grid still renders
     expect(container.querySelector('[data-testid="hour-grid"]')).not.toBeNull();
+  });
+});
+
+// ─── C-m6-010 (Gap 4 integration): Timeline threads modalOpen to DraggableTimelineBlock ─
+
+describe("C-m6-010 (integration): Timeline.modalOpen prop disables drag on DraggableTimelineBlock", () => {
+  const blkForModal: Block = {
+    id: "blk-modal-test",
+    name: "Morning",
+    start: "08:00",
+    end: "09:00",
+    recurrence: { kind: "every-day" },
+    categoryId: null,
+    bricks: [],
+  };
+  const itemsForModal: TimelineItem[] = [{ kind: "block", block: blkForModal }];
+
+  it("drag='false' on DraggableTimelineBlock when modalOpen=true even with editMode=true and onReorderRequest provided", () => {
+    render(
+      <EditModeContext.Provider value={{ editMode: true, toggle: vi.fn() }}>
+        <Timeline
+          items={itemsForModal}
+          categories={[]}
+          now="08:00"
+          onSlotTap={vi.fn()}
+          onReorderRequest={vi.fn()}
+          modalOpen={true}
+        />
+      </EditModeContext.Provider>,
+    );
+    const wrapper = screen.getByTestId("draggable-timeline-block");
+    expect(wrapper.getAttribute("data-drag")).toBe("false");
+  });
+
+  it("drag='y' on DraggableTimelineBlock when modalOpen=false with editMode=true and onReorderRequest provided", () => {
+    render(
+      <EditModeContext.Provider value={{ editMode: true, toggle: vi.fn() }}>
+        <Timeline
+          items={itemsForModal}
+          categories={[]}
+          now="08:00"
+          onSlotTap={vi.fn()}
+          onReorderRequest={vi.fn()}
+          modalOpen={false}
+        />
+      </EditModeContext.Provider>,
+    );
+    const wrapper = screen.getByTestId("draggable-timeline-block");
+    expect(wrapper.getAttribute("data-drag")).toBe("y");
   });
 });
