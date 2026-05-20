@@ -12,7 +12,8 @@ export type Duration =
   | "modalOut" // 220ms
   | "longPress" // 180ms
   | "stagger" // 30ms (per-sibling delay)
-  | "fireworks"; // 1600ms easeOut — day-100% celebration overlay (M4a)
+  | "fireworks" // 1600ms easeOut — day-100% celebration overlay (M4a)
+  | "countUp"; // M7c — hero % count-up on first load (1600ms easeOut)
 
 export type Easing = "easeOut" | "easeInOut" | "spring" | "linear";
 
@@ -39,6 +40,7 @@ export const motionTokens: Record<Duration, MotionToken> = {
   longPress: { durationMs: 180, easing: "easeOut" },
   stagger: { durationMs: 30, easing: "linear" },
   fireworks: { durationMs: 1600, easing: "easeOut" }, // M4a — day-100% celebration overlay
+  countUp: { durationMs: 1600, easing: "easeOut" }, // M7c — hero % count-up on first load
 };
 
 /**
