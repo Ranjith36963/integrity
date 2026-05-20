@@ -491,3 +491,169 @@ describe("C-m6-011: DraggableTimelineBlock — Edit Mode toggle mid-drag", () =>
     expect(onReorderRequest).toHaveBeenCalledWith("blk-A", "13:00", "14:00");
   });
 });
+
+// ── M7b: isActive threading tests ────────────────────────────────────────────
+
+const activeBlk: Block = {
+  id: "active-blk",
+  name: "Active Block",
+  start: "09:00",
+  end: "10:00",
+  recurrence: { kind: "just-today", date: "2026-05-18" },
+  categoryId: null,
+  bricks: [],
+};
+
+// ── C-m7b-007 ─────────────────────────────────────────────────────────────────
+describe("C-m7b-007 — <DraggableTimelineBlock isActive={true}> threads isActive to inner TimelineBlock", () => {
+  it("inner timeline-block has is-active class when isActive={true}", () => {
+    const onReorderRequest = vi.fn();
+    const { container } = render(
+      <EditModeContext.Provider value={{ editMode: false, toggle: vi.fn() }}>
+        <DraggableTimelineBlock
+          block={activeBlk}
+          categories={[]}
+          modalOpen={false}
+          onReorderRequest={onReorderRequest}
+          dragConstraintsRef={{ current: null }}
+          isActive={true}
+        />
+      </EditModeContext.Provider>,
+    );
+    const inner = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    expect(inner).not.toBeNull();
+    expect(inner.className).toContain("is-active");
+  });
+
+  it("NowTag is present in DOM when isActive={true}", () => {
+    const onReorderRequest = vi.fn();
+    const { container } = render(
+      <EditModeContext.Provider value={{ editMode: false, toggle: vi.fn() }}>
+        <DraggableTimelineBlock
+          block={activeBlk}
+          categories={[]}
+          modalOpen={false}
+          onReorderRequest={onReorderRequest}
+          dragConstraintsRef={{ current: null }}
+          isActive={true}
+        />
+      </EditModeContext.Provider>,
+    );
+    const badge = container.querySelector(
+      '[data-testid="now-tag"]',
+    ) as HTMLElement;
+    expect(badge).not.toBeNull();
+  });
+
+  it("re-render with isActive={false} removes is-active class and NowTag", () => {
+    const onReorderRequest = vi.fn();
+    const { container, rerender } = render(
+      <EditModeContext.Provider value={{ editMode: false, toggle: vi.fn() }}>
+        <DraggableTimelineBlock
+          block={activeBlk}
+          categories={[]}
+          modalOpen={false}
+          onReorderRequest={onReorderRequest}
+          dragConstraintsRef={{ current: null }}
+          isActive={true}
+        />
+      </EditModeContext.Provider>,
+    );
+    // Verify active first
+    const inner = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    expect(inner.className).toContain("is-active");
+
+    // Re-render with isActive=false
+    rerender(
+      <EditModeContext.Provider value={{ editMode: false, toggle: vi.fn() }}>
+        <DraggableTimelineBlock
+          block={activeBlk}
+          categories={[]}
+          modalOpen={false}
+          onReorderRequest={onReorderRequest}
+          dragConstraintsRef={{ current: null }}
+          isActive={false}
+        />
+      </EditModeContext.Provider>,
+    );
+    expect(inner.className).not.toContain("is-active");
+    expect(container.querySelector('[data-testid="now-tag"]')).toBeNull();
+  });
+});
+
+// ── C-m7b-008 ─────────────────────────────────────────────────────────────────
+describe("C-m7b-008 — <DraggableTimelineBlock isActive={false}> (default) — byte-identical to today", () => {
+  it("omitting isActive — inner timeline-block does NOT have is-active class", () => {
+    const onReorderRequest = vi.fn();
+    const { container } = render(
+      <EditModeContext.Provider value={{ editMode: false, toggle: vi.fn() }}>
+        <DraggableTimelineBlock
+          block={activeBlk}
+          categories={[]}
+          modalOpen={false}
+          onReorderRequest={onReorderRequest}
+          dragConstraintsRef={{ current: null }}
+        />
+      </EditModeContext.Provider>,
+    );
+    const inner = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    expect(inner).not.toBeNull();
+    expect(inner.className).not.toContain("is-active");
+  });
+
+  it("omitting isActive — no NowTag in DOM", () => {
+    const onReorderRequest = vi.fn();
+    const { container } = render(
+      <EditModeContext.Provider value={{ editMode: false, toggle: vi.fn() }}>
+        <DraggableTimelineBlock
+          block={activeBlk}
+          categories={[]}
+          modalOpen={false}
+          onReorderRequest={onReorderRequest}
+          dragConstraintsRef={{ current: null }}
+        />
+      </EditModeContext.Provider>,
+    );
+    expect(container.querySelector('[data-testid="now-tag"]')).toBeNull();
+  });
+
+  it("explicit isActive={false} and omitted isActive produce byte-identical inner HTML", () => {
+    const onReorderRequest = vi.fn();
+    const { container: c1 } = render(
+      <EditModeContext.Provider value={{ editMode: false, toggle: vi.fn() }}>
+        <DraggableTimelineBlock
+          block={activeBlk}
+          categories={[]}
+          modalOpen={false}
+          onReorderRequest={onReorderRequest}
+          dragConstraintsRef={{ current: null }}
+          isActive={false}
+        />
+      </EditModeContext.Provider>,
+    );
+    const { container: c2 } = render(
+      <EditModeContext.Provider value={{ editMode: false, toggle: vi.fn() }}>
+        <DraggableTimelineBlock
+          block={activeBlk}
+          categories={[]}
+          modalOpen={false}
+          onReorderRequest={onReorderRequest}
+          dragConstraintsRef={{ current: null }}
+        />
+      </EditModeContext.Provider>,
+    );
+    const inner1 = c1.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    const inner2 = c2.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    expect(inner1.outerHTML).toBe(inner2.outerHTML);
+  });
+});
