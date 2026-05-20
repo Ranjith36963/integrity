@@ -15,7 +15,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
 import type { Dispatch } from "react";
-import { render, act } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import { BuildingClient } from "./BuildingClient";
 import type { AppState, Action } from "@/lib/types";
 
@@ -137,11 +137,8 @@ describe("C-m7c-013 — BuildingClient threads firstPaintCountUp={stagger} to He
   it("source file has EXACTLY ONE invocation of useFirstPaintAfterHydration (no parallel ref machine)", () => {
     const sourcePath = join(process.cwd(), "app/(building)/BuildingClient.tsx");
     const source = readFileSync(sourcePath, "utf-8");
-    // Count occurrences of useFirstPaintAfterHydration( — the hook call site
-    const matches = source.match(/useFirstPaintAfterHydration\(/g) ?? [];
-    // One import reference + one call site = 2 occurrences
+    // Verify there is exactly 1 call site (not counting the import line)
     // The call site should be: const stagger = useFirstPaintAfterHydration(hydrated)
-    // We verify there is exactly 1 call site (not counting the import)
     const nonImportMatches = source
       .split("\n")
       .filter(

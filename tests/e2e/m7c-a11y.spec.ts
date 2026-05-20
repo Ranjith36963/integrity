@@ -179,11 +179,6 @@ test("A-m7c-002: aria-label='Day score: N%' progresses monotonically with the tw
   const finalVal = finalLabel.val;
   expect(finalVal).toBeGreaterThan(0);
 
-  // aria-live="polite" is present on the SVG container
-  const ariaLive = await page
-    .locator("[data-testid='hero-ring'] svg, [data-testid='hero-ring']")
-    .first()
-    .getAttribute("aria-live");
   // The SVG inside hero-ring has aria-live="polite"
   const svgAriaLive = await page
     .locator("[data-testid='hero-ring'] svg[aria-live]")
