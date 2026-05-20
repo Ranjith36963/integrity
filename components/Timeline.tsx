@@ -9,10 +9,18 @@
 // - M4e: `blocks: Block[]` prop replaced by `items: TimelineItem[]` union (blocks + timed loose bricks)
 //        Renders TimelineBlock for kind="block", TimedLooseBrickCard for kind="brick".
 // - M4f: onGoalLog → onUnitsLog; timer props removed (ADR-043).
+// - M7a NEW: optional stagger?: boolean prop (default false).
+//   When true, wraps the items.map(…) render block in a Framer Motion stagger container
+//   (display: contents, pointer-events: none) so it does not disturb absolute-positioned cards.
+//   Chrome (hour-grid, SlotTapTargets, NowLine) is NOT wrapped — those layers stay at z=0/1/3.
+//   When false (default), renders byte-identical to pre-M7a.
 
 import { useRef, useEffect } from "react";
+import { motion } from "motion/react";
 import type { Block, Brick, Category } from "@/lib/types";
 import { HOUR_HEIGHT_PX, timeToOffsetPx } from "@/lib/timeOffset";
+import { usePrefersReducedMotion } from "@/lib/reducedMotion";
+import { staggerForCount } from "@/lib/motion";
 import { NowLine } from "./NowLine";
 import { EmptyBlocks } from "./EmptyBlocks";
 import { SlotTapTargets } from "./SlotTapTargets";
@@ -62,6 +70,9 @@ interface Props {
   ) => void;
   /** M6: true when the M5 delete-confirmation modal is open — threads to DraggableTimelineBlock. */
   modalOpen?: boolean;
+  /** M7a: when true, wraps the items.map render block in a Framer Motion stagger container.
+   * When false (default), renders byte-identical to pre-M7a. Chrome layers not wrapped. */
+  stagger?: boolean;
 }
 
 export function Timeline({
@@ -79,8 +90,36 @@ export function Timeline({
   onAnnounce,
   onReorderBrickInBlock,
   modalOpen = false,
+  stagger = false,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // M7a: stagger variants — built only when stagger===true
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const staggerDelay = staggerForCount(items.length);
+  const containerVariants = stagger
+    ? {
+        initial: {},
+        animate: {
+          transition: {
+            staggerChildren: prefersReducedMotion ? 0 : staggerDelay,
+          },
+        },
+      }
+    : undefined;
+  const childVariants = stagger
+    ? {
+        initial: { opacity: 0, y: 4 },
+        animate: {
+          opacity: 1,
+          y: 0,
+          transition: {
+            duration: prefersReducedMotion ? 0 : 0.18,
+            ease: "easeOut" as const,
+          },
+        },
+      }
+    : undefined;
 
   // Auto-scroll on mount so NowLine is vertically centered in the visible viewport.
   useEffect(() => {
@@ -142,54 +181,126 @@ export function Timeline({
           <SlotTapTargets onSlotTap={onSlotTap} />
 
           {/* Layer 2: Timeline items — block cards OR timed loose brick cards */}
+          {/* M7a: when stagger===true, wrap the items list in a Framer Motion stagger container.
+               The wrapper uses display:contents so it does not disturb absolute-positioned cards.
+               pointer-events:none on the wrapper; children re-enable their own pointer events.
+               Chrome (SlotTapTargets, NowLine) is NOT wrapped — stays outside this container.
+               When stagger===false (default), renders byte-identical to pre-M7a. */}
           {/* M6: when onReorderRequest is provided (Edit Mode), render DraggableTimelineBlock */}
-          {items.map((item) =>
-            item.kind === "block" ? (
-              onReorderRequest ? (
-                <DraggableTimelineBlock
-                  key={item.block.id}
-                  block={item.block}
-                  categories={categories}
-                  modalOpen={modalOpen}
-                  onReorderRequest={onReorderRequest}
-                  onAnnounce={onAnnounce}
-                  dragConstraintsRef={scrollRef}
-                  onAddBrick={onAddBrick}
-                  onTickToggle={onTickToggle}
-                  onUnitsOpenSheet={onUnitsOpenSheet}
-                  onRequestDeleteBlock={onRequestDeleteBlock}
-                  onRequestDeleteBrick={onRequestDeleteBrick}
-                  onReorderBrickInBlock={onReorderBrickInBlock}
-                />
-              ) : (
-                <TimelineBlock
-                  key={item.block.id}
-                  block={item.block}
-                  categories={categories}
-                  onAddBrick={onAddBrick}
-                  onTickToggle={onTickToggle}
-                  onUnitsOpenSheet={onUnitsOpenSheet}
-                  onRequestDeleteBlock={onRequestDeleteBlock}
-                  onRequestDeleteBrick={onRequestDeleteBrick}
-                />
-              )
-            ) : (
-              <TimedLooseBrickCard
-                key={item.brick.id}
-                brick={item.brick}
-                categories={categories}
-                onTickToggle={onTickToggle}
-                onUnitsOpenSheet={onUnitsOpenSheet}
-                onRequestDeleteBrick={onRequestDeleteBrick}
-              />
-            ),
-          )}
+          {stagger && containerVariants ? (
+            <motion.div
+              data-testid="timeline-stagger-container"
+              style={{ display: "contents" }}
+              variants={containerVariants}
+              initial="initial"
+              animate="animate"
+            >
+              {items.map((item) =>
+                item.kind === "block" ? (
+                  onReorderRequest ? (
+                    <DraggableTimelineBlock
+                      key={item.block.id}
+                      block={item.block}
+                      categories={categories}
+                      modalOpen={modalOpen}
+                      onReorderRequest={onReorderRequest}
+                      onAnnounce={onAnnounce}
+                      dragConstraintsRef={scrollRef}
+                      onAddBrick={onAddBrick}
+                      onTickToggle={onTickToggle}
+                      onUnitsOpenSheet={onUnitsOpenSheet}
+                      onRequestDeleteBlock={onRequestDeleteBlock}
+                      onRequestDeleteBrick={onRequestDeleteBrick}
+                      onReorderBrickInBlock={onReorderBrickInBlock}
+                    />
+                  ) : (
+                    <motion.div key={item.block.id} variants={childVariants}>
+                      <TimelineBlock
+                        block={item.block}
+                        categories={categories}
+                        onAddBrick={onAddBrick}
+                        onTickToggle={onTickToggle}
+                        onUnitsOpenSheet={onUnitsOpenSheet}
+                        onRequestDeleteBlock={onRequestDeleteBlock}
+                        onRequestDeleteBrick={onRequestDeleteBrick}
+                      />
+                    </motion.div>
+                  )
+                ) : (
+                  <motion.div key={item.brick.id} variants={childVariants}>
+                    <TimedLooseBrickCard
+                      brick={item.brick}
+                      categories={categories}
+                      onTickToggle={onTickToggle}
+                      onUnitsOpenSheet={onUnitsOpenSheet}
+                      onRequestDeleteBrick={onRequestDeleteBrick}
+                    />
+                  </motion.div>
+                ),
+              )}
+              {/* EmptyBlocks is also inside the stagger container when stagger=true */}
+              {items.length === 0 && !hasLooseBricks && (
+                <motion.div variants={childVariants}>
+                  <div
+                    className="absolute inset-x-4 z-0"
+                    style={{ top: "20px" }}
+                  >
+                    <EmptyBlocks />
+                  </div>
+                </motion.div>
+              )}
+            </motion.div>
+          ) : (
+            <>
+              {items.map((item) =>
+                item.kind === "block" ? (
+                  onReorderRequest ? (
+                    <DraggableTimelineBlock
+                      key={item.block.id}
+                      block={item.block}
+                      categories={categories}
+                      modalOpen={modalOpen}
+                      onReorderRequest={onReorderRequest}
+                      onAnnounce={onAnnounce}
+                      dragConstraintsRef={scrollRef}
+                      onAddBrick={onAddBrick}
+                      onTickToggle={onTickToggle}
+                      onUnitsOpenSheet={onUnitsOpenSheet}
+                      onRequestDeleteBlock={onRequestDeleteBlock}
+                      onRequestDeleteBrick={onRequestDeleteBrick}
+                      onReorderBrickInBlock={onReorderBrickInBlock}
+                    />
+                  ) : (
+                    <TimelineBlock
+                      key={item.block.id}
+                      block={item.block}
+                      categories={categories}
+                      onAddBrick={onAddBrick}
+                      onTickToggle={onTickToggle}
+                      onUnitsOpenSheet={onUnitsOpenSheet}
+                      onRequestDeleteBlock={onRequestDeleteBlock}
+                      onRequestDeleteBrick={onRequestDeleteBrick}
+                    />
+                  )
+                ) : (
+                  <TimedLooseBrickCard
+                    key={item.brick.id}
+                    brick={item.brick}
+                    categories={categories}
+                    onTickToggle={onTickToggle}
+                    onUnitsOpenSheet={onUnitsOpenSheet}
+                    onRequestDeleteBrick={onRequestDeleteBrick}
+                  />
+                ),
+              )}
 
-          {/* Layer 2 (centered): EmptyBlocks card — only when items empty AND no loose bricks */}
-          {items.length === 0 && !hasLooseBricks && (
-            <div className="absolute inset-x-4 z-0" style={{ top: "20px" }}>
-              <EmptyBlocks />
-            </div>
+              {/* Layer 2 (centered): EmptyBlocks card — only when items empty AND no loose bricks */}
+              {items.length === 0 && !hasLooseBricks && (
+                <div className="absolute inset-x-4 z-0" style={{ top: "20px" }}>
+                  <EmptyBlocks />
+                </div>
+              )}
+            </>
           )}
 
           {/* Layer 3: NowLine — always on top */}
