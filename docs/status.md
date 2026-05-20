@@ -7,7 +7,7 @@
 ## Snapshot
 
 - **Branch:** `claude/verify-m0-deployment-s4XRy` · `main` at `c3ef9f1` (feature branch not yet merged)
-- **Last ship:** M7a — Stagger Fade-in + Skeleton Shimmer — ship commit `(see stamp commit)` — branch `claude/verify-m0-deployment-s4XRy`. Date: 2026-05-20.
+- **Last ship:** M7a — Stagger Fade-in + Skeleton Shimmer — ship commit `7eb49f0` — branch `claude/verify-m0-deployment-s4XRy`. Date: 2026-05-20.
 - **Last preview URL:** `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (stable branch alias; auto-tracks latest deployment for this branch). Sandbox `curl -I` returns HTTP 403 `x-deny-reason: host_not_allowed` (Vercel Deployment Protection — same as M0–M7a; not a failure; signed-in browser sessions serve normally).
 - **Persisted schema: v3** (ADR-045 + M5). `AppState`/`PersistedState` now carry `deletions: Record<string,true>`. Additive lossless v2→v3 migrator. `loadState` migrates v1→v2→v3 with no data loss.
 - **ADR-047 (M5):** `currentDayBlocks.ts` resolves `deletions` only; `appliesOn` Day-view wiring is deferred to a dedicated spec entry.
