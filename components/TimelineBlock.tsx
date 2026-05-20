@@ -16,6 +16,7 @@ import { haptics } from "@/lib/haptics";
 import { playChime } from "@/lib/audio";
 import { springConfigs } from "@/lib/motion";
 import { BrickChip } from "./BrickChip";
+import { BlockBrickReorderGroup } from "./BlockBrickReorderGroup";
 import { useEditMode } from "./EditModeProvider";
 
 interface Props {
@@ -37,6 +38,12 @@ interface Props {
     newStart: string,
     newEnd: string | null,
   ) => void;
+  /** M6: called with (blockId, fromIndex, toIndex) when a brick drag commits. */
+  onReorderBrickInBlock?: (
+    blockId: string,
+    fromIndex: number,
+    toIndex: number,
+  ) => void;
 }
 
 export function TimelineBlock({
@@ -49,6 +56,7 @@ export function TimelineBlock({
   onRequestDeleteBrick,
   dragControls,
   onReorderRequest: _onReorderRequest,
+  onReorderBrickInBlock,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [bloomKey, setBloomKey] = useState(0);
@@ -306,33 +314,47 @@ export function TimelineBlock({
               onClick={(e) => e.stopPropagation()}
               style={{ marginTop: "8px" }}
             >
-              {block.bricks.length > 0 && (
-                <ul
-                  role="list"
-                  style={{
-                    listStyle: "none",
-                    margin: 0,
-                    padding: 0,
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "4px",
-                    marginBottom: "8px",
-                  }}
-                >
-                  {block.bricks.map((brick) => (
-                    <li key={brick.id} role="listitem">
-                      <BrickChip
-                        brick={brick}
-                        categories={categories}
-                        size="md"
-                        onTickToggle={onTickToggle}
-                        onUnitsOpenSheet={onUnitsOpenSheet}
-                        onRequestDeleteBrick={onRequestDeleteBrick}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              )}
+              {block.bricks.length > 0 &&
+                /* M6: use BlockBrickReorderGroup when editMode=true AND bricks.length > 1;
+                   otherwise plain <ul> (Locked mode OR single-brick block — C-m6-013). */
+                (editMode &&
+                onReorderBrickInBlock &&
+                block.bricks.length > 1 ? (
+                  <BlockBrickReorderGroup
+                    block={block}
+                    categories={categories}
+                    onReorderBrickInBlock={onReorderBrickInBlock}
+                    onTickToggle={onTickToggle}
+                    onUnitsOpenSheet={onUnitsOpenSheet}
+                    onRequestDeleteBrick={onRequestDeleteBrick}
+                  />
+                ) : (
+                  <ul
+                    role="list"
+                    style={{
+                      listStyle: "none",
+                      margin: 0,
+                      padding: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "4px",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    {block.bricks.map((brick) => (
+                      <li key={brick.id} role="listitem">
+                        <BrickChip
+                          brick={brick}
+                          categories={categories}
+                          size="md"
+                          onTickToggle={onTickToggle}
+                          onUnitsOpenSheet={onUnitsOpenSheet}
+                          onRequestDeleteBrick={onRequestDeleteBrick}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                ))}
 
               <button
                 type="button"

@@ -52,6 +52,7 @@ export function DraggableTimelineBlock({
   onUnitsOpenSheet,
   onRequestDeleteBlock,
   onRequestDeleteBrick,
+  onReorderBrickInBlock,
 }: Props) {
   const { editMode } = useEditMode();
   const dragControls = useDragControls();
@@ -116,6 +117,7 @@ export function DraggableTimelineBlock({
         onUnitsOpenSheet={onUnitsOpenSheet}
         onRequestDeleteBlock={onRequestDeleteBlock}
         onRequestDeleteBrick={onRequestDeleteBrick}
+        onReorderBrickInBlock={onReorderBrickInBlock}
       />
     </motion.div>
   );

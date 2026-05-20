@@ -17,6 +17,7 @@ import { NowLine } from "./NowLine";
 import { EmptyBlocks } from "./EmptyBlocks";
 import { SlotTapTargets } from "./SlotTapTargets";
 import { TimelineBlock } from "./TimelineBlock";
+import { DraggableTimelineBlock } from "./DraggableTimelineBlock";
 import { TimedLooseBrickCard } from "./TimedLooseBrickCard";
 
 export type TimelineItem =
@@ -45,6 +46,20 @@ interface Props {
   onRequestDeleteBlock?: (blockId: string) => void;
   /** M5: called with brickId when a brick × is tapped. */
   onRequestDeleteBrick?: (brickId: string) => void;
+  /** M6: called with (blockId, newStart, newEnd) when a valid block drag commits. */
+  onReorderRequest?: (
+    blockId: string,
+    newStart: string,
+    newEnd: string | null,
+  ) => void;
+  /** M6: called with an a11y announce string by DraggableTimelineBlock. */
+  onAnnounce?: (message: string) => void;
+  /** M6: called with (blockId, fromIndex, toIndex) when a brick drag commits. */
+  onReorderBrickInBlock?: (
+    blockId: string,
+    fromIndex: number,
+    toIndex: number,
+  ) => void;
 }
 
 export function Timeline({
@@ -58,6 +73,9 @@ export function Timeline({
   hasLooseBricks = false,
   onRequestDeleteBlock,
   onRequestDeleteBrick,
+  onReorderRequest,
+  onAnnounce,
+  onReorderBrickInBlock,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -121,18 +139,37 @@ export function Timeline({
           <SlotTapTargets onSlotTap={onSlotTap} />
 
           {/* Layer 2: Timeline items — block cards OR timed loose brick cards */}
+          {/* M6: when onReorderRequest is provided (Edit Mode), render DraggableTimelineBlock */}
           {items.map((item) =>
             item.kind === "block" ? (
-              <TimelineBlock
-                key={item.block.id}
-                block={item.block}
-                categories={categories}
-                onAddBrick={onAddBrick}
-                onTickToggle={onTickToggle}
-                onUnitsOpenSheet={onUnitsOpenSheet}
-                onRequestDeleteBlock={onRequestDeleteBlock}
-                onRequestDeleteBrick={onRequestDeleteBrick}
-              />
+              onReorderRequest ? (
+                <DraggableTimelineBlock
+                  key={item.block.id}
+                  block={item.block}
+                  categories={categories}
+                  modalOpen={false}
+                  onReorderRequest={onReorderRequest}
+                  onAnnounce={onAnnounce}
+                  dragConstraintsRef={scrollRef}
+                  onAddBrick={onAddBrick}
+                  onTickToggle={onTickToggle}
+                  onUnitsOpenSheet={onUnitsOpenSheet}
+                  onRequestDeleteBlock={onRequestDeleteBlock}
+                  onRequestDeleteBrick={onRequestDeleteBrick}
+                  onReorderBrickInBlock={onReorderBrickInBlock}
+                />
+              ) : (
+                <TimelineBlock
+                  key={item.block.id}
+                  block={item.block}
+                  categories={categories}
+                  onAddBrick={onAddBrick}
+                  onTickToggle={onTickToggle}
+                  onUnitsOpenSheet={onUnitsOpenSheet}
+                  onRequestDeleteBlock={onRequestDeleteBlock}
+                  onRequestDeleteBrick={onRequestDeleteBrick}
+                />
+              )
             ) : (
               <TimedLooseBrickCard
                 key={item.brick.id}

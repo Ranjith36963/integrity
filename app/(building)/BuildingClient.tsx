@@ -22,7 +22,12 @@ import type { Dispatch } from "react";
 import { today, dateLabel, dayPct, dayNumber } from "@/lib/dharma";
 import { daysInYear } from "@/lib/dayOfYear";
 import { useNow } from "@/lib/useNow";
-import { selectTrayBricks, selectTimelineItems } from "@/lib/overlap";
+import {
+  selectTrayBricks,
+  selectTimelineItems,
+  selectAllTimedItems,
+  findOverlaps,
+} from "@/lib/overlap";
 import { currentDayBlocks } from "@/lib/currentDayBlocks";
 import { useCrossUpEffect } from "@/lib/celebrations";
 import { haptics } from "@/lib/haptics";
@@ -112,6 +117,9 @@ export function BuildingClient({ state, dispatch }: BuildingClientProps) {
     blockId: string | null;
     brickId: string | null;
   } | null>(null);
+
+  // M6: aria-live announcement for reorder events (polite; screen-reader-discoverable).
+  const [announcement, setAnnouncement] = useState("");
 
   // Live clock (ADR-023: server-clock paint on SSR, reconciles within 60s)
   const now = useNow();
@@ -205,6 +213,39 @@ export function BuildingClient({ state, dispatch }: BuildingClientProps) {
     }
     setPendingDelete(null);
   }, [dispatch, pendingDelete]);
+
+  // M6: handleReorderBlock — called by DraggableTimelineBlock after drag ends.
+  // Uses the overlap engine pre-dispatch to predict outcome and fire the correct announcement.
+  const handleReorderBlock = useCallback(
+    (blockId: string, newStart: string, newEnd: string | null) => {
+      const candidate = { start: newStart, end: newEnd ?? "24:00" };
+      const hits = findOverlaps(candidate, selectAllTimedItems(state), blockId);
+      const block = state.blocks.find((b) => b.id === blockId);
+      if (hits.length > 0) {
+        // Overlap rejection: announce without dispatching (reducer would no-op anyway)
+        const hitName = hits[0].name;
+        setAnnouncement(
+          `Cannot move ${block?.name ?? blockId} — overlaps ${hitName}`,
+        );
+      } else {
+        dispatch({ type: "REORDER_BLOCK", blockId, newStart, newEnd });
+        setAnnouncement(`Block ${block?.name ?? blockId} moved to ${newStart}`);
+      }
+    },
+    [dispatch, state],
+  );
+
+  // M6: handleReorderBrickInBlock — called by BlockBrickReorderGroup after a brick drag.
+  // Dispatches REORDER_BRICK_IN_BLOCK and announces the brick name.
+  const handleReorderBrickInBlock = useCallback(
+    (blockId: string, fromIndex: number, toIndex: number) => {
+      const block = state.blocks.find((b) => b.id === blockId);
+      const brick = block?.bricks[fromIndex];
+      dispatch({ type: "REORDER_BRICK_IN_BLOCK", blockId, fromIndex, toIndex });
+      setAnnouncement(`Brick ${brick?.name ?? "unknown"} moved`);
+    },
+    [dispatch, state],
+  );
 
   // M4d: dock + → open chooser with defaultStart=roundDownToHour(now) captured at open time.
   // Storing the hour at open time avoids stale-closure risk on `now` inside handleChooserPick
@@ -338,6 +379,24 @@ export function BuildingClient({ state, dispatch }: BuildingClientProps) {
   return (
     <EditModeProvider>
       <div className="relative mx-auto min-h-dvh max-w-[430px]">
+        {/* M6: aria-live region — polite, atomic, visually hidden (sr-only equivalent) */}
+        <span
+          aria-live="polite"
+          aria-atomic="true"
+          style={{
+            position: "absolute",
+            width: "1px",
+            height: "1px",
+            padding: 0,
+            margin: "-1px",
+            overflow: "hidden",
+            clip: "rect(0,0,0,0)",
+            whiteSpace: "nowrap",
+            borderWidth: 0,
+          }}
+        >
+          {announcement}
+        </span>
         <TopBar />
         <Hero
           dateLabel={dateLabelValue}
@@ -363,6 +422,9 @@ export function BuildingClient({ state, dispatch }: BuildingClientProps) {
           hasLooseBricks={trayBricks.length > 0}
           onRequestDeleteBlock={handleRequestDeleteBlock}
           onRequestDeleteBrick={handleRequestDeleteBrick}
+          onReorderRequest={handleReorderBlock}
+          onAnnounce={setAnnouncement}
+          onReorderBrickInBlock={handleReorderBrickInBlock}
         />
         {/* LooseBricksTray: pinned above dock, visible when blocks exist OR non-timed loose bricks exist */}
         {showTray && (
