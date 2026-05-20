@@ -953,3 +953,50 @@ describe("U-m5-012: projectToAppState/toPersisted carry deletions; a delete surv
     expect(reloaded!.schemaVersion).toBe(3);
   });
 });
+
+// ─── U-m7a-003: usePersistedState returns [state, dispatch, mounted] as a 3-tuple ─
+
+describe("U-m7a-003: usePersistedState returns [state, dispatch, mounted]; mounted false pre-effect, true after", () => {
+  it("result.current[2] is strictly false before useEffect flushes (pre-hydration window)", () => {
+    const { result } = renderHook(() => usePersistedState());
+    // Synchronous body of the hook has run, but useEffect has NOT yet flushed.
+    // Third slot must be strictly false (not undefined, not null).
+    expect(result.current[2]).toBe(false);
+  });
+
+  it("result.current[2] is strictly true after act() flushes the post-mount useEffect", async () => {
+    const { result } = renderHook(() => usePersistedState());
+    expect(result.current[2]).toBe(false); // pre-effect
+    await act(async () => {});
+    expect(result.current[2]).toBe(true); // post-effect
+  });
+
+  it("a rerender after hydration does NOT flip mounted back to false (monotonic-true)", async () => {
+    const { result, rerender } = renderHook(() => usePersistedState());
+    await act(async () => {});
+    expect(result.current[2]).toBe(true);
+    rerender();
+    expect(result.current[2]).toBe(true); // still true
+    rerender();
+    expect(result.current[2]).toBe(true); // still true
+  });
+
+  it("existing two-element destructure const [state, dispatch] = result.current works unchanged", async () => {
+    const { result } = renderHook(() => usePersistedState());
+    await act(async () => {});
+    // Two-element destructure of a three-element tuple — no runtime error, no TS error
+    const [state, dispatch] = result.current;
+    expect(typeof state).toBe("object");
+    expect(typeof dispatch).toBe("function");
+    // state and dispatch are byte-identical to the pre-M7a two-element tuple
+    expect(state).toBe(result.current[0]);
+    expect(dispatch).toBe(result.current[1]);
+  });
+
+  it("third slot is a boolean (not AppState, not Dispatch, not undefined)", () => {
+    const { result } = renderHook(() => usePersistedState());
+    // Before effect: false (boolean)
+    expect(typeof result.current[2]).toBe("boolean");
+    expect(result.current[2]).toBe(false);
+  });
+});
