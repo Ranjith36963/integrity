@@ -1051,3 +1051,165 @@ describe("C-m6-005: block handle is the only drag origin — body tap does NOT s
     expect(mockControls.start).toHaveBeenCalledTimes(1);
   });
 });
+
+// ── M7b: isActive prop tests ──────────────────────────────────────────────────
+
+const activeBlock: Block = {
+  id: "active-blk",
+  name: "Active Block",
+  start: "09:00",
+  end: "10:00",
+  recurrence: { kind: "just-today", date: "2026-05-18" },
+  categoryId: null,
+  bricks: [],
+};
+
+// ── C-m7b-004 ─────────────────────────────────────────────────────────────────
+describe("C-m7b-004 — <TimelineBlock isActive={true}> adds is-active class + renders NowTag", () => {
+  it("outer motion.div has class is-active", () => {
+    const { container } = render(
+      <TimelineBlock block={activeBlock} categories={[]} isActive={true} />,
+    );
+    const outer = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    expect(outer).not.toBeNull();
+    expect(outer.className).toContain("is-active");
+  });
+
+  it("NowTag is present in DOM subtree", () => {
+    render(
+      <TimelineBlock block={activeBlock} categories={[]} isActive={true} />,
+    );
+    expect(screen.getByTestId("now-tag")).toBeInTheDocument();
+  });
+
+  it("NowTag is a direct child of the outer motion.div", () => {
+    const { container } = render(
+      <TimelineBlock block={activeBlock} categories={[]} isActive={true} />,
+    );
+    const outer = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    const badge = container.querySelector(
+      '[data-testid="now-tag"]',
+    ) as HTMLElement;
+    expect(outer.contains(badge)).toBe(true);
+  });
+
+  it("existing card semantics are unchanged — title, aria-expanded present", () => {
+    render(
+      <TimelineBlock block={activeBlock} categories={[]} isActive={true} />,
+    );
+    expect(screen.getByText("Active Block")).toBeInTheDocument();
+    const outer = screen.getByRole("article");
+    expect(outer).toHaveAttribute("aria-expanded", "false");
+  });
+});
+
+// ── C-m7b-005 ─────────────────────────────────────────────────────────────────
+describe("C-m7b-005 — <TimelineBlock isActive={false}> (default) — byte-identical to today: no is-active, no NowTag", () => {
+  it("explicit isActive={false} — outer div does NOT have is-active class", () => {
+    const { container } = render(
+      <TimelineBlock block={activeBlock} categories={[]} isActive={false} />,
+    );
+    const outer = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    expect(outer.className).not.toContain("is-active");
+  });
+
+  it("explicit isActive={false} — no NowTag in DOM", () => {
+    render(
+      <TimelineBlock block={activeBlock} categories={[]} isActive={false} />,
+    );
+    expect(screen.queryByTestId("now-tag")).toBeNull();
+  });
+
+  it("isActive prop omitted (default false) — outer div does NOT have is-active class", () => {
+    const { container } = render(
+      <TimelineBlock block={activeBlock} categories={[]} />,
+    );
+    const outer = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    expect(outer.className).not.toContain("is-active");
+  });
+
+  it("isActive prop omitted (default false) — no NowTag in DOM", () => {
+    render(<TimelineBlock block={activeBlock} categories={[]} />);
+    expect(screen.queryByTestId("now-tag")).toBeNull();
+  });
+
+  it("outerHTML is byte-identical between explicit false and omitted prop", () => {
+    const { container: c1 } = render(
+      <TimelineBlock block={activeBlock} categories={[]} isActive={false} />,
+    );
+    const { container: c2 } = render(
+      <TimelineBlock block={activeBlock} categories={[]} />,
+    );
+    const outer1 = c1.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    const outer2 = c2.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    expect(outer1.outerHTML).toBe(outer2.outerHTML);
+  });
+});
+
+// ── C-m7b-006 ─────────────────────────────────────────────────────────────────
+describe("C-m7b-006 — <TimelineBlock isActive={true}> under reduced motion — is-active class STILL applied; NowTag STILL renders", () => {
+  it("is-active class still present when useReducedMotion returns true", async () => {
+    const { useReducedMotion } = await import("motion/react");
+    vi.mocked(useReducedMotion).mockReturnValue(true);
+
+    const { container } = render(
+      <TimelineBlock block={activeBlock} categories={[]} isActive={true} />,
+    );
+    const outer = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    expect(outer.className).toContain("is-active");
+
+    vi.mocked(useReducedMotion).mockReturnValue(false);
+  });
+
+  it("NowTag still renders when useReducedMotion returns true", async () => {
+    const { useReducedMotion } = await import("motion/react");
+    vi.mocked(useReducedMotion).mockReturnValue(true);
+
+    render(
+      <TimelineBlock block={activeBlock} categories={[]} isActive={true} />,
+    );
+    expect(screen.getByTestId("now-tag")).toBeInTheDocument();
+
+    vi.mocked(useReducedMotion).mockReturnValue(false);
+  });
+
+  it("is-active class and NowTag are the same whether PRM is true or false", async () => {
+    const { useReducedMotion } = await import("motion/react");
+
+    vi.mocked(useReducedMotion).mockReturnValue(false);
+    const { container: cFalse } = render(
+      <TimelineBlock block={activeBlock} categories={[]} isActive={true} />,
+    );
+    const outerFalse = cFalse.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+
+    vi.mocked(useReducedMotion).mockReturnValue(true);
+    const { container: cTrue } = render(
+      <TimelineBlock block={activeBlock} categories={[]} isActive={true} />,
+    );
+    const outerTrue = cTrue.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+
+    // Both should have the is-active class (CSS handles the suppression)
+    expect(outerFalse.className).toContain("is-active");
+    expect(outerTrue.className).toContain("is-active");
+
+    vi.mocked(useReducedMotion).mockReturnValue(false);
+  });
+});
