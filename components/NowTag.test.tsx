@@ -126,18 +126,13 @@ describe("C-m7b-003 — <NowTag> top-right absolute positioning + non-interactiv
     expect(node.tabIndex).toBe(-1);
   });
 
-  it("synthetic click triggers no handler", async () => {
-    const user = userEvent.setup();
-    const clickSpy = vi.fn();
+  it("has no onClick handler wired by the component itself", () => {
     const { container } = render(<NowTag />);
     const node = container.querySelector(
       '[data-testid="now-tag"]',
     ) as HTMLElement;
-    // The component accepts no onClick — clicking should not invoke any spy
-    node.addEventListener("click", clickSpy);
-    await user.click(node);
-    // The click event fires on the element but no handler is wired in the component
-    // We verify that the component itself has no onClick prop (no internal handler)
+    // NowTag accepts no onClick prop — node.onclick must be null
+    // (purely decorative; pointer-events:none prevents real browser clicks)
     expect(node.onclick).toBeNull();
   });
 });
