@@ -51,6 +51,7 @@ export function Hero({
           {(rounded) => (
             <span
               aria-hidden="true"
+              data-testid="hero-numeral"
               className="font-serif-italic text-[72px] leading-[0.85]"
               style={{ fontFamily: "var(--font-display)" }}
             >

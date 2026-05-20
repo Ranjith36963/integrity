@@ -63,6 +63,7 @@ export function HeroRing({ pct, firstPaintCountUp = false, children }: Props) {
 
   return (
     <div
+      data-testid="hero-ring"
       style={{
         position: "relative",
         display: "inline-flex",
@@ -97,6 +98,7 @@ export function HeroRing({ pct, firstPaintCountUp = false, children }: Props) {
 
         {/* Filled arc — dashoffset reflects displayPct (live tween or snap value) */}
         <circle
+          data-testid="hero-ring-circle"
           cx={R + 10}
           cy={R + 10}
           r={R}
