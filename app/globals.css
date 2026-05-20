@@ -272,6 +272,27 @@ body {
   animation: ring-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
+/* ============ M7a Skeleton shimmer ============ */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    var(--card-edge) 0%,
+    var(--bg-elev) 50%,
+    var(--card-edge) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s linear infinite;
+}
+
 /* ── Reduced-motion: disable CSS-driven transitions/animations ── */
 @media (prefers-reduced-motion: reduce) {
   .brick-in,
@@ -287,6 +308,13 @@ body {
   [data-motion] {
     animation-duration: 0s !important;
     transition-duration: 0s !important;
+  }
+
+  /* M7a: skeleton shimmer collapses to flat solid swatch under reduced motion */
+  .skeleton-shimmer {
+    animation: none !important;
+    background-image: none;
+    background-color: var(--card);
   }
 }
 
