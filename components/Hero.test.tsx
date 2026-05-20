@@ -1,6 +1,44 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import { Hero } from "./Hero";
+
+// ─── motion/react mock for C-m7c-012 ─────────────────────────────────────────
+// Same pattern as HeroRing.test.tsx — mutable mockAnimateImpl for per-test control.
+let mockAnimateImpl012: (
+  from: number,
+  to: number,
+  options: { duration: number; ease: unknown; onUpdate?: (v: number) => void },
+) => { stop: () => void } = (_from, _to, opts) => {
+  let handle: ReturnType<typeof setTimeout>;
+  const run = (elapsed: number) => {
+    if (opts.onUpdate) {
+      const t = Math.min(elapsed / (opts.duration * 1000), 1);
+      opts.onUpdate((_to as number) * t);
+    }
+    if (elapsed < (opts.duration as number) * 1000) {
+      handle = setTimeout(() => run(elapsed + 16), 16);
+    }
+  };
+  handle = setTimeout(() => run(0), 0);
+  return { stop: () => clearTimeout(handle) };
+};
+
+vi.mock("motion/react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("motion/react")>();
+  return {
+    ...actual,
+    useReducedMotion: () => false,
+    animate: (
+      from: number,
+      to: number,
+      options: {
+        duration: number;
+        ease: unknown;
+        onUpdate?: (v: number) => void;
+      },
+    ) => mockAnimateImpl012(from, to, options),
+  };
+});
 
 // C-bld-004: Hero renders dateLabel, "Building X of Y", and "DAY COMPLETE"
 describe("C-bld-004: Hero renders all required text", () => {
@@ -170,5 +208,124 @@ describe("C-m1-006: Hero renders Building N of 365 and 366", () => {
     expect(container.textContent).toContain("Building");
     expect(container.textContent).toContain("60");
     expect(container.textContent).toContain("366");
+  });
+});
+
+// ─── C-m7c-012: Hero threads firstPaintCountUp to HeroRing ───────────────────
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  // Reset to default real-tween-simulator
+  mockAnimateImpl012 = (_from, _to, opts) => {
+    let handle: ReturnType<typeof setTimeout>;
+    const run = (elapsed: number) => {
+      if (opts.onUpdate) {
+        const t = Math.min(elapsed / (opts.duration * 1000), 1);
+        opts.onUpdate((_to as number) * t);
+      }
+      if (elapsed < (opts.duration as number) * 1000) {
+        handle = setTimeout(() => run(elapsed + 16), 16);
+      }
+    };
+    handle = setTimeout(() => run(0), 0);
+    return { stop: () => clearTimeout(handle) };
+  };
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe("C-m7c-012 — Hero threads firstPaintCountUp to HeroRing; default false is byte-identical", () => {
+  it("(a) firstPaintCountUp={true}: 72-px numeral starts at 0% and ends at 50%", async () => {
+    const capturedNumerals: string[] = [];
+    // Override the mock to capture the numeral text at each frame
+    let animateWasCalled = false;
+    mockAnimateImpl012 = (_from, _to, opts) => {
+      animateWasCalled = true;
+      let handle: ReturnType<typeof setTimeout>;
+      const run = (elapsed: number) => {
+        if (opts.onUpdate) {
+          const t = Math.min(elapsed / (opts.duration * 1000), 1);
+          opts.onUpdate((_to as number) * t);
+        }
+        if (elapsed < (opts.duration as number) * 1000) {
+          handle = setTimeout(() => run(elapsed + 16), 16);
+        }
+      };
+      handle = setTimeout(() => run(0), 0);
+      return { stop: () => clearTimeout(handle) };
+    };
+
+    const { container } = render(
+      <Hero
+        pct={50}
+        firstPaintCountUp={true}
+        dateLabel="Wed, May 20"
+        dayNumber={20}
+        totalDays={365}
+      />,
+    );
+
+    // At t=0 (before mount effect fires), displayPct is 0
+    // After mount effect fires, the tween starts — initial value is still 0
+    capturedNumerals.push(container.textContent ?? "");
+
+    // Advance past first frame to let tween progress
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(16);
+    });
+    capturedNumerals.push(container.textContent ?? "");
+
+    // Complete the tween
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1600);
+    });
+
+    // animate was called (the prop was threaded to HeroRing)
+    expect(animateWasCalled).toBe(true);
+
+    // Final value is 50%
+    expect(container.textContent).toContain("50%");
+  });
+
+  it("(b) default firstPaintCountUp omitted: numeral reads 50% immediately; no animate call", async () => {
+    let animateCalled = false;
+    mockAnimateImpl012 = (_from, _to, _opts) => {
+      animateCalled = true;
+      return { stop: vi.fn() };
+    };
+
+    const { container } = render(
+      <Hero pct={50} dateLabel="Wed, May 20" dayNumber={20} totalDays={365} />,
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    // Numeral reads 50% immediately
+    expect(container.textContent).toContain("50%");
+
+    // Advance 1.6 s — still shows 50%, no progressive update
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1600);
+    });
+
+    expect(container.textContent).toContain("50%");
+    expect(container.textContent).not.toContain("25%");
+    // animate not called (firstPaintCountUp defaults to false)
+    expect(animateCalled).toBe(false);
+  });
+
+  it("(b) existing Hero tests are byte-identical: dateLabel, dayNumber, totalDays, pct still render", () => {
+    const { container } = render(
+      <Hero dateLabel="Wed, May 20" dayNumber={126} totalDays={365} pct={42} />,
+    );
+    // All existing assertions still pass
+    expect(container.textContent).toContain("Wed, May 20");
+    expect(container.textContent).toContain("42%");
+    const svg = container.querySelector("svg[role='img']");
+    expect(svg?.getAttribute("aria-label")).toContain("42");
   });
 });
