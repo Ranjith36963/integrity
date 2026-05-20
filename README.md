@@ -71,6 +71,7 @@ npm run test:e2e:install
 | **M9 — Calendar Nav**                        | **COMPLETE** — all four switcher segments (Day/Week/Month/Year) now live |
 | M5 — Edit Mode + Delete                      | Shipped to preview — awaiting Gate #2 tap-test                           |
 | M6 — Drag Reorder                            | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M7a — Stagger Fade-in + Skeleton Shimmer     | Shipped to preview — M7 chunk 1 of 5 (one Gate #2 tap at end of M7e)     |
 
 Latest preview: `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (branch alias; auto-tracks `claude/verify-m0-deployment-s4XRy`). Vercel Deployment Protection active — open in browser while signed in to Vercel.
 
@@ -108,6 +109,7 @@ components/          Shared UI components + unit tests
   MonthCell.tsx      Single month cell inside YearView — heat-fill intensity by score, tappable (M9e)
   DeleteConfirmModal.tsx Recurrence-aware delete confirmation (recurring: Just today / All recurrences; non-recurring/brick: single Delete) (M5)
   DraggableTimelineBlock.tsx Block card wrapper with visible drag handle; drag-to-retime with 30-min snap, overlap rejection, medium-haptic snap-back, aria-live announce; brick reorder via Framer Reorder.Group (M6)
+  Skeleton.tsx        Shimmer placeholder cards rendered during two-pass hydration window; 4 variants: block/brick/bar/ring (M7a)
 lib/                 Domain logic: types, data, scoring, utilities
   celebrations.ts    useCrossUpEffect hook — one-shot cross-up detection for bloom/fireworks
   audio.ts           playChime() — lazy HTMLAudioElement for /sounds/chime.mp3; SSR + iOS guard
@@ -124,6 +126,8 @@ lib/                 Domain logic: types, data, scoring, utilities
   yearGrid.ts        UTC-drift-free year/month date math: yearGridMonths(), addYear(), subYear() (M9e)
   currentDayBlocks.ts Pure helper: filters today's blocks by the deletions map (M5; appliesOn wiring deferred per ADR-047)
   snapToSlot.ts       Pure helper: snapToSlot(minutesSinceMidnight) → nearest 30-min boundary; used by drag-reorder (M6)
+  motion.ts           motionTokens + staggerForCount(n) helper — per-surface stagger cascade constants (M7a)
+  firstPaint.ts       Reserved placeholder for first-paint timing utilities (M7a)
 tests/
   e2e/               Playwright specs (e2e + a11y)
 docs/
