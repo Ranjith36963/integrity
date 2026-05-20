@@ -27,6 +27,7 @@ import { SlotTapTargets } from "./SlotTapTargets";
 import { TimelineBlock } from "./TimelineBlock";
 import { DraggableTimelineBlock } from "./DraggableTimelineBlock";
 import { TimedLooseBrickCard } from "./TimedLooseBrickCard";
+import { activeBlockId } from "@/lib/activeBlock";
 
 export type TimelineItem =
   | { kind: "block"; block: Block }
@@ -121,6 +122,14 @@ export function Timeline({
       }
     : undefined;
 
+  // M7b: compute the active block id — O(n) once per render; no useMemo needed.
+  // Derives visibleBlockList from items (post-M5 deletions filter) so deleted blocks
+  // cannot be candidates. activeId is null when no block contains now. AC #6/#7.
+  const visibleBlockList = items
+    .filter((it): it is { kind: "block"; block: Block } => it.kind === "block")
+    .map((it) => it.block);
+  const activeId = activeBlockId(visibleBlockList, now);
+
   // Auto-scroll on mount so NowLine is vertically centered in the visible viewport.
   useEffect(() => {
     if (!scrollRef.current) return;
@@ -212,6 +221,7 @@ export function Timeline({
                       onRequestDeleteBlock={onRequestDeleteBlock}
                       onRequestDeleteBrick={onRequestDeleteBrick}
                       onReorderBrickInBlock={onReorderBrickInBlock}
+                      isActive={item.block.id === activeId}
                     />
                   ) : (
                     <motion.div key={item.block.id} variants={childVariants}>
@@ -223,6 +233,7 @@ export function Timeline({
                         onUnitsOpenSheet={onUnitsOpenSheet}
                         onRequestDeleteBlock={onRequestDeleteBlock}
                         onRequestDeleteBrick={onRequestDeleteBrick}
+                        isActive={item.block.id === activeId}
                       />
                     </motion.div>
                   )
@@ -269,6 +280,7 @@ export function Timeline({
                       onRequestDeleteBlock={onRequestDeleteBlock}
                       onRequestDeleteBrick={onRequestDeleteBrick}
                       onReorderBrickInBlock={onReorderBrickInBlock}
+                      isActive={item.block.id === activeId}
                     />
                   ) : (
                     <TimelineBlock
@@ -280,6 +292,7 @@ export function Timeline({
                       onUnitsOpenSheet={onUnitsOpenSheet}
                       onRequestDeleteBlock={onRequestDeleteBlock}
                       onRequestDeleteBrick={onRequestDeleteBrick}
+                      isActive={item.block.id === activeId}
                     />
                   )
                 ) : (
