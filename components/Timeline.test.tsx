@@ -604,3 +604,365 @@ describe("C-m7a-007: <Timeline stagger> toggle — false byte-identical; true wr
     expect(container.querySelector('[data-testid="now-line"]')).not.toBeNull();
   });
 });
+
+// ── M7b: active-block predicate tests ────────────────────────────────────────
+
+// stateFourBlocks fixture: 4 consecutive closed blocks
+function makeBlock(id: string, start: string, end: string): Block {
+  return {
+    id,
+    name: id,
+    start,
+    end,
+    recurrence: { kind: "just-today", date: "2026-05-18" },
+    categoryId: null,
+    bricks: [],
+  };
+}
+
+const blkA = makeBlock("blk-A", "08:00", "09:00");
+const blkB = makeBlock("blk-B", "09:00", "10:00");
+const blkC = makeBlock("blk-C", "10:00", "11:00");
+const blkD = makeBlock("blk-D", "11:00", "12:00");
+
+const stateFourBlocks: TimelineItem[] = [
+  { kind: "block", block: blkA },
+  { kind: "block", block: blkB },
+  { kind: "block", block: blkC },
+  { kind: "block", block: blkD },
+];
+
+// ── C-m7b-009 ─────────────────────────────────────────────────────────────────
+describe("C-m7b-009 — <Timeline> applies isActive={true} to EXACTLY ONE block — the one whose [start,end) contains now", () => {
+  it("now=09:30 (mid-blk-B) → exactly 1 is-active block; that block is blk-B", () => {
+    const { container } = render(
+      <Timeline
+        items={stateFourBlocks}
+        categories={[]}
+        now="09:30"
+        onSlotTap={vi.fn()}
+      />,
+    );
+    const active = container.querySelectorAll(
+      '[data-component="timeline-block"].is-active',
+    );
+    expect(active).toHaveLength(1);
+    // blk-B's name is rendered inside the one active card
+    expect(active[0].textContent).toContain("blk-B");
+  });
+
+  it("NowTag appears exactly once — inside the active block subtree", () => {
+    const { container } = render(
+      <Timeline
+        items={stateFourBlocks}
+        categories={[]}
+        now="09:30"
+        onSlotTap={vi.fn()}
+      />,
+    );
+    const badges = container.querySelectorAll('[data-testid="now-tag"]');
+    expect(badges).toHaveLength(1);
+  });
+
+  it("other three blocks do NOT carry is-active", () => {
+    const { container } = render(
+      <Timeline
+        items={stateFourBlocks}
+        categories={[]}
+        now="09:30"
+        onSlotTap={vi.fn()}
+      />,
+    );
+    const allBlocks = container.querySelectorAll(
+      '[data-component="timeline-block"]',
+    );
+    const activeBlocks = container.querySelectorAll(
+      '[data-component="timeline-block"].is-active',
+    );
+    expect(allBlocks).toHaveLength(4);
+    expect(activeBlocks).toHaveLength(1);
+  });
+
+  it("boundary: now=09:00 (blk-B start) → blk-B active (half-open [start,end))", () => {
+    const { container } = render(
+      <Timeline
+        items={stateFourBlocks}
+        categories={[]}
+        now="09:00"
+        onSlotTap={vi.fn()}
+      />,
+    );
+    const active = container.querySelectorAll(
+      '[data-component="timeline-block"].is-active',
+    );
+    expect(active).toHaveLength(1);
+    expect(active[0].textContent).toContain("blk-B");
+  });
+
+  it("boundary: now=10:00 (blk-B end / blk-C start) → blk-C active, NOT blk-B", () => {
+    const { container } = render(
+      <Timeline
+        items={stateFourBlocks}
+        categories={[]}
+        now="10:00"
+        onSlotTap={vi.fn()}
+      />,
+    );
+    const active = container.querySelectorAll(
+      '[data-component="timeline-block"].is-active',
+    );
+    expect(active).toHaveLength(1);
+    expect(active[0].textContent).toContain("blk-C");
+    expect(active[0].textContent).not.toContain("blk-B");
+  });
+
+  it("boundary: now=08:00 (blk-A start) → blk-A active", () => {
+    const { container } = render(
+      <Timeline
+        items={stateFourBlocks}
+        categories={[]}
+        now="08:00"
+        onSlotTap={vi.fn()}
+      />,
+    );
+    const active = container.querySelectorAll(
+      '[data-component="timeline-block"].is-active',
+    );
+    expect(active).toHaveLength(1);
+    expect(active[0].textContent).toContain("blk-A");
+  });
+});
+
+// ── C-m7b-010 ─────────────────────────────────────────────────────────────────
+describe("C-m7b-010 — <Timeline> when no block contains now — no is-active, no NowTag", () => {
+  it("now=06:30 (before all) → zero is-active blocks, zero NowTags", () => {
+    const { container } = render(
+      <Timeline
+        items={stateFourBlocks}
+        categories={[]}
+        now="06:30"
+        onSlotTap={vi.fn()}
+      />,
+    );
+    expect(
+      container.querySelectorAll('[data-component="timeline-block"].is-active'),
+    ).toHaveLength(0);
+    expect(container.querySelectorAll('[data-testid="now-tag"]')).toHaveLength(
+      0,
+    );
+  });
+
+  it("now=23:30 (after all) → zero is-active blocks, zero NowTags", () => {
+    const { container } = render(
+      <Timeline
+        items={stateFourBlocks}
+        categories={[]}
+        now="23:30"
+        onSlotTap={vi.fn()}
+      />,
+    );
+    expect(
+      container.querySelectorAll('[data-component="timeline-block"].is-active'),
+    ).toHaveLength(0);
+    expect(container.querySelectorAll('[data-testid="now-tag"]')).toHaveLength(
+      0,
+    );
+  });
+
+  it("now=12:00 (boundary — blk-D end; half-open ⇒ no block active) → zero is-active", () => {
+    const { container } = render(
+      <Timeline
+        items={stateFourBlocks}
+        categories={[]}
+        now="12:00"
+        onSlotTap={vi.fn()}
+      />,
+    );
+    expect(
+      container.querySelectorAll('[data-component="timeline-block"].is-active'),
+    ).toHaveLength(0);
+  });
+});
+
+// ── C-m7b-011 ─────────────────────────────────────────────────────────────────
+describe("C-m7b-011 — <Timeline> is-active migrates with the now prop tick", () => {
+  it("now:09:30→10:30→11:00 — blk-B→blk-C→blk-D; exactly one is-active at each step", () => {
+    const { container, rerender } = render(
+      <Timeline
+        items={stateFourBlocks}
+        categories={[]}
+        now="09:30"
+        onSlotTap={vi.fn()}
+      />,
+    );
+
+    // Initial: blk-B active
+    let active = container.querySelectorAll(
+      '[data-component="timeline-block"].is-active',
+    );
+    expect(active).toHaveLength(1);
+    expect(active[0].textContent).toContain("blk-B");
+
+    // Rerender to 10:30 — blk-C should be active
+    rerender(
+      <Timeline
+        items={stateFourBlocks}
+        categories={[]}
+        now="10:30"
+        onSlotTap={vi.fn()}
+      />,
+    );
+    active = container.querySelectorAll(
+      '[data-component="timeline-block"].is-active',
+    );
+    expect(active).toHaveLength(1);
+    expect(active[0].textContent).toContain("blk-C");
+    expect(active[0].textContent).not.toContain("blk-B");
+
+    // Rerender to 11:00 — blk-D should be active (half-open: blk-C ends, blk-D starts)
+    rerender(
+      <Timeline
+        items={stateFourBlocks}
+        categories={[]}
+        now="11:00"
+        onSlotTap={vi.fn()}
+      />,
+    );
+    active = container.querySelectorAll(
+      '[data-component="timeline-block"].is-active',
+    );
+    expect(active).toHaveLength(1);
+    expect(active[0].textContent).toContain("blk-D");
+    expect(active[0].textContent).not.toContain("blk-C");
+  });
+
+  it("NowTag migrates with the active block at each step", () => {
+    const { container, rerender } = render(
+      <Timeline
+        items={stateFourBlocks}
+        categories={[]}
+        now="09:30"
+        onSlotTap={vi.fn()}
+      />,
+    );
+
+    // Step 1: NowTag in blk-B subtree
+    let activeNode = container.querySelector(
+      '[data-component="timeline-block"].is-active',
+    ) as HTMLElement;
+    let badge = container.querySelector(
+      '[data-testid="now-tag"]',
+    ) as HTMLElement;
+    expect(activeNode.contains(badge)).toBe(true);
+
+    rerender(
+      <Timeline
+        items={stateFourBlocks}
+        categories={[]}
+        now="10:30"
+        onSlotTap={vi.fn()}
+      />,
+    );
+    activeNode = container.querySelector(
+      '[data-component="timeline-block"].is-active',
+    ) as HTMLElement;
+    badge = container.querySelector('[data-testid="now-tag"]') as HTMLElement;
+    expect(activeNode.contains(badge)).toBe(true);
+    expect(activeNode.textContent).toContain("blk-C");
+  });
+});
+
+// ── C-m7b-012 ─────────────────────────────────────────────────────────────────
+describe("C-m7b-012 — <Timeline> empty items list does not throw; no is-active in DOM", () => {
+  it("renders without throwing when items=[]", () => {
+    expect(() => {
+      render(
+        <Timeline items={[]} categories={[]} now="09:30" onSlotTap={vi.fn()} />,
+      );
+    }).not.toThrow();
+  });
+
+  it("no is-active blocks and no NowTag when items=[]", () => {
+    const { container } = render(
+      <Timeline items={[]} categories={[]} now="09:30" onSlotTap={vi.fn()} />,
+    );
+    expect(
+      container.querySelectorAll('[data-component="timeline-block"].is-active'),
+    ).toHaveLength(0);
+    expect(container.querySelectorAll('[data-testid="now-tag"]')).toHaveLength(
+      0,
+    );
+  });
+
+  it("hour-grid and NowLine still render when items=[]", () => {
+    const { container } = render(
+      <Timeline items={[]} categories={[]} now="09:30" onSlotTap={vi.fn()} />,
+    );
+    expect(container.querySelector('[data-testid="hour-grid"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="now-line"]')).not.toBeNull();
+  });
+});
+
+// ── C-m7b-013 ─────────────────────────────────────────────────────────────────
+describe("C-m7b-013 — <Timeline> deleted block (via M5 deletions filter) is NOT a candidate for active", () => {
+  it("only blk-B in items (blk-A filtered by deletions) → blk-B carries is-active; blk-A not in DOM", () => {
+    // Simulate M5 currentDayBlocks filter: blk-A deleted for today, only blk-B remains in items
+    const blkADeleted = makeBlock("blk-A-del", "09:00", "10:00");
+    const blkBRemaining = makeBlock("blk-B-rem", "09:30", "10:30");
+
+    // Hand-assembled items: only blk-B-rem (blk-A-del is excluded — filtered by deletions)
+    const filteredItems: TimelineItem[] = [
+      { kind: "block", block: blkBRemaining },
+    ];
+
+    const { container } = render(
+      <Timeline
+        items={filteredItems}
+        categories={[]}
+        now="09:45"
+        onSlotTap={vi.fn()}
+      />,
+    );
+
+    // Only blk-B-rem is in the DOM
+    const allBlocks = container.querySelectorAll(
+      '[data-component="timeline-block"]',
+    );
+    expect(allBlocks).toHaveLength(1);
+
+    // blk-B-rem carries is-active (now=09:45 is inside [09:30, 10:30))
+    const active = container.querySelectorAll(
+      '[data-component="timeline-block"].is-active',
+    );
+    expect(active).toHaveLength(1);
+    expect(active[0].textContent).toContain("blk-B-rem");
+
+    // blk-A-del is NOT in the DOM at all
+    expect(container.textContent).not.toContain("blk-A-del");
+  });
+
+  it("NowTag is inside blk-B-rem subtree, not blk-A-del (which is absent)", () => {
+    const blkBRemaining = makeBlock("blk-B-rem", "09:30", "10:30");
+    const filteredItems: TimelineItem[] = [
+      { kind: "block", block: blkBRemaining },
+    ];
+
+    const { container } = render(
+      <Timeline
+        items={filteredItems}
+        categories={[]}
+        now="09:45"
+        onSlotTap={vi.fn()}
+      />,
+    );
+
+    const badge = container.querySelector(
+      '[data-testid="now-tag"]',
+    ) as HTMLElement;
+    expect(badge).not.toBeNull();
+    const activeNode = container.querySelector(
+      '[data-component="timeline-block"].is-active',
+    ) as HTMLElement;
+    expect(activeNode.contains(badge)).toBe(true);
+  });
+});
