@@ -480,3 +480,127 @@ describe("C-m6-010 (integration): Timeline.modalOpen prop disables drag on Dragg
     expect(wrapper.getAttribute("data-drag")).toBe("y");
   });
 });
+
+// ─── M7a stagger prop tests ────────────────────────────────────────────────────
+
+function mkTimelineBlock(id: string, start: string, end: string): Block {
+  return {
+    id,
+    name: id,
+    start,
+    end,
+    recurrence: { kind: "just-today", date: "2026-05-18" },
+    categoryId: null,
+    bricks: [],
+  };
+}
+
+// C-m7a-007: Timeline stagger toggle
+describe("C-m7a-007: <Timeline stagger> toggle — false byte-identical; true wraps block cards; chrome NOT wrapped", () => {
+  const threeItems: TimelineItem[] = [
+    { kind: "block", block: mkTimelineBlock("b1", "08:00", "09:00") },
+    { kind: "block", block: mkTimelineBlock("b2", "10:00", "11:00") },
+    { kind: "block", block: mkTimelineBlock("b3", "12:00", "13:00") },
+  ];
+
+  it("stagger={false} (default): no stagger container wrapper around items", () => {
+    const { container } = render(
+      <Timeline
+        items={threeItems}
+        categories={[]}
+        now="08:00"
+        onSlotTap={vi.fn()}
+        stagger={false}
+      />,
+    );
+    // No stagger container wrapper — existing block cards render directly
+    expect(
+      container.querySelector('[data-testid="timeline-stagger-container"]'),
+    ).toBeNull();
+  });
+
+  it("stagger omitted (defaults to false): no stagger container", () => {
+    const { container } = render(
+      <Timeline
+        items={threeItems}
+        categories={[]}
+        now="08:00"
+        onSlotTap={vi.fn()}
+      />,
+    );
+    expect(
+      container.querySelector('[data-testid="timeline-stagger-container"]'),
+    ).toBeNull();
+  });
+
+  it("stagger={true}: a stagger container wrapper appears around block cards", () => {
+    const { container } = render(
+      <Timeline
+        items={threeItems}
+        categories={[]}
+        now="08:00"
+        onSlotTap={vi.fn()}
+        stagger={true}
+      />,
+    );
+    // The stagger wrapper must be present when stagger=true
+    expect(
+      container.querySelector('[data-testid="timeline-stagger-container"]'),
+    ).not.toBeNull();
+  });
+
+  it("stagger={true}: NowLine is NOT inside the stagger container (chrome is not wrapped)", () => {
+    const { container } = render(
+      <Timeline
+        items={threeItems}
+        categories={[]}
+        now="08:00"
+        onSlotTap={vi.fn()}
+        stagger={true}
+      />,
+    );
+    const staggerContainer = container.querySelector(
+      '[data-testid="timeline-stagger-container"]',
+    );
+    const nowLine = container.querySelector('[data-testid="now-line"]');
+    expect(staggerContainer).not.toBeNull();
+    expect(nowLine).not.toBeNull();
+    // NowLine must NOT be a descendant of the stagger container
+    expect(staggerContainer?.contains(nowLine)).toBe(false);
+  });
+
+  it("stagger={true}: SlotTapTargets is NOT inside the stagger container", () => {
+    const { container } = render(
+      <Timeline
+        items={threeItems}
+        categories={[]}
+        now="08:00"
+        onSlotTap={vi.fn()}
+        stagger={true}
+      />,
+    );
+    const staggerContainer = container.querySelector(
+      '[data-testid="timeline-stagger-container"]',
+    );
+    // slot-tap-targets must be outside the stagger wrapper
+    const slots = container.querySelector('[data-testid="slot-tap-targets"]');
+    expect(staggerContainer).not.toBeNull();
+    if (slots && staggerContainer) {
+      expect(staggerContainer.contains(slots)).toBe(false);
+    }
+  });
+
+  it("stagger={false}: hour-grid and NowLine render at their existing layers (unchanged from M2/M3)", () => {
+    const { container } = render(
+      <Timeline
+        items={threeItems}
+        categories={[]}
+        now="08:00"
+        onSlotTap={vi.fn()}
+        stagger={false}
+      />,
+    );
+    expect(container.querySelector('[data-testid="hour-grid"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="now-line"]')).not.toBeNull();
+  });
+});
