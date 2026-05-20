@@ -347,6 +347,8 @@ export function TimelineBlock({
                           brick={brick}
                           categories={categories}
                           size="md"
+                          dragHandle={editMode}
+                          dragControls={editMode ? dragControls : undefined}
                           onTickToggle={onTickToggle}
                           onUnitsOpenSheet={onUnitsOpenSheet}
                           onRequestDeleteBrick={onRequestDeleteBrick}
