@@ -36,21 +36,7 @@ vi.mock("motion/react", async (importOriginal) => {
     ...actual,
     motion: {
       ...actual.motion,
-      div: ({
-        children,
-        drag,
-        onDragStart,
-        onDragEnd,
-        "data-testid": testId,
-        // Filter out Framer-specific props that React warns about on a plain div
-        dragControls: _dragControls,
-        dragListener: _dragListener,
-        dragConstraints: _dragConstraints,
-        dragMomentum: _dragMomentum,
-        whileDrag: _whileDrag,
-        transition: _transition,
-        ...rest
-      }: {
+      div: (props: {
         children?: React.ReactNode;
         drag?: string | boolean;
         onDragStart?: () => void;
@@ -67,9 +53,34 @@ vi.mock("motion/react", async (importOriginal) => {
         transition?: unknown;
         [key: string]: unknown;
       }) => {
-        // Capture handlers so tests can invoke them programmatically
-        capturedOnDragStart = onDragStart ?? null;
-        capturedOnDragEnd = onDragEnd ?? null;
+        // Destructure after type check; filter Framer-specific props from DOM spread
+        const {
+          children,
+          drag,
+          onDragStart,
+          onDragEnd,
+          "data-testid": testId,
+          dragControls: _dc,
+          dragListener: _dl,
+          dragConstraints: _dcs,
+          dragMomentum: _dm,
+          whileDrag: _wd,
+          transition: _tr,
+          ...rest
+        } = props;
+        void _dc;
+        void _dl;
+        void _dcs;
+        void _dm;
+        void _wd;
+        void _tr; // intentionally omitted from DOM
+        // Capture handlers ONLY for the outer DraggableTimelineBlock wrapper
+        // (testId="draggable-timeline-block"). Inner motion.div elements
+        // (TimelineBlock card) must not overwrite them.
+        if (testId === "draggable-timeline-block") {
+          capturedOnDragStart = onDragStart ?? null;
+          capturedOnDragEnd = onDragEnd ?? null;
+        }
         return (
           <div
             data-testid={testId}
@@ -127,17 +138,23 @@ describe("C-m6-006: DraggableTimelineBlock lift + valid drop", () => {
     expect(haptics.light).toHaveBeenCalledTimes(1);
   });
 
-  it("calls onReorderRequest with (blockId, '13:00', '14:00') on valid drop at 13:00 snap", async () => {
+  it("calls onReorderRequest with (blockId, '13:00', '14:00') on valid drop at 13:00 snap; haptics.light fires on commit", async () => {
     const { haptics } = await import("@/lib/haptics");
-    const onReorderRequest = vi.fn();
     // blkA is 08:00–09:00 (1hr duration). Drop at 13:00 → newStart="13:00", newEnd="14:00"
     // In JSDOM, scrollRef.current is null, so containerTop=0, scrollTop=0.
-    // info.point.y = snapToSlot offset for 13:00:
-    // 13:00 = 13hr * HOUR_HEIGHT_PX. HOUR_HEIGHT_PX=64 → 13*64=832px
+    // info.point.y = snapToSlot offset for 13:00: 13hr * HOUR_HEIGHT_PX=64 → 832px
     const HOUR_HEIGHT_PX = 64;
     const pointY = 13 * HOUR_HEIGHT_PX; // snaps to 13:00
 
-    render(
+    // Simulate the reducer accepting the move: after onReorderRequest fires,
+    // the parent re-renders with block.start="13:00". We model this inside the
+    // SAME act() so React flushes the re-render BEFORE the microtask fires
+    // (act processes effects before microtasks — giving useEffect([block.start])
+    // a chance to clear pendingNewStartRef before the rejection microtask runs).
+    const acceptedBlock = { ...blkA, start: "13:00", end: "14:00" };
+    const onReorderRequest = vi.fn();
+
+    const { rerender } = render(
       <EditModeContext.Provider value={{ editMode: true, toggle: vi.fn() }}>
         <DraggableTimelineBlock
           block={blkA}
@@ -148,13 +165,35 @@ describe("C-m6-006: DraggableTimelineBlock lift + valid drop", () => {
         />
       </EditModeContext.Provider>,
     );
+    // Simulate lift (first haptics.light)
+    act(() => {
+      capturedOnDragStart?.();
+    });
+    expect(haptics.light).toHaveBeenCalledTimes(1);
+    // Simulate drop + acceptance in one act(): re-render happens before microtask
     await act(async () => {
-      await capturedOnDragEnd?.(null, { point: { y: pointY } });
+      capturedOnDragEnd?.(null, { point: { y: pointY } });
+      // Immediately re-render with accepted block (simulates parent reducer accepting).
+      // React processes this re-render (and runs useEffect([block.start])) before
+      // the queueMicrotask rejection check fires.
+      rerender(
+        <EditModeContext.Provider value={{ editMode: true, toggle: vi.fn() }}>
+          <DraggableTimelineBlock
+            block={acceptedBlock}
+            categories={[]}
+            modalOpen={false}
+            onReorderRequest={onReorderRequest}
+            dragConstraintsRef={{ current: null }}
+          />
+        </EditModeContext.Provider>,
+      );
     });
     expect(onReorderRequest).toHaveBeenCalledTimes(1);
     expect(onReorderRequest).toHaveBeenCalledWith("blk-A", "13:00", "14:00");
-    // haptics.light fires once on successful commit
-    expect(haptics.light).toHaveBeenCalledTimes(1);
+    // haptics.light fired a second time on successful commit (lift=1, commit=2)
+    expect(haptics.light).toHaveBeenCalledTimes(2);
+    // haptics.medium NOT called (success path)
+    expect(haptics.medium).toHaveBeenCalledTimes(0);
   });
 
   it("drag='y' when editMode=true and modalOpen=false", () => {
@@ -215,14 +254,17 @@ describe("C-m6-007: reduced motion — haptics and onReorderRequest still fire",
     expect(haptics.light).toHaveBeenCalledTimes(1);
   });
 
-  it("onReorderRequest fires on valid drop even under reduced motion", async () => {
+  it("onReorderRequest fires on valid drop even under reduced motion; haptics.light fires on commit", async () => {
     const { useReducedMotion } = await import("motion/react");
     (useReducedMotion as ReturnType<typeof vi.fn>).mockReturnValue(true);
 
+    const { haptics } = await import("@/lib/haptics");
     const onReorderRequest = vi.fn();
     const HOUR_HEIGHT_PX = 64;
     const pointY = 13 * HOUR_HEIGHT_PX;
-    render(
+    const acceptedBlock = { ...blkA, start: "13:00", end: "14:00" };
+
+    const { rerender } = render(
       <EditModeContext.Provider value={{ editMode: true, toggle: vi.fn() }}>
         <DraggableTimelineBlock
           block={blkA}
@@ -233,18 +275,33 @@ describe("C-m6-007: reduced motion — haptics and onReorderRequest still fire",
         />
       </EditModeContext.Provider>,
     );
+    // Lift + drop + acceptance in one act() to beat the microtask rejection check
     await act(async () => {
-      await capturedOnDragEnd?.(null, { point: { y: pointY } });
+      capturedOnDragStart?.();
+      capturedOnDragEnd?.(null, { point: { y: pointY } });
+      rerender(
+        <EditModeContext.Provider value={{ editMode: true, toggle: vi.fn() }}>
+          <DraggableTimelineBlock
+            block={acceptedBlock}
+            categories={[]}
+            modalOpen={false}
+            onReorderRequest={onReorderRequest}
+            dragConstraintsRef={{ current: null }}
+          />
+        </EditModeContext.Provider>,
+      );
     });
     expect(onReorderRequest).toHaveBeenCalledTimes(1);
     expect(onReorderRequest).toHaveBeenCalledWith("blk-A", "13:00", "14:00");
+    // haptics.light fires: once for lift, once for commit (both under reduced motion)
+    expect(haptics.light).toHaveBeenCalledTimes(2);
   });
 });
 
 // ─── C-m6-008: overlap rejection — medium haptic; NO onReorderRequest; announce
 
 describe("C-m6-008: DraggableTimelineBlock overlap rejection path", () => {
-  it("calls haptics.medium on rejection; calls onReorderRequest once; calls onAnnounce once", async () => {
+  it("calls haptics.medium on rejection; calls onReorderRequest once; calls onAnnounce once; haptics.light NOT fired a second time", async () => {
     const { haptics } = await import("@/lib/haptics");
     const onReorderRequest = vi.fn();
     const onAnnounce = vi.fn();
@@ -273,6 +330,11 @@ describe("C-m6-008: DraggableTimelineBlock overlap rejection path", () => {
         />
       </EditModeContext.Provider>,
     );
+    // Simulate lift (fires haptics.light once)
+    act(() => {
+      capturedOnDragStart?.();
+    });
+    // Simulate drop at overlapping slot
     await act(async () => {
       await capturedOnDragEnd?.(null, { point: { y: pointY } });
     });
@@ -280,8 +342,9 @@ describe("C-m6-008: DraggableTimelineBlock overlap rejection path", () => {
     expect(onReorderRequest).toHaveBeenCalledTimes(1);
     // medium haptic fires on rejection (block.start unchanged after dispatch)
     expect(haptics.medium).toHaveBeenCalledTimes(1);
-    // light haptic does NOT fire on rejection (distinguishes from success path)
-    expect(haptics.light).toHaveBeenCalledTimes(0);
+    // haptics.light fired only ONCE (the lift), NOT a second time on rejection
+    // A mutant firing light instead of medium on rejection fails this
+    expect(haptics.light).toHaveBeenCalledTimes(1);
     // announce fires with rejection message
     expect(onAnnounce).toHaveBeenCalledTimes(1);
   });
@@ -290,7 +353,7 @@ describe("C-m6-008: DraggableTimelineBlock overlap rejection path", () => {
 // ─── C-m6-009: same-slot no-op — no dispatch, no haptic ──────────────────────
 
 describe("C-m6-009: DraggableTimelineBlock same-slot no-op", () => {
-  it("no onReorderRequest, no haptic, no announce when drop snaps to same slot", async () => {
+  it("no dispatch, no second haptic, no announce when drop snaps to same slot as current", async () => {
     const { haptics } = await import("@/lib/haptics");
     const onReorderRequest = vi.fn();
     const onAnnounce = vi.fn();
@@ -311,12 +374,19 @@ describe("C-m6-009: DraggableTimelineBlock same-slot no-op", () => {
         />
       </EditModeContext.Provider>,
     );
+    // Simulate lift (haptics.light fires once for the lift)
+    act(() => {
+      capturedOnDragStart?.();
+    });
+    expect(haptics.light).toHaveBeenCalledTimes(1);
+    // Simulate same-slot drop
     await act(async () => {
       await capturedOnDragEnd?.(null, { point: { y: pointY } });
     });
-    // Same-slot guard: nothing dispatched, no haptic, no announce
+    // Same-slot guard: no dispatch, no additional haptic, no announce
     expect(onReorderRequest).toHaveBeenCalledTimes(0);
-    expect(haptics.light).toHaveBeenCalledTimes(0);
+    // haptics.light still only once (the lift — no second fire for same-slot no-op)
+    expect(haptics.light).toHaveBeenCalledTimes(1);
     expect(haptics.medium).toHaveBeenCalledTimes(0);
     expect(onAnnounce).toHaveBeenCalledTimes(0);
   });

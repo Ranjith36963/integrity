@@ -15,39 +15,45 @@ vi.mock("motion/react", async (importOriginal) => {
     ...actual,
     motion: {
       ...actual.motion,
-      div: ({
-        children,
-        drag,
-        onDragStart,
-        onDragEnd,
-        "data-testid": testId,
-        dragControls: _dc,
-        dragListener: _dl,
-        dragConstraints: _dcs,
-        dragMomentum: _dm,
-        whileDrag: _wd,
-        ...rest
-      }: {
+      div: (props: {
         children?: React.ReactNode;
         drag?: string | boolean;
-        onDragStart?: () => void;
-        onDragEnd?: (e: unknown, info: { point: { y: number } }) => void;
         "data-testid"?: string;
-        dragControls?: unknown;
-        dragListener?: unknown;
-        dragConstraints?: unknown;
-        dragMomentum?: unknown;
-        whileDrag?: unknown;
         [key: string]: unknown;
-      }) => (
-        <div
-          data-testid={testId}
-          data-drag={drag !== undefined ? String(drag) : undefined}
-          {...(rest as React.HTMLAttributes<HTMLDivElement>)}
-        >
-          {children}
-        </div>
-      ),
+      }) => {
+        // Filter Framer-specific props not valid on a plain DOM div
+        const {
+          children,
+          drag,
+          "data-testid": testId,
+          onDragStart: _ods,
+          onDragEnd: _ode,
+          dragControls: _dc,
+          dragListener: _dl,
+          dragConstraints: _dcs,
+          dragMomentum: _dm,
+          whileDrag: _wd,
+          transition: _tr,
+          ...rest
+        } = props;
+        void _ods;
+        void _ode;
+        void _dc;
+        void _dl;
+        void _dcs;
+        void _dm;
+        void _wd;
+        void _tr;
+        return (
+          <div
+            data-testid={testId as string | undefined}
+            data-drag={drag !== undefined ? String(drag) : undefined}
+            {...(rest as React.HTMLAttributes<HTMLDivElement>)}
+          >
+            {children}
+          </div>
+        );
+      },
     },
     useReducedMotion: vi.fn(() => false),
     useDragControls: vi.fn(() => ({ start: vi.fn() })),
