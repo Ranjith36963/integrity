@@ -707,3 +707,7 @@ describe("C-m7a-009: BuildingClient hydrated=false renders skeleton subtree; hyd
     expect(container.querySelector('[data-testid="hour-grid"]')).not.toBeNull();
   });
 });
+
+// C-m7a-010 and C-m7a-011 are in BuildingClient.m7a.test.tsx
+// (they require vi.mock of BlueprintBar/Timeline/LooseBricksTray which would
+// affect all existing tests in this file if placed here)
