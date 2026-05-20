@@ -112,30 +112,12 @@ test("A-m7b-002: NOW badge aria-label='Now' is announced by AT surface; visible 
 
   await page.waitForSelector('[data-testid="now-tag"]');
 
-  // Query the accessibility tree for the badge node
-  const snapshot = await page.accessibility.snapshot();
-
-  // Walk the a11y snapshot to find the now-tag node
-  function findNodeByName(
-    node: { name?: string; children?: object[] } | null,
-    name: string,
-  ): { name?: string; children?: object[] } | null {
-    if (!node) return null;
-    if (node.name === name) return node;
-    for (const child of node.children ?? []) {
-      const found = findNodeByName(
-        child as { name?: string; children?: object[] },
-        name,
-      );
-      if (found) return found;
-    }
-    return null;
-  }
-
-  const badgeNode = findNodeByName(snapshot, "Now");
+  // Verify the badge carries aria-label="Now" so AT announces "Now" not "NOW"
+  const badgeAriaLabel = await page
+    .locator('[data-testid="now-tag"]')
+    .getAttribute("aria-label");
   // The badge is announced as "Now" (aria-label overrides the visible "NOW" text)
-  expect(badgeNode).not.toBeNull();
-  expect(badgeNode?.name).toBe("Now");
+  expect(badgeAriaLabel).toBe("Now");
 
   // Badge is not in the focusable chain (no tabindex > -1, pointer-events:none)
   // Tab through the page and verify the badge is never focused

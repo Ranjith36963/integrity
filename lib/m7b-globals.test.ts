@@ -20,7 +20,7 @@ const css = readFileSync(cssPath, "utf-8");
 describe("U-m7b-009 — globals.css M7b tokens: --motion-now-pulse-duration, @keyframes nowPulse, .is-active, PRM override", () => {
   it("--motion-now-pulse-duration: 1800ms is declared inside a :root block", () => {
     // Find :root block and check the property is inside it
-    const rootBlockMatch = css.match(/:root\s*\{([^}]*)\}/s);
+    const rootBlockMatch = css.match(/:root\s*\{([\s\S]*?)\}/);
     expect(rootBlockMatch).not.toBeNull();
     const rootContent = rootBlockMatch![1];
     expect(rootContent).toContain("--motion-now-pulse-duration: 1800ms");
