@@ -147,9 +147,9 @@ test("E-m6-001: block drag → snaps to 11:00; new slot persists after reload", 
   if (newState) {
     const blkA = newState.blocks?.find((b: { id: string }) => b.id === "blk-A");
     if (blkA) {
-      // Start should be on a 30-min grid boundary
-      const [h, m] = (blkA.start as string).split(":").map(Number);
-      expect(m % 30).toBe(0);
+      // Start should be on a 30-min grid boundary (minutes divisible by 30)
+      const minutes = Number((blkA.start as string).split(":")[1]);
+      expect(minutes % 30).toBe(0);
       // Start should have moved from 08:00
       expect(blkA.start).not.toBe("08:00");
     }
