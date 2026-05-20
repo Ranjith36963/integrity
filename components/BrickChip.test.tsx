@@ -8,11 +8,12 @@
 //      C-m4f-009..012 added (units chip design).
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BrickChip } from "./BrickChip";
-import { EditModeProvider } from "./EditModeProvider";
+import { EditModeProvider, EditModeContext } from "./EditModeProvider";
 import type { Brick, Category } from "@/lib/types";
+import type { DragControls } from "motion/react";
 
 const cat1: Category = { id: "c1", name: "category 1", color: "#34d399" };
 
@@ -869,5 +870,146 @@ describe("C-m5-006: BrickChip — Locked mode no × button; Unlocked × appears,
     await user.click(deleteBtn);
     expect(onDelete).toHaveBeenCalledTimes(1);
     expect(onDelete).toHaveBeenCalledWith("brk-units");
+  });
+});
+
+// ─── M6 fixtures ──────────────────────────────────────────────────────────────
+
+const brkInBlock: Brick = {
+  id: "brk-in-block",
+  name: "Push-ups",
+  kind: "tick",
+  done: false,
+  categoryId: null,
+  parentBlockId: "blk-A",
+  hasDuration: false,
+};
+
+const brkLoose: Brick = {
+  id: "brk-loose",
+  name: "Meditation",
+  kind: "tick",
+  done: false,
+  categoryId: null,
+  parentBlockId: null,
+  hasDuration: false,
+};
+
+function makeMockDragControls(): DragControls {
+  return { start: vi.fn() } as unknown as DragControls;
+}
+
+// ─── C-m6-003: BrickChip — dragHandle=true renders handle in Edit Mode ────────
+
+describe("C-m6-003: BrickChip with dragHandle=true renders drag handle in Edit Mode", () => {
+  it("renders a 'Reorder brick Push-ups' button with dragHandle=true and editMode=true", () => {
+    const mockControls = makeMockDragControls();
+    render(
+      <EditModeContext.Provider value={{ editMode: true, toggle: vi.fn() }}>
+        <BrickChip
+          brick={brkInBlock}
+          categories={[]}
+          dragHandle
+          dragControls={mockControls}
+          onRequestDeleteBrick={vi.fn()}
+        />
+      </EditModeContext.Provider>,
+    );
+    const handle = screen.getByRole("button", {
+      name: "Reorder brick Push-ups",
+    });
+    expect(handle).toBeInTheDocument();
+    expect(handle.getAttribute("type")).toBe("button");
+    // M5 × is still present
+    expect(
+      screen.getByRole("button", { name: "Delete brick Push-ups" }),
+    ).toBeInTheDocument();
+  });
+
+  it("chip body remains inert (M5 SG-m5-05 preserved) — tick toggle not called on body tap", async () => {
+    const user = userEvent.setup();
+    const onToggle = vi.fn();
+    const mockControls = makeMockDragControls();
+    render(
+      <EditModeContext.Provider value={{ editMode: true, toggle: vi.fn() }}>
+        <BrickChip
+          brick={brkInBlock}
+          categories={[]}
+          dragHandle
+          dragControls={mockControls}
+          onTickToggle={onToggle}
+        />
+      </EditModeContext.Provider>,
+    );
+    const body = screen.getByTestId("brick-chip-body");
+    await user.click(body);
+    expect(onToggle).toHaveBeenCalledTimes(0);
+  });
+});
+
+// ─── C-m6-004: BrickChip — dragHandle=false renders NO handle (tray default) ─
+
+describe("C-m6-004: BrickChip without dragHandle prop renders no reorder handle", () => {
+  it("no 'Reorder brick' handle when dragHandle is omitted (default false)", () => {
+    render(
+      <EditModeContext.Provider value={{ editMode: true, toggle: vi.fn() }}>
+        <BrickChip
+          brick={brkLoose}
+          categories={[]}
+          onRequestDeleteBrick={vi.fn()}
+        />
+      </EditModeContext.Provider>,
+    );
+    expect(screen.queryByRole("button", { name: /reorder brick/i })).toBeNull();
+    // M5 × is still present
+    expect(
+      screen.getByRole("button", { name: "Delete brick Meditation" }),
+    ).toBeInTheDocument();
+  });
+
+  it("no 'Reorder brick' handle when dragHandle={false} explicitly", () => {
+    render(
+      <EditModeContext.Provider value={{ editMode: true, toggle: vi.fn() }}>
+        <BrickChip
+          brick={brkLoose}
+          categories={[]}
+          dragHandle={false}
+          onRequestDeleteBrick={vi.fn()}
+        />
+      </EditModeContext.Provider>,
+    );
+    expect(screen.queryByRole("button", { name: /reorder brick/i })).toBeNull();
+  });
+});
+
+// ─── C-m6-005 (BrickChip part): handle is the only drag origin ───────────────
+
+describe("C-m6-005 (brick): brick handle is the only drag origin", () => {
+  it("handle tap calls dragControls.start; chip body tap does not", () => {
+    const mockControls = makeMockDragControls();
+    render(
+      <EditModeContext.Provider value={{ editMode: true, toggle: vi.fn() }}>
+        <BrickChip
+          brick={brkInBlock}
+          categories={[]}
+          dragHandle
+          dragControls={mockControls}
+          onTickToggle={vi.fn()}
+        />
+      </EditModeContext.Provider>,
+    );
+
+    const body = screen.getByTestId("brick-chip-body");
+    const handle = screen.getByRole("button", {
+      name: "Reorder brick Push-ups",
+    });
+
+    // Body tap — dragControls.start NOT called
+    fireEvent.pointerDown(body);
+    expect(mockControls.start).toHaveBeenCalledTimes(0);
+
+    // Handle tap — dragControls.start called once
+    fireEvent.pointerDown(handle);
+    expect(mockControls.start).toHaveBeenCalledTimes(1);
   });
 });
