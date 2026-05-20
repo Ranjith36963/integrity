@@ -16,11 +16,15 @@
 // M5: pendingDelete state + DeleteConfirmModal; Timeline fed from currentDayBlocks(state)
 //     (ADR-047). Delete handlers: DELETE_BLOCK_TODAY / DELETE_BLOCK_ALL / DELETE_BRICK.
 //     onRequestDeleteBlock / onRequestDeleteBrick threaded to Timeline + LooseBricksTray.
+// M7a: hydrated?: boolean prop (default true). When false renders skeleton subtree
+//      (ADR-023 pass-1 window). When true renders real subtree + stagger on first paint.
+//      useFirstPaintAfterHydration drives stagger=true exactly once per mount (AC #2).
 
 import { useState, useCallback } from "react";
 import type { Dispatch } from "react";
 import { today, dateLabel, dayPct, dayNumber } from "@/lib/dharma";
 import { daysInYear } from "@/lib/dayOfYear";
+import { useFirstPaintAfterHydration } from "@/lib/firstPaint";
 import { useNow } from "@/lib/useNow";
 import {
   selectTrayBricks,
@@ -46,6 +50,7 @@ import { UnitsEntrySheet } from "@/components/UnitsEntrySheet";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import type { DeleteTarget } from "@/components/DeleteConfirmModal";
 import { Fireworks } from "@/components/Fireworks";
+import { Skeleton } from "@/components/Skeleton";
 import type { AppState, Action, Block, Brick, Category } from "@/lib/types";
 
 /**
@@ -85,12 +90,91 @@ interface UnitsSheetState {
 type BuildingClientProps = {
   state: AppState;
   dispatch: Dispatch<Action>;
+  /**
+   * M7a: whether the client store has hydrated from localStorage (ADR-023 two-pass).
+   * Defaults to true so every pre-M7a caller (and existing tests) gets the real subtree.
+   * AppShell passes the third tuple slot from usePersistedState().
+   */
+  hydrated?: boolean;
 };
 
-export function BuildingClient({ state, dispatch }: BuildingClientProps) {
+// ─── M7a skeleton sub-components ─────────────────────────────────────────────
+// Inline helpers — not separate files (plan.md § BuildingClient).
+// Each mirrors its real counterpart's outer chrome so the swap has zero CLS (AC #6).
+
+/** One segment placeholder inside the BlueprintBar outer chrome */
+function BlueprintBarSkeleton() {
+  return (
+    <section
+      aria-label="Day blueprint"
+      data-testid="m7a-skeleton-blueprint"
+      className="px-5 pb-4"
+    >
+      <div className="mb-2 flex items-center justify-between">
+        <div
+          className="text-[10px] tracking-[0.22em] uppercase"
+          style={{ color: "var(--ink-dim)" }}
+        >
+          day blueprint
+        </div>
+      </div>
+      <div
+        className="relative h-9 overflow-hidden rounded-md border"
+        style={{ borderColor: "var(--card-edge)" }}
+      >
+        <Skeleton variant="segment" />
+      </div>
+    </section>
+  );
+}
+
+/** Three block placeholders at canonical y offsets, matching Timeline's vertical span */
+function TimelineSkeleton() {
+  const OFFSETS = [60, 200, 340] as const;
+  return (
+    <div
+      data-testid="m7a-skeleton-timeline"
+      style={{
+        position: "relative",
+        height: "500px",
+        margin: "0 20px",
+      }}
+    >
+      {OFFSETS.map((top) => (
+        <div
+          key={top}
+          data-testid={`m7a-skeleton-block-${top}`}
+          style={{ position: "absolute", left: 0, right: 0, top: `${top}px` }}
+        >
+          <Skeleton variant="block" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** One chip placeholder inside the LooseBricksTray outer chrome */
+function LooseBricksTraySkeleton() {
+  return (
+    <section
+      data-testid="m7a-skeleton-tray"
+      style={{ padding: "0 20px", paddingBottom: "8px" }}
+    >
+      <Skeleton variant="chip" />
+    </section>
+  );
+}
+
+export function BuildingClient({
+  state,
+  dispatch,
+  hydrated = true,
+}: BuildingClientProps) {
   // M9c: state + dispatch are now received as props from AppShell.
   // usePersistedState() was moved to AppShell so it runs exactly once in the app shell.
   // All logic below is unchanged.
+  // M7a: stagger fires once per mount when hydrated transitions false→true (AC #2).
+  const stagger = useFirstPaintAfterHydration(hydrated);
   const [sheetState, setSheetState] = useState<SheetState>({
     open: false,
     defaultStart: "00:00",
@@ -404,40 +488,57 @@ export function BuildingClient({ state, dispatch }: BuildingClientProps) {
           totalDays={totalDays}
           pct={heroPct}
         />
-        {/* BlueprintBar: always rendered (SPEC AC #8 — unconditional) */}
-        <BlueprintBar
-          blocks={state.blocks}
-          categories={state.categories}
-          now={now}
-        />
-        {/* NowCard: NOT rendered in M2/M3/M4a */}
-        <Timeline
-          items={timelineItems}
-          categories={state.categories}
-          now={now}
-          onSlotTap={handleSlotTap}
-          onAddBrick={handleAddBrickFromBlock}
-          onTickToggle={handleTickToggle}
-          onUnitsOpenSheet={handleUnitsOpenSheet}
-          hasLooseBricks={trayBricks.length > 0}
-          onRequestDeleteBlock={handleRequestDeleteBlock}
-          onRequestDeleteBrick={handleRequestDeleteBrick}
-          onReorderRequest={handleReorderBlock}
-          onAnnounce={setAnnouncement}
-          onReorderBrickInBlock={handleReorderBrickInBlock}
-          modalOpen={pendingDelete !== null}
-        />
-        {/* LooseBricksTray: pinned above dock, visible when blocks exist OR non-timed loose bricks exist */}
-        {showTray && (
-          <LooseBricksTray
-            looseBricks={trayBricks}
-            categories={state.categories}
-            onAddBrick={handleAddLooseBrick}
-            onTickToggle={handleTickToggle}
-            onUnitsOpenSheet={handleUnitsOpenSheet}
-            blocksExist={visibleBlocks.length > 0}
-            onRequestDeleteBrick={handleRequestDeleteBrick}
-          />
+        {/* M7a: skeleton / real subtree branch (ADR-023 two-pass hydration).
+             !hydrated → skeleton placeholders; hydrated → real surfaces + stagger.
+             Swap is a single React commit — no overlap of skeleton + real (AC #5). */}
+        {!hydrated ? (
+          <>
+            {/* Skeleton subtree — SG-m7a-02: 1 segment + 3 blocks + 1 chip */}
+            <BlueprintBarSkeleton />
+            <TimelineSkeleton />
+            <LooseBricksTraySkeleton />
+          </>
+        ) : (
+          <>
+            {/* BlueprintBar: always rendered (SPEC AC #8 — unconditional) */}
+            <BlueprintBar
+              blocks={state.blocks}
+              categories={state.categories}
+              now={now}
+              stagger={stagger}
+            />
+            {/* NowCard: NOT rendered in M2/M3/M4a */}
+            <Timeline
+              items={timelineItems}
+              categories={state.categories}
+              now={now}
+              onSlotTap={handleSlotTap}
+              onAddBrick={handleAddBrickFromBlock}
+              onTickToggle={handleTickToggle}
+              onUnitsOpenSheet={handleUnitsOpenSheet}
+              hasLooseBricks={trayBricks.length > 0}
+              onRequestDeleteBlock={handleRequestDeleteBlock}
+              onRequestDeleteBrick={handleRequestDeleteBrick}
+              onReorderRequest={handleReorderBlock}
+              onAnnounce={setAnnouncement}
+              onReorderBrickInBlock={handleReorderBrickInBlock}
+              modalOpen={pendingDelete !== null}
+              stagger={stagger}
+            />
+            {/* LooseBricksTray: visible when blocks exist OR non-timed loose bricks exist */}
+            {showTray && (
+              <LooseBricksTray
+                looseBricks={trayBricks}
+                categories={state.categories}
+                onAddBrick={handleAddLooseBrick}
+                onTickToggle={handleTickToggle}
+                onUnitsOpenSheet={handleUnitsOpenSheet}
+                blocksExist={visibleBlocks.length > 0}
+                onRequestDeleteBrick={handleRequestDeleteBrick}
+                stagger={stagger}
+              />
+            )}
+          </>
         )}
         <BottomBar onAddPress={handleDockAdd} />
         {/* AddChooserSheet: M4d routing surface — opens before AddBlockSheet or AddBrickSheet */}
