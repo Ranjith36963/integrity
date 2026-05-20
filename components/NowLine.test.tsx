@@ -60,6 +60,48 @@ describe("C-m1-012 (NowLine): NowLine re-renders when now changes", () => {
   });
 });
 
+// ── C-m7b-014 ─────────────────────────────────────────────────────────────────
+describe("C-m7b-014 — <NowLine> rendered boxShadow includes larger-halo token 0 0 12px rgba(251, 191, 36", () => {
+  it("boxShadow attribute string contains '0 0 6px var(--accent)' (inner halo)", () => {
+    const { container } = render(<NowLine now="09:30" />);
+    const line = container.querySelector(
+      '[data-testid="now-line"]',
+    ) as HTMLElement;
+    const style = line.getAttribute("style") ?? "";
+    expect(style).toContain("0 0 6px var(--accent)");
+  });
+
+  it("boxShadow attribute string contains '0 0 12px rgba(251, 191, 36' (outer larger soft halo)", () => {
+    const { container } = render(<NowLine now="09:30" />);
+    const line = container.querySelector(
+      '[data-testid="now-line"]',
+    ) as HTMLElement;
+    const style = line.getAttribute("style") ?? "";
+    expect(style).toMatch(/0 0 12px rgba\(251,\s*191,\s*36,\s*0\.45\)/);
+  });
+
+  it("existing position assertion unchanged — top for 09:30 = 9.5 * 64 = 608px", () => {
+    const { container } = render(<NowLine now="09:30" />);
+    const line = container.querySelector(
+      '[data-testid="now-line"]',
+    ) as HTMLElement;
+    const style = line.getAttribute("style") ?? "";
+    const match = style.match(/top:\s*([\d.]+)px/);
+    expect(match).not.toBeNull();
+    expect(parseFloat(match![1])).toBeCloseTo(9.5 * 64, 0);
+  });
+
+  it("data-testid, role, aria-label are byte-identical to pre-M7b", () => {
+    const { container } = render(<NowLine now="09:30" />);
+    const line = container.querySelector(
+      '[data-testid="now-line"]',
+    ) as HTMLElement;
+    expect(line.getAttribute("role")).toBe("img");
+    expect(line.getAttribute("aria-label")).toBe("Now 09:30");
+    expect(line.dataset.testid).toBe("now-line");
+  });
+});
+
 // C-m1-013 (NowLine): no transition on top (always snaps, reduced-motion safe)
 describe("C-m1-013 (NowLine): NowLine has no transition on top — always snaps", () => {
   it("does not have a transition style on the now-line element", () => {
