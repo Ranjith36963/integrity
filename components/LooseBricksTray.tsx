@@ -5,12 +5,19 @@
 // Always shows + Brick pill in trailing position (collapsed) or top (expanded).
 // Accessibility: role="region" aria-label="Loose bricks" aria-expanded + aria-controls.
 // Haptics: chevron light, + Brick pill light.
+// M7a NEW: optional stagger?: boolean prop (default false).
+//   When true, wraps the chip list in a Framer Motion stagger container.
+//   The chevron toggle and + Brick add-pill render OUTSIDE the staggered list (chrome).
+//   When false (default), renders byte-identical to pre-M7a.
 
 import { useState, useId } from "react";
+import { motion } from "motion/react";
 import { ChevronUp, ChevronDown, Plus } from "lucide-react";
 import type { Brick, Category } from "@/lib/types";
 import { BrickChip } from "./BrickChip";
 import { haptics } from "@/lib/haptics";
+import { usePrefersReducedMotion } from "@/lib/reducedMotion";
+import { staggerForCount } from "@/lib/motion";
 
 interface Props {
   looseBricks: Brick[];
@@ -27,6 +34,9 @@ interface Props {
   blocksExist?: boolean;
   /** M5: called with brickId when a loose brick × is tapped. */
   onRequestDeleteBrick?: (brickId: string) => void;
+  /** M7a: when true, wraps the chip list in a Framer Motion stagger container.
+   * When false (default), renders byte-identical to pre-M7a. */
+  stagger?: boolean;
 }
 
 export function LooseBricksTray({
@@ -37,9 +47,37 @@ export function LooseBricksTray({
   onUnitsOpenSheet,
   blocksExist = true,
   onRequestDeleteBrick,
+  stagger = false,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const listId = useId();
+
+  // M7a: reduced motion — collapse stagger variants to instant (AC #7)
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const staggerDelay = staggerForCount(looseBricks.length);
+  const containerVariants = stagger
+    ? {
+        initial: {},
+        animate: {
+          transition: {
+            staggerChildren: prefersReducedMotion ? 0 : staggerDelay,
+          },
+        },
+      }
+    : undefined;
+  const childVariants = stagger
+    ? {
+        initial: { opacity: 0, y: 4 },
+        animate: {
+          opacity: 1,
+          y: 0,
+          transition: {
+            duration: prefersReducedMotion ? 0 : 0.18,
+            ease: "easeOut" as const,
+          },
+        },
+      }
+    : undefined;
 
   // M4e: Tray is hidden when filtered list is empty AND no blocks exist
   if (looseBricks.length === 0 && !blocksExist) {
@@ -68,7 +106,7 @@ export function LooseBricksTray({
         paddingBottom: "8px",
       }}
     >
-      {/* Chevron toggle — top-right */}
+      {/* Chevron toggle — top-right (chrome — NOT inside stagger container) */}
       <div
         style={{
           display: "flex",
@@ -102,8 +140,9 @@ export function LooseBricksTray({
       </div>
 
       {expanded ? (
-        // Expanded view: + Brick button at top, then vertical list
+        // Expanded view: + Brick button at top (chrome), then vertical list (staggered when stagger=true)
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          {/* + Add Brick button — chrome, NOT inside stagger container */}
           <button
             type="button"
             aria-label="Add loose brick"
@@ -128,87 +167,198 @@ export function LooseBricksTray({
             Add Brick
           </button>
 
-          <ul
-            id={listId}
-            role="list"
-            style={{
-              listStyle: "none",
-              margin: 0,
-              padding: 0,
-              display: "flex",
-              flexDirection: "column",
-              gap: "6px",
-            }}
-          >
-            {looseBricks.map((brick) => (
-              <li key={brick.id} role="listitem">
-                <BrickChip
-                  brick={brick}
-                  categories={categories}
-                  size="md"
-                  onTickToggle={onTickToggle}
-                  onUnitsOpenSheet={onUnitsOpenSheet}
-                  onRequestDeleteBrick={onRequestDeleteBrick}
-                />
-              </li>
-            ))}
-          </ul>
+          {/* M7a: stagger=true → wrap ul in motion.ul stagger container */}
+          {stagger && containerVariants ? (
+            <motion.ul
+              id={listId}
+              role="list"
+              data-testid="loose-bricks-stagger-container"
+              style={{
+                listStyle: "none",
+                margin: 0,
+                padding: 0,
+                display: "flex",
+                flexDirection: "column",
+                gap: "6px",
+              }}
+              variants={containerVariants}
+              initial="initial"
+              animate="animate"
+            >
+              {looseBricks.map((brick) => (
+                <motion.li
+                  key={brick.id}
+                  role="listitem"
+                  variants={childVariants}
+                >
+                  <BrickChip
+                    brick={brick}
+                    categories={categories}
+                    size="md"
+                    onTickToggle={onTickToggle}
+                    onUnitsOpenSheet={onUnitsOpenSheet}
+                    onRequestDeleteBrick={onRequestDeleteBrick}
+                  />
+                </motion.li>
+              ))}
+            </motion.ul>
+          ) : (
+            <ul
+              id={listId}
+              role="list"
+              style={{
+                listStyle: "none",
+                margin: 0,
+                padding: 0,
+                display: "flex",
+                flexDirection: "column",
+                gap: "6px",
+              }}
+            >
+              {looseBricks.map((brick) => (
+                <li key={brick.id} role="listitem">
+                  <BrickChip
+                    brick={brick}
+                    categories={categories}
+                    size="md"
+                    onTickToggle={onTickToggle}
+                    onUnitsOpenSheet={onUnitsOpenSheet}
+                    onRequestDeleteBrick={onRequestDeleteBrick}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       ) : (
-        // Collapsed view: horizontal scroll row with sm chips + trailing + Brick pill
-        <div
-          id={listId}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            overflowX: "auto",
-            maxHeight: "56px",
-            paddingBottom: "4px",
-          }}
-        >
-          {looseBricks.map((brick) => (
-            <div key={brick.id} style={{ flexShrink: 0, maxWidth: "180px" }}>
-              <BrickChip
-                brick={brick}
-                categories={categories}
-                size="sm"
-                onTickToggle={onTickToggle}
-                onUnitsOpenSheet={onUnitsOpenSheet}
-                onRequestDeleteBrick={onRequestDeleteBrick}
-              />
-            </div>
-          ))}
+        // Collapsed view: horizontal scroll row with sm chips + trailing + Brick pill (chrome)
+        // M7a: stagger=true → wrap chip divs in motion.div stagger container; + Brick pill stays outside
+        <>
+          {stagger && containerVariants ? (
+            <div
+              id={listId}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                overflowX: "auto",
+                maxHeight: "56px",
+                paddingBottom: "4px",
+              }}
+            >
+              <motion.div
+                data-testid="loose-bricks-stagger-container"
+                style={{ display: "contents" }}
+                variants={containerVariants}
+                initial="initial"
+                animate="animate"
+              >
+                {looseBricks.map((brick) => (
+                  <motion.div
+                    key={brick.id}
+                    style={{ flexShrink: 0, maxWidth: "180px" }}
+                    variants={childVariants}
+                  >
+                    <BrickChip
+                      brick={brick}
+                      categories={categories}
+                      size="sm"
+                      onTickToggle={onTickToggle}
+                      onUnitsOpenSheet={onUnitsOpenSheet}
+                      onRequestDeleteBrick={onRequestDeleteBrick}
+                    />
+                  </motion.div>
+                ))}
+              </motion.div>
 
-          {/* + Brick pill — always last, always visible */}
-          <button
-            type="button"
-            aria-label="Add loose brick"
-            data-testid="add-loose-brick-pill"
-            onClick={handleAddBrick}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "4px",
-              flexShrink: 0,
-              minHeight: "44px",
-              minWidth: "80px",
-              padding: "0 12px",
-              borderRadius: "9999px",
-              border: "1px solid var(--ink-dim)",
-              background: "transparent",
-              color: "var(--ink-dim)",
-              cursor: "pointer",
-              fontFamily: "var(--font-ui)",
-              fontSize: "var(--fs-12)",
-              whiteSpace: "nowrap",
-            }}
-          >
-            <Plus size={12} />
-            Brick
-          </button>
-        </div>
+              {/* + Brick pill — always last, always visible — chrome, NOT inside stagger container */}
+              <button
+                type="button"
+                aria-label="Add loose brick"
+                data-testid="add-loose-brick-pill"
+                onClick={handleAddBrick}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "4px",
+                  flexShrink: 0,
+                  minHeight: "44px",
+                  minWidth: "80px",
+                  padding: "0 12px",
+                  borderRadius: "9999px",
+                  border: "1px solid var(--ink-dim)",
+                  background: "transparent",
+                  color: "var(--ink-dim)",
+                  cursor: "pointer",
+                  fontFamily: "var(--font-ui)",
+                  fontSize: "var(--fs-12)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <Plus size={12} />
+                Brick
+              </button>
+            </div>
+          ) : (
+            <div
+              id={listId}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                overflowX: "auto",
+                maxHeight: "56px",
+                paddingBottom: "4px",
+              }}
+            >
+              {looseBricks.map((brick) => (
+                <div
+                  key={brick.id}
+                  style={{ flexShrink: 0, maxWidth: "180px" }}
+                >
+                  <BrickChip
+                    brick={brick}
+                    categories={categories}
+                    size="sm"
+                    onTickToggle={onTickToggle}
+                    onUnitsOpenSheet={onUnitsOpenSheet}
+                    onRequestDeleteBrick={onRequestDeleteBrick}
+                  />
+                </div>
+              ))}
+
+              {/* + Brick pill — always last, always visible */}
+              <button
+                type="button"
+                aria-label="Add loose brick"
+                data-testid="add-loose-brick-pill"
+                onClick={handleAddBrick}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "4px",
+                  flexShrink: 0,
+                  minHeight: "44px",
+                  minWidth: "80px",
+                  padding: "0 12px",
+                  borderRadius: "9999px",
+                  border: "1px solid var(--ink-dim)",
+                  background: "transparent",
+                  color: "var(--ink-dim)",
+                  cursor: "pointer",
+                  fontFamily: "var(--font-ui)",
+                  fontSize: "var(--fs-12)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <Plus size={12} />
+                Brick
+              </button>
+            </div>
+          )}
+        </>
       )}
     </section>
   );
