@@ -487,6 +487,7 @@ export function BuildingClient({
           dayNumber={dayNumberValue}
           totalDays={totalDays}
           pct={heroPct}
+          firstPaintCountUp={stagger}
         />
         {/* M7a: skeleton / real subtree branch (ADR-023 two-pass hydration).
              !hydrated → skeleton placeholders; hydrated → real surfaces + stagger.
