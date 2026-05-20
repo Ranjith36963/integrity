@@ -12,9 +12,6 @@
 
 import { test, expect } from "@playwright/test";
 
-// Fixture: stateTen payload (10 blocks, 2 loose bricks)
-const STATE_TEN_KEY = "dharma:v1";
-
 // ─── E-m7a-001 ────────────────────────────────────────────────────────────────
 
 test("E-m7a-001: first paint shows skeleton subtree; post-hydration swap shows real cards", async ({
