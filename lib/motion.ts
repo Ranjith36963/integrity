@@ -30,7 +30,8 @@ export const springConfigs = {
   modalIn: { stiffness: 320, damping: 30 },
 } as const;
 
-const BASE_TOKENS: Record<Duration, MotionToken> = {
+/** Exported for tests and helpers that need the raw token map (e.g. staggerForCount). */
+export const motionTokens: Record<Duration, MotionToken> = {
   tap: { durationMs: 100, easing: "easeOut" },
   brickFill: { durationMs: 600, easing: "easeInOut" },
   modalIn: { durationMs: 0, easing: "spring" }, // spring — durationMs is nominal; spring drives timing
@@ -41,12 +42,29 @@ const BASE_TOKENS: Record<Duration, MotionToken> = {
 };
 
 /**
+ * staggerForCount — M7a helper (plan.md § Stagger ceiling, SG-m7a-01).
+ * Returns the per-sibling stagger delay in seconds for Framer Motion's staggerChildren.
+ *
+ * Piecewise:
+ *   n <= 15 → canonical motionTokens.stagger.durationMs / 1000 (= 0.03 s / 30 ms)
+ *   n > 15  → Math.max(0.02, 0.45 / n)  (caps total cascade at ~600 ms; floor at 0.02)
+ *
+ * Each surface (BlueprintBar / Timeline / LooseBricksTray) computes its own stagger
+ * independently — per-surface, not global (plan.md § Stagger ceiling).
+ */
+export function staggerForCount(n: number): number {
+  const CANONICAL = motionTokens.stagger.durationMs / 1000; // 0.03
+  if (n <= 15) return CANONICAL;
+  return Math.max(0.02, 0.45 / n);
+}
+
+/**
  * Returns the motion token for a given Duration.
  * When `reduced` is true (prefers-reduced-motion), all durations collapse to 0
  * and spring tokens become hard-cut (linear, 0ms) per plan.md edge case 1.
  */
 export function getMotion(token: Duration, reduced: boolean): MotionToken {
-  const base = BASE_TOKENS[token];
+  const base = motionTokens[token];
   if (!reduced) return base;
   // Reduced-motion collapse: all durations → 0, springs → hard-cut (linear)
   return { durationMs: 0, easing: "linear" };
