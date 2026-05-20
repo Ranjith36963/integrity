@@ -59,9 +59,12 @@ function toPersisted(s: AppState): PersistedState {
 
 /**
  * usePersistedState() — drop-in replacement for useReducer in BuildingClient.
- * Returns [AppState, Dispatch<Action>].
+ * M7a: Returns [AppState, Dispatch<Action>, boolean] where the third element is
+ * `mounted` — the two-pass hydration completion signal (ADR-023).
+ * The third slot is backwards-compatible: existing two-element destructures
+ * [state, dispatch] continue to work (TS allows two-of-three tuple destructure).
  */
-export function usePersistedState(): [AppState, Dispatch<Action>] {
+export function usePersistedState(): [AppState, Dispatch<Action>, boolean] {
   // Pass 1: empty default — SSR and first client paint both render this.
   // loadState() is never called here (R1 guard).
   const [state, setState] = useState<AppState>(() =>
@@ -99,5 +102,7 @@ export function usePersistedState(): [AppState, Dispatch<Action>] {
     saveState(toPersisted(state));
   }, [mounted, state]);
 
-  return [state, dispatch];
+  // M7a: expose mounted as the third tuple slot — the "hydrated" signal for BuildingClient.
+  // Additive only: existing [state, dispatch] destructures are byte-identical (two-of-three).
+  return [state, dispatch, mounted];
 }
