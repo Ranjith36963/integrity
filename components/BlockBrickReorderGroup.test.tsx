@@ -82,6 +82,7 @@ const brkA1: Brick = {
   done: false,
   categoryId: null,
   hasDuration: false,
+  parentBlockId: "blk-A",
 };
 
 const brkA2: Brick = {
@@ -91,6 +92,7 @@ const brkA2: Brick = {
   done: false,
   categoryId: null,
   hasDuration: false,
+  parentBlockId: "blk-A",
 };
 
 const brkA3: Brick = {
@@ -100,6 +102,7 @@ const brkA3: Brick = {
   done: false,
   categoryId: null,
   hasDuration: false,
+  parentBlockId: "blk-A",
 };
 
 const blkA: Block = {
@@ -119,6 +122,7 @@ const brkS1: Brick = {
   done: false,
   categoryId: null,
   hasDuration: false,
+  parentBlockId: "blk-single",
 };
 
 const blkSingle: Block = {
