@@ -70,6 +70,7 @@ npm run test:e2e:install
 | M9e — Year view (Empire) + complete calendar | Shipped to preview — awaiting Gate #2 tap-test                           |
 | **M9 — Calendar Nav**                        | **COMPLETE** — all four switcher segments (Day/Week/Month/Year) now live |
 | M5 — Edit Mode + Delete                      | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M6 — Drag Reorder                            | Shipped to preview — awaiting Gate #2 tap-test                           |
 
 Latest preview: `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (branch alias; auto-tracks `claude/verify-m0-deployment-s4XRy`). Vercel Deployment Protection active — open in browser while signed in to Vercel.
 
@@ -106,6 +107,7 @@ components/          Shared UI components + unit tests
   YearView.tsx       Empire view — 3×4 twelve-month grid with per-month scores + YearAggregate ring; tapping a month opens MonthView at that month (M9e)
   MonthCell.tsx      Single month cell inside YearView — heat-fill intensity by score, tappable (M9e)
   DeleteConfirmModal.tsx Recurrence-aware delete confirmation (recurring: Just today / All recurrences; non-recurring/brick: single Delete) (M5)
+  DraggableTimelineBlock.tsx Block card wrapper with visible drag handle; drag-to-retime with 30-min snap, overlap rejection, medium-haptic snap-back, aria-live announce; brick reorder via Framer Reorder.Group (M6)
 lib/                 Domain logic: types, data, scoring, utilities
   celebrations.ts    useCrossUpEffect hook — one-shot cross-up detection for bloom/fireworks
   audio.ts           playChime() — lazy HTMLAudioElement for /sounds/chime.mp3; SSR + iOS guard
@@ -121,6 +123,7 @@ lib/                 Domain logic: types, data, scoring, utilities
   weekGrid.ts        UTC-drift-free week date math: weekGridDays(), addWeek(), subWeek(); anchor-to-Sunday logic (M9d)
   yearGrid.ts        UTC-drift-free year/month date math: yearGridMonths(), addYear(), subYear() (M9e)
   currentDayBlocks.ts Pure helper: filters today's blocks by the deletions map (M5; appliesOn wiring deferred per ADR-047)
+  snapToSlot.ts       Pure helper: snapToSlot(minutesSinceMidnight) → nearest 30-min boundary; used by drag-reorder (M6)
 tests/
   e2e/               Playwright specs (e2e + a11y)
 docs/
