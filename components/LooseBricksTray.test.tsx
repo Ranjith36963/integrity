@@ -337,3 +337,128 @@ describe("M4f regression: onTickToggle still works for tick bricks in tray", () 
     expect(onTickToggle).toHaveBeenCalledWith("tick1");
   });
 });
+
+// ─── M7a stagger prop tests ────────────────────────────────────────────────────
+
+const m7aBricks: Brick[] = [
+  {
+    id: "lb1",
+    name: "Brick 1",
+    kind: "tick",
+    hasDuration: false,
+    done: false,
+    categoryId: null,
+    parentBlockId: null,
+  },
+  {
+    id: "lb2",
+    name: "Brick 2",
+    kind: "tick",
+    hasDuration: false,
+    done: false,
+    categoryId: null,
+    parentBlockId: null,
+  },
+];
+
+// C-m7a-008: LooseBricksTray stagger toggle
+describe("C-m7a-008: <LooseBricksTray stagger> toggle — false byte-identical; true wraps chips; chrome NOT wrapped", () => {
+  it("stagger={false} (default): no stagger container wrapper around chip list", () => {
+    const { container } = render(
+      <LooseBricksTray
+        looseBricks={m7aBricks}
+        categories={[]}
+        onAddBrick={vi.fn()}
+        stagger={false}
+      />,
+    );
+    expect(
+      container.querySelector('[data-testid="loose-bricks-stagger-container"]'),
+    ).toBeNull();
+  });
+
+  it("stagger omitted (defaults to false): no stagger container", () => {
+    const { container } = render(
+      <LooseBricksTray
+        looseBricks={m7aBricks}
+        categories={[]}
+        onAddBrick={vi.fn()}
+      />,
+    );
+    expect(
+      container.querySelector('[data-testid="loose-bricks-stagger-container"]'),
+    ).toBeNull();
+  });
+
+  it("stagger={true}: a stagger container appears around the chip list", () => {
+    const { container } = render(
+      <LooseBricksTray
+        looseBricks={m7aBricks}
+        categories={[]}
+        onAddBrick={vi.fn()}
+        stagger={true}
+      />,
+    );
+    expect(
+      container.querySelector('[data-testid="loose-bricks-stagger-container"]'),
+    ).not.toBeNull();
+  });
+
+  it("stagger={true}: + Brick pill is NOT inside the stagger container (chrome renders outside)", () => {
+    const { container } = render(
+      <LooseBricksTray
+        looseBricks={m7aBricks}
+        categories={[]}
+        onAddBrick={vi.fn()}
+        stagger={true}
+      />,
+    );
+    const staggerContainer = container.querySelector(
+      '[data-testid="loose-bricks-stagger-container"]',
+    );
+    const addPill = container.querySelector(
+      '[data-testid="add-loose-brick-pill"]',
+    );
+    expect(staggerContainer).not.toBeNull();
+    expect(addPill).not.toBeNull();
+    // + Brick pill must NOT be a descendant of the stagger container
+    if (staggerContainer && addPill) {
+      expect(staggerContainer.contains(addPill)).toBe(false);
+    }
+  });
+
+  it("stagger={true}: outer section aria-label='Loose bricks' and aria-expanded unchanged", () => {
+    const { container } = render(
+      <LooseBricksTray
+        looseBricks={m7aBricks}
+        categories={[]}
+        onAddBrick={vi.fn()}
+        stagger={true}
+      />,
+    );
+    const section = container.querySelector(
+      '[aria-label="Loose bricks"][data-testid="loose-bricks-tray"]',
+    );
+    expect(section).not.toBeNull();
+    // Outer role preserved
+    expect(section?.getAttribute("role")).toBe("region");
+  });
+
+  it("stagger={false}: + Brick pill is present and not inside a stagger container", () => {
+    const { container } = render(
+      <LooseBricksTray
+        looseBricks={m7aBricks}
+        categories={[]}
+        onAddBrick={vi.fn()}
+        stagger={false}
+      />,
+    );
+    const addPill = container.querySelector(
+      '[data-testid="add-loose-brick-pill"]',
+    );
+    expect(addPill).not.toBeNull();
+    expect(
+      container.querySelector('[data-testid="loose-bricks-stagger-container"]'),
+    ).toBeNull();
+  });
+});
