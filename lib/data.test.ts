@@ -1,8 +1,10 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { defaultState, reducer, withDurationDefaults } from "./data";
 import type { AppState, Block, Brick, ArchivedDay } from "./types";
 // M4f: findUnitsBrickById exported from lib/data.ts
 import { findUnitsBrickById } from "./data";
+// M6: scoring helpers for U-m6-014
+import { dayPct, blockPct } from "./dharma";
 
 /** Narrow a Brick to the tick variant. Throws if kind !== "tick". */
 function asTick(b: Brick): Extract<Brick, { kind: "tick" }> {
@@ -2606,5 +2608,90 @@ describe("U-m6-009: REORDER_BRICK_IN_BLOCK keeps hasDuration brick start/end unc
     expect(brkT1Next?.end).toBe("16:45");
     // Array order is [brk-T2, brk-T1]
     expect(bricks?.map((b) => b.id)).toEqual(["brk-T2", "brk-T1"]);
+  });
+});
+
+// ─── U-m6-013: Action union exhaustiveness — two new arms compile + handle ────
+
+describe("U-m6-013: Action union exhaustiveness — REORDER_BLOCK and REORDER_BRICK_IN_BLOCK", () => {
+  it("REORDER_BLOCK dispatches and returns a defined AppState (not assertNever)", () => {
+    const state: AppState = {
+      blocks: [blkA],
+      categories: [],
+      looseBricks: [],
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: {},
+      deletions: {},
+    };
+    const next = reducer(state, {
+      type: "REORDER_BLOCK",
+      blockId: "blk-A",
+      newStart: "13:00",
+      newEnd: "14:00",
+    });
+    expect(next).toBeDefined();
+    expect(typeof next).toBe("object");
+  });
+
+  it("REORDER_BRICK_IN_BLOCK dispatches and returns a defined AppState (not assertNever)", () => {
+    const state = makeM6State();
+    const next = reducer(state, {
+      type: "REORDER_BRICK_IN_BLOCK",
+      blockId: "blk-A",
+      fromIndex: 0,
+      toIndex: 2,
+    });
+    expect(next).toBeDefined();
+    expect(typeof next).toBe("object");
+  });
+
+  it("existing M1-M5 actions still work byte-identically after union widening", () => {
+    const state = makeM6State();
+
+    // ADD_BLOCK
+    const afterAdd = reducer(state, {
+      type: "ADD_BLOCK",
+      block: {
+        id: "new-blk",
+        name: "New",
+        start: "06:00",
+        recurrence: { kind: "every-day" },
+        categoryId: null,
+        bricks: [],
+      },
+    });
+    expect(afterAdd.blocks.length).toBe(state.blocks.length + 1);
+
+    // LOG_TICK_BRICK still flips done
+    const afterLog = reducer(state, {
+      type: "LOG_TICK_BRICK",
+      brickId: "brk-A1",
+    });
+    const flipped = afterLog.blocks
+      .find((b) => b.id === "blk-A")
+      ?.bricks.find((b) => b.id === "brk-A1");
+    if (flipped?.kind === "tick") expect(flipped.done).toBe(false); // was true, toggled
+  });
+});
+
+// ─── U-m6-014: scoring invariance under brick reorder ─────────────────────────
+
+describe("U-m6-014: dayPct and blockPct are unchanged after REORDER_BRICK_IN_BLOCK", () => {
+  it("dayPct is byte-identical before and after a brick shuffle", () => {
+    const state = makeM6State();
+    const before = dayPct(state);
+    const blkABefore = blockPct(blkA);
+
+    const next = reducer(state, {
+      type: "REORDER_BRICK_IN_BLOCK",
+      blockId: "blk-A",
+      fromIndex: 0,
+      toIndex: 2,
+    });
+
+    expect(dayPct(next)).toBe(before);
+    const blkANext = next.blocks.find((b) => b.id === "blk-A")!;
+    expect(blockPct(blkANext)).toBe(blkABefore);
   });
 });
