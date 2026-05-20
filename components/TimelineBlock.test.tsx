@@ -934,6 +934,78 @@ describe("C-m6-001: TimelineBlock renders drag handle in Edit Mode", () => {
   });
 });
 
+// ─── C-m6-013 (code side): single-brick block in Edit Mode still shows brick handle ─
+
+describe("C-m6-013: single-brick block in Edit Mode renders BrickChip with drag handle (AC #2)", () => {
+  it("renders a 'Reorder brick' button even when block has exactly one brick (expanded then edit mode toggled)", async () => {
+    const user = userEvent.setup();
+    const brkSingle = {
+      id: "brk-s1",
+      name: "Stretch",
+      kind: "tick" as const,
+      done: false,
+      hasDuration: false,
+      categoryId: null,
+      parentBlockId: "blk-single",
+    };
+    const blkSingleBrick: Block = {
+      id: "blk-single",
+      name: "Solo",
+      start: "07:00",
+      end: "07:30",
+      recurrence: { kind: "every-day" },
+      categoryId: null,
+      bricks: [brkSingle],
+    };
+    const mockControls = makeMockDragControls();
+    // Start in Locked mode so block can be expanded, then switch to Edit Mode
+    const [editModeState, setEditModeState] = [
+      { value: false },
+      (v: boolean) => {
+        editModeState.value = v;
+      },
+    ];
+    void setEditModeState; // used below
+    function Wrapper() {
+      const [editMode, setEditMode] = React.useState(false);
+      return (
+        <EditModeContext.Provider
+          value={{ editMode, toggle: () => setEditMode((v) => !v) }}
+        >
+          <button
+            type="button"
+            onClick={() => setEditMode((v) => !v)}
+            aria-label="toggle edit"
+          >
+            toggle
+          </button>
+          <TimelineBlock
+            block={blkSingleBrick}
+            categories={[]}
+            dragControls={mockControls}
+            onReorderRequest={vi.fn()}
+            onReorderBrickInBlock={vi.fn()}
+          />
+        </EditModeContext.Provider>
+      );
+    }
+    const { container } = render(<Wrapper />);
+    // Step 1: expand the block in Locked mode
+    const card = container.querySelector(
+      '[data-component="timeline-block"]',
+    ) as HTMLElement;
+    await user.click(card);
+    expect(card.getAttribute("aria-expanded")).toBe("true");
+    // Step 2: toggle to Edit Mode (block stays expanded)
+    const toggleBtn = screen.getByRole("button", { name: "toggle edit" });
+    await user.click(toggleBtn);
+    // Step 3: AC #2 — the single brick must show a drag handle
+    expect(
+      screen.getByRole("button", { name: "Reorder brick Stretch" }),
+    ).toBeInTheDocument();
+  });
+});
+
 // ─── C-m6-002: Locked mode — no block handle ─────────────────────────────────
 
 describe("C-m6-002: Locked mode — no drag handle rendered", () => {
