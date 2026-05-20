@@ -6,7 +6,7 @@ interface EditModeContextValue {
   toggle: () => void;
 }
 
-const EditModeContext = createContext<EditModeContextValue>({
+export const EditModeContext = createContext<EditModeContextValue>({
   editMode: false,
   toggle: () => {},
 });
