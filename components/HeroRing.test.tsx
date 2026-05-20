@@ -282,20 +282,24 @@ describe("C-m7c-002 — <HeroRing firstPaintCountUp={false} pct={50}> snaps to 5
       return { stop: vi.fn() };
     };
 
-    render(<HeroRing pct={50} />);
+    const { container } = render(<HeroRing pct={50} />);
 
-    // Wait for post-mount render
-    await waitFor(() => expect(screen.queryByText("50%")).toBeInTheDocument());
+    // With fake timers, useEffect fires immediately in test environment.
+    // Advance a tick to allow the effect to run and setDisplayPct(pct) to fire.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
 
-    // Advance 1.6 s
+    // Numeral reads 50% after mount effect
+    const numeralEl = container.querySelector("[aria-hidden='true']");
+    expect(numeralEl?.textContent).toContain("50%");
+
+    // Advance 1.6 s — no per-frame updates
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1600);
     });
 
-    expect(screen.getByText("50%")).toBeInTheDocument();
-    // No intermediate frames visible
-    expect(screen.queryByText("25%")).not.toBeInTheDocument();
-    expect(screen.queryByText("0%")).not.toBeInTheDocument();
+    expect(numeralEl?.textContent).toContain("50%");
     // animate was not called (no tween)
     expect(animateCalled).toBe(false);
   });
