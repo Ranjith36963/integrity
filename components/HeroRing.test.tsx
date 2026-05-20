@@ -2,7 +2,7 @@
 // Covers: C-m3-006, C-m3-007, C-m3-008, C-m7c-001..011
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, act, waitFor } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { HeroRing } from "./HeroRing";
 
@@ -277,7 +277,7 @@ describe("C-m7c-001 — <HeroRing firstPaintCountUp={true} pct={50}> progresses 
 describe("C-m7c-002 — <HeroRing firstPaintCountUp={false} pct={50}> snaps to 50% immediately, no tween", () => {
   it("numeral reads 50% immediately on post-mount render; no per-frame update; animate not called", async () => {
     let animateCalled = false;
-    mockAnimateImpl = (_from, _to, _opts) => {
+    mockAnimateImpl = () => {
       animateCalled = true;
       return { stop: vi.fn() };
     };
@@ -310,7 +310,7 @@ describe("C-m7c-002 — <HeroRing firstPaintCountUp={false} pct={50}> snaps to 5
 describe("C-m7c-003 — <HeroRing firstPaintCountUp={true} pct={0}> — no animation, numeral 0%", () => {
   it("renders 0% immediately with no animate call", async () => {
     let animateCalled = false;
-    mockAnimateImpl = (_from, _to, _opts) => {
+    mockAnimateImpl = () => {
       animateCalled = true;
       return { stop: vi.fn() };
     };
@@ -453,7 +453,7 @@ describe("C-m7c-006 — prefers-reduced-motion: reduce → no tween, numeral + s
   it("animate not called; numeral is 50% immediately; stroke-dashoffset reflects pct=50", async () => {
     mockUseReducedMotionReturn = true;
     let animateCalled = false;
-    mockAnimateImpl = (_from, _to, _opts) => {
+    mockAnimateImpl = () => {
       animateCalled = true;
       return { stop: vi.fn() };
     };
@@ -693,7 +693,7 @@ describe("C-m7c-010 — tween cancels on pct change mid-tween; new pct lands via
 describe("C-m7c-011 — <HeroRing pct={50} /> (no firstPaintCountUp, no children) — C-m3-006/007 byte-identical", () => {
   it("fallback numeral reads 50% immediately; stroke-dashoffset reflects pct=50; no tween", async () => {
     let animateCalled = false;
-    mockAnimateImpl = (_from, _to, _opts) => {
+    mockAnimateImpl = () => {
       animateCalled = true;
       return { stop: vi.fn() };
     };

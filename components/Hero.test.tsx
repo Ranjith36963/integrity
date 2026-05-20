@@ -291,7 +291,7 @@ describe("C-m7c-012 — Hero threads firstPaintCountUp to HeroRing; default fals
 
   it("(b) default firstPaintCountUp omitted: numeral reads 50% immediately; no animate call", async () => {
     let animateCalled = false;
-    mockAnimateImpl012 = (_from, _to, _opts) => {
+    mockAnimateImpl012 = () => {
       animateCalled = true;
       return { stop: vi.fn() };
     };
