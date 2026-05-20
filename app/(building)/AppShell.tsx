@@ -32,7 +32,9 @@ export function AppShell() {
   //   - No re-hydration on view switch (one pass per app session)
   //   - No dual save effects racing on dharma:v1
   //   - All views see the identical AppState object
-  const [state, dispatch] = usePersistedState();
+  // M7a: third tuple slot `hydrated` is the ADR-023 two-pass-hydration signal.
+  // Passed to BuildingClient so it can gate the skeleton / real subtree branch.
+  const [state, dispatch, hydrated] = usePersistedState();
 
   // Session-only view state — not persisted; refresh returns to Day.
   const [view, setView] = useState<"day" | "month" | "week" | "year">("day");
@@ -73,7 +75,7 @@ export function AppShell() {
       <ViewSwitcher view={view} onSelect={handleSelectView} />
 
       {view === "day" ? (
-        <BuildingClient state={state} dispatch={dispatch} />
+        <BuildingClient state={state} dispatch={dispatch} hydrated={hydrated} />
       ) : view === "week" ? (
         <WeekView state={state} onOpenDay={handleOpenDay} />
       ) : view === "year" ? (
