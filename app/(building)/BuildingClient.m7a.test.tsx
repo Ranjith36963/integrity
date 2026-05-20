@@ -47,7 +47,7 @@ const stateWithBlock: AppState = {
       id: "blk-m7a",
       name: "Morning",
       start: "09:00",
-      recurrence: { kind: "just-today" },
+      recurrence: { kind: "just-today", date: "2026-05-20" },
       categoryId: null,
       bricks: [
         {
@@ -56,7 +56,7 @@ const stateWithBlock: AppState = {
           categoryId: null,
           parentBlockId: "blk-m7a",
           hasDuration: false,
-          recurrence: { kind: "just-today" },
+          recurrence: { kind: "just-today", date: "2026-05-20" },
           kind: "tick",
           done: false,
         },
