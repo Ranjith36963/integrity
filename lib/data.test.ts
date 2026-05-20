@@ -2261,3 +2261,350 @@ describe("U-m6-002: REORDER_BLOCK returns original state reference on overlap", 
     expect(next).not.toBe(state);
   });
 });
+
+// ─── U-m6-003: REORDER_BLOCK — does NOT rewrite state.history ────────────────
+
+describe("U-m6-003: REORDER_BLOCK leaves state.history unchanged (ADR-045)", () => {
+  it("next.history is the SAME reference as state.history after re-timing blk-A", () => {
+    const state = makeM6State();
+    const next = reducer(state, {
+      type: "REORDER_BLOCK",
+      blockId: "blk-A",
+      newStart: "13:00",
+      newEnd: "14:00",
+    });
+    // ADR-045: history is read-only
+    expect(next.history).toBe(state.history);
+  });
+
+  it("archived blk-A snapshot still shows old 08:00-09:00 times after template re-time", () => {
+    const state = makeM6State();
+    const next = reducer(state, {
+      type: "REORDER_BLOCK",
+      blockId: "blk-A",
+      newStart: "13:00",
+      newEnd: "14:00",
+    });
+    // The ArchivedDay at 2026-05-10 preserves the pre-M6 times
+    const archived = next.history["2026-05-10"];
+    const archivedBlkA = archived?.blocks.find((b) => b.id === "blk-A");
+    expect(archivedBlkA?.start).toBe("08:00");
+    expect(archivedBlkA?.end).toBe("09:00");
+  });
+
+  it("the template gets new times (all-future semantics, SG-m6-02)", () => {
+    const state = makeM6State();
+    const next = reducer(state, {
+      type: "REORDER_BLOCK",
+      blockId: "blk-A",
+      newStart: "13:00",
+      newEnd: "14:00",
+    });
+    const template = next.blocks.find((b) => b.id === "blk-A");
+    expect(template?.start).toBe("13:00");
+    expect(template?.end).toBe("14:00");
+    // Recurrence is unchanged so appliesOn still resolves correctly
+    expect(template?.recurrence).toEqual({ kind: "every-day" });
+  });
+});
+
+// ─── U-m6-004: REORDER_BLOCK — newEnd: null preserves end: undefined ─────────
+
+describe("U-m6-004: REORDER_BLOCK with newEnd: null preserves end: undefined", () => {
+  it("open-ended block keeps end === undefined after re-time with newEnd: null", () => {
+    // Use an isolated state with only the open-ended block (no other timed items
+    // to collide with during the probe-to-24:00 overlap check)
+    const state: AppState = {
+      blocks: [blkOpen],
+      categories: [],
+      looseBricks: [],
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: {},
+      deletions: {},
+    };
+    const next = reducer(state, {
+      type: "REORDER_BLOCK",
+      blockId: "blk-open",
+      newStart: "15:00",
+      newEnd: null,
+    });
+    const updated = next.blocks.find((b) => b.id === "blk-open");
+    expect(updated?.start).toBe("15:00");
+    // Strictly undefined — NOT null, NOT "24:00", NOT the old value
+    expect(updated?.end).toBeUndefined();
+    expect("end" in (updated ?? {})).toBe(false);
+  });
+
+  it("closed block with newEnd string keeps that exact end value", () => {
+    // Use an isolated state with only blk-A so the 10:00-11:00 slot is clear
+    const state: AppState = {
+      blocks: [blkA],
+      categories: [],
+      looseBricks: [],
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: {},
+      deletions: {},
+    };
+    const next = reducer(state, {
+      type: "REORDER_BLOCK",
+      blockId: "blk-A",
+      newStart: "10:00",
+      newEnd: "11:00",
+    });
+    const updated = next.blocks.find((b) => b.id === "blk-A");
+    expect(updated?.end).toBe("11:00");
+  });
+});
+
+// ─── U-m6-005: REORDER_BLOCK — immutable; no-op on missing blockId ───────────
+
+describe("U-m6-005: REORDER_BLOCK is immutable and no-ops on missing blockId", () => {
+  it("does not throw or mutate when state is deeply frozen", () => {
+    const state = makeM6State();
+    // Deep freeze
+    Object.freeze(state);
+    Object.freeze(state.blocks);
+    state.blocks.forEach((b) => {
+      Object.freeze(b);
+      Object.freeze(b.bricks);
+      b.bricks.forEach((br) => Object.freeze(br));
+    });
+    Object.freeze(state.looseBricks);
+    Object.freeze(state.deletions);
+    Object.freeze(state.history);
+
+    expect(() =>
+      reducer(state, {
+        type: "REORDER_BLOCK",
+        blockId: "blk-A",
+        newStart: "13:00",
+        newEnd: "14:00",
+      }),
+    ).not.toThrow();
+
+    // blk-A got new times (valid write)
+    const next = reducer(state, {
+      type: "REORDER_BLOCK",
+      blockId: "blk-A",
+      newStart: "13:00",
+      newEnd: "14:00",
+    });
+    expect(next).not.toBe(state);
+    expect(next.blocks.find((b) => b.id === "blk-A")?.start).toBe("13:00");
+  });
+
+  it("ghost blockId is a no-op — no crash, no mutation", () => {
+    const state = makeM6State();
+    Object.freeze(state);
+    Object.freeze(state.blocks);
+    state.blocks.forEach((b) => Object.freeze(b));
+
+    expect(() =>
+      reducer(state, {
+        type: "REORDER_BLOCK",
+        blockId: "ghost-id",
+        newStart: "13:00",
+        newEnd: "14:00",
+      }),
+    ).not.toThrow();
+
+    // The map produces an equivalent array — blk-A unchanged
+    const next = reducer(state, {
+      type: "REORDER_BLOCK",
+      blockId: "ghost-id",
+      newStart: "13:00",
+      newEnd: "14:00",
+    });
+    // ghost-id is not found; the proposal hits no timed item (no block with id ghost-id)
+    // so the overlap probe sees no hit OR the map produces a new array with all blocks unchanged
+    // Either way blk-A retains its original start
+    const blkANext = next.blocks.find((b) => b.id === "blk-A");
+    expect(blkANext?.start).toBe("08:00");
+  });
+});
+
+// ─── U-m6-006: REORDER_BRICK_IN_BLOCK — exact post-splice array order ────────
+
+describe("U-m6-006: REORDER_BRICK_IN_BLOCK splices to the exact post-removal order", () => {
+  it("moves brk-A1 from index 0 to index 2 → [brk-A2, brk-A3, brk-A1]", () => {
+    const state = makeM6State();
+    const next = reducer(state, {
+      type: "REORDER_BRICK_IN_BLOCK",
+      blockId: "blk-A",
+      fromIndex: 0,
+      toIndex: 2,
+    });
+
+    const bricks = next.blocks.find((b) => b.id === "blk-A")?.bricks;
+    expect(bricks?.map((b) => b.id)).toEqual(["brk-A2", "brk-A3", "brk-A1"]);
+
+    // Each brick object is the SAME reference (not cloned)
+    expect(bricks?.[0]).toBe(brkA2);
+    expect(bricks?.[1]).toBe(brkA3);
+    expect(bricks?.[2]).toBe(brkA1);
+  });
+
+  it("other blocks remain the SAME reference after a brick reorder in blk-A", () => {
+    const state = makeM6State();
+    const next = reducer(state, {
+      type: "REORDER_BRICK_IN_BLOCK",
+      blockId: "blk-A",
+      fromIndex: 0,
+      toIndex: 2,
+    });
+    expect(next.blocks.find((b) => b.id === "blk-B")).toBe(blkB);
+    expect(next.deletions).toBe(state.deletions);
+    expect(next.categories).toBe(state.categories);
+    expect(next.looseBricks).toBe(state.looseBricks);
+    expect(next.history).toBe(state.history);
+  });
+});
+
+// ─── U-m6-007: REORDER_BRICK_IN_BLOCK — immutable; bounds-checked no-op ──────
+
+describe("U-m6-007: REORDER_BRICK_IN_BLOCK returns original state on out-of-bounds or missing", () => {
+  it("returns the SAME state reference for four out-of-bounds cases", () => {
+    const state = makeM6State();
+    Object.freeze(state);
+    Object.freeze(state.blocks);
+    state.blocks.forEach((b) => {
+      Object.freeze(b);
+      Object.freeze(b.bricks);
+      b.bricks.forEach((br) => Object.freeze(br));
+    });
+    Object.freeze(state.looseBricks);
+    Object.freeze(state.deletions);
+    Object.freeze(state.history);
+
+    // (a) fromIndex: -1
+    expect(
+      reducer(state, {
+        type: "REORDER_BRICK_IN_BLOCK",
+        blockId: "blk-A",
+        fromIndex: -1,
+        toIndex: 2,
+      }),
+    ).toBe(state);
+
+    // (b) toIndex: 5 (> bricks.length - 1 which is 2)
+    expect(
+      reducer(state, {
+        type: "REORDER_BRICK_IN_BLOCK",
+        blockId: "blk-A",
+        fromIndex: 0,
+        toIndex: 5,
+      }),
+    ).toBe(state);
+
+    // (c) fromIndex: 3 (>= bricks.length === 3)
+    expect(
+      reducer(state, {
+        type: "REORDER_BRICK_IN_BLOCK",
+        blockId: "blk-A",
+        fromIndex: 3,
+        toIndex: 1,
+      }),
+    ).toBe(state);
+
+    // (d) ghost blockId
+    expect(
+      reducer(state, {
+        type: "REORDER_BRICK_IN_BLOCK",
+        blockId: "ghost-id",
+        fromIndex: 0,
+        toIndex: 2,
+      }),
+    ).toBe(state);
+  });
+
+  it("a valid splice does not throw under the freeze", () => {
+    const state = makeM6State();
+    Object.freeze(state);
+    Object.freeze(state.blocks);
+    state.blocks.forEach((b) => {
+      Object.freeze(b);
+      Object.freeze(b.bricks);
+      b.bricks.forEach((br) => Object.freeze(br));
+    });
+
+    expect(() =>
+      reducer(state, {
+        type: "REORDER_BRICK_IN_BLOCK",
+        blockId: "blk-A",
+        fromIndex: 1,
+        toIndex: 0,
+      }),
+    ).not.toThrow();
+    const next = reducer(state, {
+      type: "REORDER_BRICK_IN_BLOCK",
+      blockId: "blk-A",
+      fromIndex: 1,
+      toIndex: 0,
+    });
+    expect(next).not.toBe(state);
+  });
+});
+
+// ─── U-m6-008: REORDER_BRICK_IN_BLOCK — identity short-circuit fromIndex===toIndex
+
+describe("U-m6-008: REORDER_BRICK_IN_BLOCK returns original state when fromIndex === toIndex", () => {
+  it("returns the SAME state reference for fromIndex === toIndex", () => {
+    const state = makeM6State();
+    const next = reducer(state, {
+      type: "REORDER_BRICK_IN_BLOCK",
+      blockId: "blk-A",
+      fromIndex: 1,
+      toIndex: 1,
+    });
+    expect(next).toBe(state);
+  });
+
+  it("round-trip (0→1 then 1→0) restores the original brick order", () => {
+    const state = makeM6State();
+    const step1 = reducer(state, {
+      type: "REORDER_BRICK_IN_BLOCK",
+      blockId: "blk-A",
+      fromIndex: 0,
+      toIndex: 1,
+    });
+    // After 0→1: [brk-A2, brk-A1, brk-A3]
+    expect(
+      step1.blocks.find((b) => b.id === "blk-A")?.bricks.map((b) => b.id),
+    ).toEqual(["brk-A2", "brk-A1", "brk-A3"]);
+
+    const step2 = reducer(step1, {
+      type: "REORDER_BRICK_IN_BLOCK",
+      blockId: "blk-A",
+      fromIndex: 1,
+      toIndex: 0,
+    });
+    // After 1→0: [brk-A1, brk-A2, brk-A3] — original order restored
+    expect(
+      step2.blocks.find((b) => b.id === "blk-A")?.bricks.map((b) => b.id),
+    ).toEqual(["brk-A1", "brk-A2", "brk-A3"]);
+  });
+});
+
+// ─── U-m6-009: REORDER_BRICK_IN_BLOCK — timed brick keeps start/end unchanged ─
+
+describe("U-m6-009: REORDER_BRICK_IN_BLOCK keeps hasDuration brick start/end unchanged", () => {
+  it("brk-T1 retains start:16:15 and end:16:45 after array shuffle", () => {
+    const state = makeM6State();
+    const next = reducer(state, {
+      type: "REORDER_BRICK_IN_BLOCK",
+      blockId: "blk-timed-brick",
+      fromIndex: 0,
+      toIndex: 1,
+    });
+
+    const bricks = next.blocks.find((b) => b.id === "blk-timed-brick")?.bricks;
+    // brk-T1 moved to index 1
+    const brkT1Next = bricks?.find((b) => b.id === "brk-T1");
+    expect(brkT1Next?.start).toBe("16:15");
+    expect(brkT1Next?.end).toBe("16:45");
+    // Array order is [brk-T2, brk-T1]
+    expect(bricks?.map((b) => b.id)).toEqual(["brk-T2", "brk-T1"]);
+  });
+});
