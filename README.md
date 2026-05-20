@@ -49,29 +49,30 @@ npm run test:e2e:install
 
 ## Status
 
-| Milestone                                    | State                                                                    |
-| -------------------------------------------- | ------------------------------------------------------------------------ |
-| M0 — Design System                           | Shipped + tap-tested                                                     |
-| M1 — Empty Building Shell                    | Shipped + tap-tested                                                     |
-| M2 — Add Block Flow                          | Shipped + tap-tested                                                     |
-| M3 — Add Brick + Live Scoring                | Shipped + tap-tested                                                     |
-| M4a — Tick Brick Logging                     | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M4b — Goal Brick Stepper                     | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M4d — Add Chooser Sheet                      | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M4c — Time Brick Timer                       | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M4e — Brick Duration + Overlap               | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M4f — Two Brick Kinds; Rip Timer             | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M4g — Timer-era Dead-code Sweep              | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M8 — Persistence                             | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M9a — appliesOn recurrence resolver          | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M9b — Day rollover + history store           | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M9c — Month view (Kingdom) + view switcher   | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M9d — Week view (Castle) + period scoring    | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M9e — Year view (Empire) + complete calendar | Shipped to preview — awaiting Gate #2 tap-test                           |
-| **M9 — Calendar Nav**                        | **COMPLETE** — all four switcher segments (Day/Week/Month/Year) now live |
-| M5 — Edit Mode + Delete                      | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M6 — Drag Reorder                            | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M7a — Stagger Fade-in + Skeleton Shimmer     | Shipped to preview — M7 chunk 1 of 5 (one Gate #2 tap at end of M7e)     |
+| Milestone                                          | State                                                                    |
+| -------------------------------------------------- | ------------------------------------------------------------------------ |
+| M0 — Design System                                 | Shipped + tap-tested                                                     |
+| M1 — Empty Building Shell                          | Shipped + tap-tested                                                     |
+| M2 — Add Block Flow                                | Shipped + tap-tested                                                     |
+| M3 — Add Brick + Live Scoring                      | Shipped + tap-tested                                                     |
+| M4a — Tick Brick Logging                           | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M4b — Goal Brick Stepper                           | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M4d — Add Chooser Sheet                            | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M4c — Time Brick Timer                             | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M4e — Brick Duration + Overlap                     | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M4f — Two Brick Kinds; Rip Timer                   | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M4g — Timer-era Dead-code Sweep                    | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M8 — Persistence                                   | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M9a — appliesOn recurrence resolver                | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M9b — Day rollover + history store                 | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M9c — Month view (Kingdom) + view switcher         | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M9d — Week view (Castle) + period scoring          | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M9e — Year view (Empire) + complete calendar       | Shipped to preview — awaiting Gate #2 tap-test                           |
+| **M9 — Calendar Nav**                              | **COMPLETE** — all four switcher segments (Day/Week/Month/Year) now live |
+| M5 — Edit Mode + Delete                            | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M6 — Drag Reorder                                  | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M7a — Stagger Fade-in + Skeleton Shimmer           | Shipped to preview — M7 chunk 1 of 5 (one Gate #2 tap at end of M7e)     |
+| M7b — Now-line Glow + Active-block Pulse + NOW Tag | Shipped to preview — M7 chunk 2 of 5                                     |
 
 Latest preview: `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (branch alias; auto-tracks `claude/verify-m0-deployment-s4XRy`). Vercel Deployment Protection active — open in browser while signed in to Vercel.
 
@@ -110,6 +111,7 @@ components/          Shared UI components + unit tests
   DeleteConfirmModal.tsx Recurrence-aware delete confirmation (recurring: Just today / All recurrences; non-recurring/brick: single Delete) (M5)
   DraggableTimelineBlock.tsx Block card wrapper with visible drag handle; drag-to-retime with 30-min snap, overlap rejection, medium-haptic snap-back, aria-live announce; brick reorder via Framer Reorder.Group (M6)
   Skeleton.tsx        Shimmer placeholder cards rendered during two-pass hydration window; 4 variants: block/brick/bar/ring (M7a)
+  NowTag.tsx          Amber "NOW" accent badge rendered top-right on the active block card; role="status"; pointer-events: none (M7b)
 lib/                 Domain logic: types, data, scoring, utilities
   celebrations.ts    useCrossUpEffect hook — one-shot cross-up detection for bloom/fireworks
   audio.ts           playChime() — lazy HTMLAudioElement for /sounds/chime.mp3; SSR + iOS guard
@@ -128,6 +130,7 @@ lib/                 Domain logic: types, data, scoring, utilities
   snapToSlot.ts       Pure helper: snapToSlot(minutesSinceMidnight) → nearest 30-min boundary; used by drag-reorder (M6)
   motion.ts           motionTokens + staggerForCount(n) helper — per-surface stagger cascade constants (M7a)
   firstPaint.ts       Reserved placeholder for first-paint timing utilities (M7a)
+  activeBlock.ts      Pure activeBlockId(items, nowMinutes) helper — identifies the block whose half-open window straddles the current minute (M7b)
 tests/
   e2e/               Playwright specs (e2e + a11y)
 docs/
