@@ -2591,3 +2591,351 @@ M5b is a **render-only correctness fix.** No new storage. No new UI. No schema c
 - **SG-m5b-01 — Should the loose-bricks tray also consult `appliesOn`?** Loose bricks with `hasDuration: true` carry a `recurrence`. Today the tray shows every non-timed loose brick regardless of recurrence (non-timed bricks have no `recurrence` field). M5b's scope per ADR-047 is the block layer only. Recommendation: keep tray behavior unchanged — non-timed bricks have no recurrence so the question doesn't arise; timed loose bricks don't appear in the tray anyway (M4e filters them onto the timeline). VERIFIER confirms the tray reads `trayBricks` from a selector that excludes timed bricks (it does — `selectTrayBricks` in M4e).
 - **SG-m5b-02 — Should timed loose bricks on the timeline consult `appliesOn`?** Timed loose bricks render on the timeline (M4e). They have a `recurrence`. Today they render every day regardless. Recommendation: out of scope for M5b — ADR-047 names the **block** layer; timed-loose-brick recurrence is a parallel concern. If we want to close it, that's a separate spec entry (slug `m5c`?). PLANNER confirms M5b does not touch `selectTimelineItems` or the timed-loose-brick path; VERIFIER checks the diff scope.
 - **SG-m5b-03 — Helper function naming and signature.** The existing helper is `currentDayBlocks(state: AppState): Block[]`. M5b extends it in-place without renaming. Alternative: introduce a second helper (e.g., `applicableBlocks`) and compose. Recommendation: extend in place — same name, same signature, same call sites; the function's docstring updates to reflect the two-filter composition and ADR-047 closure. PLANNER confirms in-place extension; VERIFIER checks no orphan helpers are introduced.
+
+## Milestone 7a — Stagger fade-in + skeleton shimmer
+
+> **Pillars:** § 0.5 (interaction primitives — first paint should feel deliberate, not abrupt); § 0.7 (motion tokens — `stagger: 30ms` and the existing `prefers-reduced-motion` collapse); ADR-023 (two-pass hydration: server paints, client rehydrates without mismatch); phase1plan § Polish Layer (M7 item: "Stagger fade-in on page load 30ms between cards" + "Loading states: skeleton blocks with shimmer"). No new motion tokens; M7a consumes `motionTokens.stagger` from `lib/motion.ts` unchanged.
+
+### Intent
+
+The current first-paint paints everything simultaneously — blocks, BlueprintBar, Timeline, LooseBricksTray. It's correct but lifeless. M7a wraps the Day-view's three repeating-card surfaces (the timeline's visible blocks, the BlueprintBar segments, the LooseBricksTray chips) in a Framer Motion stagger so each card enters with a 30 ms delay against its sibling, producing a single deliberate cascade on initial paint. During the two-pass hydration window (ADR-023) — the brief moment between server paint and client-state ready — the same three surfaces render skeleton placeholders with a subtle shimmer so the screen reads as "loading", not "broken". The skeleton fades out and the real cards fade in (with the stagger) the moment client state lands.
+
+M7a is **first-paint only.** Subsequent re-renders (a brick logged, a block added, the now-line ticking) do not re-stagger; they animate per their existing motion. Stagger and skeleton are render-layer; no data model changes, no schema bump, no new actions, no new persisted field.
+
+**What this is NOT:** a re-architecture of `BuildingClient.tsx` or any of its data flow; a new global "is loading" Redux/Zustand store (the existing two-pass hydration flag is consulted, not replaced); a stagger on every state update (only the first paint after hydration completes); animating items that did not exist on first paint (an added block enters via its existing add-flow motion, not a stagger); a Lighthouse perf regression (skeleton + stagger must not push Performance below the 90 floor).
+
+### Inputs
+
+- Existing `motionTokens.stagger` (30 ms per-sibling delay) from `lib/motion.ts`.
+- The two-pass hydration flag already in `BuildingClient.tsx` / persistence layer (per ADR-023; M8 hydration). M7a does not introduce a new flag.
+- The same three Day-view surfaces M5b touched: BlueprintBar (segments), Timeline (visible blocks), LooseBricksTray (chips).
+
+### Outputs
+
+- `components/SkeletonBlock.tsx` + `components/SkeletonChip.tsx` + `components/SkeletonSegment.tsx` (or one shared `<Skeleton>` primitive — PLANNER decides), each rendering an outlined card/chip/segment with a CSS shimmer keyframe.
+- `components/Timeline.tsx`, `components/BlueprintBar.tsx`, `components/LooseBricksTray.tsx` each wrap their iterated items in a Framer Motion `<motion.div>` with `initial / animate / transition` honoring `staggerChildren: 0.03`, **gated on first-paint-after-hydration only**.
+- A small `lib/firstPaint.ts` (or a reused React `useEffect` ref) that flips `hasStaggeredOnce.current = true` after the first hydrated render so subsequent updates skip the stagger.
+- `prefers-reduced-motion` branch: stagger collapses to instant; shimmer collapses to a static neutral fill (no animated keyframe). Verified at the CSS level via `@media (prefers-reduced-motion: reduce)`.
+- No new actions, no new persisted state, no schema bump.
+
+### Edge cases
+
+- **Empty Day (no blocks, no loose bricks)** → no stagger fires (nothing to stagger); the EmptyBlocks card paints with its existing motion. No skeleton either (hydration completed, state is genuinely empty).
+- **Single block** → renders with no perceptible stagger (one child × 30 ms = 30 ms total). Correct; not a bug.
+- **Many blocks (10+)** → total stagger time = `N × 30 ms`. At N=10 that's 300 ms total — well under any perceived lag. PLANNER may cap with a `staggerChildren` ceiling if N grows pathological; M7a documents the cap rather than discovering it later.
+- **`prefers-reduced-motion`** → stagger collapses to `duration: 0`; shimmer is a flat solid swatch (no animated gradient).
+- **State update during stagger** → if a user logs a brick at the same instant the stagger is animating in, the brick-fill animation overrides (Framer Motion handles last-write-wins on `animate` props). M7a documents that the brick-fill animation always wins.
+- **Server paint** → renders skeleton placeholders directly (the persistence layer's two-pass pattern hands the server an empty state). Client hydrates, fades skeleton out, fades real cards in with stagger.
+- **Second navigation to the Day view (e.g., from Week → Day)** → first-paint stagger fires again **only if** the component re-mounts. PLANNER decides if Day view re-mounts on view-switcher tap; if it persists across views, the stagger does not re-fire (the `useRef` survives).
+- **Reduced-motion + many blocks** → skeleton stays static; real cards swap in instantly with no per-sibling delay.
+- **Lighthouse / 60fps** → the stagger + shimmer must not regress Performance below 90 or drop frames during the cascade. Verified via Playwright trace.
+
+### Acceptance criteria
+
+**Stagger**
+
+1. On the first hydrated paint of `BuildingClient.tsx`, the BlueprintBar's category segments, the Timeline's visible blocks, and the LooseBricksTray's chips each enter with a per-sibling delay of `motionTokens.stagger.durationMs` (30 ms), in source order.
+2. The stagger fires **once per mount** of `BuildingClient.tsx`. A brick-log update, an add-block action, or a now-line tick does not re-trigger the stagger.
+3. The stagger consumes the existing `motionTokens.stagger` token; M7a does not modify `lib/motion.ts`.
+
+**Skeleton**
+
+4. Before client hydration completes, the three surfaces render their `<Skeleton…>` variants — outlined cards with a CSS shimmer keyframe.
+5. The skeleton fades out at the same instant the real cards begin staggering in; there is no overlap of skeleton + real card in the same row.
+6. The skeleton DOM matches the real card's bounding box (same height, same padding) so no layout shift occurs at swap.
+
+**Reduced motion**
+
+7. With `prefers-reduced-motion: reduce`, the stagger collapses to instant (`duration: 0`) and the shimmer collapses to a flat solid swatch — no animation.
+
+**Quality**
+
+8. `tsc --noEmit` clean; ESLint 0 errors (≤13 warnings); full Vitest suite green; `test:tz` green. Vitest covers: stagger fires once per mount; reduced-motion path renders zero animation; skeleton-to-real swap has identical bounding boxes; first-paint ref guards subsequent renders from re-staggering.
+9. E2E (Playwright, deferred-to-preview): Lighthouse Performance ≥ 90 on the post-M7a Day view; no Cumulative Layout Shift at hydration; the stagger cascade completes inside `N × 30 ms + 100 ms` overhead.
+10. No regression to M1–M9e / M5b behavior; the Day view, calendar views, and all add/edit/delete flows continue to behave identically.
+
+### Open spec gaps (resolve at VERIFY)
+
+- **SG-m7a-01 — Stagger ceiling.** If a user has 30 blocks, raw 30 × 30 ms = 900 ms total stagger — perceptibly slow. Recommendation: cap at `staggerChildren: 0.02` once N > 15 (so total stagger ≤ 600 ms even at N=30). PLANNER decides the exact piecewise function; VERIFIER checks it is documented in `lib/motion.ts` if a new motion variant is added.
+- **SG-m7a-02 — Skeleton count.** During the hydration window, how many skeleton blocks render? Recommendation: 3 skeleton blocks + 1 skeleton chip — enough to communicate "loading", small enough to render in under one frame. PLANNER confirms; VERIFIER checks no skeleton renders after hydration.
+- **SG-m7a-03 — Shimmer asset cost.** CSS keyframe vs. an `<img>` shimmer vs. SVG. Recommendation: pure CSS keyframe (`linear-gradient` + `background-position` animation) — zero asset weight, GPU-accelerated. PLANNER picks; VERIFIER checks the chosen path adds no new image/font asset.
+
+## Milestone 7b — Live now-line glow + active-block pulsing glow + NOW tag
+
+> **Pillars:** § 0.5 (interaction primitives — the present moment should be the visually loudest thing on screen); § 0.7 (motion tokens — pulsing glow uses a CSS keyframe consistent with the existing `pulse`-style M0 vocabulary); ADR-023 (`useNow()` ticks every 60 s; M7b consumes the existing tick, never introduces a second clock); M1's amber `--accent` now-line on the timeline; phase1plan § Polish Layer (M7 items: "Live now-line — amber, glowing, sweeps timeline all day" + "Current block: pulsing glow, NOW tag").
+
+### Intent
+
+The now-line today is a 1 px amber rule — correct but quiet. M7b makes the present moment unmissable: the now-line gains a soft amber glow (CSS `filter: drop-shadow` or `box-shadow`), and the **active block** (the unique block whose half-open interval `[start, end)` contains `useNow()`'s current time) gets a pulsing glow ring plus a `NOW` tag badge anchored at the block's top-right corner. As time advances and the active block changes (the prior block ends, the next begins), the glow + tag move with it — no manual recomputation; the active-block predicate is recomputed on every `useNow()` tick.
+
+M7b is **render-layer only.** No new actions. No schema bump. No new persisted state. The predicate `isActiveBlock(block, now)` is a pure function — already trivially expressible from existing `start`/`end` and the existing overlap helpers in `lib/overlap.ts`.
+
+**What this is NOT:** a `NowCard` component (deferred since M1; M7b's `NOW` tag is a small badge on the existing block card, not a separate region); making non-active blocks glow at all (only the one block whose interval contains `now`); changing the now-line's vertical position math (M1's geometry stands); a multi-active-block case (blocks are half-open per ADR-006 — at most one block contains `now` at any instant); animation during `prefers-reduced-motion` (collapses to a static amber outline + static `NOW` tag — no pulse keyframe).
+
+### Inputs
+
+- Existing `useNow()` hook from `lib/useNow.ts` (returns `"HH:MM"`; ticks every 60 s; ADR-023).
+- Existing `intervalsOverlap` / half-open `[start, end)` semantics from `lib/overlap.ts` (M4e).
+- Existing `--accent` amber token from M0.
+- The visible-today blocks the Day view already computes (M5b's `currentDayBlocks(state)`).
+
+### Outputs
+
+- `lib/activeBlock.ts` exporting a pure `activeBlockId(blocks: Block[], now: string): string | null` returning the id of the unique block whose `[start, end)` contains `now`, or `null` if none. Tested unit-level.
+- `components/Timeline.tsx` (or a small new `<NowGlow>` sub-component) renders the now-line with a CSS `filter: drop-shadow(0 0 8px var(--accent))`.
+- The block card (already rendered by the Timeline) gains a conditional CSS class `is-active` when `block.id === activeBlockId(visibleBlocks, now)`. That class applies a pulsing CSS keyframe (`@keyframes nowPulse`) on the card's outline + a static `NOW` badge in the card's top-right.
+- `@media (prefers-reduced-motion: reduce)` rule: `nowPulse` becomes a static amber outline; the badge still renders.
+
+### Edge cases
+
+- **Before the first block, between blocks, after the last block** → `activeBlockId` returns `null`; no block pulses; no `NOW` badge renders. The now-line itself still glows (it always exists).
+- **Block whose `end` is `undefined`** (a block created without an end) → per ADR-006 it has no half-open interval and so is not considered active. PLANNER confirms (the M2 schema allows `end?` to be undefined).
+- **Block exactly at the boundary** (`now` == `block.end`) → half-open semantics ⇒ NOT active. The next block (or no block) takes over.
+- **A block deleted via `deletions` for today** → does not appear in `visibleBlocks` so cannot be the active block.
+- **A block whose `appliesOn` returns false for today** (post-M5b) → does not appear in `visibleBlocks` so cannot be the active block.
+- **Tick frequency** → `useNow()` ticks every 60 s; the `NOW` tag may linger up to 59 s past a block end before it migrates. Acceptable; documented; no new clock is introduced.
+- **Multiple blocks claiming `now`** (only possible if the schema allowed it, which it doesn't — M4e's overlap engine forbids construction of overlapping blocks) → `activeBlockId` returns the first by source order; an assertion or invariant log fires (defensive — should never trip).
+- **`prefers-reduced-motion`** → the now-line still glows (CSS box-shadow is not motion); the block outline becomes static amber; the `NOW` badge still renders.
+
+### Acceptance criteria
+
+**Active-block predicate**
+
+1. `lib/activeBlock.ts` exports `activeBlockId(blocks: Block[], now: string): string | null` — pure (no clock reads, no `localStorage`, no mutation).
+2. The predicate uses half-open `[start, end)` semantics: a block whose `start === now` is active; a block whose `end === now` is NOT.
+3. Returns `null` when no block contains `now` or when every visible block has `end === undefined`.
+
+**Now-line glow**
+
+4. The Timeline's now-line renders with a soft amber drop-shadow / box-shadow visible on dark theme.
+5. The glow position updates with `useNow()`'s tick; M7b does not introduce a second clock.
+
+**Active-block pulse + NOW tag**
+
+6. The block card whose id matches `activeBlockId(visibleBlocks, now)` renders with a pulsing CSS keyframe on its outline (or border) and a `NOW` text badge in its top-right corner.
+7. Exactly one block at a time carries the `is-active` styling; when `now` crosses into the next block's interval (within the 60 s tick budget), the styling migrates.
+8. With `prefers-reduced-motion: reduce`, the pulse collapses to a static amber outline; the `NOW` badge remains.
+
+**Quality**
+
+9. `tsc --noEmit` clean; ESLint 0 errors (≤13 warnings); full Vitest suite green; `test:tz` green. Vitest covers: `activeBlockId` truth table (before/after blocks, mid-block, on-boundary `start` and `end`, empty `end`, deletions-suppressed, appliesOn-suppressed); the Timeline applies `is-active` to exactly one block; reduced-motion path renders no keyframe animation.
+10. E2E (Playwright, deferred-to-preview): Lighthouse Performance ≥ 90; the pulse animation runs at ≥ 55 fps over a 5 s trace; the `NOW` badge text is `aria-label`'d for screen readers.
+11. No regression to M1–M9e / M5b / M7a behavior.
+
+### Open spec gaps (resolve at VERIFY)
+
+- **SG-m7b-01 — Pulse cadence.** The pulse keyframe duration and easing — 1.6 s `easeInOut`? 2 s linear breathing? Recommendation: 1.8 s `easeInOut` opacity 0.6 → 1.0 → 0.6 on the outline. PLANNER picks; VERIFIER checks the timing is documented as a CSS variable (`--motion-now-pulse-duration`).
+- **SG-m7b-02 — NOW badge placement and contrast.** Top-right vs. inline-left; accent fill vs. accent outline. Recommendation: top-right corner, accent fill, ink-on-accent text, 8 px corner inset; passes WCAG AA against `--accent`. PLANNER confirms; VERIFIER runs axe.
+- **SG-m7b-03 — Now-line glow vs. block glow visual weight.** Both glowing risks competing for attention. Recommendation: now-line shadow is small (`drop-shadow(0 0 6px)`); block pulse is larger and breathing (`opacity 0.6 → 1.0`). PLANNER picks; VERIFIER checks visual hierarchy by inspection.
+
+## Milestone 7c — Hero % count-up on first load
+
+> **Pillars:** § 0.5 (interaction primitives — the daily score should arrive deliberately, not abruptly); § 0.7 (motion tokens — count-up uses a new `countUp` motion variant with 1.6 s easeOut to match the M0 vocabulary); ADR-023 (two-pass hydration — the count-up fires once, after hydration); M3's HeroRing renders the real % from `dayScore`; phase1plan § Polish Layer (M7 item: "Hero % counts up over 1.6s on first load").
+
+### Intent
+
+The hero's `0%` → real-% jump happens silently at hydration today. M7c animates it: a 1.6 s ease-out count-up from `0` to `dayScore(state)`'s integer percent, fired exactly once on first paint after hydration. Subsequent updates (a brick logged, a block deleted) animate through the existing per-update transition. The ring stroke-dashoffset and the numeral both ride the same count-up so they stay in sync.
+
+M7c is **first-paint only.** Render-layer. No new actions, no schema bump, no new persisted field.
+
+**What this is NOT:** animating the count-up on every score change (only first paint); a count-down (only forward); a count-up in past-day reads (only the live in-progress day; M9c/d/e history reads paint the final score immediately); a count-up under `prefers-reduced-motion` (collapses to the final number, instant); a re-architecture of `<HeroRing>` (it gains a `firstPaintCountUp` boolean prop; nothing else).
+
+### Inputs
+
+- `dayScore(state)` from `lib/dharma.ts` — integer 0–100 of today's percent.
+- Existing `<HeroRing>` component.
+- Existing two-pass hydration flag.
+
+### Outputs
+
+- `lib/motion.ts` gains a `countUp` variant: `{ durationMs: 1600, easing: "easeOut" }`. Documented in `motion.test.ts`.
+- `<HeroRing>` accepts a new prop `firstPaintCountUp?: boolean`. When true, the component's `useEffect` animates a tween from `0` to the incoming `pct` over 1.6 s on mount. Subsequent prop changes skip the tween and re-render normally.
+- `BuildingClient.tsx` passes `firstPaintCountUp` true on the first hydrated render, false thereafter (mirrors M7a's `hasStaggeredOnce` ref pattern).
+- `prefers-reduced-motion: reduce` → tween collapses to instant; the numeral and stroke render at final value immediately.
+
+### Edge cases
+
+- **First paint with `dayScore === 0`** → no animation (the tween's start and end are both 0); the numeral renders `0%` directly. Documented.
+- **First paint with `dayScore === 100`** → animates 0 → 100 over 1.6 s; on completion the bloom + chime animation (M7d) MAY fire if the day is genuinely 100% at hydration. M7d is its own spec; M7c does not couple to it. (If M7d ships before M7c, the bloom won't double-fire because M7d's predicate checks for "transition to 100%", and "rendered as 100% on hydration" is not a transition.)
+- **Brick logged during the count-up** → the tween cancels (Framer Motion `animate` last-write-wins) and the new `pct` lands directly via the per-update transition. Documented as not-a-bug.
+- **Second mount** (Day view re-mounted via view switcher) → if the ref persists, no re-count-up; if the component re-mounts fresh, it counts up again. PLANNER picks; VERIFIER checks the chosen behavior matches the M7a stagger decision.
+- **`prefers-reduced-motion`** → numeral and ring render at final value on mount; no tween.
+
+### Acceptance criteria
+
+**Tween**
+
+1. On the first hydrated paint of `<HeroRing>` in `BuildingClient.tsx`, the numeral and the SVG stroke-dashoffset animate jointly from `0` to `dayScore(state)` over `motionTokens.countUp.durationMs` (1600 ms) with `easeOut`.
+2. The numeral updates every animation frame in integer steps (no half-percent display).
+3. The tween fires **once per mount.** Subsequent `pct` prop changes re-render via the existing per-update transition, not a count-up.
+
+**Token addition**
+
+4. `lib/motion.ts` exports `motionTokens.countUp = { durationMs: 1600, easing: "easeOut" }`. Covered by `lib/motion.test.ts`.
+
+**Reduced motion**
+
+5. With `prefers-reduced-motion: reduce`, the numeral and stroke render at final value on mount; no per-frame animation runs.
+
+**Quality**
+
+6. `tsc --noEmit` clean; ESLint 0 errors (≤13 warnings); full Vitest suite green; `test:tz` green. Vitest covers: count-up fires once per mount; reduced-motion path renders no tween; integer numeral throughout; subsequent prop changes do not re-count-up.
+7. E2E (Playwright, deferred-to-preview): Lighthouse Performance ≥ 90; the count-up completes inside 1.7 s of mount; no layout shift; the stroke and numeral stay in sync to within one frame at every sample.
+8. No regression to M1–M9e / M5b / M7a / M7b behavior.
+
+### Open spec gaps (resolve at VERIFY)
+
+- **SG-m7c-01 — Integer rounding strategy.** During the tween, the numeral could display `Math.round(currentPct)` or `Math.floor(currentPct)`. Recommendation: `Math.round` — feels smoother on perception; never overshoots the target by more than half a percent. PLANNER confirms; VERIFIER checks the chosen function is consistent across re-renders.
+- **SG-m7c-02 — Easing curve.** `easeOut` per the token, but the exact easing function (`cubic-bezier(...)`) needs to read "decisive but not sluggish". Recommendation: standard Framer Motion `easeOut` (`cubic-bezier(0, 0, 0.2, 1)`). PLANNER picks; VERIFIER checks the easing produces a perceptibly decelerating count.
+- **SG-m7c-03 — Coupling with M7a stagger.** The hero is not part of M7a's three-surface stagger (it's its own region). The count-up and the stagger run concurrently, not serialized. Recommendation: leave them concurrent — they target different elements; perceived as "everything coming alive at once". PLANNER confirms; VERIFIER checks no `setTimeout` chaining is introduced to serialize them.
+
+## Milestone 7d — Block 100% bloom + Day 100% fireworks (visual only; audio deferred)
+
+> **Pillars:** § 0.5 (celebrations are earned and sparing); § 0.7 (motion tokens — `bloom: { stiffness: 220, damping: 22 }` from M0; `fireworks: { durationMs: 1600, easing: "easeOut" }` from M4a — both consumed unchanged); phase1plan § Polish Layer (M7 items: "Block 100% → bloom + chime" + "Day 100% → fireworks"); **SG-m4f-05** (chime asset still placeholder; audio explicitly deferred from M7d per user authorization on 2026-05-20).
+
+### Intent
+
+When a block transitions from <100% to exactly 100% — a brick log that finishes the last brick in the block — the block card runs the M0 `bloom` spring (a scale-up flourish on the block's accent ring/outline). When the day transitions from <100% to 100% (every visible block is 100%), a fireworks overlay sweeps across the hero region using M4a's `fireworks` token. Both fire on **transition only**, never on a state that was already 100% at mount (rules out replays at hydration). Both honor `prefers-reduced-motion`.
+
+**Audio is deferred.** `public/sounds/chime.mp3` is a 431-byte placeholder; M7d ships visuals only and leaves a documented hook (`celebrate(kind: 'block' | 'day')`) that a follow-up can fill once a real audio asset lands.
+
+**What this is NOT:** an audio implementation (deferred — see SG-m7d-01); the Empire square unlock animation (deferred to M9 follow-up per phase1plan); a celebration on `appliesOn`-suppressed blocks (suppressed blocks aren't visible, so they can't transition to 100% via UI); a celebration on history-archived 100% days (only the live in-progress day fires; past 100% days were celebrated when they happened); a celebration on `prefers-reduced-motion` (collapses to a static "completed" pulse).
+
+### Inputs
+
+- `motionTokens.bloom` (M0) and `motionTokens.fireworks` (M4a) — both unchanged.
+- `blockScore(block)` and `dayScore(state)` from `lib/dharma.ts` — both pure.
+- The existing `lib/celebrations.ts` module (M4a — already houses the day-100% celebration plumbing).
+
+### Outputs
+
+- `lib/celebrations.ts` extended with a `celebrateBlock(blockId: string)` API and a transition-detection predicate so a brick-log reducer effect can call `celebrate(...)` exactly when the block crosses to 100%.
+- `components/BlockCard.tsx` (or equivalent) consumes the celebration signal and runs a Framer Motion `<motion.div animate={...}>` bloom on the accent ring.
+- The fireworks overlay (already partially implemented in M4a) is wired to fire on the day's first transition to 100% per mount; suppressed on `prefers-reduced-motion` (replaced by a static "Day complete." text card).
+- A `celebrate(kind, opts)` shim that takes a `withAudio?: boolean` param defaulting to `false`. M7d wires `withAudio: false`; a follow-up replaces the placeholder chime and flips the default.
+- `tests/celebrations.test.ts` covers: block transition 99→100 fires bloom; 100→100 does not re-fire; day transition n<100→100 fires fireworks; hydration into a 100% day does not fire fireworks; reduced-motion path renders the static text card.
+
+### Edge cases
+
+- **Hydration into a state where a block is already 100%** → no bloom (no transition).
+- **Hydration into a 100% day** → no fireworks (no transition); the hero count-up (M7c) lands at 100% smoothly without celebration.
+- **A brick is logged that pushes block A from 99→100 but block B from 100→99** (re-toggling) → A fires bloom; B does not; if no block was at 100 before the action, no day-100 fires.
+- **A user undoes a tick that drops a block from 100→99** → no celebration replays in reverse; the bloom is a one-way animation.
+- **`appliesOn`-suppressed blocks** → not in `visibleBlocks`; cannot affect `dayScore` or fire a bloom.
+- **`prefers-reduced-motion`** → block bloom collapses to a 600 ms opacity flash on the accent ring (no spring); day fireworks collapse to a static "Day complete." text card center-screen for 2 s, then fades.
+- **Audio gate** → `withAudio` is `false` in M7d; no audio plays. Documented; the audio hook is in place for a follow-up.
+
+### Acceptance criteria
+
+**Block bloom**
+
+1. When a brick log transitions a block from `<100` to exactly `100`, the block card runs the M0 `bloom` spring on its accent ring/outline exactly once.
+2. A block that was at 100% at hydration does not bloom on mount.
+3. A block that drops from 100% does not re-bloom on the next 100% crossing within the same mount (per M0 — celebrations are sparing). PLANNER may relax this to "once per mount per block"; VERIFIER ratifies.
+
+**Day fireworks**
+
+4. When `dayScore(state)` transitions from `<100` to exactly `100`, the fireworks overlay fires once per mount, consuming `motionTokens.fireworks` unchanged.
+5. A day that was at 100% at hydration does not fire fireworks on mount.
+
+**Reduced motion**
+
+6. With `prefers-reduced-motion: reduce`, the block bloom collapses to a 600 ms opacity flash; the day fireworks collapse to a "Day complete." text card.
+
+**Audio deferral**
+
+7. `celebrate(kind, { withAudio: false })` is the M7d default. No call to `lib/audio.ts`'s play API fires from M7d's celebration path. The audio hook is documented in `lib/celebrations.ts`'s docstring as "wire when a real `chime.mp3` lands (>30 KB, ≤30 KB target per SG-m4a-04)".
+
+**Quality**
+
+8. `tsc --noEmit` clean; ESLint 0 errors (≤13 warnings); full Vitest suite green; `test:tz` green. Vitest covers all transition predicates above and the audio-off invariant.
+9. E2E (Playwright, deferred-to-preview): Lighthouse Performance ≥ 90; the fireworks render at ≥ 55 fps over a 2 s trace; no console error on celebration paths.
+10. No regression to M1–M9e / M5b / M7a / M7b / M7c behavior.
+
+### Open spec gaps (resolve at VERIFY)
+
+- **SG-m7d-01 — Audio asset.** `public/sounds/chime.mp3` is a 431-byte placeholder. M7d ships visuals only; the audio hook is in place but disabled. Recommendation (logged 2026-05-20): a follow-up spec entry (`m7f`?) ships the real asset and flips `withAudio: true`. PLANNER confirms the audio path remains a one-line change.
+- **SG-m7d-02 — Block re-bloom semantics.** A block that goes 99→100→99→100 within one mount: should the second 100 crossing bloom? Recommendation: **no** — celebrations are sparing per § 0.5; once per block per mount. PLANNER confirms; VERIFIER checks the `Set<string>` of bloomed-this-mount block ids exists.
+- **SG-m7d-03 — Fireworks visual.** M4a's `fireworks` token specifies duration (1600 ms easeOut); the visual is not specified. Recommendation: a particle burst SVG overlaid on the hero, accent-tinted, fading out over the token duration. PLANNER picks the exact rendering (CSS particles vs. SVG vs. Lottie); VERIFIER checks no new third-party dependency is introduced.
+
+## Milestone 7e — First-brick text card + brand-mark long-press easter egg + toasts
+
+> **Pillars:** § 0.5 (interaction primitives — narrative beats are rare, surprising, and earned; the brand-mark is the secret door); § 0.7 (motion tokens — sheet-slide for the first-brick card, M0's `longPress` haptic + scale for the brand-mark); ADR-031 (≥44 px touch targets — the brand-mark long-press tappable area meets this); ADR-039 (Dharma ships empty — the first brick is genuinely the user's first); phase1plan § Polish Layer (M7 items: "First-ever brick added → text card slides in: 'Your Empire begins.'" + "Brand mark long-press → reveals hidden year heatmap preview" + "Toasts for confirmations").
+
+### Intent
+
+Three small narrative surfaces — each independent, each tiny, each ships together because none earns its own milestone:
+
+1. **First-brick card** — the very first time the user dispatches `ADD_BRICK` (across all program history), a text card slides up from the bottom reading "**Your Empire begins.**" The card auto-dismisses after 3 s or on tap. It is a one-time event, persisted via a single boolean `firstBrickShown: true` so future bricks (or a reload) don't re-fire it.
+2. **Brand-mark long-press easter egg** — long-pressing the top-bar brand mark (the "Dharma" wordmark) for 600 ms (M0's existing `longPress` threshold) reveals a year-heatmap preview overlay — same visual vocabulary as M9e's year view, scaled down, no interactivity. Releasing closes it.
+3. **Toasts** — a global `<Toaster>` mounts at the body's bottom, subtle, auto-dismissing in 2 s. Toasts fire on: block created, block deleted, brick added, brick deleted. Each event already exists; M7e wires the toast emit at the action-dispatch boundary.
+
+M7e is **render-layer + a single persisted boolean.** The `firstBrickShown` flag adds one field to the persisted state, requiring an additive migrator (no schema bump if it's added as optional with a default; PLANNER picks).
+
+**What this is NOT:** a notification center, a toast queue with overlap rules (single-toast-at-a-time is fine — last-write-wins), a different visual treatment per toast type beyond color (success = accent, info = ink-dim, error = red — already in M0); revealing the heatmap on tap (long-press is the only entry); a "tutorial" or onboarding flow; a celebration on the first block (the first **brick** is the loud moment, not the first block).
+
+### Inputs
+
+- M0's `longPress` hook (`lib/longPress.ts`, 600 ms threshold) and its haptic.
+- The existing `ADD_BRICK` action and the reducer hook.
+- M9e's year-heatmap rendering (re-used in scaled-down preview).
+- Existing `state` shape; M7e proposes adding an optional `firstBrickShown?: boolean` (default `undefined` ≡ false on read).
+
+### Outputs
+
+- `components/FirstBrickCard.tsx` — bottom-sheet-style card; visible iff `state.firstBrickShown !== true` AND the user has at least one brick. Slides in on first paint after the user adds their first brick; auto-dismisses after 3 s; tap-to-dismiss.
+- The reducer (`lib/data.ts`) gains a side effect on `ADD_BRICK` that flips `firstBrickShown: true` the first time it dispatches (idempotent on subsequent calls).
+- A persistence migrator (additive) so existing saved states default `firstBrickShown` to the value of "does this state already have any bricks?" — true if yes (don't surprise existing users), false if no.
+- `components/BrandMarkLongPress.tsx` — wraps the existing top-bar brand mark; long-press (600 ms) shows a year-heatmap preview overlay; release closes it.
+- `components/Toaster.tsx` — singleton mount; `toast(message: string, kind: 'success' | 'info' | 'error')` API; auto-dismiss 2 s; one toast at a time, last-write-wins.
+- The four action dispatches that should emit a toast (block-add, block-delete, brick-add, brick-delete) call `toast(...)` at the dispatch site.
+
+### Edge cases
+
+- **User adds their first brick, reloads, adds another** → card already shown (persisted); does not re-fire.
+- **User has existing saved state with bricks (migrator path)** → `firstBrickShown` migrates to `true` so they never see the card retroactively.
+- **User has saved state with no bricks** → `firstBrickShown` migrates to `false` (or stays undefined); the next `ADD_BRICK` fires the card.
+- **Long-press starts on brand mark but drifts off before 600 ms** → no overlay (M0 `longPress` already handles drag-cancel).
+- **Long-press during sheet open** → the sheet's modal-open state blocks the long-press start (consistent with M5/M6 modal-blocks-interaction rule).
+- **Toast on an action that was rolled back** (e.g., quota-exceeded ADR-018 path) → the toast emits the error variant; the rollback already runs in the reducer.
+- **Multiple rapid actions** → only the latest toast is visible; the prior fades immediately. Acceptable per "subtle, single-toast".
+- **`prefers-reduced-motion`** → first-brick card slides in with no spring (linear 200 ms); heatmap overlay opacity-fades only (no scale); toast slides collapse to instant appear/disappear.
+
+### Acceptance criteria
+
+**First-brick card**
+
+1. The card mounts and slides in on the next paint after `ADD_BRICK` dispatches AND `state.firstBrickShown !== true`.
+2. The card displays "Your Empire begins." in the spec'd display type scale.
+3. The card auto-dismisses after 3 s, or on tap.
+4. After dismissal, `state.firstBrickShown === true` is persisted; a reload does not re-show the card.
+5. An existing saved state with at least one brick is migrated to `firstBrickShown: true` so the card never appears retroactively.
+
+**Brand-mark long-press**
+
+6. A 600 ms long-press on the brand mark opens a year-heatmap preview overlay; release closes it.
+7. Drift cancels the long-press (no overlay).
+8. The overlay re-uses M9e's year-heatmap rendering at reduced scale; no new third-party dependency.
+
+**Toasts**
+
+9. `toast(message, kind)` mounts a single bottom-anchored toast for 2 s; the next call replaces the current one immediately (no queue).
+10. Block-add, block-delete, brick-add, brick-delete actions each emit a toast on successful dispatch with the appropriate message and kind.
+11. A rolled-back action emits an error-kind toast.
+
+**Reduced motion**
+
+12. With `prefers-reduced-motion: reduce`, the card slide collapses to a linear 200 ms; the overlay opacity-fades; the toast renders instantly.
+
+**Quality**
+
+13. `tsc --noEmit` clean; ESLint 0 errors (≤13 warnings); full Vitest suite green; `test:tz` green. Vitest covers: first-brick card fires once and never again; migrator covers all three "existing saved state" cases; long-press drift-cancel; toast last-write-wins; reduced-motion collapses.
+14. E2E (Playwright, deferred-to-preview): Lighthouse Performance ≥ 90; brand-mark long-press opens overlay on a real touch event; toast renders and dismisses on a real brick-add.
+15. No regression to M1–M9e / M5b / M7a / M7b / M7c / M7d behavior.
+
+### Open spec gaps (resolve at VERIFY)
+
+- **SG-m7e-01 — `firstBrickShown` placement.** Add to top-level `AppState` (persisted) or to a separate "preferences" slice. Recommendation: top-level `AppState.firstBrickShown?: boolean`, additive migrator, no schema bump (optional fields with defaults are an additive change per ADR-044). PLANNER confirms; VERIFIER checks the migrator is lossless.
+- **SG-m7e-02 — Heatmap overlay rendering.** Re-use M9e's year-view JSX directly vs. a scaled-down preview component. Recommendation: extract M9e's grid into a `<YearHeatmap size="full" | "preview">` prop, with M7e passing `"preview"`. PLANNER picks; VERIFIER checks no duplication.
+- **SG-m7e-03 — Toast accessibility.** Toasts must be screen-reader-announced. Recommendation: `role="status"` for success/info, `role="alert"` for error; `aria-live="polite"` for success/info, `aria-live="assertive"` for error. PLANNER confirms; VERIFIER runs axe.
+- **SG-m7e-04 — Toast position vs. dock + sheet.** The bottom dock and any open sheet must not occlude the toast. Recommendation: toast renders above the dock, below any open sheet; CSS z-index uses M0's modal/toast variables. PLANNER picks; VERIFIER checks visual stacking on iPhone 12 viewport.
