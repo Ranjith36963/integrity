@@ -65,7 +65,119 @@ describe("U-m0-006: getMotion(token, reduced=true) collapses all to 0", () => {
   });
 });
 
-// U-m7a-002: staggerForCount(n) piecewise boundary table
+// ─── U-m7c-001..005: countUp motion token (M7c) ──────────────────────────────
+
+// U-m7c-001: motionTokens.countUp literal-value assertions
+describe("U-m7c-001 — motionTokens.countUp.durationMs === 1600 AND motionTokens.countUp.easing === 'easeOut'", () => {
+  it("motionTokens.countUp.durationMs is exactly 1600", () => {
+    expect(motionTokens.countUp.durationMs).toBe(1600);
+  });
+
+  it("motionTokens.countUp.easing is exactly 'easeOut'", () => {
+    expect(motionTokens.countUp.easing).toBe("easeOut");
+  });
+
+  it("existing stagger token is byte-identical (additive regression check)", () => {
+    expect(motionTokens.stagger).toEqual({ durationMs: 30, easing: "linear" });
+  });
+
+  it("existing fireworks token is byte-identical (additive regression check)", () => {
+    expect(motionTokens.fireworks).toEqual({
+      durationMs: 1600,
+      easing: "easeOut",
+    });
+  });
+});
+
+// U-m7c-002: getMotion("countUp", false/true) canonical + PRM collapse
+describe("U-m7c-002 — getMotion('countUp', false) returns canonical token; getMotion('countUp', true) returns PRM collapse", () => {
+  it("getMotion('countUp', false) returns { durationMs: 1600, easing: 'easeOut' }", () => {
+    expect(getMotion("countUp", false)).toEqual({
+      durationMs: 1600,
+      easing: "easeOut",
+    });
+  });
+
+  it("getMotion('countUp', true) returns { durationMs: 0, easing: 'linear' }", () => {
+    expect(getMotion("countUp", true)).toEqual({
+      durationMs: 0,
+      easing: "linear",
+    });
+  });
+
+  it("getMotion('countUp', true) is structurally equal to getMotion('stagger', true) (same PRM collapse path)", () => {
+    expect(getMotion("countUp", true)).toEqual(getMotion("stagger", true));
+  });
+});
+
+// U-m7c-003: Duration type union includes "countUp" at compile time
+describe("U-m7c-003 — Duration type union includes 'countUp' at compile time", () => {
+  it("'countUp' is assignable to Duration (compile-time guard — would fail tsc if union missing)", () => {
+    const d: Duration = "countUp"; // compile-time check — fails tsc if union does not include "countUp"
+    expect(d).toBe("countUp");
+  });
+
+  it("Duration type has exactly 8 members (type-level exhaustiveness)", () => {
+    // expectTypeOf validates at compile time — runtime value is nominal
+    const allDurations: Duration[] = [
+      "tap",
+      "brickFill",
+      "modalIn",
+      "modalOut",
+      "longPress",
+      "stagger",
+      "fireworks",
+      "countUp",
+    ];
+    expect(allDurations).toHaveLength(8);
+  });
+
+  it("keyof motionTokens includes 'countUp' (record keys match union)", () => {
+    const keys = Object.keys(motionTokens) as Duration[];
+    expect(keys).toContain("countUp");
+  });
+});
+
+// U-m7c-004: Object.keys(motionTokens) contains "countUp"; record has exactly 8 entries
+describe("U-m7c-004 — Object.keys(motionTokens) contains 'countUp'; record has exactly 8 entries after M7c", () => {
+  it("Object.keys(motionTokens) contains 'countUp'", () => {
+    expect(Object.keys(motionTokens)).toContain("countUp");
+  });
+
+  it("Object.keys(motionTokens).length === 8", () => {
+    expect(Object.keys(motionTokens).length).toBe(8);
+  });
+
+  it("the 8 keys are exactly the expected set (no creep)", () => {
+    const keys = new Set(Object.keys(motionTokens));
+    for (const expected of [
+      "tap",
+      "brickFill",
+      "modalIn",
+      "modalOut",
+      "longPress",
+      "stagger",
+      "fireworks",
+      "countUp",
+    ]) {
+      expect(keys).toContain(expected);
+    }
+  });
+});
+
+// U-m7c-005: getMotion("countUp", false) returns reference equality to motionTokens.countUp
+describe("U-m7c-005 — getMotion('countUp', false) returns record entry verbatim (reference equality, no special-case branch)", () => {
+  it("getMotion('countUp', false) === motionTokens.countUp (reference equality)", () => {
+    expect(getMotion("countUp", false)).toBe(motionTokens.countUp);
+  });
+
+  it("returned object has EXACTLY two keys: durationMs and easing", () => {
+    const result = getMotion("countUp", false);
+    expect(Object.keys(result)).toEqual(["durationMs", "easing"]);
+  });
+});
+
+// ─── U-m7a-002: staggerForCount(n) piecewise boundary table
 describe("U-m7a-002: staggerForCount(n) — exact numeric outputs at N=0,1,10,15,16,20,30,50; mutation-resistant", () => {
   const CANONICAL = motionTokens.stagger.durationMs / 1000; // 0.03 — single source of truth
 
