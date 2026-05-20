@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
+import type { Dispatch } from "react";
 import { render, screen, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BuildingClient } from "./BuildingClient";
 import { saveState } from "@/lib/persist";
 import type { PersistedState } from "@/lib/persist";
 import { usePersistedState } from "@/lib/usePersistedState";
+import type { AppState, Action } from "@/lib/types";
 
 /**
  * BuildingClientHarness — M9c sanctioned migration.
@@ -614,5 +616,94 @@ describe("C-m9b-006: BuildingClient renders freshly-seeded day after next-day ro
     // No empty-state placeholder — the day has content (AC #8, AC #14: zero-UI-delta).
     // The empty-state element is absent when blocks are present.
     expect(container.querySelector('[data-testid="empty-state"]')).toBeNull();
+  });
+});
+
+// ─── C-m7a-009: BuildingClient hydrated prop → skeleton / real subtree swap ────
+
+/** Minimal valid AppState for M7a skeleton/hydration tests */
+const m7aEmptyState: AppState = {
+  blocks: [],
+  categories: [],
+  looseBricks: [],
+  programStart: "2026-01-01",
+  currentDate: "2026-05-20",
+  history: {},
+  deletions: {},
+};
+
+const m7aDispatch = vi.fn() as unknown as Dispatch<Action>;
+
+describe("C-m7a-009: BuildingClient hydrated=false renders skeleton subtree; hydrated=true renders real subtree; swap is a single React commit with no overlap", () => {
+  it("hydrated=false: ≥5 m7a-skeleton-* nodes present; no blueprint-bar-container, no loose-bricks-tray", () => {
+    const { container } = render(
+      <BuildingClient
+        state={m7aEmptyState}
+        dispatch={m7aDispatch}
+        hydrated={false}
+      />,
+    );
+    const skeletonNodes = container.querySelectorAll(
+      '[data-testid^="m7a-skeleton-"]',
+    );
+    expect(skeletonNodes.length).toBeGreaterThanOrEqual(5);
+    expect(
+      container.querySelector('[data-testid="blueprint-bar-container"]'),
+    ).toBeNull();
+    expect(
+      container.querySelector('[data-testid="loose-bricks-tray"]'),
+    ).toBeNull();
+    // hour-grid is the Timeline testid — should be absent
+    expect(container.querySelector('[data-testid="hour-grid"]')).toBeNull();
+  });
+
+  it("hydrated=true: 0 m7a-skeleton-* nodes; blueprint-bar-container present", () => {
+    const { container } = render(
+      <BuildingClient
+        state={m7aEmptyState}
+        dispatch={m7aDispatch}
+        hydrated={true}
+      />,
+    );
+    const skeletonNodes = container.querySelectorAll(
+      '[data-testid^="m7a-skeleton-"]',
+    );
+    expect(skeletonNodes.length).toBe(0);
+    expect(
+      container.querySelector('[data-testid="blueprint-bar-container"]'),
+    ).not.toBeNull();
+    expect(container.querySelector('[data-testid="hour-grid"]')).not.toBeNull();
+  });
+
+  it("swap false→true: skeleton gone, real subtree present in same render (no overlap)", () => {
+    const { rerender, container } = render(
+      <BuildingClient
+        state={m7aEmptyState}
+        dispatch={m7aDispatch}
+        hydrated={false}
+      />,
+    );
+    // Confirm skeleton is present pre-swap
+    expect(
+      container.querySelectorAll('[data-testid^="m7a-skeleton-"]').length,
+    ).toBeGreaterThanOrEqual(5);
+
+    // Simulate hydration completing (single React commit swap)
+    rerender(
+      <BuildingClient
+        state={m7aEmptyState}
+        dispatch={m7aDispatch}
+        hydrated={true}
+      />,
+    );
+
+    // Post-swap: no skeleton, real nodes present
+    expect(
+      container.querySelectorAll('[data-testid^="m7a-skeleton-"]').length,
+    ).toBe(0);
+    expect(
+      container.querySelector('[data-testid="blueprint-bar-container"]'),
+    ).not.toBeNull();
+    expect(container.querySelector('[data-testid="hour-grid"]')).not.toBeNull();
   });
 });
