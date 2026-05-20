@@ -18,6 +18,7 @@ import { springConfigs } from "@/lib/motion";
 import { BrickChip } from "./BrickChip";
 import { BlockBrickReorderGroup } from "./BlockBrickReorderGroup";
 import { useEditMode } from "./EditModeProvider";
+import { NowTag } from "./NowTag";
 
 interface Props {
   block: Block;
@@ -44,6 +45,10 @@ interface Props {
     fromIndex: number,
     toIndex: number,
   ) => void;
+  /** M7b: when true, adds is-active CSS class (pulsing outline) + renders NowTag badge.
+   * Computed by Timeline.tsx via activeBlockId(visibleBlockList, now).
+   * Default false — byte-identical to pre-M7b when omitted. */
+  isActive?: boolean;
 }
 
 export function TimelineBlock({
@@ -57,6 +62,7 @@ export function TimelineBlock({
   dragControls,
   onReorderRequest: _onReorderRequest,
   onReorderBrickInBlock,
+  isActive = false,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [bloomKey, setBloomKey] = useState(0);
@@ -125,6 +131,7 @@ export function TimelineBlock({
         data-reduced={prefersReducedMotion ? "true" : undefined}
         role="article"
         aria-expanded={expanded}
+        className={isActive ? "is-active" : undefined}
         initial={prefersReducedMotion ? false : "hidden"}
         animate={
           jiggleActive
@@ -384,6 +391,11 @@ export function TimelineBlock({
             </div>
           )}
         </div>
+
+        {/* M7b: NOW badge — top-right, absolute, only when isActive=true.
+            Anchored to the outer motion.div (same node regardless of expanded state).
+            CSS suppresses the pulse keyframe under prefers-reduced-motion (AC #8). */}
+        {isActive && <NowTag />}
       </motion.div>
     </AnimatePresence>
   );
