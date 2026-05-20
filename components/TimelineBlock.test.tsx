@@ -923,6 +923,10 @@ describe("C-m6-001: TimelineBlock renders drag handle in Edit Mode", () => {
     });
     expect(handle).toBeInTheDocument();
     expect(handle.getAttribute("type")).toBe("button");
+    // ADR-031: ≥44px hit area enforced via inline style (JSDOM returns 0×0 for layout,
+    // so we assert the inline style proxy — C-m6-001 intent, Gap 6)
+    expect(handle.style.width).toBe("44px");
+    expect(handle.style.minHeight).toBe("44px");
     // The M5 × is also present
     expect(
       screen.getByRole("button", { name: "Delete block Morning" }),
