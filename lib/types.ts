@@ -75,6 +75,7 @@ export type AppState = {
 
 // Action — M4f: collapsed to 5 variants; 5 timer/goal actions removed (ADR-043)
 // M5: three new delete actions added (exhaustiveness enforced by assertNever in reducer).
+// M6: two new reorder actions added (REORDER_BLOCK + REORDER_BRICK_IN_BLOCK).
 export type Action =
   | { type: "ADD_BLOCK"; block: Block }
   | { type: "ADD_CATEGORY"; category: Category }
@@ -83,7 +84,19 @@ export type Action =
   | { type: "SET_UNITS_DONE"; brickId: string; done: number } // M4f — sets done on a units brick
   | { type: "DELETE_BLOCK_TODAY"; blockId: string } // M5 — sets deletions[`${currentDate}:${blockId}`] = true
   | { type: "DELETE_BLOCK_ALL"; blockId: string } // M5 — removes the template from state.blocks
-  | { type: "DELETE_BRICK"; brickId: string }; // M5 — removes the brick from its block or looseBricks
+  | { type: "DELETE_BRICK"; brickId: string } // M5 — removes the brick from its block or looseBricks
+  | {
+      type: "REORDER_BLOCK";
+      blockId: string;
+      newStart: string; // "HH:MM" — snapped to 30-min grid + clamped to [00:00, 23:30] by UI
+      newEnd: string | null; // "HH:MM" | null — null preserves `end: undefined` (open-ended)
+    } // M6 — re-times a block template (all-future semantics, ADR-045)
+  | {
+      type: "REORDER_BRICK_IN_BLOCK";
+      blockId: string;
+      fromIndex: number; // 0-based source index into block.bricks[]
+      toIndex: number; // 0-based target index (post-removal semantics)
+    }; // M6 — in-block brick array shuffle (array-index is the position, per SG-m3-16)
 // START_TIMER, STOP_TIMER, TICK_TIMER, SET_TIMER_MINUTES: REMOVED in M4f
 // LOG_GOAL_BRICK: REMOVED in M4f
 

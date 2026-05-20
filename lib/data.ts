@@ -16,6 +16,7 @@
 import type { AppState, Action, Brick } from "./types";
 import { assertNever } from "./types";
 import { today } from "./dharma";
+import { findOverlaps, selectAllTimedItems } from "./overlap";
 
 /**
  * Migration helper for pre-M4e in-memory brick literals.
@@ -212,6 +213,61 @@ export function reducer(state: AppState, action: Action): AppState {
         ...state,
         blocks: blocksChanged ? newBlocks : state.blocks,
         looseBricks: looseChanged ? newLoose : state.looseBricks,
+      };
+    }
+    case "REORDER_BLOCK": {
+      // M6: Re-times a block template (all-future semantics, ADR-045).
+      // The overlap engine probes the candidate slot — if any timed item overlaps
+      // (excluding the block being dragged via excludeId), return state unchanged.
+      // `state.history` is NEVER touched (ADR-045 — AC #7).
+      const candidate = {
+        start: action.newStart,
+        end: action.newEnd ?? "24:00", // open-ended blocks probe to 24:00
+      };
+      const hits = findOverlaps(
+        candidate,
+        selectAllTimedItems(state),
+        action.blockId,
+      );
+      if (hits.length > 0) return state; // overlap rejection — UI handles snap-back
+      return {
+        ...state,
+        blocks: state.blocks.map((b) =>
+          b.id === action.blockId
+            ? {
+                ...b,
+                start: action.newStart,
+                // null → preserve undefined (open-ended block invariant)
+                ...(action.newEnd !== null
+                  ? { end: action.newEnd }
+                  : { end: undefined }),
+              }
+            : b,
+        ),
+      };
+    }
+    case "REORDER_BRICK_IN_BLOCK": {
+      // M6: In-block brick array shuffle.
+      // Bounds check: fromIndex and toIndex must both be in [0, bricks.length).
+      // Identity short-circuit: fromIndex === toIndex → return state unchanged.
+      // The overlap engine is NOT invoked — brick reorder cannot change time windows.
+      // `state.history` is NEVER touched (ADR-045 — AC #9).
+      const block = state.blocks.find((b) => b.id === action.blockId);
+      if (!block) return state; // no-op on missing block
+      const len = block.bricks.length;
+      const { fromIndex, toIndex } = action;
+      if (fromIndex === toIndex) return state; // identity short-circuit
+      if (fromIndex < 0 || fromIndex >= len) return state; // out of bounds
+      if (toIndex < 0 || toIndex >= len) return state; // out of bounds
+      // Immutable splice: remove fromIndex, insert at toIndex (post-removal index)
+      const next = [...block.bricks];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return {
+        ...state,
+        blocks: state.blocks.map((b) =>
+          b.id === action.blockId ? { ...b, bricks: next } : b,
+        ),
       };
     }
     default:
