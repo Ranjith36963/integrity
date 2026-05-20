@@ -1,15 +1,13 @@
 "use client";
-// TimelineBlock — M5: Edit Mode affordances added.
-// - M4a features preserved: absolute position, height, category dot, time range,
-//   fade-in, scaffold left-bar, tap-to-expand, BrickChip list, Add brick button.
-// - M4a: onTickToggle prop; useCrossUpEffect; bloom visual.
-// - M5: consumes useEditMode(). Unlocked: jiggle (suppressed under reduced-motion),
-//   always-visible × delete button (ADR-008, ≥44px). Tap-to-expand suppressed
-//   in Edit Mode (SG-m5-05). New onRequestDeleteBlock prop.
+// TimelineBlock — M6: drag handle affordance added.
+// - M5 features preserved: jiggle, × delete button, edit mode tap suppression.
+// - M6: GripVertical drag handle (≥44px, ADR-031) in Edit Mode (ADR-008).
+//   New props: dragControls (DragControls from Framer) + onReorderRequest.
 
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
-import { Plus, X } from "lucide-react";
+import type { DragControls } from "motion/react";
+import { Plus, X, GripVertical } from "lucide-react";
 import type { Block, Category } from "@/lib/types";
 import { HOUR_HEIGHT_PX, timeToOffsetPx } from "@/lib/timeOffset";
 import { fmtRange, blockPct } from "@/lib/dharma";
@@ -31,6 +29,14 @@ interface Props {
   onRequestDeleteBlock?: (blockId: string) => void;
   /** M5: called with brickId when a brick × is tapped. */
   onRequestDeleteBrick?: (brickId: string) => void;
+  /** M6: DragControls instance from DraggableTimelineBlock — used by the handle. */
+  dragControls?: DragControls;
+  /** M6: called with (blockId, newStart, newEnd) when a valid drop commits. */
+  onReorderRequest?: (
+    blockId: string,
+    newStart: string,
+    newEnd: string | null,
+  ) => void;
 }
 
 export function TimelineBlock({
@@ -41,6 +47,8 @@ export function TimelineBlock({
   onUnitsOpenSheet,
   onRequestDeleteBlock,
   onRequestDeleteBrick,
+  dragControls,
+  onReorderRequest: _onReorderRequest,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [bloomKey, setBloomKey] = useState(0);
@@ -216,6 +224,34 @@ export function TimelineBlock({
             }}
           >
             <X size={14} color="var(--ink-dim)" />
+          </button>
+        )}
+
+        {/* M6: GripVertical drag handle — only in Edit Mode; handle is the only drag origin (ADR-008, ADR-031 ≥44px) */}
+        {editMode && dragControls && (
+          <button
+            type="button"
+            aria-label={`Reorder block ${block.name}`}
+            data-drag-handle
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              dragControls.start(e);
+            }}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              display: "grid",
+              placeItems: "center",
+              width: "44px",
+              minHeight: "44px",
+              background: "transparent",
+              border: "none",
+              cursor: "grab",
+              zIndex: 4,
+            }}
+          >
+            <GripVertical size={14} color="var(--ink-dim)" aria-hidden="true" />
           </button>
         )}
 
