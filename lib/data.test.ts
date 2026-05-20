@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { defaultState, reducer, withDurationDefaults } from "./data";
-import type { AppState, Block, Brick } from "./types";
+import type { AppState, Block, Brick, ArchivedDay } from "./types";
 // M4f: findUnitsBrickById exported from lib/data.ts
 import { findUnitsBrickById } from "./data";
 
@@ -2020,5 +2020,197 @@ describe("U-m5-011: defaultState() carries deletions:{}; schemaVersion is Persis
     expect("editMode" in s).toBe(false);
     expect("edit_mode" in s).toBe(false);
     expect("edit-mode" in s).toBe(false);
+  });
+});
+
+// ─── M6 fixture vocabulary ────────────────────────────────────────────────────
+// Defined once here; each test that needs them builds a fresh state from these.
+
+const brkA1: Brick = {
+  id: "brk-A1",
+  name: "Push-ups",
+  kind: "tick",
+  done: true,
+  categoryId: null,
+  parentBlockId: "blk-A",
+  hasDuration: false,
+};
+const brkA2: Brick = {
+  id: "brk-A2",
+  name: "Pull-ups",
+  kind: "units",
+  done: 3,
+  target: 5,
+  unit: "reps",
+  categoryId: null,
+  parentBlockId: "blk-A",
+  hasDuration: false,
+};
+const brkA3: Brick = {
+  id: "brk-A3",
+  name: "Sit-ups",
+  kind: "tick",
+  done: false,
+  categoryId: null,
+  parentBlockId: "blk-A",
+  hasDuration: false,
+};
+
+const blkA: Block = {
+  id: "blk-A",
+  name: "Morning",
+  start: "08:00",
+  end: "09:00",
+  recurrence: { kind: "every-day" },
+  categoryId: null,
+  bricks: [brkA1, brkA2, brkA3],
+};
+
+const brkB1: Brick = {
+  id: "brk-B1",
+  name: "Jog",
+  kind: "tick",
+  done: false,
+  categoryId: null,
+  parentBlockId: "blk-B",
+  hasDuration: false,
+};
+
+const blkB: Block = {
+  id: "blk-B",
+  name: "Workout",
+  start: "10:00",
+  end: "11:00",
+  recurrence: { kind: "every-day" },
+  categoryId: null,
+  bricks: [brkB1],
+};
+
+const brkO1: Brick = {
+  id: "brk-O1",
+  name: "Read",
+  kind: "tick",
+  done: false,
+  categoryId: null,
+  parentBlockId: "blk-open",
+  hasDuration: false,
+};
+
+const blkOpen: Block = {
+  id: "blk-open",
+  name: "Open",
+  start: "14:00",
+  // end: undefined — open-ended
+  recurrence: { kind: "every-day" },
+  categoryId: null,
+  bricks: [brkO1],
+};
+
+const brkT1: Brick = {
+  id: "brk-T1",
+  name: "Sprint",
+  kind: "tick",
+  done: false,
+  categoryId: null,
+  parentBlockId: "blk-timed-brick",
+  hasDuration: true,
+  start: "16:15",
+  end: "16:45",
+  recurrence: { kind: "every-day" },
+};
+
+const brkT2: Brick = {
+  id: "brk-T2",
+  name: "Rest",
+  kind: "tick",
+  done: false,
+  categoryId: null,
+  parentBlockId: "blk-timed-brick",
+  hasDuration: false,
+};
+
+const blkTimedBrick: Block = {
+  id: "blk-timed-brick",
+  name: "Intervals",
+  start: "16:00",
+  end: "17:00",
+  recurrence: { kind: "every-day" },
+  categoryId: null,
+  bricks: [brkT1, brkT2],
+};
+
+const brkS1: Brick = {
+  id: "brk-S1",
+  name: "Single",
+  kind: "tick",
+  done: false,
+  categoryId: null,
+  parentBlockId: "blk-single",
+  hasDuration: false,
+};
+
+const blkSingle: Block = {
+  id: "blk-single",
+  name: "Single block",
+  start: "19:00",
+  end: "20:00",
+  recurrence: { kind: "every-day" },
+  categoryId: null,
+  bricks: [brkS1],
+};
+
+// ArchivedDay snapshot capturing blk-A at its original "08:00"-"09:00" times.
+const archivedDay: ArchivedDay = {
+  blocks: [{ ...blkA, start: "08:00", end: "09:00" }, { ...blkB }],
+  categories: [],
+  looseBricks: [],
+};
+
+function makeM6State(): AppState {
+  return {
+    blocks: [blkA, blkB, blkOpen, blkTimedBrick, blkSingle],
+    categories: [],
+    looseBricks: [],
+    programStart: "2026-05-01",
+    currentDate: "2026-05-18",
+    history: { "2026-05-10": archivedDay },
+    deletions: {},
+  };
+}
+
+// ─── U-m6-001: REORDER_BLOCK — writes the EXACT new start/end ─────────────────
+
+describe("U-m6-001: REORDER_BLOCK writes new start/end on named block; others byte-identical", () => {
+  it("writes the exact newStart and newEnd on blk-A; other blocks and state fields unchanged", () => {
+    const state = makeM6State();
+    const next = reducer(state, {
+      type: "REORDER_BLOCK",
+      blockId: "blk-A",
+      newStart: "13:00",
+      newEnd: "14:00",
+    });
+
+    // The named block got new times
+    const updated = next.blocks.find((b) => b.id === "blk-A");
+    expect(updated?.start).toBe("13:00");
+    expect(updated?.end).toBe("14:00");
+
+    // New top-level state object
+    expect(next).not.toBe(state);
+    // New blocks array
+    expect(next.blocks).not.toBe(state.blocks);
+
+    // Other blocks are by reference the same (byte-identical)
+    const blkBNext = next.blocks.find((b) => b.id === "blk-B");
+    expect(blkBNext).toBe(blkB);
+
+    const blkOpenNext = next.blocks.find((b) => b.id === "blk-open");
+    expect(blkOpenNext).toBe(blkOpen);
+
+    // Side-table fields unchanged by reference
+    expect(next.deletions).toBe(state.deletions);
+    expect(next.categories).toBe(state.categories);
+    expect(next.looseBricks).toBe(state.looseBricks);
+    expect(next.history).toBe(state.history);
   });
 });
