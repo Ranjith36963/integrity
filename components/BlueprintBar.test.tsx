@@ -380,7 +380,7 @@ describe("C-m7a-005: <BlueprintBar stagger={false}> is byte-identical to today �
 
 // C-m7a-006: stagger={true} wraps segments in motion.div; staggerChildren = staggerForCount(N)
 describe("C-m7a-006: <BlueprintBar stagger={true}> wraps segments in motion.div; staggerChildren = staggerForCount(N)", () => {
-  it("stagger={true} with N=2: Framer Motion applies initial variant (children have opacity in style)", () => {
+  it("stagger={true} with N=2: Framer Motion applies initial variant (segments have opacity:0 inline style)", () => {
     const blocks = [mkCatBlock("b1", "c1"), mkCatBlock("b2", "c2")];
     const { container } = render(
       <BlueprintBar
@@ -390,23 +390,18 @@ describe("C-m7a-006: <BlueprintBar stagger={true}> wraps segments in motion.div;
         stagger={true}
       />,
     );
-    // Framer Motion applies the initial variant synchronously during render.
-    // With childVariants initial: { opacity: 0, y: 4 }, each motion.div child
-    // gets opacity: 0 applied as inline style by Framer.
+    // Framer Motion applies the childVariants initial: { opacity: 0, y: 4 } synchronously.
+    // Each motion.div segment gets opacity: 0 as inline style (Framer applies initial variant).
+    // A plain div (stagger=false) would NOT have opacity: 0 in its inline style.
     const segs = container.querySelectorAll(
       '[data-testid="blueprint-segment"]',
     );
     expect(segs).toHaveLength(2);
-    // Each segment wrapper should have opacity: 0 (from childVariants initial) applied by Framer
-    // The segment's parent (the motion.div wrapper) will have this style
-    const firstSegParent = (segs[0] as HTMLElement).parentElement;
-    expect(firstSegParent).not.toBeNull();
-    // motion.div applies initial variant inline — check for opacity style
-    const parentStyle = (firstSegParent as HTMLElement).style.cssText ?? "";
-    const parentOpacity = (firstSegParent as HTMLElement).style.opacity ?? "";
-    // With Framer Motion initial="initial" variant {opacity:0}, parent has opacity:0
-    // This distinguishes motion.div (has Framer styles) from plain div (no styles)
-    expect(parentStyle !== "" || parentOpacity !== "").toBe(true);
+    for (const seg of segs) {
+      const el = seg as HTMLElement;
+      // Framer applies initial variant opacity:0 — the segment itself carries it
+      expect(el.style.opacity).toBe("0");
+    }
   });
 
   it("stagger={true} N=5 segments: data-testid='blueprint-segment' preserved on each child", () => {

@@ -5,14 +5,23 @@
 // - Uncategorized blocks (categoryId=null) excluded per SG-m2-02
 // - Blocks without end excluded from duration aggregation
 // - Segments sorted by categoryId for determinism
+// - M7a NEW: optional stagger?: boolean prop (default false).
+//   When true, wraps the segments in a Framer Motion stagger container.
+//   When false (default), renders byte-identical to pre-M7a.
 
+import { motion } from "motion/react";
 import type { Block, Category } from "@/lib/types";
 import { toMin, blockPct } from "@/lib/dharma";
+import { usePrefersReducedMotion } from "@/lib/reducedMotion";
+import { staggerForCount } from "@/lib/motion";
 
 interface Props {
   blocks: Block[];
   categories: Category[];
   now: string;
+  /** M7a: when true, wraps the segment list in a Framer Motion stagger container.
+   * When false (default), renders byte-identical to pre-M7a (no motion.div, no variants). */
+  stagger?: boolean;
 }
 
 /**
@@ -54,10 +63,45 @@ export function aggregateCategoryMinutes(
     });
 }
 
-export function BlueprintBar({ blocks, categories, now }: Props) {
+export function BlueprintBar({
+  blocks,
+  categories,
+  now,
+  stagger = false,
+}: Props) {
   const aggregated = aggregateCategoryMinutes(blocks);
   const totalMinutes = aggregated.reduce((s, e) => s + e.minutes, 0);
   const hasSegments = aggregated.length > 0 && totalMinutes > 0;
+
+  // M7a: reduced motion — collapse stagger variants to instant (AC #7)
+  const prefersReducedMotion = usePrefersReducedMotion();
+
+  // M7a: stagger variant shapes — only built when stagger===true
+  const staggerDelay = staggerForCount(aggregated.length);
+  const containerVariants = stagger
+    ? {
+        initial: {},
+        animate: {
+          transition: {
+            staggerChildren: prefersReducedMotion ? 0 : staggerDelay,
+          },
+        },
+      }
+    : undefined;
+
+  const childVariants = stagger
+    ? {
+        initial: { opacity: 0, y: 4 },
+        animate: {
+          opacity: 1,
+          y: 0,
+          transition: {
+            duration: prefersReducedMotion ? 0 : 0.18,
+            ease: "easeOut" as const,
+          },
+        },
+      }
+    : undefined;
 
   // NOW pin position: time-based fallback when no categorized blocks
   const nowPct = (toMin(now) / (24 * 60)) * 100;
@@ -97,31 +141,66 @@ export function BlueprintBar({ blocks, categories, now }: Props) {
           ...faintGrid,
         }}
       >
-        <div className="flex h-full w-full">
-          {hasSegments &&
-            aggregated.map(({ categoryId, minutes, avgBlockPct }) => {
-              const cat = categories.find((c) => c.id === categoryId);
-              const pct = (minutes / totalMinutes) * 100;
-              // M3: opacity = 0.3 + (blockPct/100 × 0.7), clamped [0.3, 1.0]
-              const opacity = Math.min(
-                1.0,
-                Math.max(0.3, 0.3 + (avgBlockPct / 100) * 0.7),
-              );
-              return (
-                <div
-                  key={categoryId}
-                  data-testid="blueprint-segment"
-                  data-category-id={categoryId}
-                  className="h-full"
-                  style={{
-                    width: `${pct}%`,
-                    background: cat?.color ?? "var(--accent)",
-                    opacity,
-                  }}
-                />
-              );
-            })}
-        </div>
+        {/* M7a: when stagger===true, wrap in motion.div container with stagger variants;
+             when stagger===false (default), render byte-identical to pre-M7a */}
+        {stagger && containerVariants ? (
+          <motion.div
+            className="flex h-full w-full"
+            variants={containerVariants}
+            initial="initial"
+            animate="animate"
+          >
+            {hasSegments &&
+              aggregated.map(({ categoryId, minutes, avgBlockPct }) => {
+                const cat = categories.find((c) => c.id === categoryId);
+                const pct = (minutes / totalMinutes) * 100;
+                const opacity = Math.min(
+                  1.0,
+                  Math.max(0.3, 0.3 + (avgBlockPct / 100) * 0.7),
+                );
+                return (
+                  <motion.div
+                    key={categoryId}
+                    data-testid="blueprint-segment"
+                    data-category-id={categoryId}
+                    className="h-full"
+                    style={{
+                      width: `${pct}%`,
+                      background: cat?.color ?? "var(--accent)",
+                      opacity,
+                    }}
+                    variants={childVariants}
+                  />
+                );
+              })}
+          </motion.div>
+        ) : (
+          <div className="flex h-full w-full">
+            {hasSegments &&
+              aggregated.map(({ categoryId, minutes, avgBlockPct }) => {
+                const cat = categories.find((c) => c.id === categoryId);
+                const pct = (minutes / totalMinutes) * 100;
+                // M3: opacity = 0.3 + (blockPct/100 × 0.7), clamped [0.3, 1.0]
+                const opacity = Math.min(
+                  1.0,
+                  Math.max(0.3, 0.3 + (avgBlockPct / 100) * 0.7),
+                );
+                return (
+                  <div
+                    key={categoryId}
+                    data-testid="blueprint-segment"
+                    data-category-id={categoryId}
+                    className="h-full"
+                    style={{
+                      width: `${pct}%`,
+                      background: cat?.color ?? "var(--accent)",
+                      opacity,
+                    }}
+                  />
+                );
+              })}
+          </div>
+        )}
 
         {/* NOW pin */}
         <div
