@@ -425,6 +425,7 @@ export function BuildingClient({ state, dispatch }: BuildingClientProps) {
           onReorderRequest={handleReorderBlock}
           onAnnounce={setAnnouncement}
           onReorderBrickInBlock={handleReorderBrickInBlock}
+          modalOpen={pendingDelete !== null}
         />
         {/* LooseBricksTray: pinned above dock, visible when blocks exist OR non-timed loose bricks exist */}
         {showTray && (

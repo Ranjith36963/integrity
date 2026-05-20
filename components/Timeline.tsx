@@ -60,6 +60,8 @@ interface Props {
     fromIndex: number,
     toIndex: number,
   ) => void;
+  /** M6: true when the M5 delete-confirmation modal is open — threads to DraggableTimelineBlock. */
+  modalOpen?: boolean;
 }
 
 export function Timeline({
@@ -76,6 +78,7 @@ export function Timeline({
   onReorderRequest,
   onAnnounce,
   onReorderBrickInBlock,
+  modalOpen = false,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -147,7 +150,7 @@ export function Timeline({
                   key={item.block.id}
                   block={item.block}
                   categories={categories}
-                  modalOpen={false}
+                  modalOpen={modalOpen}
                   onReorderRequest={onReorderRequest}
                   onAnnounce={onAnnounce}
                   dragConstraintsRef={scrollRef}
