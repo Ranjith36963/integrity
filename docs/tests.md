@@ -8770,7 +8770,7 @@ Target file: `components/BlockBrickReorderGroup.test.tsx` / `components/Timeline
 Layer: Component
 **GIVEN** `<TimelineBlock block={blk-single (bricks: [brk-S1])} />` (a single-brick block) inside `<EditModeProvider>` with `editMode === true`
 **WHEN** the expanded brick list is rendered and inspected
-**THEN** no `<Reorder.Group>` is mounted (`queryByTestId('block-brick-reorder-group')` → `null`); the plain `<ul>` of `<BrickChip>` renders as it does in Locked mode (the `block.bricks.length > 1` guard); the chip's `dragHandle` prop is **false** (no brick reorder is meaningful with one brick).
+**THEN** no `<Reorder.Group>` is mounted (`queryByTestId('block-brick-reorder-group')` → `null`); the plain `<ul>` of `<BrickChip>` renders (the `block.bricks.length > 1` guard skips the Reorder.Group); the chip's `dragHandle` prop is **true** — AC #2 ("every brick row inside a block shows a drag handle") applies even when a block has only one brick, so the handle still renders (amended per EVAL-G5 — SPEC wins over the original test claim).
 **AND** the M5 jiggle, the M5 `×`, and the M5 brick log suppression are byte-identical to a multi-brick block — only the `Reorder.Group` wrapping is suppressed; the M5 surface is preserved (the AC #13 no-regression anchor for the brick surface).
 Proves: plan.md § Components `<BlockBrickReorderGroup>` ("Renders only when `editMode === true` AND `block.bricks.length > 1` (a single-brick block has nothing to reorder)") + § Edge cases ("Single-brick block") + § Regression surface — covers SPEC AC #8, AC #13.
 Tag: edge.
