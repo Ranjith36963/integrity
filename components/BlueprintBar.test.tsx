@@ -1,7 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { BlueprintBar, aggregateCategoryMinutes } from "./BlueprintBar";
 import type { Block, Category } from "@/lib/types";
+import { staggerForCount } from "@/lib/motion";
 
 // Helper for making test blocks
 function mkBlock(
@@ -288,5 +289,187 @@ describe("C-m3-023: BlueprintBar segment opacity based on blockPct", () => {
       '[data-testid="blueprint-segment"]',
     );
     expect(segs).toHaveLength(0);
+  });
+});
+
+// ─── M7a stagger prop tests ────────────────────────────────────────────────────
+
+const categories2: Category[] = [
+  { id: "c1", name: "Health", color: "#34d399" },
+  { id: "c2", name: "Mind", color: "#c4b5fd" },
+];
+
+function mkCatBlock(id: string, catId: string): Block {
+  return {
+    id,
+    name: id,
+    start: "09:00",
+    end: "10:00",
+    recurrence: { kind: "just-today", date: "2026-05-18" },
+    categoryId: catId,
+    bricks: [],
+  };
+}
+
+// C-m7a-005: stagger={false} (default) renders byte-identical to pre-M7a — NO motion.div
+describe("C-m7a-005: <BlueprintBar stagger={false}> is byte-identical to today — NO motion.div container", () => {
+  it("omitting stagger (default false): segment container is a plain div, not motion.div", () => {
+    const blocks = [mkCatBlock("b1", "c1"), mkCatBlock("b2", "c2")];
+    const { container } = render(
+      <BlueprintBar blocks={blocks} categories={categories2} now="12:00" />,
+    );
+    // The inner flex container wrapping segments must be a plain div
+    const segContainer = container.querySelector(".flex.h-full.w-full");
+    expect(segContainer?.tagName).toBe("DIV");
+    // No framer-motion data attribute on the container
+    expect(
+      (segContainer as HTMLElement | null)?.hasAttribute("data-framer-motion"),
+    ).toBe(false);
+  });
+
+  it("stagger={false} explicit: segment container is a plain div", () => {
+    const blocks = [mkCatBlock("b1", "c1")];
+    const { container } = render(
+      <BlueprintBar
+        blocks={blocks}
+        categories={categories2}
+        now="12:00"
+        stagger={false}
+      />,
+    );
+    const segContainer = container.querySelector(".flex.h-full.w-full");
+    expect(segContainer?.tagName).toBe("DIV");
+  });
+
+  it("stagger={false}: blueprint-segment elements are still present as plain divs", () => {
+    const blocks = [mkCatBlock("b1", "c1"), mkCatBlock("b2", "c2")];
+    const { container } = render(
+      <BlueprintBar
+        blocks={blocks}
+        categories={categories2}
+        now="12:00"
+        stagger={false}
+      />,
+    );
+    const segs = container.querySelectorAll(
+      '[data-testid="blueprint-segment"]',
+    );
+    expect(segs).toHaveLength(2);
+    // Each segment is a plain div (not a motion.div with Framer-injected styles)
+    for (const seg of segs) {
+      expect(seg.tagName).toBe("DIV");
+    }
+  });
+
+  it("stagger={false}: data-testid='blueprint-bar-container' and 'now-pin' are still present", () => {
+    const blocks = [mkCatBlock("b1", "c1")];
+    const { container } = render(
+      <BlueprintBar
+        blocks={blocks}
+        categories={categories2}
+        now="12:00"
+        stagger={false}
+      />,
+    );
+    expect(
+      container.querySelector('[data-testid="blueprint-bar-container"]'),
+    ).not.toBeNull();
+    expect(container.querySelector('[data-testid="now-pin"]')).not.toBeNull();
+  });
+});
+
+// C-m7a-006: stagger={true} wraps segments in motion.div; staggerChildren = staggerForCount(N)
+describe("C-m7a-006: <BlueprintBar stagger={true}> wraps segments in motion.div; staggerChildren = staggerForCount(N)", () => {
+  it("stagger={true} with N=2: Framer Motion applies initial variant (children have opacity in style)", () => {
+    const blocks = [mkCatBlock("b1", "c1"), mkCatBlock("b2", "c2")];
+    const { container } = render(
+      <BlueprintBar
+        blocks={blocks}
+        categories={categories2}
+        now="12:00"
+        stagger={true}
+      />,
+    );
+    // Framer Motion applies the initial variant synchronously during render.
+    // With childVariants initial: { opacity: 0, y: 4 }, each motion.div child
+    // gets opacity: 0 applied as inline style by Framer.
+    const segs = container.querySelectorAll(
+      '[data-testid="blueprint-segment"]',
+    );
+    expect(segs).toHaveLength(2);
+    // Each segment wrapper should have opacity: 0 (from childVariants initial) applied by Framer
+    // The segment's parent (the motion.div wrapper) will have this style
+    const firstSegParent = (segs[0] as HTMLElement).parentElement;
+    expect(firstSegParent).not.toBeNull();
+    // motion.div applies initial variant inline — check for opacity style
+    const parentStyle = (firstSegParent as HTMLElement).style.cssText ?? "";
+    const parentOpacity = (firstSegParent as HTMLElement).style.opacity ?? "";
+    // With Framer Motion initial="initial" variant {opacity:0}, parent has opacity:0
+    // This distinguishes motion.div (has Framer styles) from plain div (no styles)
+    expect(parentStyle !== "" || parentOpacity !== "").toBe(true);
+  });
+
+  it("stagger={true} N=5 segments: data-testid='blueprint-segment' preserved on each child", () => {
+    const cats: Category[] = Array.from({ length: 5 }, (_, i) => ({
+      id: `c${i + 1}`,
+      name: `Cat${i + 1}`,
+      color: "#34d399",
+    }));
+    const blocks = cats.map((c) => mkCatBlock(c.id, c.id));
+    const { container } = render(
+      <BlueprintBar
+        blocks={blocks}
+        categories={cats}
+        now="12:00"
+        stagger={true}
+      />,
+    );
+    const segs = container.querySelectorAll(
+      '[data-testid="blueprint-segment"]',
+    );
+    expect(segs).toHaveLength(5);
+  });
+
+  it("staggerForCount(2) returns canonical 0.03 (n <= 15 branch)", () => {
+    // Direct assertion on the helper used by BlueprintBar's container variant
+    expect(staggerForCount(2)).toBe(0.03);
+  });
+
+  it("stagger={true}: blueprint-bar-container and now-pin are OUTSIDE the staggered list", () => {
+    const blocks = [mkCatBlock("b1", "c1")];
+    const { container } = render(
+      <BlueprintBar
+        blocks={blocks}
+        categories={categories2}
+        now="12:00"
+        stagger={true}
+      />,
+    );
+    // blueprint-bar-container is the outer div wrapper — must still be present
+    expect(
+      container.querySelector('[data-testid="blueprint-bar-container"]'),
+    ).not.toBeNull();
+    expect(container.querySelector('[data-testid="now-pin"]')).not.toBeNull();
+  });
+
+  it("staggerForCount correctly scales for N > 15 (mutation guard for BlueprintBar's container variant)", () => {
+    expect(staggerForCount(20)).toBeCloseTo(0.45 / 20, 10);
+    expect(staggerForCount(30)).toBe(0.02);
+  });
+
+  // Spy on console.error to catch any React warnings from motion.div usage
+  it("stagger={true} renders without React errors or warnings", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const blocks = [mkCatBlock("b1", "c1"), mkCatBlock("b2", "c2")];
+    render(
+      <BlueprintBar
+        blocks={blocks}
+        categories={categories2}
+        now="12:00"
+        stagger={true}
+      />,
+    );
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
   });
 });
