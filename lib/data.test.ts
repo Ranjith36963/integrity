@@ -2214,3 +2214,50 @@ describe("U-m6-001: REORDER_BLOCK writes new start/end on named block; others by
     expect(next.history).toBe(state.history);
   });
 });
+
+// ─── U-m6-002: REORDER_BLOCK — overlap rejection returns original state ref ───
+
+describe("U-m6-002: REORDER_BLOCK returns original state reference on overlap", () => {
+  it("returns the SAME state reference when the proposed drop overlaps blk-B", () => {
+    const state = makeM6State();
+    // blk-A at 08:00-09:00; blk-B at 10:00-11:00.
+    // Proposed: move blk-A to 10:30-11:30 — overlaps blk-B's [10:00, 11:00)
+    const next = reducer(state, {
+      type: "REORDER_BLOCK",
+      blockId: "blk-A",
+      newStart: "10:30",
+      newEnd: "11:30",
+    });
+    expect(next).toBe(state);
+  });
+
+  it("touching-boundary drop (newStart === blk-B.end) is VALID — ADR-006 half-open intervals", () => {
+    const state = makeM6State();
+    // blk-B ends at 11:00; placing blk-A at 11:00-12:00 is a touching boundary — valid
+    const next = reducer(state, {
+      type: "REORDER_BLOCK",
+      blockId: "blk-A",
+      newStart: "11:00",
+      newEnd: "12:00",
+    });
+    expect(next).not.toBe(state);
+    const updated = next.blocks.find((b) => b.id === "blk-A");
+    expect(updated?.start).toBe("11:00");
+    expect(updated?.end).toBe("12:00");
+  });
+
+  it("block does not overlap itself — excludeId skips the dragged block in the probe", () => {
+    const state = makeM6State();
+    // Moving blk-A to a new slot that would overlap its own old position is fine
+    // because excludeId === blockId skips blk-A from the collision list.
+    const next = reducer(state, {
+      type: "REORDER_BLOCK",
+      blockId: "blk-A",
+      newStart: "08:30",
+      newEnd: "09:30",
+    });
+    // blk-A's old slot [08:00-09:00] is not probed; [08:30-09:30] only overlaps blk-A itself
+    // which is excluded → write succeeds
+    expect(next).not.toBe(state);
+  });
+});
