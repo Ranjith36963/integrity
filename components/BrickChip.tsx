@@ -1,19 +1,13 @@
 "use client";
-// BrickChip — M5: Edit Mode affordances added.
-// M4f: collapsed to tick + units (ADR-043).
-// M3: static chip rendering for all brick kinds.
-// M4a: tick chips dispatch onTickToggle + haptics.light on tap;
-//       tick chip gains aria-pressed + enriched aria-label.
-//       chip-fill transition becomes "none" under prefers-reduced-motion.
-// M4f: goal→units rename; time kind removed entirely (ADR-043).
-//       Units chip is a simple button that fires onUnitsOpenSheet(brick.id).
-//       No stepper buttons (SG-m4f-02). onGoalLog removed from active logic.
-// M5: Unlocked — always-visible × delete button (ADR-008, ≥44px); log gesture
-//     suppressed when editMode=true (SG-m5-05, no log+delete double-fire).
-//     New onRequestDeleteBrick prop.
+// BrickChip — M6: drag handle affordance added.
+// M5 features preserved: × delete button, edit mode tap suppression (SG-m5-05).
+// M6: GripVertical drag handle (≥44px, ADR-031) when dragHandle=true in Edit Mode.
+//     New props: dragHandle (boolean, default false) + dragControls (DragControls).
+//     dragHandle=false (the default) keeps tray chips handle-free (SG-m6-04).
 
 import { useReducedMotion } from "motion/react";
-import { Square, Check, X } from "lucide-react";
+import type { DragControls } from "motion/react";
+import { Square, Check, X, GripVertical } from "lucide-react";
 import { brickPct } from "@/lib/dharma";
 import { haptics } from "@/lib/haptics";
 import type { Brick, Category } from "@/lib/types";
@@ -29,6 +23,10 @@ interface Props {
   onUnitsOpenSheet?: (brickId: string) => void;
   /** M5: called with brick.id when the × delete button is tapped. */
   onRequestDeleteBrick?: (brickId: string) => void;
+  /** M6: when true and editMode=true, renders GripVertical handle at leading edge (SG-m6-04). */
+  dragHandle?: boolean;
+  /** M6: DragControls instance from BlockBrickReorderGroup — used by the handle. */
+  dragControls?: DragControls;
 }
 
 function resolveColor(brick: Brick, categories: Category[]): string | null {
@@ -114,6 +112,8 @@ export function BrickChip({
   onTickToggle,
   onUnitsOpenSheet,
   onRequestDeleteBrick,
+  dragHandle = false,
+  dragControls,
 }: Props) {
   const pct = brickPct(brick);
   const color = resolveColor(brick, categories);
@@ -164,6 +164,35 @@ export function BrickChip({
       <X size={12} color="var(--ink-dim)" />
     </button>
   ) : null;
+
+  // M6: GripVertical drag handle — only when dragHandle=true AND editMode=true (ADR-008, ADR-031 ≥44px)
+  const dragHandleButton =
+    dragHandle && editMode && dragControls ? (
+      <button
+        type="button"
+        aria-label={`Reorder brick ${brick.name}`}
+        data-drag-handle
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          dragControls.start(e);
+        }}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          display: "grid",
+          placeItems: "center",
+          width: "44px",
+          minHeight: "44px",
+          background: "transparent",
+          border: "none",
+          cursor: "grab",
+          zIndex: 4,
+        }}
+      >
+        <GripVertical size={12} color="var(--ink-dim)" aria-hidden="true" />
+      </button>
+    ) : null;
 
   // M4f: units chip — simple button that fires onUnitsOpenSheet
   if (brick.kind === "units") {
@@ -256,6 +285,9 @@ export function BrickChip({
 
         {/* M5: × delete button */}
         {deleteButton}
+
+        {/* M6: GripVertical drag handle */}
+        {dragHandleButton}
       </div>
     );
   }
@@ -351,6 +383,9 @@ export function BrickChip({
 
       {/* M5: × delete button */}
       {deleteButton}
+
+      {/* M6: GripVertical drag handle */}
+      {dragHandleButton}
     </div>
   );
 }
