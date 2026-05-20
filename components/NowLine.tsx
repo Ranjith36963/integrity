@@ -22,14 +22,17 @@ export function NowLine({ now, "data-testid": testId = "now-line" }: Props) {
       data-testid={testId}
       role="img"
       aria-label={`Now ${now}`}
-      className="pointer-events-none absolute left-0 right-0 z-10 h-[1px]"
+      className="pointer-events-none absolute right-0 left-0 z-10 h-[1px]"
       style={{
         top: `${topPx}px`,
         // SG-m1-10: z-10 keeps now-line above EmptyState card (z-0).
         // Comment: no `transition` here — top snaps instantly (plan.md § Decisions: NowLine absolute positioning).
         background: "var(--accent)",
         transform: "translateY(-1px)",
-        boxShadow: "0 0 4px var(--accent)",
+        // M7b: larger halo — inner 6px + outer soft 12px at 0.45 alpha (SG-m7b-03).
+        // Static (no keyframe) — the active-block pulse provides the temporal heartbeat.
+        // Under prefers-reduced-motion this halo is unchanged (box-shadow is not motion).
+        boxShadow: "0 0 6px var(--accent), 0 0 12px rgba(251, 191, 36, 0.45)",
       }}
     />
   );
