@@ -907,7 +907,7 @@ describe("C-m7b-012 — <Timeline> empty items list does not throw; no is-active
 describe("C-m7b-013 — <Timeline> deleted block (via M5 deletions filter) is NOT a candidate for active", () => {
   it("only blk-B in items (blk-A filtered by deletions) → blk-B carries is-active; blk-A not in DOM", () => {
     // Simulate M5 currentDayBlocks filter: blk-A deleted for today, only blk-B remains in items
-    const blkADeleted = makeBlock("blk-A-del", "09:00", "10:00");
+    // blk-A-del would exist but is filtered out by M5 currentDayBlocks before reaching Timeline
     const blkBRemaining = makeBlock("blk-B-rem", "09:30", "10:30");
 
     // Hand-assembled items: only blk-B-rem (blk-A-del is excluded — filtered by deletions)

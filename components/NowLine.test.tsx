@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
 import { NowLine } from "./NowLine";
 import { HOUR_HEIGHT_PX } from "@/lib/timeOffset";

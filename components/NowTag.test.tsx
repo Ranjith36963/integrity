@@ -5,9 +5,8 @@
  * C-m7b-003: top-right absolute positioning + non-interactive (pointer-events: none)
  */
 import React from "react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { NowTag } from "./NowTag";
 
 // ── C-m7b-001 ────────────────────────────────────────────────────────────────
