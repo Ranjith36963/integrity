@@ -71,7 +71,6 @@ const stateWithPct: AppState = {
   currentDate: "2026-05-20",
   history: {},
   deletions: {},
-  schemaVersion: 3,
 };
 
 // ─── C-m7c-013: BuildingClient threads firstPaintCountUp={stagger} to Hero ───
