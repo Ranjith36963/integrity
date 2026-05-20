@@ -232,18 +232,16 @@ export function reducer(state: AppState, action: Action): AppState {
       if (hits.length > 0) return state; // overlap rejection — UI handles snap-back
       return {
         ...state,
-        blocks: state.blocks.map((b) =>
-          b.id === action.blockId
-            ? {
-                ...b,
-                start: action.newStart,
-                // null → preserve undefined (open-ended block invariant)
-                ...(action.newEnd !== null
-                  ? { end: action.newEnd }
-                  : { end: undefined }),
-              }
-            : b,
-        ),
+        blocks: state.blocks.map((b) => {
+          if (b.id !== action.blockId) return b;
+          // Build the updated block without the `end` key so open-ended
+          // blocks (newEnd: null) preserve `end: undefined` (no key present).
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars -- intentionally omit `end` before re-adding
+          const { end: _end, ...rest } = b;
+          return action.newEnd !== null
+            ? { ...rest, start: action.newStart, end: action.newEnd }
+            : { ...rest, start: action.newStart };
+        }),
       };
     }
     case "REORDER_BRICK_IN_BLOCK": {
