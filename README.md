@@ -73,6 +73,7 @@ npm run test:e2e:install
 | M6 — Drag Reorder                                  | Shipped to preview — awaiting Gate #2 tap-test                           |
 | M7a — Stagger Fade-in + Skeleton Shimmer           | Shipped to preview — M7 chunk 1 of 5 (one Gate #2 tap at end of M7e)     |
 | M7b — Now-line Glow + Active-block Pulse + NOW Tag | Shipped to preview — M7 chunk 2 of 5                                     |
+| M7c — Hero % Count-up on First Load                | Shipped to preview — M7 chunk 3 of 5                                     |
 
 Latest preview: `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (branch alias; auto-tracks `claude/verify-m0-deployment-s4XRy`). Vercel Deployment Protection active — open in browser while signed in to Vercel.
 
@@ -98,7 +99,7 @@ components/          Shared UI components + unit tests
   UnitsEntrySheet.tsx Sheet for manual number entry on a units brick; single number input + Save/Cancel; opens on tap of a units brick chip (M4f)
   Fireworks.tsx      Day-100% celebration overlay; ≤ 16 particles; ~1.6 s; suppressed under prefers-reduced-motion
   CategoryPicker.tsx Category selector chip row with inline NewCategoryForm sub-view
-  HeroRing.tsx       SVG arc around the Hero numeral; stroke tracks dayPct%
+  HeroRing.tsx       SVG arc around the Hero numeral; stroke tracks dayPct%; firstPaintCountUp prop triggers 0→pct% tween on first load; children-as-function render-prop exposes live displayPct to callers (M7c)
   LooseBricksTray    Pinned tray above dock; lists loose bricks + "+ Brick" pill
   MonthView.tsx      Calendar-month grid of per-day score cells (heat-fill + numeral); prev/next navigation (M9c)
   DayCell.tsx        Single day cell inside MonthView — heat-fill intensity by score, tappable (M9c)
@@ -128,7 +129,7 @@ lib/                 Domain logic: types, data, scoring, utilities
   yearGrid.ts        UTC-drift-free year/month date math: yearGridMonths(), addYear(), subYear() (M9e)
   currentDayBlocks.ts Pure helper: filters today's blocks by the deletions map (M5; appliesOn wiring deferred per ADR-047)
   snapToSlot.ts       Pure helper: snapToSlot(minutesSinceMidnight) → nearest 30-min boundary; used by drag-reorder (M6)
-  motion.ts           motionTokens + staggerForCount(n) helper — per-surface stagger cascade constants (M7a)
+  motion.ts           motionTokens (8 tokens) + staggerForCount(n) helper — per-surface stagger cascade and count-up animation constants (M7a/M7c)
   firstPaint.ts       Reserved placeholder for first-paint timing utilities (M7a)
   activeBlock.ts      Pure activeBlockId(items, nowMinutes) helper — identifies the block whose half-open window straddles the current minute (M7b)
 tests/
