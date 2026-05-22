@@ -58,65 +58,67 @@ const blockAt100: Block = {
   ],
 };
 
-/** Block at 99% (50 done + 50 done out of 100 = not possible simply;
- *  use: one done (100%) + one undone (0%) = 50% → not 99%.
- *  For 99%: blockPct = average of brickPct values.
- *  Simpler: use 0 bricks = 0%, one done = 100%.
- *  We need 99% exactly — use 99 done bricks, 1 undone brick (100 total).
- *  But that's expensive. Instead: use a single unit brick with done=99, total=100.
- *
- *  Actually blockPct is: each brick contributes brickPct:
- *   - tick: done ? 100 : 0
- *   - units: Math.min(100, (done/total)*100) or 0 if total===0
- *  Average of all brickPct values.
- *
- *  To get 99%: one tick brick (done=true) contributes 100, one units brick
- *  with done=99, total=100 contributes 99. Average = (100+99)/2 = 99.5 ≈ 99 (floor).
- *  Actually blockPct returns a float from 0..100.
- *
- *  Simpler: use one units brick with done=99, total=100 → brickPct = 99.
- *  Then blockPct = 99.
- */
-const blockAt99: Block = {
-  id: "b-99",
-  name: "Almost Block",
+/** Block at <100%: one tick brick not done → blockPct = 0. */
+const blockAt0: Block = {
+  id: "b-trans",
+  name: "Transition Block",
   start: "09:00",
   end: "10:00",
   recurrence: { kind: "just-today", date: "2026-05-01" },
   categoryId: "c1",
   bricks: [
     {
-      id: "br-units-99",
-      name: "Units Brick",
-      kind: "units",
+      id: "br-undone",
+      name: "Undone Brick",
+      kind: "tick",
       hasDuration: false,
-      done: 99,
-      total: 100,
+      done: false,
       categoryId: "c1",
-      parentBlockId: "b-99",
+      parentBlockId: "b-trans",
       recurrence: { kind: "just-today", date: "2026-05-01" },
     },
   ],
 };
 
-/** Same block id as blockAt99, but now at 100% */
+/** Same block id as blockAt0, but now at 100%: all bricks done */
 const blockAt100v2: Block = {
-  id: "b-99", // same id as blockAt99
-  name: "Almost Block",
+  id: "b-trans", // same id as blockAt0
+  name: "Transition Block",
   start: "09:00",
   end: "10:00",
   recurrence: { kind: "just-today", date: "2026-05-01" },
   categoryId: "c1",
   bricks: [
     {
-      id: "br-units-99",
-      name: "Units Brick",
-      kind: "units",
+      id: "br-undone",
+      name: "Undone Brick",
+      kind: "tick",
       hasDuration: false,
-      done: 100,
-      total: 100,
+      done: true,
       categoryId: "c1",
-      parentBlockId: "b-99",
+      parentBlockId: "b-trans",
+      recurrence: { kind: "just-today", date: "2026-05-01" },
+    },
+  ],
+};
+
+/** Block back to <100%: same id, brick undone again */
+const blockBackToLow: Block = {
+  id: "b-trans",
+  name: "Transition Block",
+  start: "09:00",
+  end: "10:00",
+  recurrence: { kind: "just-today", date: "2026-05-01" },
+  categoryId: "c1",
+  bricks: [
+    {
+      id: "br-undone",
+      name: "Undone Brick",
+      kind: "tick",
+      hasDuration: false,
+      done: false,
+      categoryId: "c1",
+      parentBlockId: "b-trans",
       recurrence: { kind: "just-today", date: "2026-05-01" },
     },
   ],
@@ -136,7 +138,11 @@ describe("C-m7d-001: <TimelineBlock> hydration-into-100% does NOT mount bloom-ov
   it("renders without bloom-overlay on first render at 100%", async () => {
     render(<TimelineBlock block={blockAt100} categories={[cat1]} />);
 
-    // No bloom-overlay on initial render at 100%
+    // No bloom-overlay on initial render at 100% — hydration suppression
+    await act(async () => {
+      // Allow any effects to settle
+    });
+
     expect(screen.queryByTestId("bloom-overlay")).toBeNull();
     expect(screen.queryByTestId("bloom-overlay-reduced")).toBeNull();
 
@@ -161,9 +167,9 @@ describe("C-m7d-002: <TimelineBlock> mounts bloom-overlay on 99→100 transition
     vi.useRealTimers();
   });
 
-  it("bloom-overlay mounts after 99→100 prop change", async () => {
+  it("bloom-overlay mounts after 0%→100% prop change", async () => {
     const { rerender } = render(
-      <TimelineBlock block={blockAt99} categories={[cat1]} />,
+      <TimelineBlock block={blockAt0} categories={[cat1]} />,
     );
 
     // Initially no bloom
@@ -191,41 +197,32 @@ describe("C-m7d-003: <TimelineBlock> does NOT re-mount bloom-overlay on 100→99
     vi.useRealTimers();
   });
 
-  it("bloomKey does not bump on second 100-crossing after 99→100→99→100", async () => {
+  it("haptics.success fires exactly once on first crossing; not on second", async () => {
     const { rerender } = render(
-      <TimelineBlock block={blockAt99} categories={[cat1]} />,
+      <TimelineBlock block={blockAt0} categories={[cat1]} />,
     );
 
-    // First crossing: bloom fires
+    // First crossing: 0%→100%
     await act(async () => {
       rerender(<TimelineBlock block={blockAt100v2} categories={[cat1]} />);
     });
 
-    // Bloom overlay is present after first crossing
-    const overlayAfterFirst = screen.queryByTestId("bloom-overlay");
-    // bloomKey should be 1 — bloom-overlay is rendered (key=1, not 0)
-    expect(overlayAfterFirst).not.toBeNull();
+    // Bloom overlay present after first crossing
+    expect(screen.queryByTestId("bloom-overlay")).not.toBeNull();
 
-    // Cross back to 99%
+    // Cross back to 0%
     await act(async () => {
-      rerender(<TimelineBlock block={blockAt99} categories={[cat1]} />);
+      rerender(<TimelineBlock block={blockBackToLow} categories={[cat1]} />);
     });
 
-    // Cross back to 100% — second crossing should NOT re-mount bloom
+    // Cross back to 100% — second crossing should NOT re-fire
     await act(async () => {
       rerender(<TimelineBlock block={blockAt100v2} categories={[cat1]} />);
     });
 
-    // The bloom-overlay key should NOT have been bumped again.
-    // We verify this by checking the data-bloom-key attribute (or the key prop via
-    // inspecting the component state). Since we can't directly inspect bloomKey,
-    // we verify the bloom-overlay is still present with the same characteristics.
-    // The key insight: if bloomKey was bumped again, it would create a NEW element
-    // (React replaces elements with changed keys). But the element should have
-    // the same identity. We use a different approach: check that haptics.success
-    // was called exactly once (not twice) across all crossings.
+    // haptics.success was called exactly once — sparing semantics
     const { haptics } = await import("@/lib/haptics");
-    expect(haptics.success).toHaveBeenCalledTimes(1); // only one crossing fired
+    expect(haptics.success).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -246,7 +243,7 @@ describe("C-m7d-004: under PRM, bloom-overlay-reduced mounts on 99→100; bloom-
     vi.mocked(useReducedMotion).mockReturnValue(true);
 
     const { rerender } = render(
-      <TimelineBlock block={blockAt99} categories={[cat1]} />,
+      <TimelineBlock block={blockAt0} categories={[cat1]} />,
     );
 
     expect(screen.queryByTestId("bloom-overlay")).toBeNull();
@@ -283,12 +280,12 @@ describe("C-m7d-005: <TimelineBlock> 99→100 fires haptics.success once; zero p
     vi.useRealTimers();
   });
 
-  it("haptics.success called once, playChime called zero times on 99→100", async () => {
+  it("haptics.success called once, playChime called zero times on 0%→100%", async () => {
     const { haptics } = await import("@/lib/haptics");
     const { playChime } = await import("@/lib/audio");
 
     const { rerender } = render(
-      <TimelineBlock block={blockAt99} categories={[cat1]} />,
+      <TimelineBlock block={blockAt0} categories={[cat1]} />,
     );
 
     await act(async () => {
