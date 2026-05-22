@@ -1152,3 +1152,254 @@ describe("U-m5-011: defaultPersisted() carries deletions:{} + schemaVersion:3; n
     expect("edit-mode" in p).toBe(false);
   });
 });
+
+// ─── M7e: hasAnyBrick + migrate back-fill + schema-lock anchors ───────────────
+
+import { hasAnyBrick } from "./persist";
+import type { Block, Brick } from "./types";
+
+const validBrick: Brick = {
+  id: "m7e-v1",
+  name: "Morning stretch",
+  categoryId: null,
+  parentBlockId: null,
+  hasDuration: false,
+  kind: "tick",
+  done: false,
+};
+
+const validBrick2: Brick = {
+  id: "m7e-v2",
+  name: "Meditation",
+  categoryId: null,
+  parentBlockId: null,
+  hasDuration: false,
+  kind: "tick",
+  done: false,
+};
+
+const validBrick3: Brick = {
+  id: "m7e-v3",
+  name: "Journaling",
+  categoryId: null,
+  parentBlockId: null,
+  hasDuration: false,
+  kind: "tick",
+  done: false,
+};
+
+function makeBlock(id: string, bricks: Brick[] = []): Block {
+  return {
+    id,
+    name: `Block ${id}`,
+    start: "09:00",
+    recurrence: { kind: "just-today", date: "2026-05-20" },
+    categoryId: null,
+    bricks,
+  };
+}
+
+// U-m7e-005: hasAnyBrick truth table
+describe("U-m7e-005: hasAnyBrick(blocks, looseBricks) truth table", () => {
+  it("([], []) → false", () => {
+    expect(hasAnyBrick([], [])).toBe(false);
+  });
+
+  it("([{ id: 'B1', bricks: [] }], []) → false", () => {
+    expect(hasAnyBrick([makeBlock("B1")], [])).toBe(false);
+  });
+
+  it("([], [validBrick]) → true", () => {
+    expect(hasAnyBrick([], [validBrick])).toBe(true);
+  });
+
+  it("([{ id: 'B1', bricks: [validBrick] }], []) → true", () => {
+    expect(hasAnyBrick([makeBlock("B1", [validBrick])], [])).toBe(true);
+  });
+
+  it("([{ bricks: [] }, { bricks: [validBrick] }], []) → true", () => {
+    expect(
+      hasAnyBrick([makeBlock("B1"), makeBlock("B2", [validBrick])], []),
+    ).toBe(true);
+  });
+});
+
+// Base fixture for v3 payloads — required fields
+const v3Base = {
+  schemaVersion: 3 as const,
+  programStart: "2026-05-01",
+  currentDate: "2026-05-20",
+  history: {},
+  categories: [],
+  deletions: {},
+};
+
+// U-m7e-006: migrate v3 — missing firstBrickShown + has bricks → back-fills to true
+describe("U-m7e-006: migrate v3 back-fill — absent firstBrickShown + bricks → true", () => {
+  it("returns firstBrickShown === true when payload has bricks and no firstBrickShown field", () => {
+    const raw = {
+      ...v3Base,
+      blocks: [makeBlock("B1", [{ ...validBrick, parentBlockId: "B1" }])],
+      looseBricks: [],
+    };
+    const result = migrate(raw);
+    expect(result).not.toBeNull();
+    expect(result!.firstBrickShown).toBe(true);
+  });
+});
+
+// U-m7e-007: migrate v3 — missing firstBrickShown + NO bricks → back-fills to false
+describe("U-m7e-007: migrate v3 back-fill — absent firstBrickShown + no bricks → false", () => {
+  it("returns firstBrickShown === false when payload has no bricks and no firstBrickShown field", () => {
+    const raw = {
+      ...v3Base,
+      blocks: [makeBlock("B1")], // block with empty bricks[]
+      looseBricks: [],
+    };
+    const result = migrate(raw);
+    expect(result).not.toBeNull();
+    expect(result!.firstBrickShown).toBe(false);
+  });
+});
+
+// U-m7e-008: migrate v3 round-trip — firstBrickShown present is preserved
+describe("U-m7e-008: migrate v3 round-trip — present firstBrickShown preserved verbatim", () => {
+  it("preserves firstBrickShown === true even when no bricks present", () => {
+    const raw = {
+      ...v3Base,
+      blocks: [],
+      looseBricks: [],
+      firstBrickShown: true,
+    };
+    const result = migrate(raw);
+    expect(result).not.toBeNull();
+    expect(result!.firstBrickShown).toBe(true);
+  });
+
+  it("preserves firstBrickShown === false even when bricks are present", () => {
+    const raw = {
+      ...v3Base,
+      blocks: [makeBlock("B1", [{ ...validBrick, parentBlockId: "B1" }])],
+      looseBricks: [],
+      firstBrickShown: false,
+    };
+    const result = migrate(raw);
+    expect(result).not.toBeNull();
+    expect(result!.firstBrickShown).toBe(false);
+  });
+});
+
+// U-m7e-009: migrate v2 → v3 cascade applies hasAnyBrick back-fill
+describe("U-m7e-009: migrate v2→v3 cascade applies hasAnyBrick back-fill", () => {
+  it("returns firstBrickShown === true for v2 payload with bricks", () => {
+    const raw = {
+      schemaVersion: 2 as const,
+      programStart: "2026-05-01",
+      currentDate: "2026-05-20",
+      history: {},
+      categories: [],
+      deletions: {},
+      blocks: [makeBlock("B1", [{ ...validBrick, parentBlockId: "B1" }])],
+      looseBricks: [],
+    };
+    const result = migrate(raw);
+    expect(result).not.toBeNull();
+    expect(result!.firstBrickShown).toBe(true);
+  });
+});
+
+// U-m7e-010: migrate v1 → v3 cascade lands at firstBrickShown: false
+describe("U-m7e-010: migrate v1→v3 cascade lands at firstBrickShown: false", () => {
+  it("returns firstBrickShown === false for v1 payload (no bricks in v1)", () => {
+    const raw = {
+      schemaVersion: 1 as const,
+      programStart: "2026-05-01",
+      categories: [],
+      blocks: [makeBlock("B1")], // v1 blocks have empty bricks[]
+      looseBricks: [],
+    };
+    const result = migrate(raw);
+    expect(result).not.toBeNull();
+    expect(result!.firstBrickShown).toBe(false);
+  });
+});
+
+// U-m7e-011: SCHEMA_VERSION === 3 (not bumped per ADR-044)
+describe("U-m7e-011: SCHEMA_VERSION stays at 3 — ADR-044 additive optional field", () => {
+  it("SCHEMA_VERSION is exactly 3", () => {
+    expect(SCHEMA_VERSION).toBe(3);
+  });
+});
+
+// U-m7e-012: defaultPersisted().firstBrickShown === false
+describe("U-m7e-012: defaultPersisted().firstBrickShown === false", () => {
+  it("returns firstBrickShown === false on fresh first-run state", () => {
+    const p = defaultPersisted();
+    expect(p.firstBrickShown).toBe(false);
+  });
+});
+
+// U-m7e-013: saveState writes firstBrickShown to JSON (including ?? false fallback)
+describe("U-m7e-013: saveState writes firstBrickShown to JSON with ?? false fallback", () => {
+  it("writes firstBrickShown: true when state.firstBrickShown === true", () => {
+    const state: PersistedState = {
+      ...defaultPersisted(),
+      firstBrickShown: true,
+    };
+    saveState(state);
+    const raw = mockStorage._store[STORAGE_KEY];
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    expect(parsed.firstBrickShown).toBe(true);
+  });
+
+  it("writes firstBrickShown: false when state.firstBrickShown === false", () => {
+    const state: PersistedState = {
+      ...defaultPersisted(),
+      firstBrickShown: false,
+    };
+    saveState(state);
+    const raw = mockStorage._store[STORAGE_KEY];
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    expect(parsed.firstBrickShown).toBe(false);
+  });
+
+  it("writes firstBrickShown: false when state.firstBrickShown === undefined (?? false fallback)", () => {
+    const state: PersistedState = {
+      ...defaultPersisted(),
+      firstBrickShown: undefined,
+    };
+    saveState(state);
+    const raw = mockStorage._store[STORAGE_KEY];
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    expect(parsed.firstBrickShown).toBe(false);
+  });
+});
+
+// U-m7e-014: defensive — corrupted firstBrickShown falls through to hasAnyBrick back-fill
+describe("U-m7e-014: defensive — corrupted firstBrickShown (string or number) → hasAnyBrick back-fill", () => {
+  it("returns firstBrickShown === false for firstBrickShown: 'yes' with no bricks", () => {
+    const raw = {
+      ...v3Base,
+      blocks: [],
+      looseBricks: [],
+      firstBrickShown: "yes", // string corruption
+    };
+    expect(() => migrate(raw)).not.toThrow();
+    const result = migrate(raw);
+    expect(result).not.toBeNull();
+    expect(result!.firstBrickShown).toBe(false);
+  });
+
+  it("returns firstBrickShown === false for firstBrickShown: 1 with no bricks", () => {
+    const raw = {
+      ...v3Base,
+      blocks: [],
+      looseBricks: [],
+      firstBrickShown: 1, // number corruption
+    };
+    expect(() => migrate(raw)).not.toThrow();
+    const result = migrate(raw);
+    expect(result).not.toBeNull();
+    expect(result!.firstBrickShown).toBe(false);
+  });
+});
