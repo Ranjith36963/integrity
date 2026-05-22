@@ -31,8 +31,16 @@ export function Stepper({
   const intervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
   const accelRef = React.useRef(1);
   const pressStartRef = React.useRef(0);
-  const tickCountRef = React.useRef(0);
   const pendingDirRef = React.useRef<1 | -1>(1);
+
+  // SC-1 fix: track latest value/onChange so the long-press interval
+  // closure reads fresh props on every tick, not the snapshot from press-start.
+  const valueRef = React.useRef(value);
+  const onChangeRef = React.useRef(onChange);
+  React.useEffect(() => {
+    valueRef.current = value;
+    onChangeRef.current = onChange;
+  });
 
   function clamp(n: number): number {
     let result = n;
@@ -42,20 +50,20 @@ export function Stepper({
   }
 
   function commit(dir: 1 | -1) {
-    const next = clamp(value + dir * step);
-    if (next === value) return; // at boundary — no commit
-    onChange(next);
+    const current = valueRef.current;
+    const next = clamp(current + dir * step);
+    if (next === current) return; // at boundary — no commit
+    onChangeRef.current(next);
+    valueRef.current = next; // advance for the next iteration within the same tick
     haptics.light();
   }
 
   function startLongPress(dir: 1 | -1) {
     pressStartRef.current = Date.now();
     accelRef.current = 1;
-    tickCountRef.current = 0;
     pendingDirRef.current = dir;
 
     intervalRef.current = setInterval(() => {
-      tickCountRef.current++;
       const elapsed = Date.now() - pressStartRef.current;
       // Ramp acceleration over ACCEL_START_MS
       accelRef.current = Math.min(

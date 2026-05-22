@@ -6,6 +6,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import * as React from "react";
 import { Stepper } from "./Stepper";
 
 // C-m0-011
@@ -105,4 +106,53 @@ describe("C-m0-013: Stepper haptic on each commit", () => {
 
     lightSpy.mockRestore();
   });
+});
+
+// C-m0-014 — SC-1 mutation guard: stale-closure on long-press
+describe("C-m0-014: Stepper long-press passes monotonically-increasing values", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("onChange receives strictly increasing values across ticks, not the same value repeatedly", () => {
+    // Controlled wrapper that updates value on every onChange — mirrors real usage.
+    // The bug under guard (SC-1): if commit() captures `value` from press-start
+    // render, every tick computes next = clamp(0+1) = 1 → onChange(1) over and over.
+    // After fix: each tick (and each iteration within a tick at high accel)
+    // computes next from the latest committed value → 1, 2, 3, …
+    function Controlled() {
+      const [v, setV] = React.useState(0);
+      return <Stepper value={v} max={1000} onChange={setV} />;
+    }
+    const allCalls: number[] = [];
+    const Spy = () => {
+      const [v, setV] = React.useState(0);
+      return (
+        <Stepper
+          value={v}
+          max={1000}
+          onChange={(n) => {
+            allCalls.push(n);
+            setV(n);
+          }}
+        />
+      );
+    };
+    void Controlled; // keep type-checked
+    render(<Spy />);
+    const incBtn = screen.getByRole("button", { name: "Increment" });
+
+    incBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    vi.advanceTimersByTime(900); // 3 ticks at base rate
+    incBtn.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+
+    // Stale-closure mutant would call onChange with 1 every time (identical args).
+    // Fixed code passes 1, 2, 3 (or more if any tick runs at accel>1).
+    const uniqueValues = new Set(allCalls);
+    expect(uniqueValues.size).toBeGreaterThanOrEqual(3);
+    expect(Math.max(...allCalls)).toBeGreaterThanOrEqual(3);
+  }, 10_000);
 });
