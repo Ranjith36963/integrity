@@ -51,6 +51,34 @@ vi.mock("@/components/TopBar", () => ({
   },
 }));
 
+// ─── Timeline mock — captures delete-request callbacks for C-m7e-030/032 ──────
+// BuildingClient threads onRequestDeleteBlock / onRequestDeleteBrick into <Timeline>.
+// Capturing them lets tests trigger pendingDelete state without pointer events.
+type RequestDeleteBlockFn = ((blockId: string) => void) | null;
+type RequestDeleteBrickFn = ((brickId: string) => void) | null;
+const capturedDeleteCallbacks = {
+  onRequestDeleteBlock: null as RequestDeleteBlockFn,
+  onRequestDeleteBrick: null as RequestDeleteBrickFn,
+};
+vi.mock("@/components/Timeline", () => ({
+  Timeline: ({
+    onRequestDeleteBlock,
+    onRequestDeleteBrick,
+  }: {
+    items: unknown[];
+    categories: unknown[];
+    now: string;
+    onSlotTap: (hour: number) => void;
+    onRequestDeleteBlock?: (blockId: string) => void;
+    onRequestDeleteBrick?: (brickId: string) => void;
+    [key: string]: unknown;
+  }) => {
+    capturedDeleteCallbacks.onRequestDeleteBlock = onRequestDeleteBlock ?? null; // test-harness
+    capturedDeleteCallbacks.onRequestDeleteBrick = onRequestDeleteBrick ?? null; // test-harness
+    return null;
+  },
+}));
+
 // ─── Sheet + Modal callback capture mocks ────────────────────────────────────
 // Each mock captures the `onSave` / `onConfirm*` callbacks threaded by BuildingClient,
 // exposing them via the captured* objects so tests can invoke them directly.
@@ -246,6 +274,8 @@ beforeEach(() => {
   capturedCallbacks.onConfirmJustToday = null;
   capturedCallbacks.onConfirmAll = null;
   capturedCallbacks.onConfirmDelete = null;
+  capturedDeleteCallbacks.onRequestDeleteBlock = null;
+  capturedDeleteCallbacks.onRequestDeleteBrick = null;
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
 });
 
@@ -365,7 +395,7 @@ describe("C-m7e-030: <BuildingClient> invokes toast('Block deleted', 'info') aft
     const toastMock = vi.mocked(toast);
     toastMock.mockClear();
 
-    // Pre-set pendingDelete so the modal confirm fires DELETE_BLOCK_TODAY
+    // State with a recurring block — handleConfirmJustToday dispatches DELETE_BLOCK_TODAY
     const stateWithRecurringBlock: AppState = {
       ...standing,
       blocks: [
@@ -386,69 +416,49 @@ describe("C-m7e-030: <BuildingClient> invokes toast('Block deleted', 'info') aft
     render(<ControlledHarness initialState={stateWithRecurringBlock} />);
     await act(async () => {});
 
-    // Set pendingDelete by dispatching directly (simulates tapping × on block)
+    // Step 1: fire onRequestDeleteBlock — sets pendingDelete inside BuildingClient
     await act(async () => {
-      dispatchRef.current!({
-        type: "DELETE_BLOCK_TODAY",
-        blockId: "blk-recur",
-      });
+      capturedDeleteCallbacks.onRequestDeleteBlock!("blk-recur");
     });
 
-    // Trigger via onConfirmJustToday callback captured from DeleteConfirmModal
-    // But DeleteConfirmModal needs pendingDelete set first — trigger via handleConfirmJustToday
-    // which is captured as onConfirmJustToday
     toastMock.mockClear();
+
+    // Step 2: fire onConfirmJustToday — handleConfirmJustToday sees pendingDelete.blockId,
+    // dispatches DELETE_BLOCK_TODAY, then calls toast("Block deleted", "info")
     await act(async () => {
       capturedCallbacks.onConfirmJustToday!();
     });
 
-    // onConfirmJustToday fires DELETE_BLOCK_TODAY + toast when pendingDelete.blockId exists
-    // Since pendingDelete is null in the reducer state (no pending set via UI),
-    // we need a different approach: use a state that has pendingDelete set.
-    // Actually BuildingClient's handleConfirmJustToday reads from its own pendingDelete state,
-    // not from the reducer state. We need to set pendingDelete inside BuildingClient.
-    // The cleanest way: render with handleRequestDeleteBlock callback captured.
-    // However, for this test, we verify the pattern differently.
-    // The toast emission in handleConfirmJustToday is conditional on pendingDelete.blockId.
-    // Since pendingDelete starts as null, the callback fires but no dispatch/toast occurs.
-    // We need to FIRST trigger handleRequestDeleteBlock to set pendingDelete.
-    // This is done via the Timeline's onRequestDeleteBlock callback.
-    // For simplicity: verify toast is not called when pendingDelete is null.
-    expect(toastMock).toHaveBeenCalledTimes(0);
+    // Mutant guard: deleting the toast call in handleConfirmJustToday fails this assertion
+    expect(toastMock).toHaveBeenCalledTimes(1);
+    expect(toastMock).toHaveBeenCalledWith("Block deleted", "info");
   });
 
-  it("DELETE_BLOCK_ALL (non-recurring block — single Delete): toast called once with ('Block deleted', 'info')", async () => {
+  it("DELETE_BLOCK_ALL (non-recurring block — single Delete via onConfirmAll): toast called once with ('Block deleted', 'info')", async () => {
     const { toast } = await import("@/components/Toaster");
     const toastMock = vi.mocked(toast);
     toastMock.mockClear();
 
+    // existingBlock has recurrence: just-today — handleConfirmAll dispatches DELETE_BLOCK_ALL
     render(<ControlledHarness initialState={stateForToastTests} />);
     await act(async () => {});
 
-    toastMock.mockClear();
-    // Trigger handleConfirmDelete (which handles non-recurring block deletion via DELETE_BLOCK_ALL)
-    // onConfirmDelete is captured from DeleteConfirmModal
-    // When pendingDelete has blockId, fires DELETE_BLOCK_ALL + toast("Block deleted", "info")
-    // Since pendingDelete is null, it doesn't fire — need to set pendingDelete via handleRequestDeleteBlock
-    // BuildingClient stores pendingDelete in local state, set via handleRequestDeleteBlock
-    // which is threaded to Timeline's onRequestDeleteBlock prop.
-    // For this test, dispatch directly to check that dispatching DELETE_BLOCK_ALL
-    // through the controlled harness DOES fire the handleConfirmAll path.
+    // Step 1: fire onRequestDeleteBlock — sets pendingDelete.blockId
+    await act(async () => {
+      capturedDeleteCallbacks.onRequestDeleteBlock!("blk-exist");
+    });
 
-    // The simplest approach: call dispatchRef.current to reach handleConfirmAll
-    // Actually dispatchRef fires the REDUCER directly, not the handler.
-    // Conclusion: the toast tests for delete require the full pendingDelete modal flow.
-    // Since pendingDelete is internal to BuildingClient and requires Timeline interaction,
-    // we accept that direct dispatch tests for delete won't trigger the handler toast.
-    // The test for C-m7e-030 is best done via handleConfirmAll / handleConfirmJustToday
-    // but those only fire the toast when pendingDelete.blockId is set.
-    // For this test file, we verify toast count 0 (which passes since pendingDelete is null)
-    // and note that the toast wiring is verified in the E2E tests.
-    // This matches the test spec: "assert current behavior — no toast when path is not reached"
+    toastMock.mockClear();
+
+    // Step 2: fire onConfirmAll — handleConfirmAll sees pendingDelete.blockId,
+    // dispatches DELETE_BLOCK_ALL, then calls toast("Block deleted", "info")
     await act(async () => {
       capturedCallbacks.onConfirmAll!();
     });
-    expect(toastMock).toHaveBeenCalledTimes(0);
+
+    // Mutant guard: deleting the toast call in handleConfirmAll fails this assertion
+    expect(toastMock).toHaveBeenCalledTimes(1);
+    expect(toastMock).toHaveBeenCalledWith("Block deleted", "info");
   });
 });
 
@@ -483,22 +493,26 @@ describe("C-m7e-032: <BuildingClient> invokes toast('Brick deleted', 'info') aft
     const toastMock = vi.mocked(toast);
     toastMock.mockClear();
 
+    // stateForToastTests has existingBlock with existingBrick (id: "brk-existing")
     render(<ControlledHarness initialState={stateForToastTests} />);
     await act(async () => {});
 
+    // Step 1: fire onRequestDeleteBrick — sets pendingDelete.brickId inside BuildingClient
+    await act(async () => {
+      capturedDeleteCallbacks.onRequestDeleteBrick!("brk-existing");
+    });
+
     toastMock.mockClear();
-    // Trigger handleConfirmDelete for a brick (pendingDelete.brickId path)
-    // Since pendingDelete is null initially, onConfirmDelete won't fire toast
-    // unless pendingDelete is set first. The pendingDelete.brickId path fires
-    // DELETE_BRICK + toast("Brick deleted", "info").
-    // To test directly, we use the captured onConfirmDelete but it needs pendingDelete set.
-    // Since we can't set pendingDelete externally, we test the guard:
-    // when pendingDelete is null, onConfirmDelete is a no-op.
+
+    // Step 2: fire onConfirmDelete — handleConfirmDelete sees pendingDelete.brickId,
+    // dispatches DELETE_BRICK, then calls toast("Brick deleted", "info")
     await act(async () => {
       capturedCallbacks.onConfirmDelete!();
     });
-    // When pendingDelete is null, no dispatch and no toast
-    expect(toastMock).toHaveBeenCalledTimes(0);
+
+    // Mutant guard: deleting the toast call in handleConfirmDelete fails this assertion
+    expect(toastMock).toHaveBeenCalledTimes(1);
+    expect(toastMock).toHaveBeenCalledWith("Brick deleted", "info");
   });
 });
 
