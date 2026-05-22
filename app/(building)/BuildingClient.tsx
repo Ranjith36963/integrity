@@ -22,6 +22,8 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { Dispatch } from "react";
+import { toast } from "@/components/Toaster";
+import { FirstBrickCard } from "@/components/FirstBrickCard";
 import { today, dateLabel, dayPct, dayNumber } from "@/lib/dharma";
 import { daysInYear } from "@/lib/dayOfYear";
 import { useFirstPaintAfterHydration } from "@/lib/firstPaint";
@@ -205,6 +207,31 @@ export function BuildingClient({
   // M6: aria-live announcement for reorder events (polite; screen-reader-discoverable).
   const [announcement, setAnnouncement] = useState("");
 
+  // M7e: FirstBrickCard — show on 0→1 brick transition when firstBrickShown was NOT true
+  //      at the prior render (ADR-039 first-brick narrative payoff).
+  // Tracks BOTH previous brickCount AND previous firstBrickShown to detect the exact crossing.
+  // The reducer flips firstBrickShown to true in the same dispatch as ADD_BRICK, so we must
+  // use the PREVIOUS value of firstBrickShown (captured before the dispatch) as the gate.
+  const brickCount =
+    state.blocks.reduce((sum, b) => sum + b.bricks.length, 0) +
+    state.looseBricks.length;
+  const prevBrickCountRef = useRef<number>(brickCount);
+  const prevFirstBrickShownRef = useRef<boolean | undefined>(
+    state.firstBrickShown,
+  );
+  const [firstCardOpen, setFirstCardOpen] = useState(false);
+
+  useEffect(() => {
+    const prevCount = prevBrickCountRef.current;
+    const prevFlag = prevFirstBrickShownRef.current;
+    prevBrickCountRef.current = brickCount;
+    prevFirstBrickShownRef.current = state.firstBrickShown;
+    // Gate: previous brickCount was 0 AND now is ≥1 AND flag was NOT already true before dispatch.
+    if (prevCount === 0 && brickCount >= 1 && prevFlag !== true) {
+      setFirstCardOpen(true);
+    }
+  }, [brickCount, state.firstBrickShown]);
+
   // Live clock (ADR-023: server-clock paint on SSR, reconciles within 60s)
   const now = useNow();
   const todayIso = today();
@@ -301,6 +328,7 @@ export function BuildingClient({
   const handleConfirmJustToday = useCallback(() => {
     if (pendingDelete?.blockId) {
       dispatch({ type: "DELETE_BLOCK_TODAY", blockId: pendingDelete.blockId });
+      toast("Block deleted", "info"); // M7e: AC #10 block-delete toast
     }
     setPendingDelete(null);
   }, [dispatch, pendingDelete]);
@@ -309,6 +337,7 @@ export function BuildingClient({
   const handleConfirmAll = useCallback(() => {
     if (pendingDelete?.blockId) {
       dispatch({ type: "DELETE_BLOCK_ALL", blockId: pendingDelete.blockId });
+      toast("Block deleted", "info"); // M7e: AC #10 block-delete toast
     }
     setPendingDelete(null);
   }, [dispatch, pendingDelete]);
@@ -317,8 +346,10 @@ export function BuildingClient({
   const handleConfirmDelete = useCallback(() => {
     if (pendingDelete?.blockId) {
       dispatch({ type: "DELETE_BLOCK_ALL", blockId: pendingDelete.blockId });
+      toast("Block deleted", "info"); // M7e: AC #10 block-delete toast
     } else if (pendingDelete?.brickId) {
       dispatch({ type: "DELETE_BRICK", brickId: pendingDelete.brickId });
+      toast("Brick deleted", "info"); // M7e: AC #10 brick-delete toast
     }
     setPendingDelete(null);
   }, [dispatch, pendingDelete]);
@@ -421,11 +452,13 @@ export function BuildingClient({
 
   function handleSave(block: Block) {
     dispatch({ type: "ADD_BLOCK", block });
+    toast("Block created", "success"); // M7e: AC #10 block-add toast
     closeSheet();
   }
 
   function handleSaveBrick(brick: Brick) {
     dispatch({ type: "ADD_BRICK", brick });
+    toast("Brick added", "success"); // M7e: AC #10 brick-add toast
     closeBrickSheet();
   }
 
@@ -601,6 +634,14 @@ export function BuildingClient({
           open={unitsSheetState.open}
           onClose={handleUnitsClose}
           onSave={handleUnitsSave}
+        />
+        {/* M7e: FirstBrickCard — slides up on first-ever brick (ADR-039 narrative payoff).
+             Visible when firstCardOpen=true; auto-dismisses after 3000 ms or on tap.
+             z-index 40 (above dock z-20, below sheet z-50). */}
+        <FirstBrickCard
+          visible={firstCardOpen}
+          onDismiss={() => setFirstCardOpen(false)}
+          prefersReducedMotion={Boolean(prefersReducedMotion)}
         />
         {/* M4a: Fireworks overlay — day-100% celebration (motion ON path) */}
         <Fireworks active={fireworksActive} />
