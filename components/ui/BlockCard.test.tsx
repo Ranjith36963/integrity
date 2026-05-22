@@ -146,3 +146,94 @@ describe("C-m0-018: BlockCard editMode × button", () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 });
+
+// C-m0-028 — BC-2 mutation guard: BlockCard is keyboard-accessible when interactive
+describe("C-m0-028: BlockCard keyboard accessibility (non-edit mode)", () => {
+  it("renders the card as a button when onClick provided and not in editMode", () => {
+    render(
+      <BlockCard
+        name="Work"
+        start="08:45"
+        end="17:15"
+        category="passive"
+        status="current"
+        pct={42}
+        onClick={vi.fn()}
+      />,
+    );
+    const card = screen.getByTestId("block-card");
+    expect(card.tagName).toBe("BUTTON");
+    expect(card).not.toHaveAttribute("tabindex", "-1");
+  });
+
+  it("Enter key activates onClick", async () => {
+    const onClick = vi.fn();
+    render(
+      <BlockCard
+        name="Work"
+        start="08:45"
+        end="17:15"
+        category="passive"
+        status="current"
+        pct={42}
+        onClick={onClick}
+      />,
+    );
+    const card = screen.getByTestId("block-card");
+    card.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(onClick).toHaveBeenCalledOnce();
+  });
+
+  it("Space key activates onClick", async () => {
+    const onClick = vi.fn();
+    render(
+      <BlockCard
+        name="Work"
+        start="08:45"
+        end="17:15"
+        category="passive"
+        status="current"
+        pct={42}
+        onClick={onClick}
+      />,
+    );
+    const card = screen.getByTestId("block-card");
+    card.focus();
+    await userEvent.keyboard(" ");
+    expect(onClick).toHaveBeenCalledOnce();
+  });
+
+  it("renders as div (non-interactive) when no onClick provided", () => {
+    render(
+      <BlockCard
+        name="Work"
+        start="08:45"
+        end="17:15"
+        category="passive"
+        status="current"
+        pct={42}
+      />,
+    );
+    const card = screen.getByTestId("block-card");
+    expect(card.tagName).toBe("DIV");
+  });
+
+  it("renders as div (non-interactive) in editMode even with onClick", () => {
+    // In editMode, body click is suppressed — so no interactive wrapper needed.
+    render(
+      <BlockCard
+        name="Work"
+        start="08:45"
+        end="17:15"
+        category="passive"
+        status="current"
+        pct={42}
+        editMode
+        onClick={vi.fn()}
+      />,
+    );
+    const card = screen.getByTestId("block-card");
+    expect(card.tagName).toBe("DIV");
+  });
+});
