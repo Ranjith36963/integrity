@@ -20,7 +20,7 @@
 //      (ADR-023 pass-1 window). When true renders real subtree + stagger on first paint.
 //      useFirstPaintAfterHydration drives stagger=true exactly once per mount (AC #2).
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import type { Dispatch } from "react";
 import { today, dateLabel, dayPct, dayNumber } from "@/lib/dharma";
 import { daysInYear } from "@/lib/dayOfYear";
@@ -33,9 +33,8 @@ import {
   findOverlaps,
 } from "@/lib/overlap";
 import { currentDayBlocks } from "@/lib/currentDayBlocks";
-import { useCrossUpEffect } from "@/lib/celebrations";
-import { haptics } from "@/lib/haptics";
-import { playChime } from "@/lib/audio";
+import { useDayCelebrationOnce, celebrate } from "@/lib/celebrations";
+import { useReducedMotion } from "motion/react";
 import { EditModeProvider } from "@/components/EditModeProvider";
 import { TopBar } from "@/components/TopBar";
 import { Hero } from "@/components/Hero";
@@ -50,6 +49,7 @@ import { UnitsEntrySheet } from "@/components/UnitsEntrySheet";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import type { DeleteTarget } from "@/components/DeleteConfirmModal";
 import { Fireworks } from "@/components/Fireworks";
+import { DayCompleteCard } from "@/components/DayCompleteCard";
 import { Skeleton } from "@/components/Skeleton";
 import type { AppState, Action, Block, Brick, Category } from "@/lib/types";
 
@@ -220,15 +220,42 @@ export function BuildingClient({
   // M3: dayPct now takes full AppState (blocks + looseBricks)
   const heroPct = dayPct(state);
 
-  // M4a: day-100% cross-up — fires notification haptic + chime + fireworks once per crossing
-  const fireDayComplete = useCallback(() => {
-    haptics.notification();
-    playChime();
-    setFireworksActive(true);
-    window.setTimeout(() => setFireworksActive(false), 1700);
-  }, []);
+  // M7d: replace useCrossUpEffect+playChime with useDayCelebrationOnce+celebrate.
+  // shouldCelebrate is true for exactly one render on the FIRST 0→100 crossing per mount.
+  // celebrate("day", { withAudio: false }) routes haptics via the shim (audio deferred to M7f).
+  // PRM-conditional timer: 2000ms under PRM (DayCompleteCard), 1700ms under motion ON (Fireworks).
+  // timerIdRef holds the clearTimeout handle so unmount cleanup can cancel it safely.
+  const prefersReducedMotion = useReducedMotion();
+  const shouldCelebrate = useDayCelebrationOnce(heroPct);
+  const dayCelebTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(
+    null,
+  );
 
-  useCrossUpEffect(heroPct, 100, fireDayComplete);
+  useEffect(() => {
+    if (!shouldCelebrate) return;
+    celebrate("day", { withAudio: false });
+    /* eslint-disable-next-line react-hooks/set-state-in-effect -- M7d plan.md: setFireworksActive(true) is gated by one-shot shouldCelebrate from useDayCelebrationOnce; no cascade. Same precedent as Fireworks.tsx (M4a). */
+    setFireworksActive(true);
+    const delay = prefersReducedMotion ? 2000 : 1700;
+    // Store ID in ref so unmount cleanup can cancel safely without returning cleanup here.
+    // Returning a cleanup function from this effect would cancel the timer when
+    // shouldCelebrate flips false on the next render (triggered by setFireworksActive),
+    // defeating the 1700/2000ms celebration window (plan.md M7d PRM-conditional timer).
+    dayCelebTimerRef.current = window.setTimeout(
+      () => setFireworksActive(false),
+      delay,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- shouldCelebrate is the only trigger dep; prefersReducedMotion is intentionally excluded to prevent React cleanup from cancelling the in-flight timer on the next render where shouldCelebrate flips false (plan.md M7d PRM-conditional timer invariant).
+  }, [shouldCelebrate]);
+
+  // Unmount cleanup: cancel the in-flight timer if the component unmounts early.
+  useEffect(() => {
+    return () => {
+      if (dayCelebTimerRef.current !== null) {
+        window.clearTimeout(dayCelebTimerRef.current);
+      }
+    };
+  }, []);
 
   // M4a: dispatch LOG_TICK_BRICK for tick chip taps; threaded to Timeline + LooseBricksTray
   const handleTickToggle = useCallback(
@@ -577,8 +604,15 @@ export function BuildingClient({
           onClose={handleUnitsClose}
           onSave={handleUnitsSave}
         />
-        {/* M4a: Fireworks overlay — day-100% celebration */}
+        {/* M4a: Fireworks overlay — day-100% celebration (motion ON path) */}
         <Fireworks active={fireworksActive} />
+        {/* M7d: DayCompleteCard — PRM-only "Day complete." text card.
+            active predicate: fireworksActive && prefersReducedMotion.
+            Under motion ON: prefersReducedMotion===false → card receives active={false} → renders null.
+            Under PRM: Fireworks returns null (M4a behavior preserved); card mounts for 2000ms. */}
+        <DayCompleteCard
+          active={Boolean(fireworksActive && prefersReducedMotion)}
+        />
       </div>
       {/* M5: DeleteConfirmModal — pendingDelete drives open/target; independent of editMode */}
       <DeleteConfirmModal
