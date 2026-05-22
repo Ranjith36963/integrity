@@ -32,13 +32,21 @@ export function Stepper({
   const accelRef = React.useRef(1);
   const pressStartRef = React.useRef(0);
   const pendingDirRef = React.useRef<1 | -1>(1);
+  // NEW-1 guard: while a long-press is in flight, valueRef is owned by
+  // the press logic (advanced optimistically inside commit()). Unrelated
+  // parent re-renders during the press would otherwise reset valueRef
+  // backwards via the effect, undoing in-flight advances. We only sync
+  // from props when not pressing.
+  const isPressedRef = React.useRef(false);
 
   // SC-1 fix: track latest value/onChange so the long-press interval
   // closure reads fresh props on every tick, not the snapshot from press-start.
   const valueRef = React.useRef(value);
   const onChangeRef = React.useRef(onChange);
   React.useEffect(() => {
-    valueRef.current = value;
+    if (!isPressedRef.current) {
+      valueRef.current = value;
+    }
     onChangeRef.current = onChange;
   });
 
@@ -59,6 +67,7 @@ export function Stepper({
   }
 
   function startLongPress(dir: 1 | -1) {
+    isPressedRef.current = true;
     pressStartRef.current = Date.now();
     accelRef.current = 1;
     pendingDirRef.current = dir;
@@ -77,6 +86,7 @@ export function Stepper({
   }
 
   function stopLongPress() {
+    isPressedRef.current = false;
     if (intervalRef.current !== null) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
