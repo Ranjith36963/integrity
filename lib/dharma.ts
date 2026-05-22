@@ -1,4 +1,4 @@
-import { Block, Brick } from "./types";
+import { Block, Brick, AppState } from "./types";
 
 export function toMin(hhmm: string): number {
   const [h, m] = hhmm.split(":").map(Number);
@@ -16,15 +16,23 @@ export function dayOffset(hhmm: string): number {
 
 export function duration(block: Block): number {
   const a = toMin(block.start);
+  // M2: end is optional (no-end blocks have no duration — return 0)
+  if (!block.end) return 0;
   const b = toMin(block.end);
   const d = b - a;
   return d <= 0 ? d + DAY_LEN : d;
 }
 
+/**
+ * brickPct — M4f: collapsed to 2-arm switch (tick + units) per ADR-043.
+ * tick: done ? 100 : 0
+ * units: Math.min(done / target, 1) * 100  (zero-target guard)
+ */
 export function brickPct(b: Brick): number {
   if (b.kind === "tick") return b.done ? 100 : 0;
+  // units (kind === "units" by exhaustiveness)
   if (b.target <= 0) return 0;
-  return Math.min(100, (b.current / b.target) * 100);
+  return Math.min(b.done / b.target, 1) * 100;
 }
 
 export function blockPct(block: Block): number {
@@ -33,12 +41,56 @@ export function blockPct(block: Block): number {
   return sum / block.bricks.length;
 }
 
-// Equal-weighted average of blockPct (spec §Scoring: "All equal weight").
-// Previously duration-weighted — fixed per SG-bld-08.
-export function dayPct(blocks: Block[]): number {
-  if (blocks.length === 0) return 0;
-  const sum = blocks.reduce((s, b) => s + blockPct(b), 0);
-  return sum / blocks.length;
+/**
+ * dayPct — M3: REPLACES dayPct(blocks: Block[]) with dayPct(state: AppState).
+ * Averages over state.blocks (each contributing blockPct) and state.looseBricks
+ * (each contributing brickPct). Empty state → 0 (no divide-by-zero).
+ */
+export function dayPct(state: AppState): number {
+  const total = state.blocks.length + state.looseBricks.length;
+  if (total === 0) return 0;
+  const blockSum = state.blocks.reduce((s, b) => s + blockPct(b), 0);
+  const brickSum = state.looseBricks.reduce((s, b) => s + brickPct(b), 0);
+  return (blockSum + brickSum) / total;
+}
+
+/**
+ * categoryDayPct — NEW in M3.
+ * Averages over:
+ *   (a) Every Block whose block.categoryId === categoryId → contributes blockPct(block)
+ *       (but only when block.categoryId matches; bricks inside contribute to THEIR own category).
+ *   (b) Every Brick (inside-block + standalone) whose brick.categoryId === categoryId.
+ *
+ * NOTE: The spec/plan says "block's own contribution is included only when block.categoryId === categoryId".
+ * Bricks inside a block attribute to THEIR OWN category FK, not the parent block's category.
+ * Standalone bricks with categoryId: null are excluded from category-filtered queries.
+ * Empty matches → 0.
+ */
+export function categoryDayPct(state: AppState, categoryId: string): number {
+  const units: number[] = [];
+
+  for (const block of state.blocks) {
+    // Include block's own contribution if its categoryId matches
+    if (block.categoryId === categoryId) {
+      units.push(blockPct(block));
+    }
+    // Include bricks inside the block that match the category
+    for (const brick of block.bricks) {
+      if (brick.categoryId === categoryId) {
+        units.push(brickPct(brick));
+      }
+    }
+  }
+
+  // Include loose bricks with matching categoryId (null excluded)
+  for (const brick of state.looseBricks) {
+    if (brick.categoryId === categoryId) {
+      units.push(brickPct(brick));
+    }
+  }
+
+  if (units.length === 0) return 0;
+  return units.reduce((s, v) => s + v, 0) / units.length;
 }
 
 export function currentBlockIndex(blocks: Block[], now: string): number {
@@ -69,12 +121,62 @@ export function blockStatus(
   return "future";
 }
 
+// M4f: 2-arm collapse; units arm renders done/target unit (no "min" suffix — unit is in data)
 export function brickLabel(b: Brick): string {
   if (b.kind === "tick") return b.done ? "done" : "—";
-  if (b.kind === "time") return `${b.current}/${b.target} min`;
-  return `${b.current}/${b.target}${b.unit ? " " + b.unit : ""}`;
+  return `${b.done}/${b.target}${b.unit ? " " + b.unit : ""}`;
 }
 
-export function fmtRange(block: Block): string {
+/**
+ * Formats the time range for a block as "HH:MM–HH:MM" (en-dash).
+ * SG-m2-10: widened to accept end?: string | undefined.
+ * When end is undefined (no-end block), returns just "HH:MM" with no en-dash.
+ * Single source of truth for time range formatting across TimelineBlock and NowCard.
+ */
+export function fmtRange(block: Pick<Block, "start" | "end">): string {
+  if (!block.end) return block.start;
   return `${block.start}–${block.end}`;
+}
+
+/**
+ * Returns the local date as "YYYY-MM-DD" (zero-padded).
+ * Uses local date components — NOT UTC — so DST transitions and
+ * cross-timezone runs stay consistent with the user's current day.
+ * Pass an explicit Date for testability; defaults to new Date().
+ */
+export function today(d: Date = new Date()): string {
+  const yyyy = String(d.getFullYear());
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/**
+ * Returns the 1-based program day number (day 1 = programStart).
+ * Returns `undefined` if programStart is null, undefined, or empty string.
+ * Both ISO strings are parsed as local midnight to keep DST-safe integer math.
+ */
+export function dayNumber(
+  programStart: string | null | undefined,
+  todayIso: string,
+): number | undefined {
+  if (!programStart) return undefined;
+  const start = new Date(programStart + "T00:00:00");
+  const end = new Date(todayIso + "T00:00:00");
+  const delta = Math.floor((end.getTime() - start.getTime()) / 86_400_000);
+  return delta + 1;
+}
+
+/**
+ * Formats a "YYYY-MM-DD" ISO date string as "Wed, Apr 29" (en-US locale).
+ * Locale is fixed to "en-US" per SG-bld-11 (user-approved 2026-05-01).
+ * If locale-aware formatting is needed later, introduce a follow-up feature.
+ */
+export function dateLabel(todayIso: string): string {
+  const d = new Date(todayIso + "T00:00:00");
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(d);
 }

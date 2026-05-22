@@ -1,9 +1,16 @@
 "use client";
 import { Pencil, Settings } from "lucide-react";
 import { useEditMode } from "./EditModeProvider";
+import { haptics } from "../lib/haptics";
 
 export function TopBar() {
   const { editMode, toggle } = useEditMode();
+
+  function handleEditToggle() {
+    haptics.light();
+    toggle();
+  }
+
   return (
     <header className="flex items-center justify-between px-5 pt-5 pb-3">
       <div className="flex items-center gap-2">
@@ -26,13 +33,21 @@ export function TopBar() {
       </div>
       <div className="flex items-center gap-2">
         <button
-          aria-label="Edit"
+          aria-label={editMode ? "Edit mode, on" : "Edit mode, off"}
           aria-pressed={editMode}
-          onClick={toggle}
-          className="grid h-11 w-11 place-items-center rounded-md border border-white/5 transition-colors hover:border-white/15"
-          style={{ background: "var(--card)" }}
+          onClick={handleEditToggle}
+          className="grid h-11 w-11 place-items-center rounded-md border transition-colors"
+          style={{
+            background: editMode ? "var(--accent)" : "var(--card)",
+            borderColor: editMode
+              ? "color-mix(in srgb, var(--accent) 60%, transparent)"
+              : "rgba(255,255,255,0.05)",
+          }}
         >
-          <Pencil size={15} color="var(--ink-dim)" />
+          <Pencil
+            size={15}
+            color={editMode ? "var(--ink)" : "var(--ink-dim)"}
+          />
         </button>
         <button
           aria-label="Settings"

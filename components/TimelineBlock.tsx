@@ -1,123 +1,402 @@
 "use client";
-import { X } from "lucide-react";
-import { Block, CATEGORY_COLOR, CATEGORY_LABEL } from "@/lib/types";
-import { blockPct } from "@/lib/dharma";
-import { Brick as BrickComponent } from "./Brick";
-import { Scaffold } from "./Scaffold";
-import { EmptyBricks } from "./EmptyBricks";
+// TimelineBlock — M6: drag handle affordance added.
+// - M5 features preserved: jiggle, × delete button, edit mode tap suppression.
+// - M6: GripVertical drag handle (≥44px, ADR-031) in Edit Mode (ADR-008).
+//   New props: dragControls (DragControls from Framer) + onReorderRequest.
+
+import { useState, useCallback } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
+import type { DragControls } from "motion/react";
+import { Plus, X, GripVertical } from "lucide-react";
+import type { Block, Category } from "@/lib/types";
+import { HOUR_HEIGHT_PX, timeToOffsetPx } from "@/lib/timeOffset";
+import { fmtRange, blockPct } from "@/lib/dharma";
+import { useCrossUpEffect } from "@/lib/celebrations";
+import { haptics } from "@/lib/haptics";
+import { playChime } from "@/lib/audio";
+import { springConfigs } from "@/lib/motion";
+import { BrickChip } from "./BrickChip";
+import { BlockBrickReorderGroup } from "./BlockBrickReorderGroup";
 import { useEditMode } from "./EditModeProvider";
-import type { Brick } from "@/lib/types";
+import { NowTag } from "./NowTag";
 
 interface Props {
   block: Block;
-  status: "past" | "current" | "future";
-  onLogBrick: (brickIndex: number, updated: Brick) => void;
+  categories: Category[];
+  onAddBrick?: (parentBlockId: string) => void;
+  onTickToggle?: (brickId: string) => void;
+  /** M4f: called with brickId when a units chip is tapped (opens UnitsEntrySheet). */
+  onUnitsOpenSheet?: (brickId: string) => void;
+  /** M5: called with blockId when the × delete button is tapped. */
+  onRequestDeleteBlock?: (blockId: string) => void;
+  /** M5: called with brickId when a brick × is tapped. */
+  onRequestDeleteBrick?: (brickId: string) => void;
+  /** M6: DragControls instance from DraggableTimelineBlock — used by the handle. */
+  dragControls?: DragControls;
+  /** M6: called with (blockId, newStart, newEnd) when a valid drop commits. */
+  onReorderRequest?: (
+    blockId: string,
+    newStart: string,
+    newEnd: string | null,
+  ) => void;
+  /** M6: called with (blockId, fromIndex, toIndex) when a brick drag commits. */
+  onReorderBrickInBlock?: (
+    blockId: string,
+    fromIndex: number,
+    toIndex: number,
+  ) => void;
+  /** M7b: when true, adds is-active CSS class (pulsing outline) + renders NowTag badge.
+   * Computed by Timeline.tsx via activeBlockId(visibleBlockList, now).
+   * Default false — byte-identical to pre-M7b when omitted. */
+  isActive?: boolean;
 }
 
-export function TimelineBlock({ block, status, onLogBrick }: Props) {
+export function TimelineBlock({
+  block,
+  categories,
+  onAddBrick,
+  onTickToggle,
+  onUnitsOpenSheet,
+  onRequestDeleteBlock,
+  onRequestDeleteBrick,
+  dragControls,
+  onReorderRequest: _onReorderRequest,
+  onReorderBrickInBlock,
+  isActive = false,
+}: Props) {
+  const [expanded, setExpanded] = useState(false);
+  const [bloomKey, setBloomKey] = useState(0);
+  const prefersReducedMotion = useReducedMotion();
   const { editMode } = useEditMode();
-  const pct = Math.round(blockPct(block));
-  const color = CATEGORY_COLOR[block.category];
-  const isCurrent = status === "current";
-  const isPast = status === "past";
+
+  const category =
+    block.categoryId !== null
+      ? (categories.find((c) => c.id === block.categoryId) ?? null)
+      : null;
+
+  const top = timeToOffsetPx(block.start, HOUR_HEIGHT_PX);
+  const height =
+    block.end !== undefined
+      ? timeToOffsetPx(block.end, HOUR_HEIGHT_PX) - top
+      : HOUR_HEIGHT_PX / 12;
+
+  const timeLabel = fmtRange(block);
+  const pct = blockPct(block);
+  const scaffoldColor = category?.color ?? "var(--text-dim)";
+
+  // M4a: block-100% cross-up — fires bloom + chime + success haptic once per crossing
+  const fireBlockComplete = useCallback(() => {
+    haptics.success();
+    playChime();
+    setBloomKey((k) => k + 1);
+  }, []);
+
+  useCrossUpEffect(pct, 100, fireBlockComplete);
+
+  const variants = {
+    hidden: { opacity: 0, y: 4 },
+    visible: { opacity: 1, y: 0 },
+  };
+
+  const bloomVariants = {
+    initial: { scale: 1, opacity: 0 },
+    animate: { scale: 1.04, opacity: 1 },
+    exit: { scale: 1, opacity: 0 },
+  };
+
+  function handleCardClick() {
+    // M5: tap-to-expand is suppressed in Edit Mode (SG-m5-05)
+    if (editMode) return;
+    setExpanded((e) => !e);
+  }
+
+  function handleAddBrickClick(e: React.MouseEvent) {
+    e.stopPropagation();
+    onAddBrick?.(block.id);
+  }
+
+  function handleDeleteClick(e: React.MouseEvent) {
+    e.stopPropagation();
+    onRequestDeleteBlock?.(block.id);
+  }
+
+  // M5: jiggle is applied via data-edit-mode when editMode=true and not reduced-motion
+  const jiggleActive = editMode && !prefersReducedMotion;
 
   return (
-    <div
-      data-testid="timeline-block"
-      data-status={status}
-      className="flex gap-3 rounded-lg p-3 transition-colors"
-      style={{
-        background: isCurrent ? "rgba(251,191,36,0.06)" : "var(--card)",
-        border: `1px solid ${
-          isCurrent ? "rgba(251,191,36,0.35)" : "var(--card-edge)"
-        }`,
-        opacity: isPast ? 0.55 : 1,
-      }}
-    >
-      <div className="flex w-10 shrink-0 flex-col items-center pt-1">
+    <AnimatePresence>
+      <motion.div
+        data-component="timeline-block"
+        data-edit-mode={editMode ? "true" : undefined}
+        data-reduced={prefersReducedMotion ? "true" : undefined}
+        role="article"
+        aria-expanded={expanded}
+        className={isActive ? "is-active" : undefined}
+        initial={prefersReducedMotion ? false : "hidden"}
+        animate={
+          jiggleActive
+            ? { rotate: [0, -0.18, 0.18, -0.18, 0], y: [0, 0.4, -0.4, 0.4, 0] }
+            : "visible"
+        }
+        variants={prefersReducedMotion ? undefined : variants}
+        transition={
+          jiggleActive
+            ? { repeat: Infinity, duration: 0.45, ease: "easeInOut" }
+            : prefersReducedMotion
+              ? { duration: 0 }
+              : { duration: 0.18, ease: "easeOut" }
+        }
+        onClick={handleCardClick}
+        style={{
+          position: "absolute",
+          top: `${top}px`,
+          height: expanded ? "auto" : `${height}px`,
+          minHeight: `${height}px`,
+          left: "4px",
+          right: "4px",
+          overflow: "hidden",
+          borderRadius: "6px",
+          border: "1px solid var(--card-edge)",
+          background: "var(--card)",
+          display: "flex",
+          alignItems: "flex-start",
+          padding: "4px 6px",
+          gap: "4px",
+          cursor: editMode ? "default" : "pointer",
+          zIndex: 2,
+        }}
+      >
+        {/* Scaffold left-bar */}
         <div
-          className="text-[10px] tracking-[0.06em]"
-          style={{ color: "var(--ink-dim)" }}
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: "4px",
+            background: "var(--surface-2)",
+            overflow: "hidden",
+          }}
         >
-          {block.start}
+          <div
+            data-testid="scaffold-fill"
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: `${pct}%`,
+              background: scaffoldColor,
+              transition: prefersReducedMotion
+                ? "none"
+                : "height 600ms ease-in-out",
+            }}
+          />
         </div>
-        <div className="my-1.5">
-          <Scaffold pct={pct} category={block.category} height={48} />
-        </div>
-        <div
-          className="text-[9px] tracking-[0.06em]"
-          style={{ color: "var(--ink-dim)" }}
-        >
-          {block.end}
-        </div>
-      </div>
 
-      <div className="min-w-0 flex-1">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
+        {/* M4a: bloom overlay — only renders when not reduced-motion and bloomKey > 0 */}
+        {!prefersReducedMotion && bloomKey > 0 && (
+          <motion.div
+            key={bloomKey}
+            data-testid="bloom-overlay"
+            aria-hidden="true"
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            variants={bloomVariants}
+            transition={springConfigs.bloom}
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: "6px",
+              background: category?.color
+                ? `${category.color}33`
+                : "var(--accent)33",
+              pointerEvents: "none",
+              zIndex: 3,
+            }}
+          />
+        )}
+
+        {/* M5: always-visible × delete button — only in Edit Mode (ADR-008, ≥44px) */}
+        {editMode && (
+          <button
+            type="button"
+            aria-label={`Delete block ${block.name}`}
+            onClick={handleDeleteClick}
+            style={{
+              position: "absolute",
+              top: 0,
+              right: 0,
+              display: "grid",
+              placeItems: "center",
+              width: "44px",
+              minHeight: "44px",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              zIndex: 4,
+            }}
+          >
+            <X size={14} color="var(--ink-dim)" />
+          </button>
+        )}
+
+        {/* M6: GripVertical drag handle — only in Edit Mode; handle is the only drag origin (ADR-008, ADR-031 ≥44px) */}
+        {editMode && dragControls && (
+          <button
+            type="button"
+            aria-label={`Reorder block ${block.name}`}
+            data-drag-handle
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              dragControls.start(e);
+            }}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              display: "grid",
+              placeItems: "center",
+              width: "44px",
+              minHeight: "44px",
+              background: "transparent",
+              border: "none",
+              cursor: "grab",
+              zIndex: 4,
+            }}
+          >
+            <GripVertical size={14} color="var(--ink-dim)" aria-hidden="true" />
+          </button>
+        )}
+
+        {/* Category color dot — 8px circle, only when categoryId !== null */}
+        {category !== null && (
+          <span
+            data-testid="category-dot"
+            aria-hidden="true"
+            style={{
+              display: "inline-block",
+              width: "8px",
+              height: "8px",
+              borderRadius: "50%",
+              flexShrink: 0,
+              marginTop: "3px",
+              marginLeft: "4px", // offset for scaffold bar
+              background: category.color,
+            }}
+          />
+        )}
+
+        <div style={{ minWidth: 0, flex: 1, marginLeft: category ? 0 : "4px" }}>
+          {/* Title: single-line ellipsis per plan.md § Edge cases */}
+          <div
+            style={{
+              fontFamily: "var(--font-ui)",
+              fontSize: "var(--fs-14)",
+              color: "var(--ink)",
+              overflow: "hidden",
+              whiteSpace: "nowrap",
+              textOverflow: "ellipsis",
+              lineHeight: 1.2,
+            }}
+          >
+            {block.name}
+          </div>
+          {/* Time range label */}
+          <div
+            style={{
+              fontFamily: "var(--font-ui)",
+              fontSize: "var(--fs-10)",
+              color: "var(--ink-dim)",
+              marginTop: "1px",
+            }}
+          >
+            {timeLabel}
+          </div>
+
+          {/* Expanded view: bricks list + + Add brick button */}
+          {expanded && (
             <div
-              className="truncate text-[14px] leading-tight"
-              style={{ color: "var(--ink)" }}
+              onClick={(e) => e.stopPropagation()}
+              style={{ marginTop: "8px" }}
             >
-              {block.name}
-            </div>
-            <div className="mt-1 flex items-center gap-1.5">
-              <span
-                className="h-1.5 w-1.5 rounded-[2px]"
-                style={{ background: color }}
-              />
-              <span
-                className="text-[9px] tracking-[0.16em] uppercase"
-                style={{ color: "var(--ink-dim)" }}
-              >
-                {CATEGORY_LABEL[block.category].toUpperCase()}
-              </span>
-            </div>
-          </div>
-          <div className="flex items-start gap-1">
-            <div className="text-right">
-              <div
-                className="font-serif-italic text-[26px] leading-none"
-                style={{ color: isPast ? "var(--ink-dim)" : "var(--ink)" }}
-              >
-                {pct}
-                <span
-                  className="ml-0.5 align-top text-[12px]"
-                  style={{ color: "var(--ink-dim)" }}
-                >
-                  %
-                </span>
-              </div>
-            </div>
-            {editMode && (
-              <button
-                aria-label="Delete block"
-                className="grid h-6 w-6 place-items-center rounded"
-                style={{ color: "var(--ink-dim)" }}
-              >
-                <X size={12} />
-              </button>
-            )}
-          </div>
-        </div>
+              {block.bricks.length > 0 &&
+                /* M6: use BlockBrickReorderGroup when editMode=true AND bricks.length > 1;
+                   otherwise plain <ul> (Locked mode OR single-brick block — C-m6-013). */
+                (editMode &&
+                onReorderBrickInBlock &&
+                block.bricks.length > 1 ? (
+                  <BlockBrickReorderGroup
+                    block={block}
+                    categories={categories}
+                    onReorderBrickInBlock={onReorderBrickInBlock}
+                    onTickToggle={onTickToggle}
+                    onUnitsOpenSheet={onUnitsOpenSheet}
+                    onRequestDeleteBrick={onRequestDeleteBrick}
+                  />
+                ) : (
+                  <ul
+                    role="list"
+                    style={{
+                      listStyle: "none",
+                      margin: 0,
+                      padding: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "4px",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    {block.bricks.map((brick) => (
+                      <li key={brick.id} role="listitem">
+                        <BrickChip
+                          brick={brick}
+                          categories={categories}
+                          size="md"
+                          dragHandle={editMode}
+                          dragControls={editMode ? dragControls : undefined}
+                          onTickToggle={onTickToggle}
+                          onUnitsOpenSheet={onUnitsOpenSheet}
+                          onRequestDeleteBrick={onRequestDeleteBrick}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                ))}
 
-        <div className="mt-2.5 flex flex-wrap gap-1">
-          {block.bricks.length === 0 ? (
-            <EmptyBricks />
-          ) : (
-            block.bricks.map((b, i) => (
-              <BrickComponent
-                key={`${block.start}-${b.name}-${b.kind}`}
-                brick={b}
-                category={block.category}
-                index={i}
-                onLog={(updated) => onLogBrick(i, updated)}
-                editMode={editMode}
-              />
-            ))
+              <button
+                type="button"
+                aria-label="Add brick"
+                onClick={handleAddBrickClick}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "4px",
+                  width: "100%",
+                  minHeight: "44px",
+                  borderRadius: "6px",
+                  border: "1px dashed var(--ink-dim)",
+                  background: "transparent",
+                  color: "var(--ink-dim)",
+                  cursor: "pointer",
+                  fontFamily: "var(--font-ui)",
+                  fontSize: "var(--fs-12)",
+                }}
+              >
+                <Plus size={12} />
+                Add brick
+              </button>
+            </div>
           )}
         </div>
-      </div>
-    </div>
+
+        {/* M7b: NOW badge — top-right, absolute, only when isActive=true.
+            Anchored to the outer motion.div (same node regardless of expanded state).
+            CSS suppresses the pulse keyframe under prefers-reduced-motion (AC #8). */}
+        {isActive && <NowTag />}
+      </motion.div>
+    </AnimatePresence>
   );
 }

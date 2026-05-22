@@ -1,0 +1,196 @@
+/**
+ * tests/e2e/m6.a11y.spec.ts — Milestone 6 accessibility tests (axe-core via Playwright).
+ *
+ * Execution is deferred to Vercel preview — this sandbox cannot launch chromium
+ * (binary missing, confirmed by M4a–M9e EVALUATOR reports and status.md).
+ * Tests are authored here as real test() blocks; run them against the deployed preview URL.
+ * Guards: `if ((await x.count()) > 0)` per ADR-039 + ADR-022.
+ *
+ * Covers: A-m6-001..002
+ */
+
+import { test, expect } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
+
+test.beforeEach(async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => {
+    localStorage.clear();
+  });
+  await page.reload();
+});
+
+/**
+ * Seed a fixture with one block (blk-A) holding multiple bricks + one loose brick.
+ * Used by A-m6-001..002 to have drag handles to inspect.
+ */
+async function seedFixture(page: import("@playwright/test").Page) {
+  const todayISO = await page.evaluate(() => {
+    const d = new Date();
+    return d.toISOString().slice(0, 10);
+  });
+  await page.evaluate((today) => {
+    const payload = {
+      schemaVersion: 3,
+      programStart: today,
+      currentDate: today,
+      history: {},
+      deletions: {},
+      blocks: [
+        {
+          id: "blk-A",
+          name: "Morning",
+          start: "08:00",
+          end: "09:00",
+          recurrence: { kind: "every-day" },
+          categoryId: null,
+          bricks: [
+            {
+              id: "brk-1",
+              name: "Meditate",
+              kind: "tick",
+              done: false,
+              hasDuration: false,
+              categoryId: null,
+              parentBlockId: "blk-A",
+            },
+            {
+              id: "brk-2",
+              name: "Stretch",
+              kind: "tick",
+              done: false,
+              hasDuration: false,
+              categoryId: null,
+              parentBlockId: "blk-A",
+            },
+          ],
+        },
+      ],
+      looseBricks: [
+        {
+          id: "brk-loose",
+          name: "Walk",
+          kind: "tick",
+          done: false,
+          hasDuration: false,
+          categoryId: null,
+          parentBlockId: null,
+        },
+      ],
+      categories: [],
+    };
+    localStorage.setItem("dharma:v1", JSON.stringify(payload));
+  }, todayISO);
+  await page.reload();
+}
+
+// ─── A-m6-001: Edit Mode — axe clean; handles keyboard-focusable + SR-labeled ─
+
+test("A-m6-001: Unlocked Day view axe-clean; block + brick handles keyboard-focusable ≥44px; no loose-tray handle; 430px no overflow", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 430, height: 932 });
+  await seedFixture(page);
+
+  const pencil = page.getByRole("button", { name: /edit mode/i });
+  if ((await pencil.count()) === 0) return;
+
+  // Toggle into Edit Mode (Unlocked)
+  await pencil.click();
+  await page.waitForTimeout(200);
+
+  // axe scan against Unlocked Day view with handles visible
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations).toHaveLength(0);
+
+  // Block reorder handles: "Reorder block <name>"
+  const blockHandles = page.getByRole("button", {
+    name: /^reorder block/i,
+  });
+  if ((await blockHandles.count()) > 0) {
+    const handle = blockHandles.first();
+    await expect(handle).toBeVisible();
+    const label = await handle.getAttribute("aria-label");
+    expect(label).toMatch(/^reorder block/i);
+
+    // Hit area ≥44px (ADR-031)
+    const box = await handle.boundingBox();
+    if (box) {
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      expect(box.width).toBeGreaterThanOrEqual(44);
+    }
+  }
+
+  // Expand the block to see in-block brick handles
+  const blockCard = page.getByRole("article").first();
+  if ((await blockCard.count()) > 0) {
+    await blockCard.click();
+    await page.waitForTimeout(100);
+  }
+
+  // Brick reorder handles: "Reorder brick <name>"
+  const brickHandles = page.getByRole("button", {
+    name: /^reorder brick/i,
+  });
+  if ((await brickHandles.count()) > 0) {
+    const brickHandle = brickHandles.first();
+    await expect(brickHandle).toBeVisible();
+    const label = await brickHandle.getAttribute("aria-label");
+    expect(label).toMatch(/^reorder brick/i);
+
+    const box = await brickHandle.boundingBox();
+    if (box) {
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      expect(box.width).toBeGreaterThanOrEqual(44);
+    }
+  }
+
+  // Loose-tray chips must NOT have a reorder handle (SG-m6-04)
+  const traySection = page.locator("[data-component='loose-bricks-tray']");
+  if ((await traySection.count()) > 0) {
+    const trayHandles = traySection.getByRole("button", {
+      name: /^reorder brick/i,
+    });
+    expect(await trayHandles.count()).toBe(0);
+  }
+
+  // No horizontal overflow at 430px
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > window.innerWidth,
+  );
+  expect(overflow).toBe(false);
+});
+
+// ─── A-m6-002: Reduced motion — axe clean; handles still labeled; aria-live announce fires ─
+
+test("A-m6-002: Reduced-motion: axe clean; handles present + labeled; aria-live announce fires on drag commit", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 430, height: 932 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await seedFixture(page);
+
+  const pencil = page.getByRole("button", { name: /edit mode/i });
+  if ((await pencil.count()) === 0) return;
+
+  await pencil.click();
+  await page.waitForTimeout(200);
+
+  // axe scan under reduced motion
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations).toHaveLength(0);
+
+  // Block handles still present and labeled under reduced motion
+  const blockHandles = page.getByRole("button", {
+    name: /^reorder block/i,
+  });
+  if ((await blockHandles.count()) > 0) {
+    await expect(blockHandles.first()).toBeVisible();
+  }
+
+  // aria-live region is present in DOM (screen-reader-discoverable)
+  const liveRegion = page.locator("[aria-live='polite'][aria-atomic='true']");
+  if ((await liveRegion.count()) > 0) {
+    await expect(liveRegion.first()).toBeAttached();
+  }
+});

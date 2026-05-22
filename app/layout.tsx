@@ -1,6 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Instrument_Serif, JetBrains_Mono } from "next/font/google";
+import { Geist, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+
+const geist = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+  display: "swap",
+});
 
 const serif = Instrument_Serif({
   variable: "--font-instrument-serif",
@@ -29,7 +35,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a1628",
+  themeColor: "#07090f",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -44,7 +50,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${serif.variable} ${mono.variable} h-full antialiased`}
+      className={`${geist.variable} ${serif.variable} ${mono.variable} h-full antialiased`}
     >
       <body className="min-h-dvh">{children}</body>
     </html>

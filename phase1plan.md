@@ -25,6 +25,87 @@ Better than Apple Calendar, Google Calendar, Notion, Things 3, Sunsama, Streaks.
 
 Brick → Block → Building (day) → Castle (week) → Kingdom (month) → Empire (year)
 
+## Carried-Forward Decisions (locked)
+
+The 24 ADRs in `docs/decisions.md` are load-bearing. The ones below shape every milestone — PLANNER must respect them, BUILDER may not silently override them, EVALUATOR fails any diff that contradicts them.
+
+- **ADR-005** — `dayPct` is equal-weighted across blocks (not duration-weighted). Hero math is fixed.
+- **ADR-006** — Time intervals are half-open `[start, end)`. Block boundary alignment uses this.
+- **ADR-008** — `×` (delete affordance) always visible in edit mode. No swipe-only deletes.
+- **ADR-009** — Hero % is integer-only (`Math.round`). No decimals shown anywhere.
+- **ADR-011** — `--ink-dim` is `rgba(245,241,232,.5)` (renamed from `--ink-faint` for WCAG AA on the new `#07090f` bg). M0 must re-verify contrast.
+- **ADR-013** — One feature per BUILDER dispatch. Auto-chain BUILDER → EVALUATOR → SHIPPER. No bundling.
+- **ADR-015** — `NowCard` does not subscribe to edit mode (read-only widget).
+- **ADR-016** — Tick brick `aria-label` includes the brick name.
+- **ADR-017** — Time bricks use a real timer (`BrickTimer`), not synthetic minute increments.
+- **ADR-018** — localStorage shape is the AppState below: separate `logs` / `deletions` / `timers` keyed maps. **Not** nested `bricks[].logs[]`.
+- **ADR-019** — `Recurrence` is a discriminated union (4 variants). Weekday convention is `0=Sun..6=Sat`.
+- **ADR-020** — `now` / `today` / `dayNumber` are derived live, never constants.
+- **ADR-022** — One feature per PLANNER dispatch. Per-milestone re-plans, not whole-phase.
+- **ADR-023** — `useNow` paints the server's clock on first render to avoid CLS flash; client reconciles within 60s.
+- **ADR-024** — Auto-FAIL → BUILDER loop, capped at 3 retries before user escalation.
+
+## Shared Data Model (locked from M2 onwards)
+
+This is the in-memory shape every component reads from. localStorage wiring lands in M8, but the types crystallise the moment Add Block / Add Brick exist (M2/M3) so later milestones don't need a refactor pass.
+
+```ts
+type Category = "health" | "mind" | "career" | "passive";
+
+type Recurrence =
+  | { kind: "just-today"; date: string }                                  // YYYY-MM-DD
+  | { kind: "every-weekday" }                                             // Mon..Fri
+  | { kind: "every-day" }
+  | { kind: "custom-range"; from: string; to: string; weekdays?: number[] }; // 0=Sun..6=Sat
+
+type BrickTemplate =
+  | { kind: "tick"; id: string; name: string }
+  | { kind: "goal"; id: string; name: string; target: number; unit?: string }
+  | { kind: "time"; id: string; name: string; targetSec: number };
+
+interface Block {
+  id: string;
+  name: string;
+  start: string;        // "HH:MM"
+  end: string;          // "HH:MM" — half-open per ADR-006
+  category: Category;
+  bricks: BrickTemplate[];
+  recurrence: Recurrence;
+}
+
+type BrickLog =
+  | { kind: "tick"; done: boolean }
+  | { kind: "goal"; current: number }
+  | { kind: "time"; accumulatedSec: number };
+
+type TimerState = { runningSince: number | null; accumulatedSec: number };
+
+type AppState = {
+  schemaVersion: 1;
+  programStart: string;                       // YYYY-MM-DD — Day 1
+  blocks: Block[];                            // template definitions, not per-day clones
+  logs: Record<string, BrickLog>;             // key: `${date}:${blockId}:${brickId}`
+  timers: Record<string, TimerState>;         // key: `${blockId}:${brickId}` — survives day boundaries
+  deletions: Record<string, true>;            // key: `${date}:${blockId}` — per-day "just today" overrides
+};
+```
+
+**Why this shape (vs. nesting logs inside bricks):**
+- Empire view (M9) renders 364 squares. With separate `logs`, lookup is O(1) per day. With nested logs, each square scans every brick of every block.
+- Multi-tab safety: a write to `logs["2026-05-01:b1:r1"]` doesn't collide with a write to `logs["2026-05-01:b1:r2"]`.
+- "Just today" delete (ADR-008) is a single key set in `deletions`, not a structural mutation of `blocks`.
+- `timers` is keyed by `blockId:brickId` (no date) so a long run that crosses midnight keeps accumulating.
+
+## Test Migration Discipline
+
+`docs/tests.md` already holds 94 IDs from the previous pivot plan. Before M0's BUILDER dispatch, PLANNER must include a **migration table** at the top of the new tests.md that tags every existing ID with one of:
+
+- `[survives]` — covers the same behavior; keep as-is.
+- `[re-author: <reason>]` — same intent, but selectors / assertions changed (new tokens, new components).
+- `[obsolete: delete]` — describes a behavior the new plan no longer ships.
+
+EVALUATOR fails any milestone whose diff drops a `[survives]` test without explanation.
+
 ## Phase 1 Build Order (Locked)
 
 Each milestone = one full SDD + TDD harness cycle.
@@ -109,6 +190,12 @@ Method: `navigator.vibrate()` with iOS PWA fallback
 - Bottom-anchored floating buttons
 - Dark mode only for now
 
+### Acceptance
+- All 10 primitives render in a Storybook-equivalent harness page (or smoke-test route) with axe-clean output.
+- **WCAG AA verified on every token combo against the new `#07090f` bg** — `--ink` (4.5:1+), `--ink-dim` (3:1+ for non-text large), `--accent` (3:1+ for UI), and category dots. Re-test after any token change.
+- `prefers-reduced-motion` collapses every motion token in the table to a no-op or instant transition.
+- Type scale renders correctly with Instrument Serif Italic + JetBrains Mono loaded via `next/font`.
+
 ---
 
 ## Milestone 1 — Empty Building Shell
@@ -149,14 +236,16 @@ Method: `navigator.vibrate()` with iOS PWA fallback
 
 ### Behavior
 - Save → modal slides down → block enters timeline with stagger fade-in
-- Recurrence stored on block; rendered correctly across days when calendar nav lands (M9)
-- Times overlap → soft warning, allow anyway (user's choice)
+- Recurrence stored on block per the locked `Recurrence` discriminated union (ADR-019). Weekday convention is `0=Sun..6=Sat` everywhere.
+- Times overlap → soft warning, allow anyway (user's choice). Boundaries are half-open `[start, end)` per ADR-006.
+- "Just today" recurrence creates a one-shot block; `every-weekday` / `every-day` / `custom-range` create templates that `appliesOn(rec, date)` resolves at render time (helper lands in M9, but the union shape is locked here).
 
 ### Acceptance
 - Block appears immediately after save
 - Timeline reflows with new block in correct time position
 - Day Blueprint bar adds a colored segment for new block
 - Empty state disappears once first block exists
+- Saved block matches the locked `Block` shape (validated by a Vitest schema test)
 
 ---
 
@@ -225,17 +314,17 @@ Method: `navigator.vibrate()` with iOS PWA fallback
 - Tap pencil again → settles, saves
 
 ### Delete
-- Edit mode → tap × on block or brick OR swipe left
+- Edit mode → tap × on block or brick (× always visible per ADR-008; swipe-left is an additional affordance, never the only one)
 - Confirmation modal: "Delete this block?"
-  - Just today
-  - All recurrences
+  - **Just today** → writes `deletions[${date}:${blockId}] = true`. Template untouched. Other days unaffected.
+  - **All recurrences** → removes the block template from `state.blocks`. Past `logs` entries stay (history is not retroactively rewritten).
 - Animation: block shrinks + fades, others reflow
 
 ### Acceptance
 - Edit mode visually clear (jiggle + ×)
 - View mode = no editing possible (no accidental deletes)
 - Delete confirmation prevents mistakes
-- Recurrence-aware delete works correctly
+- Recurrence-aware delete works correctly: "just today" leaves the template visible on tomorrow's Building; "all recurrences" removes it everywhere going forward.
 
 ---
 
@@ -278,46 +367,58 @@ The cinematic layer. Every detail. Once.
 
 ## Milestone 8 — Persistence
 
-- localStorage schema:
+This milestone wires the in-memory `AppState` (locked above) to `localStorage` under key `dharma:v1` per ADR-018. The shape does **not** change here — it crystallised at M2/M3. M8 is the read/write/migrate layer.
 
-  ```json
-  {
-    "version": 1,
-    "blocks": [
-      {
-        "id": "uuid",
-        "name": "string",
-        "start": "HH:MM",
-        "end": "HH:MM",
-        "cat": "health|mind|career|passive",
-        "recurrence": { "type": "weekday|daily|custom", "days": [1,2,3,4,5] },
-        "bricks": [
-          {
-            "id": "uuid",
-            "name": "string",
-            "type": "tick|goal|time",
-            "target": 100,
-            "unit": "reps",
-            "logs": [{ "date": "YYYY-MM-DD", "value": 80 }]
-          }
-        ]
-      }
-    ]
-  }
-  ```
+### Module: `lib/persist.ts`
 
-- Migrations field for future schema changes
-- All CRUD operations persist immediately
-- Reload preserves state
+- `loadState(): AppState` — reads `localStorage["dharma:v1"]`, validates `schemaVersion`, returns the empty default on miss/corruption.
+- `saveState(s: AppState): void` — JSON-stringify and write. Throws on quota exceeded; caller surfaces a toast.
+- `usePersistedState()` — React hook returning `[state, setState]` with two-pass hydration to avoid SSR/CSR mismatch (per ADR-023's pattern).
+- Migration registry: `migrations: Record<number, (any) => AppState>` — empty for v1, scaffolded for future `v2`.
+
+### Behavior
+- All CRUD (add/edit/delete block, add/edit/delete brick, log brick, timer tick) writes immediately on commit — no debouncing in Phase 1.
+- Multi-tab races: last-writer-wins on the `dharma:v1` key. Documented as a known limitation; resolved in Phase 2. **(See Open Spec Gaps.)**
+
+### localStorage shape (mirrors the locked AppState)
+
+```ts
+// localStorage["dharma:v1"] = JSON.stringify(state) where:
+{
+  schemaVersion: 1,
+  programStart: "2026-05-01",
+  blocks: [/* Block[] — templates, not per-day clones */],
+  logs: {
+    "2026-05-01:b-uuid:r-uuid": { kind: "tick", done: true },
+    "2026-05-01:b-uuid:r-uuid2": { kind: "goal", current: 80 },
+    "2026-05-01:b-uuid:r-uuid3": { kind: "time", accumulatedSec: 1834 },
+  },
+  timers: {
+    "b-uuid:r-uuid3": { runningSince: 1714560000000, accumulatedSec: 1834 },
+  },
+  deletions: {
+    "2026-05-02:b-uuid": true,    // user deleted this block "just today"
+  },
+}
+```
 
 ### Acceptance
 - Refresh keeps all data
-- Schema versioned
+- Schema versioned via `schemaVersion: 1`; an unknown version triggers the migration registry (no silent data loss).
 - No data loss on edit/delete
+- **DST fixtures**: `dayNumber()` tests cover spring-forward and fall-back transitions in at least two timezones (America/New_York + Europe/London). Off-by-one regressions fail the suite.
+- A corrupted JSON blob in `dharma:v1` resets to empty default with a console warning (no crash, no white screen).
+- Quota exceeded surfaces a user-visible toast and the failed mutation is rolled back in memory.
 
 ---
 
 ## Milestone 9 — Calendar Navigation
+
+### New helpers (`lib/recurrence.ts`)
+
+- `appliesOn(rec: Recurrence, date: string): boolean` — single source of truth for "does this block exist on this day?". Handles all four `Recurrence` variants. Used by every calendar view.
+- `currentDayBlocks(today: string, state: AppState): Block[]` — returns the blocks visible today, accounting for `appliesOn` AND `state.deletions[${today}:${blockId}]`. Replaces today's ad-hoc filtering.
+- Both helpers are pure functions and unit-tested with DST + leap-day fixtures.
 
 ### Top Strip (every screen)
 - 7 day-circles showing current week with scores
@@ -387,6 +488,19 @@ The cinematic layer. Every detail. Once.
 - First 100% day → unlock animation, Empire square glows 24h
 - Streak milestones (7 / 30 / 100 days) → quiet celebration screen + shareable card
 - Logo long-press → hidden year heatmap preview
+
+---
+
+## Open Spec Gaps (resolve before the milestone they block)
+
+Tracked here so they don't go silent. Each gap has an ID; PLANNER references them in the milestone's tests.md when the resolution lands.
+
+- **SG-bld-13** — *BrickTimer manual override semantics.* If a user has a Time brick running and types "30 min" into the manual input, do we **stop** the running timer and overwrite, or **commit** the override and keep accumulating? Affects M4 + M8. Decision needed before M4 ships.
+- **SG-bld-14** — *`programStart` editability.* Once Day 1 is set, can the user change it later (e.g. "I started a week ago")? If yes: does it backfill empty Buildings or shift the Empire grid? Affects M9 + onboarding. Decision needed before M9 Empire view.
+- **SG-bld-16** — *Empty state when blocks exist but none apply today.* User has 5 blocks, all `every-weekday`, today is Saturday. Today's Building is empty. Do we show the M1 empty state, or a different "rest day" affordance? Affects M1 + M9. Decision needed before M9 calendar nav surfaces this regularly.
+- **SG-bld-17** — *Multi-tab write conflict resolution.* Phase 1 is last-writer-wins on `dharma:v1`. This silently drops mutations from a backgrounded tab. Acceptable for solo use; needs a `storage` event listener + merge strategy before public launch. Affects M8 onwards.
+- **SG-bld-18** — *Castle / Kingdom / Empire % when no-block days exist.* If today is Saturday and no block applies, is the day's contribution `0%`, `null` (excluded from the average), or `100%` (vacuously satisfied)? Affects M9 scoring math.
+- **SG-bld-19** — *Voice Log API failure mode.* M10 round-trips speech to Claude API. If the API is down or rate-limited, do we degrade to a transcript-only paste, queue offline, or surface an error? Affects M10.
 
 ---
 
