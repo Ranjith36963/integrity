@@ -115,6 +115,7 @@ export function Stepper({
         onPointerDown={() => startLongPress(-1)}
         onPointerUp={stopLongPress}
         onPointerLeave={stopLongPress}
+        onPointerCancel={stopLongPress}
       >
         −
       </button>
@@ -135,6 +136,7 @@ export function Stepper({
         onPointerDown={() => startLongPress(1)}
         onPointerUp={stopLongPress}
         onPointerLeave={stopLongPress}
+        onPointerCancel={stopLongPress}
       >
         +
       </button>

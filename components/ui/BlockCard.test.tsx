@@ -286,3 +286,58 @@ describe("C-m0-031: BlockCard root DOM identity stable across editMode toggle", 
     expect(rootAfter.tagName).toBe("DIV");
   });
 });
+
+// C-m0-033 — NEW-3 mutation guard: children remain accessible to screen readers
+// The pre-NEW-4 root <button> wrapper used aria-label, which silences all child
+// text content to screen readers (button name comes from aria-label, not from
+// descendant text). With NEW-4's overlay architecture, the body's children are
+// outside the interactive element, so their text remains in the accessibility
+// tree.
+describe("C-m0-033: BlockCard children remain in the accessibility tree", () => {
+  it("text content inside children is reachable as an accessible name target", () => {
+    render(
+      <BlockCard
+        name="Work"
+        start="08:45"
+        end="17:15"
+        category="passive"
+        status="current"
+        pct={42}
+        onClick={vi.fn()}
+      >
+        <span data-testid="custom-child">extra detail</span>
+      </BlockCard>,
+    );
+    // Child text is queryable by content, proving it is NOT shadowed by an
+    // aria-label override at the root.
+    expect(screen.getByText("extra detail")).toBeInTheDocument();
+    expect(screen.getByTestId("custom-child")).toBeInTheDocument();
+  });
+
+  it("a nested interactive child is reachable as its own accessible element", () => {
+    // If we ever pass an interactive child (e.g., a nested 'Quick edit' button),
+    // it must remain its own focusable element. The pre-NEW-4 wrapping <button>
+    // would have produced button-in-button — invalid HTML, Safari swallowed the
+    // inner click, axe flagged it.
+    render(
+      <BlockCard
+        name="Work"
+        start="08:45"
+        end="17:15"
+        category="passive"
+        status="current"
+        pct={42}
+        onClick={vi.fn()}
+      >
+        <button type="button" aria-label="Quick edit" />
+      </BlockCard>,
+    );
+    // Both the overlay AND the inner button are present as distinct buttons.
+    expect(
+      screen.getByRole("button", { name: /Open block: Work/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Quick edit" }),
+    ).toBeInTheDocument();
+  });
+});

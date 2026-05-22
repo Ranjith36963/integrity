@@ -227,3 +227,47 @@ describe("C-m0-030: Stepper valueRef does not reset during long-press on unrelat
     expect(uniqueValues.size).toBeGreaterThanOrEqual(3);
   }, 10_000);
 });
+
+// C-m0-032 — SC-3 mutation guard: long-press stops on pointercancel
+describe("C-m0-032: Stepper long-press stops on pointercancel", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("pointercancel halts the interval (browser-initiated press abort)", () => {
+    // iOS Safari fires pointercancel when a system gesture or scroll
+    // interrupts the touch. Without onPointerCancel wired to stopLongPress,
+    // the interval keeps ticking, onChange keeps firing, and isPressedRef
+    // stays true forever — value jumps far beyond user intent.
+    const allCalls: number[] = [];
+    const Spy = () => {
+      const [v, setV] = React.useState(0);
+      return (
+        <Stepper
+          value={v}
+          max={1000}
+          onChange={(n) => {
+            allCalls.push(n);
+            setV(n);
+          }}
+        />
+      );
+    };
+    render(<Spy />);
+    const incBtn = screen.getByRole("button", { name: "Increment" });
+
+    incBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    vi.advanceTimersByTime(600); // 2 ticks
+    const callsAtCancel = allCalls.length;
+
+    // System cancels the press.
+    incBtn.dispatchEvent(new PointerEvent("pointercancel", { bubbles: true }));
+
+    // After cancellation, advancing time MUST not fire any more onChange.
+    vi.advanceTimersByTime(2000);
+    expect(allCalls.length).toBe(callsAtCancel);
+  }, 10_000);
+});
