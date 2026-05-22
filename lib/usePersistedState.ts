@@ -37,6 +37,7 @@ function projectToAppState(p: PersistedState): AppState {
     currentDate: p.currentDate, // M9b — must round-trip (plan § Data model SG-m9b decision)
     history: p.history, // M9b — must round-trip
     deletions: p.deletions, // M5 — must round-trip (ADR-018)
+    firstBrickShown: p.firstBrickShown, // M7e — must round-trip (ADR-044 additive field)
   };
 }
 
@@ -54,6 +55,7 @@ function toPersisted(s: AppState): PersistedState {
     categories: s.categories,
     looseBricks: s.looseBricks,
     deletions: s.deletions, // M5 — ADR-018
+    firstBrickShown: s.firstBrickShown, // M7e — ADR-044 additive field
   };
 }
 

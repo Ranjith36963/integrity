@@ -4,6 +4,7 @@
  * ADR-018: single dharma:v1 key, two-pass load, synchronous save.
  * ADR-044: schema version discipline.
  * M5: schemaVersion bumped 2→3; deletions field added (ADR-018).
+ * M7e: firstBrickShown optional field added (ADR-044 additive — no version bump).
  * Pure module — no React.
  */
 
@@ -22,7 +23,21 @@ export type PersistedState = {
   categories: Category[];
   looseBricks: Brick[];
   deletions: Record<string, true>; // M5 — per-day block override map (ADR-018)
+  firstBrickShown?: boolean; // M7e — additive within v3 (ADR-044 "optional fields are an additive change").
 };
+
+/**
+ * hasAnyBrick — M7e: pure predicate for the firstBrickShown back-fill rule.
+ * Returns true iff any block has at least one brick OR looseBricks.length > 0.
+ * Used in migrate(raw)'s v3 case + v2→v3 + v1→v3 cascades.
+ * Defensive: handles blocks that may not have a bricks array (e.g. partially-coerced fixtures).
+ *
+ * @internal — exported for direct testability (SG-m7e-06 ratification).
+ */
+export function hasAnyBrick(blocks: Block[], looseBricks: Brick[]): boolean {
+  if (looseBricks.length > 0) return true;
+  return blocks.some((b) => Array.isArray(b.bricks) && b.bricks.length > 0);
+}
 
 /**
  * defaultPersisted() — fresh empty v3 state with programStart = currentDate = today().
@@ -39,6 +54,7 @@ export function defaultPersisted(): PersistedState {
     categories: [],
     looseBricks: [],
     deletions: {}, // M5 — empty on first run (ADR-018)
+    firstBrickShown: false, // M7e — first-run users have NOT yet earned the card (ADR-039)
   };
 }
 
@@ -74,6 +90,8 @@ export function migrate(raw: unknown): PersistedState | null {
       // v1 stored no currentDate — the v1 day's true date is unrecoverable.
       // Accepted one-time migration approximation per ADR-045 / spec Edge case.
       const currentDate = today();
+      // M7e: v1 payloads have no bricks in practice (v1 predates ADD_BRICK); back-fill to false.
+      const firstBrickShown = hasAnyBrick(blocks, looseBricks);
       return {
         schemaVersion: 3,
         programStart,
@@ -83,6 +101,7 @@ export function migrate(raw: unknown): PersistedState | null {
         categories,
         looseBricks,
         deletions: {}, // M5 — v1 payloads had no deletions
+        firstBrickShown, // M7e
       };
     }
     case 2: {
@@ -105,6 +124,8 @@ export function migrate(raw: unknown): PersistedState | null {
         !Array.isArray(obj.history)
           ? (obj.history as Record<string, ArchivedDay>)
           : {};
+      // M7e: v2 payloads have no firstBrickShown; back-fill via hasAnyBrick.
+      const firstBrickShown = hasAnyBrick(blocks, looseBricks);
       return {
         schemaVersion: 3,
         programStart,
@@ -114,6 +135,7 @@ export function migrate(raw: unknown): PersistedState | null {
         categories,
         looseBricks,
         deletions: {}, // M5 — v2 payloads had no deletions; additive and lossless
+        firstBrickShown, // M7e
       };
     }
     case 3: {
@@ -143,6 +165,12 @@ export function migrate(raw: unknown): PersistedState | null {
         !Array.isArray(obj.deletions)
           ? (obj.deletions as Record<string, true>)
           : {};
+      // M7e: back-fill firstBrickShown. If the field is a boolean, respect it (round-trip).
+      // If absent or corrupted (non-boolean), project via hasAnyBrick (spec AC #5).
+      const firstBrickShown: boolean =
+        typeof obj.firstBrickShown === "boolean"
+          ? obj.firstBrickShown
+          : hasAnyBrick(blocks, looseBricks);
       return {
         schemaVersion: 3,
         programStart,
@@ -152,6 +180,7 @@ export function migrate(raw: unknown): PersistedState | null {
         categories,
         looseBricks,
         deletions,
+        firstBrickShown, // M7e
       };
     }
     default:
@@ -193,6 +222,7 @@ export function saveState(state: PersistedState): void {
       categories: state.categories,
       looseBricks: state.looseBricks,
       deletions: state.deletions, // M5
+      firstBrickShown: state.firstBrickShown ?? false, // M7e — ?? false: undefined coerces to false
     });
     localStorage.setItem(STORAGE_KEY, json);
   } catch {
