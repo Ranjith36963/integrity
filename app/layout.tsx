@@ -34,12 +34,14 @@ export const metadata: Metadata = {
   },
 };
 
+// GM-7: pinch-zoom intentionally NOT suppressed — disabling user-scalable
+// violates WCAG 2.5.5 / 1.4.4 (Resize Text) and iOS Safari honors the
+// directive even with system-wide ignore-meta-viewport on.
 export const viewport: Viewport = {
   themeColor: "#07090f",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  userScalable: false,
 };
 
 export default function RootLayout({
