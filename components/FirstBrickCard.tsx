@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, type Transition } from "motion/react";
 
 type FirstBrickCardProps = {
   visible: boolean;
@@ -50,24 +50,31 @@ export function FirstBrickCard({
     onDismiss();
   }
 
-  // Motion variants based on PRM
+  // Motion variants based on PRM — Transition typed explicitly to avoid ease:string widening.
+  const prmTransition: Transition = { duration: 0.2, ease: "linear" };
+  const exitTransition: Transition = { duration: 0.22, ease: "easeIn" };
+
   const variants = prefersReducedMotion
     ? {
         initial: { opacity: 0 },
-        animate: { opacity: 1, transition: { duration: 0.2, ease: "linear" } },
-        exit: { opacity: 0, transition: { duration: 0.2, ease: "linear" } },
+        animate: { opacity: 1, transition: prmTransition },
+        exit: { opacity: 0, transition: prmTransition },
       }
     : {
         initial: { opacity: 0, y: "100%" },
         animate: {
           opacity: 1,
           y: "0%",
-          transition: { type: "spring", stiffness: 220, damping: 26 },
+          transition: {
+            type: "spring",
+            stiffness: 220,
+            damping: 26,
+          } satisfies Transition,
         },
         exit: {
           opacity: 0,
           y: "100%",
-          transition: { duration: 0.22, ease: "easeIn" },
+          transition: exitTransition,
         },
       };
 

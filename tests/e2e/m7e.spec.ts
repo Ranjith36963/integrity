@@ -22,6 +22,7 @@
  */
 
 import { test, expect } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -349,14 +350,6 @@ test("E-m7e-007: second ADD_BRICK after reload does NOT re-fire FirstBrickCard",
 test("A-m7e-001: page with FirstBrickCard visible is axe-clean", async ({
   page,
 }) => {
-  const { checkA11y } = await import("@axe-core/playwright").catch(() => ({
-    checkA11y: null,
-  }));
-  if (!checkA11y) {
-    test.skip();
-    return;
-  }
-
   await page.goto("/");
   await page.waitForLoadState("networkidle");
   await seedFreshState(page);
@@ -382,7 +375,8 @@ test("A-m7e-001: page with FirstBrickCard visible is axe-clean", async ({
   const card = page.locator('[data-testid="first-brick-card"]');
   await expect(card).toBeVisible({ timeout: 500 });
 
-  await checkA11y(page, undefined, { detailedReport: true });
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations).toHaveLength(0);
 });
 
 // ─── A-m7e-002: YearHeatmapPreview overlay is axe-clean ──────────────────────
@@ -390,14 +384,6 @@ test("A-m7e-001: page with FirstBrickCard visible is axe-clean", async ({
 test("A-m7e-002: page with YearHeatmapPreview overlay mounted is axe-clean", async ({
   page,
 }) => {
-  const { checkA11y } = await import("@axe-core/playwright").catch(() => ({
-    checkA11y: null,
-  }));
-  if (!checkA11y) {
-    test.skip();
-    return;
-  }
-
   await page.goto("/");
   await page.waitForLoadState("networkidle");
 
@@ -420,7 +406,8 @@ test("A-m7e-002: page with YearHeatmapPreview overlay mounted is axe-clean", asy
   const overlay = page.locator('[data-testid="year-heatmap-preview"]');
   await expect(overlay).toBeVisible({ timeout: 500 });
 
-  await checkA11y(page, undefined, { detailedReport: true });
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations).toHaveLength(0);
 
   await page.mouse.up();
 });
@@ -430,14 +417,6 @@ test("A-m7e-002: page with YearHeatmapPreview overlay mounted is axe-clean", asy
 test("A-m7e-003: page with each Toaster kind variant (success / info / error) is axe-clean", async ({
   page,
 }) => {
-  const { checkA11y } = await import("@axe-core/playwright").catch(() => ({
-    checkA11y: null,
-  }));
-  if (!checkA11y) {
-    test.skip();
-    return;
-  }
-
   await page.goto("/");
   await page.waitForLoadState("networkidle");
   await seedStateWithBlock(page);
@@ -463,7 +442,8 @@ test("A-m7e-003: page with each Toaster kind variant (success / info / error) is
   await expect(toast).toBeVisible({ timeout: 2000 });
 
   // axe-clean while toast is visible
-  await checkA11y(page, undefined, { detailedReport: true });
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations).toHaveLength(0);
 
   // Wait for toast to dismiss
   await expect(toast).not.toBeVisible({ timeout: 3000 });
