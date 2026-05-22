@@ -59,7 +59,6 @@ const capturedCallbacks = {
 vi.mock("@/components/AddBlockSheet", () => ({
   AddBlockSheet: ({
     onSave,
-    onCancel,
   }: {
     open: boolean;
     defaultStart: string;

@@ -1174,26 +1174,6 @@ const validBrick: Brick = {
   done: false,
 };
 
-const validBrick2: Brick = {
-  id: "m7e-v2",
-  name: "Meditation",
-  categoryId: null,
-  parentBlockId: null,
-  hasDuration: false,
-  kind: "tick",
-  done: false,
-};
-
-const validBrick3: Brick = {
-  id: "m7e-v3",
-  name: "Journaling",
-  categoryId: null,
-  parentBlockId: null,
-  hasDuration: false,
-  kind: "tick",
-  done: false,
-};
-
 function makeBlock(id: string, bricks: Brick[] = []): Block {
   return {
     id,
