@@ -552,6 +552,43 @@ describe("C-m9e-010: AppShell — tap a month in YearView opens MonthView at tha
   });
 });
 
+// ─── C-m7e-035: AppShell mounts <Toaster /> as ViewSwitcher sibling; Toaster persists ──
+
+describe("C-m7e-035: <AppShell /> mounts <Toaster /> as ViewSwitcher sibling; Toaster persists across view switches", () => {
+  it("toaster element present at initial mount (Day view)", async () => {
+    render(<AppShell />);
+    await act(async () => {});
+    expect(screen.queryByTestId("toaster")).not.toBeNull();
+  });
+
+  it("toaster identity preserved across Day→Week→Month→Year→Day view switches", async () => {
+    saveState(makeSeedState());
+    const user = userEvent.setup();
+    render(<AppShell />);
+    await act(async () => {});
+
+    // Capture initial toaster reference
+    const t1 = screen.queryByTestId("toaster");
+    expect(t1).not.toBeNull();
+
+    // Day → Week
+    await user.click(screen.getByRole("tab", { name: "Week" }));
+    expect(screen.queryByTestId("toaster")).toBe(t1);
+
+    // Week → Month
+    await user.click(screen.getByRole("tab", { name: "Month" }));
+    expect(screen.queryByTestId("toaster")).toBe(t1);
+
+    // Month → Year
+    await user.click(screen.getByRole("tab", { name: "Year" }));
+    expect(screen.queryByTestId("toaster")).toBe(t1);
+
+    // Year → Day
+    await user.click(screen.getByRole("tab", { name: "Day" }));
+    expect(screen.queryByTestId("toaster")).toBe(t1);
+  });
+});
+
 // ─── C-m9e-012: AppShell — Day/Week/Month branches unchanged; year is purely additive ──
 
 describe("C-m9e-012: AppShell — Day/Week/Month behavior byte-equivalent after M9e (no-regression)", () => {
