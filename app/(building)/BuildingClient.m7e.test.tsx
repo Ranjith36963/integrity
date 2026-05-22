@@ -1,7 +1,8 @@
 /**
- * app/(building)/BuildingClient.m7e.test.tsx — M7e: C-m7e-025..034
+ * app/(building)/BuildingClient.m7e.test.tsx — M7e: C-m7e-023b, C-m7e-025..034
  *
  * Tests for:
+ *   - C-m7e-023b: regression — BuildingClient passes state to TopBar (G3 guard)
  *   - C-m7e-025..028: <BuildingClient> FirstBrickCard mount logic
  *   - C-m7e-029..034: <BuildingClient> toast-emit at four dispatch sites + invariants
  *
@@ -36,6 +37,18 @@ vi.mock("@/lib/haptics", () => ({
 
 vi.mock("@/lib/audio", () => ({
   playChime: vi.fn(),
+}));
+
+// ─── TopBar mock — captures `state` prop for C-m7e-023b regression guard ─────
+// Mocking TopBar prevents BrandMarkLongPress from mounting (avoids pointer-event
+// interference with toast tests) and lets C-m7e-023b assert that BuildingClient
+// always threads `state` into <TopBar state={state}> (G3 fix guard per ADR-027).
+let capturedTopBarState: unknown = undefined;
+vi.mock("@/components/TopBar", () => ({
+  TopBar: ({ state }: { state?: unknown }) => {
+    capturedTopBarState = state; // test-harness: capture state prop for C-m7e-023b
+    return null;
+  },
 }));
 
 // ─── Sheet + Modal callback capture mocks ────────────────────────────────────
@@ -227,6 +240,7 @@ beforeEach(() => {
   localStorage.clear();
   vi.clearAllMocks();
   dispatchRef.current = null;
+  capturedTopBarState = undefined;
   capturedCallbacks.onSaveBlock = null;
   capturedCallbacks.onSaveBrick = null;
   capturedCallbacks.onConfirmJustToday = null;
@@ -558,5 +572,22 @@ describe("C-m7e-034: M6 REORDER_BLOCK overlap-rejection snap-back does NOT fire 
     });
 
     expect(toastMock).toHaveBeenCalledTimes(0);
+  });
+});
+
+// ─── C-m7e-023b: regression — BuildingClient passes state to TopBar ───────────
+// Guards the G3 fix: BuildingClient.tsx must render <TopBar state={state} />.
+// A mutant reverting to <TopBar /> (no state) makes capturedTopBarState undefined.
+
+describe("C-m7e-023b: <BuildingClient> renders <TopBar state={state}> (G3 regression guard)", () => {
+  it("TopBar receives the current AppState on initial render", async () => {
+    render(<ControlledHarness initialState={stateForToastTests} />);
+    await act(async () => {});
+
+    // capturedTopBarState is set by the TopBar mock on every render.
+    // When <TopBar state={state}> is passed, capturedTopBarState equals the AppState.
+    // When <TopBar /> (no state prop), capturedTopBarState is undefined — assertion fails.
+    expect(capturedTopBarState).toBeDefined();
+    expect(capturedTopBarState).not.toBeNull();
   });
 });

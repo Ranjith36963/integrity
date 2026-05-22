@@ -539,7 +539,7 @@ export function BuildingClient({
         >
           {announcement}
         </span>
-        <TopBar />
+        <TopBar state={state} />
         <Hero
           dateLabel={dateLabelValue}
           dayNumber={dayNumberValue}
