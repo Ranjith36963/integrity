@@ -129,26 +129,42 @@ describe("C-m7e-009: release (pointerUp) after overlay open closes overlay", () 
 
 // C-m7e-010: under PRM, overlay has opacity-fade only — no scale
 describe("C-m7e-010: under PRM, overlay opacity-fades — no scale", () => {
-  it("overlay mounts without scale transform when prefersReducedMotion=true", async () => {
-    // BrandMarkLongPress reads useReducedMotion from motion/react
-    // We verify via the overlay's rendered style
-    render(
+  it("inner grid has no scale(0.85) when prefersReducedMotion=true; scale present when false", async () => {
+    // --- prefersReducedMotion=true: inner grid must NOT contain scale(0.85) ---
+    const { unmount } = render(
       <BrandMarkLongPress state={fixtureState} prefersReducedMotion={true}>
         BRAND
       </BrandMarkLongPress>,
     );
-    const wrapper = screen.getByRole("button");
-
-    fireEvent.pointerDown(wrapper);
+    const wrapperPRM = screen.getByRole("button");
+    fireEvent.pointerDown(wrapperPRM);
     await act(async () => {
       vi.advanceTimersByTime(600);
     });
+    expect(screen.queryByTestId("year-heatmap-preview")).toBeTruthy();
+    const gridPRM = screen.queryByTestId("year-heatmap-grid");
+    expect(gridPRM).toBeTruthy();
+    // Mutant guard: deleting the PRM branch must make this assertion fail
+    const stylePRM = gridPRM!.getAttribute("style") ?? "";
+    expect(stylePRM).not.toMatch(/scale/);
+    unmount();
 
-    const overlay = screen.queryByTestId("year-heatmap-preview");
-    expect(overlay).toBeTruthy();
-    // Under PRM, no scale transform applied
-    const style = overlay!.getAttribute("style") ?? "";
-    expect(style).not.toMatch(/scale/);
+    // --- prefersReducedMotion=false: inner grid MUST contain scale(0.85) ---
+    render(
+      <BrandMarkLongPress state={fixtureState} prefersReducedMotion={false}>
+        BRAND
+      </BrandMarkLongPress>,
+    );
+    const wrapperFull = screen.getByRole("button");
+    fireEvent.pointerDown(wrapperFull);
+    await act(async () => {
+      vi.advanceTimersByTime(600);
+    });
+    expect(screen.queryByTestId("year-heatmap-preview")).toBeTruthy();
+    const gridFull = screen.queryByTestId("year-heatmap-grid");
+    expect(gridFull).toBeTruthy();
+    const styleFull = gridFull!.getAttribute("style") ?? "";
+    expect(styleFull).toMatch(/scale/);
   });
 });
 

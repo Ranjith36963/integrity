@@ -15,6 +15,7 @@
  * No new CSS custom property. No year-view module imported (SG-m7e-02).
  */
 
+import type React from "react";
 import type { AppState } from "@/lib/types";
 import { yearMonths } from "@/lib/yearGrid";
 import { monthScore } from "@/lib/history";
@@ -27,11 +28,22 @@ type YearHeatmapPreviewProps = {
 
 export function YearHeatmapPreview({
   state,
-  prefersReducedMotion: _prefersReducedMotion = false,
+  prefersReducedMotion = false,
 }: YearHeatmapPreviewProps) {
   // Derive year from state.currentDate (ADR-046 — no clock read)
   const year = parseInt(state.currentDate.slice(0, 4), 10);
   const months = yearMonths(year);
+
+  // AC #12: under prefers-reduced-motion, drop the scale transform (opacity-fade only).
+  // When PRM is false, keep scale(0.85) for the standard peek animation.
+  const gridStyle: React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: "8px",
+    width: "100%",
+    transformOrigin: "center center",
+    ...(prefersReducedMotion ? {} : { transform: "scale(0.85)" }),
+  };
 
   return (
     <div
@@ -71,15 +83,9 @@ export function YearHeatmapPreview({
         </span>
         {/* 3×4 grid of MonthCells — aria-hidden because peek-only */}
         <div
+          data-testid="year-heatmap-grid"
           aria-hidden="true"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: "8px",
-            width: "100%",
-            transform: "scale(0.85)",
-            transformOrigin: "center center",
-          }}
+          style={gridStyle}
         >
           {months.map((m) => (
             <div
