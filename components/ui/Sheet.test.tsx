@@ -66,3 +66,43 @@ describe("C-m0-007: Sheet close affordances and safe-area padding", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });
+
+// C-m0-026 — MS-1 mutation guard: dialog must have an accessible name
+describe("C-m0-026: Sheet exposes an accessible name", () => {
+  it("uses title as aria-label when title is provided", () => {
+    render(
+      <Sheet open onClose={vi.fn()} title="My title">
+        body
+      </Sheet>,
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAttribute("aria-label", "My title");
+  });
+
+  it("uses aria-labelledby when caller supplies an inner heading id", () => {
+    render(
+      <Sheet open onClose={vi.fn()} aria-labelledby="my-heading">
+        <h2 id="my-heading">Inner heading</h2>
+      </Sheet>,
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAttribute("aria-labelledby", "my-heading");
+    expect(dialog).not.toHaveAttribute("aria-label");
+  });
+
+  it("aria-labelledby wins over title when both are provided", () => {
+    render(
+      <Sheet
+        open
+        onClose={vi.fn()}
+        title="Fallback"
+        aria-labelledby="my-heading"
+      >
+        <h2 id="my-heading">Inner heading</h2>
+      </Sheet>,
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAttribute("aria-labelledby", "my-heading");
+    expect(dialog).not.toHaveAttribute("aria-label");
+  });
+});

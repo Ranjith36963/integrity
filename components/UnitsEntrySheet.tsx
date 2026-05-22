@@ -82,7 +82,7 @@ export function UnitsEntrySheet({ brick, open, onClose, onSave }: Props) {
   }
 
   return (
-    <Sheet open={open} onClose={onClose}>
+    <Sheet open={open} onClose={onClose} aria-labelledby="units-entry-heading">
       <div
         style={{
           display: "flex",

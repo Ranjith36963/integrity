@@ -85,3 +85,27 @@ describe("C-m0-006: Modal sheet root has padding-bottom: var(--safe-bottom)", ()
     expect(spy).not.toHaveBeenCalled();
   });
 });
+
+// C-m0-027 — MS-1 mutation guard: dialog must have an accessible name
+describe("C-m0-027: Modal exposes an accessible name", () => {
+  it("uses title as aria-label when title is provided", () => {
+    render(
+      <Modal open onClose={vi.fn()} title="My title">
+        body
+      </Modal>,
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAttribute("aria-label", "My title");
+  });
+
+  it("uses aria-labelledby when caller supplies an inner heading id", () => {
+    render(
+      <Modal open onClose={vi.fn()} aria-labelledby="my-heading">
+        <h2 id="my-heading">Inner heading</h2>
+      </Modal>,
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAttribute("aria-labelledby", "my-heading");
+    expect(dialog).not.toHaveAttribute("aria-label");
+  });
+});
