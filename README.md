@@ -74,6 +74,7 @@ npm run test:e2e:install
 | M7a — Stagger Fade-in + Skeleton Shimmer           | Shipped to preview — M7 chunk 1 of 5 (one Gate #2 tap at end of M7e)     |
 | M7b — Now-line Glow + Active-block Pulse + NOW Tag | Shipped to preview — M7 chunk 2 of 5                                     |
 | M7c — Hero % Count-up on First Load                | Shipped to preview — M7 chunk 3 of 5                                     |
+| M7d — Block-100% Bloom + Day-100% Fireworks        | Shipped to preview — M7 chunk 4 of 5                                     |
 
 Latest preview: `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (branch alias; auto-tracks `claude/verify-m0-deployment-s4XRy`). Vercel Deployment Protection active — open in browser while signed in to Vercel.
 
@@ -97,7 +98,8 @@ components/          Shared UI components + unit tests
   BrickChip.tsx      Brick chip with type-specific render + foreground fill = brickPct%; tick chips are tappable; units chips open UnitsEntrySheet on tap; time-window badge for timed bricks (M4e)
   TimedLooseBrickCard.tsx Timed loose-brick chip with dashed outline; renders on the Timeline at its start row (M4e)
   UnitsEntrySheet.tsx Sheet for manual number entry on a units brick; single number input + Save/Cancel; opens on tap of a units brick chip (M4f)
-  Fireworks.tsx      Day-100% celebration overlay; ≤ 16 particles; ~1.6 s; suppressed under prefers-reduced-motion
+  Fireworks.tsx      Day-100% celebration overlay; ≤ 16 particles; ~1.6 s; suppressed under prefers-reduced-motion (UNCHANGED M7d)
+  DayCompleteCard.tsx PRM fallback card shown when day hits 100% and prefers-reduced-motion is active; role="status" aria-live="polite"; auto-dismisses after 2000 ms (M7d)
   CategoryPicker.tsx Category selector chip row with inline NewCategoryForm sub-view
   HeroRing.tsx       SVG arc around the Hero numeral; stroke tracks dayPct%; firstPaintCountUp prop triggers 0→pct% tween on first load; children-as-function render-prop exposes live displayPct to callers (M7c)
   LooseBricksTray    Pinned tray above dock; lists loose bricks + "+ Brick" pill
@@ -114,7 +116,7 @@ components/          Shared UI components + unit tests
   Skeleton.tsx        Shimmer placeholder cards rendered during two-pass hydration window; 4 variants: block/brick/bar/ring (M7a)
   NowTag.tsx          Amber "NOW" accent badge rendered top-right on the active block card; role="status"; pointer-events: none (M7b)
 lib/                 Domain logic: types, data, scoring, utilities
-  celebrations.ts    useCrossUpEffect hook — one-shot cross-up detection for bloom/fireworks
+  celebrations.ts    useBlockCelebrationOnce (Set<string> mount-scoped dedup) + useDayCelebrationOnce (boolean ref) + celebrate(kind, opts) shim; useCrossUpEffect retained for compat (M7d)
   audio.ts           playChime() — lazy HTMLAudioElement for /sounds/chime.mp3; SSR + iOS guard
   longPress.ts       useLongPressRepeat hook — 500ms hold → 50ms ticks; used by GoalStepperChip (M4b). Also exports useLongPress single-fire sibling
   overlap.ts         Pure half-open overlap engine: intervalsOverlap + findOverlaps (M4e)
