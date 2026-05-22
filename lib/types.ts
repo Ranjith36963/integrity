@@ -62,6 +62,7 @@ export type ArchivedDay = {
 // AppState — M4f: runningTimerBrickId removed (ADR-043). M8: programStart added.
 // M9b: currentDate + history added (ADR-045; runtime-needed, must round-trip through AppState).
 // M5: deletions added (ADR-018 — per-day "just today" override map).
+// M7e: firstBrickShown added (ADR-044 additive optional field — no schema bump).
 export type AppState = {
   blocks: Block[];
   categories: Category[];
@@ -71,6 +72,7 @@ export type AppState = {
   currentDate: string; // M9b — ISO YYYY-MM-DD, the date of the in-progress day (ADR-045)
   history: Record<string, ArchivedDay>; // M9b — keyed by ISO YYYY-MM-DD (ADR-045)
   deletions: Record<string, true>; // M5 — key: `${currentDate}:${blockId}` — per-day "just today" overrides (ADR-018)
+  firstBrickShown?: boolean; // M7e — one-time flag; flipped by ADR-039 first-brick narrative; absent on load is back-filled by lib/persist.ts read-time projection.
 };
 
 // Action — M4f: collapsed to 5 variants; 5 timer/goal actions removed (ADR-043)

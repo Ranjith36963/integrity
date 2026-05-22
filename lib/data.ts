@@ -105,11 +105,17 @@ export function reducer(state: AppState, action: Action): AppState {
           b.recurrence !== undefined)
       )
         return state;
+      // M7e: flip firstBrickShown on the first successful ADD_BRICK (idempotent).
+      // Validity guards above run BEFORE this flip — a rejected dispatch never reaches here.
+      const firstBrickShown =
+        state.firstBrickShown !== true ? true : state.firstBrickShown;
+
       if (b.parentBlockId === null) {
         // Standalone brick → looseBricks
         return {
           ...state,
           looseBricks: [...state.looseBricks, b],
+          firstBrickShown,
         };
       }
       // Inside-block brick → find block by id and append to its bricks[]
@@ -118,6 +124,7 @@ export function reducer(state: AppState, action: Action): AppState {
         blocks: state.blocks.map((bl) =>
           bl.id === b.parentBlockId ? { ...bl, bricks: [...bl.bricks, b] } : bl,
         ),
+        firstBrickShown,
       };
     }
     case "LOG_TICK_BRICK": {
