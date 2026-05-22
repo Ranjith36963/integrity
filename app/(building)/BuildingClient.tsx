@@ -227,9 +227,7 @@ export function BuildingClient({
   // timerIdRef holds the clearTimeout handle so unmount cleanup can cancel it safely.
   const prefersReducedMotion = useReducedMotion();
   const shouldCelebrate = useDayCelebrationOnce(heroPct);
-  const dayCelebTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(
-    null,
-  );
+  const dayCelebTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!shouldCelebrate) return;

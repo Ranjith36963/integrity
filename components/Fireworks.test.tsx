@@ -66,7 +66,8 @@ describe("C-m7d-015: components/Fireworks.tsx is UNCHANGED by M7d; no new assets
       "utf-8",
     );
     // COLORS array has exactly 6 string entries — count quoted string literals inside the array
-    const match = src.match(/const COLORS\s*=\s*\[([^\]]+)\]/s);
+    // Note: use [\s\S] instead of . with /s flag (target ES2017, /s requires ES2018)
+    const match = src.match(/const COLORS\s*=\s*\[([\s\S]*?)\]/);
     expect(match).not.toBeNull();
     // Count entries by counting occurrences of quoted strings (both single and double quotes)
     const stringLiterals = match![1].match(/["'][^"']+["']/g);
