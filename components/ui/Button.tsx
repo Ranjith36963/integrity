@@ -46,16 +46,21 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     // When loading, children are hidden visually — derive the accessible label
     // from the children text so screen readers still announce the button purpose.
-    const loadingLabel =
-      loading && !ariaLabelProp && typeof children === "string"
-        ? children
-        : ariaLabelProp;
+    // Falls back to "Loading" for non-string children to avoid a nameless busy
+    // button (BT-2).
+    const loadingLabel = ariaLabelProp
+      ? ariaLabelProp
+      : loading
+        ? typeof children === "string"
+          ? children
+          : "Loading"
+        : undefined;
 
     return (
       <button
         ref={ref}
         className={cn(buttonVariants({ variant, size }), className)}
-        disabled={disabled ?? loading}
+        disabled={disabled || loading}
         aria-busy={loading ? "true" : undefined}
         aria-label={loadingLabel}
         {...props}
