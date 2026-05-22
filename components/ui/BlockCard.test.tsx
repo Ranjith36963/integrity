@@ -148,8 +148,10 @@ describe("C-m0-018: BlockCard editMode × button", () => {
 });
 
 // C-m0-028 — BC-2 mutation guard: BlockCard is keyboard-accessible when interactive
+// NEW-4 refactor: root is always <div> for stable DOM identity. When interactive,
+// an absolute-positioned <button> overlay child captures clicks + keyboard input.
 describe("C-m0-028: BlockCard keyboard accessibility (non-edit mode)", () => {
-  it("renders the card as a button when onClick provided and not in editMode", () => {
+  it("renders an interactive button overlay when onClick provided and not in editMode", () => {
     render(
       <BlockCard
         name="Work"
@@ -162,11 +164,15 @@ describe("C-m0-028: BlockCard keyboard accessibility (non-edit mode)", () => {
       />,
     );
     const card = screen.getByTestId("block-card");
-    expect(card.tagName).toBe("BUTTON");
-    expect(card).not.toHaveAttribute("tabindex", "-1");
+    // Stable DOM identity: root is always div.
+    expect(card.tagName).toBe("DIV");
+    // Interactive overlay is the button child.
+    const overlay = screen.getByRole("button", { name: /Open block: Work/ });
+    expect(overlay).toBeInTheDocument();
+    expect(card).toContainElement(overlay);
   });
 
-  it("Enter key activates onClick", async () => {
+  it("Enter key on overlay activates onClick", async () => {
     const onClick = vi.fn();
     render(
       <BlockCard
@@ -179,13 +185,13 @@ describe("C-m0-028: BlockCard keyboard accessibility (non-edit mode)", () => {
         onClick={onClick}
       />,
     );
-    const card = screen.getByTestId("block-card");
-    card.focus();
+    const overlay = screen.getByRole("button", { name: /Open block: Work/ });
+    overlay.focus();
     await userEvent.keyboard("{Enter}");
     expect(onClick).toHaveBeenCalledOnce();
   });
 
-  it("Space key activates onClick", async () => {
+  it("Space key on overlay activates onClick", async () => {
     const onClick = vi.fn();
     render(
       <BlockCard
@@ -198,13 +204,13 @@ describe("C-m0-028: BlockCard keyboard accessibility (non-edit mode)", () => {
         onClick={onClick}
       />,
     );
-    const card = screen.getByTestId("block-card");
-    card.focus();
+    const overlay = screen.getByRole("button", { name: /Open block: Work/ });
+    overlay.focus();
     await userEvent.keyboard(" ");
     expect(onClick).toHaveBeenCalledOnce();
   });
 
-  it("renders as div (non-interactive) when no onClick provided", () => {
+  it("no interactive overlay when no onClick provided", () => {
     render(
       <BlockCard
         name="Work"
@@ -215,12 +221,13 @@ describe("C-m0-028: BlockCard keyboard accessibility (non-edit mode)", () => {
         pct={42}
       />,
     );
-    const card = screen.getByTestId("block-card");
-    expect(card.tagName).toBe("DIV");
+    expect(
+      screen.queryByRole("button", { name: /Open block/ }),
+    ).not.toBeInTheDocument();
   });
 
-  it("renders as div (non-interactive) in editMode even with onClick", () => {
-    // In editMode, body click is suppressed — so no interactive wrapper needed.
+  it("no interactive overlay in editMode even with onClick (and clicking card body is suppressed)", async () => {
+    const onClick = vi.fn();
     render(
       <BlockCard
         name="Work"
@@ -230,10 +237,52 @@ describe("C-m0-028: BlockCard keyboard accessibility (non-edit mode)", () => {
         status="current"
         pct={42}
         editMode
+        onClick={onClick}
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: /Open block/ }),
+    ).not.toBeInTheDocument();
+    // TEST-cover for the editMode suppression contract: clicking the card
+    // body does not fire onClick (mutant resistance — would catch a flip to
+    // `onClick={onClick}` unconditional).
+    const card = screen.getByTestId("block-card");
+    await userEvent.click(card);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+});
+
+// C-m0-031 — NEW-4 mutation guard: root DOM identity is stable across editMode toggle
+describe("C-m0-031: BlockCard root DOM identity stable across editMode toggle", () => {
+  it("same root element persists when editMode toggles", () => {
+    const { rerender, getByTestId } = render(
+      <BlockCard
+        name="Work"
+        start="08:45"
+        end="17:15"
+        category="passive"
+        status="current"
+        pct={42}
         onClick={vi.fn()}
       />,
     );
-    const card = screen.getByTestId("block-card");
-    expect(card.tagName).toBe("DIV");
+    const rootBefore = getByTestId("block-card");
+    rerender(
+      <BlockCard
+        name="Work"
+        start="08:45"
+        end="17:15"
+        category="passive"
+        status="current"
+        pct={42}
+        editMode
+        onClick={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+    const rootAfter = getByTestId("block-card");
+    // Reference-equal DOM node → React did NOT unmount and remount.
+    expect(rootAfter).toBe(rootBefore);
+    expect(rootAfter.tagName).toBe("DIV");
   });
 });

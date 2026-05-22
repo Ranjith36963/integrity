@@ -183,12 +183,13 @@ describe("C-m0-030: Stepper valueRef does not reset during long-press on unrelat
     // the guard, the effect's sync overwrites valueRef with the stale prop
     // each unrelated re-render, undoing in-flight commits.
     const allCalls: number[] = [];
-    let triggerSiblingRerender: (() => void) | null = null;
+    // Use a container object so TS doesn't narrow the assignment site.
+    const trigger: { fn?: () => void } = {};
 
     function Flickering() {
       const [v, setV] = React.useState(0);
       const [tick, setTick] = React.useState(0);
-      triggerSiblingRerender = () => setTick((t) => t + 1);
+      trigger.fn = () => setTick((t) => t + 1);
       void tick;
       return (
         <Stepper
@@ -209,11 +210,11 @@ describe("C-m0-030: Stepper valueRef does not reset during long-press on unrelat
     // Tick 1
     vi.advanceTimersByTime(300);
     // Sibling re-render mid-press (would reset valueRef under the bug)
-    triggerSiblingRerender?.();
+    trigger.fn?.();
     // Tick 2
     vi.advanceTimersByTime(300);
     // Another sibling re-render
-    triggerSiblingRerender?.();
+    trigger.fn?.();
     // Tick 3
     vi.advanceTimersByTime(300);
 
