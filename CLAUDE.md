@@ -66,7 +66,7 @@ SHIP puts it in front of the user.
 - FAIL → auto-chain back to BUILDER with gap list (capped at 3 retries per ADR-024). No user gate inside the FAIL loop.
 
 ### Phase 7 — SHIP (SHIPPER owns) → Gate #2
-- Updates README + CHANGELOG + `docs/status.md` (status update is **mandatory** — every ship commit includes it). Pushes to the deploy branch (Vercel auto-deploys preview).
+- Updates README + per-milestone CHANGELOG shard (`docs/milestones/m{slug}/CHANGELOG.md`) + `docs/status.md` (status update is **mandatory** — every ship commit includes it). Pushes to the deploy branch (Vercel auto-deploys preview).
 - Commits as `chore(ship-<feature>): …` and/or `docs(ship-<feature>): …`.
 - **STOP. User taps the preview, reacts.** Reaction feeds the next `/feature` invocation. **This is the only human gate** (per ADR-041).
 
@@ -158,7 +158,7 @@ Reads: EVALUATOR's PASS report
 Tasks:
   - Push to main → Vercel auto-deploys
   - Update README.md
-  - Update CHANGELOG.md
+  - Update `docs/milestones/m{slug}/CHANGELOG.md` (per-milestone shard, NOT root CHANGELOG.md)
   - Verify production URL is live
 Forbidden: writing features, reviewing code
 Hands off to: Main Claude
@@ -180,7 +180,7 @@ This is how every feature is shipped, post ADR-025/027/041. Step 10 is the user'
   6. **EVALUATOR** — runs `npm run eval` (lint + typecheck + vitest + e2e + a11y) plus spec-coverage and test-integrity review. Returns PASS or FAIL.
      - **FAIL → back to BUILDER, automatic.** Up to 3 retries (per ADR-024); then escalate.
      - **PASS → SHIPPER, automatic.**
-  7. **SHIPPER** — pushes to the deploy branch (Vercel auto-deploys preview). Updates README + CHANGELOG + **`docs/status.md` (mandatory, every ship, per ADR-041)**. Commits as `chore(ship-<feature>):` and/or `docs(ship-<feature>):`.
+  7. **SHIPPER** — pushes to the deploy branch (Vercel auto-deploys preview). Updates README + per-milestone CHANGELOG shard (`docs/milestones/m{slug}/CHANGELOG.md`) + **`docs/status.md` (mandatory, every ship, per ADR-041)**. Commits as `chore(ship-<feature>):` and/or `docs(ship-<feature>):`.
   8. **Main Claude reports back** with the preview URL and a one-line summary.
   9. (Awaiting Gate #2 — see step 10.)
  10. **User opens the preview, taps, reacts.** This is **Gate #2, the preview gate — the only human gate** (per ADR-041). Reaction feeds the next `/feature` invocation — usually a new spec entry (loop returns to step 1) or a follow-up test ID against the existing plan (loop returns to step 4).
@@ -216,7 +216,9 @@ The project's durable context is sharded **per milestone** under `docs/milestone
 | `docs/milestones/m{slug}/decisions.md` | Main Claude + EVALUATOR | PLANNER, BUILDER, VERIFIER, EVALUATOR | milestone-specific ADRs |
 | `docs/milestones/_general/decisions.md` | Main Claude + EVALUATOR | PLANNER, BUILDER, VERIFIER, EVALUATOR | cross-cutting ADRs (Loop, methodology, agents) |
 | `docs/status.md` | SHIPPER + Main Claude | everyone (esp. on session restart) | every ship + every handoff |
-| `CHANGELOG.md` | SHIPPER | humans + future-me | every ship |
+| `docs/milestones/m{slug}/CHANGELOG.md` | SHIPPER | humans + future-me | every ship for that milestone |
+
+**Frozen root snapshots (never written to):** `docs/spec.md`, `docs/plan.md`, `docs/tests.md`, `docs/decisions.md`, root `CHANGELOG.md`. These were the pre-sharding monoliths and remain on disk as historical reference through M7e. The rule is uniform across all five: any new MD writes for any milestone go to `docs/milestones/m{slug}/{file}.md` only.
 
 **Slug examples:** `m0`, `m4a`, `m7e`, `m9b`, `m10`. Slugs match the milestone identifiers used in `status.md` and commit prefixes (per ADR-027).
 
@@ -244,7 +246,7 @@ A feature ships only when:
 3. Playwright confirms behavior in real browser
 4. EVALUATOR returns PASS
 5. Deployed to Vercel production
-6. README + CHANGELOG updated
+6. README + per-milestone CHANGELOG shard (`docs/milestones/m{slug}/CHANGELOG.md`) updated
 
 ## Required Plugins / Tools
 

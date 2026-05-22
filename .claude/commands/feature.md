@@ -63,7 +63,7 @@ Interpret `$ARGUMENTS` as a milestone slug (e.g., `m10`, `m7f`, `m5b`). The slug
 ### Step 7 — SHIP (SHIPPER, auto on PASS)
 
 - Dispatch the `shipper` subagent. Pass: feature name, EVALUATOR PASS report, latest gate counts, branch state, Vercel state (URL if known, "not connected" otherwise), the ADR-027 prefix convention (`chore(ship-<feature>):` / `docs(ship-<feature>):`).
-- SHIPPER updates `README.md`, `CHANGELOG.md` (`[unreleased]` block), and **`docs/status.md` (mandatory — every ship commit includes a status.md update)**, then pushes the branch.
+- SHIPPER updates `README.md`, `docs/milestones/m{slug}/CHANGELOG.md` (the per-milestone shard `[unreleased]` block — NOT root `CHANGELOG.md`), and **`docs/status.md` (mandatory — every ship commit includes a status.md update)**, then pushes the branch.
 - A SHIP commit that does not modify `docs/status.md` is a contract violation. If SHIPPER returns commits without the status.md update, reject and re-dispatch with that explicit instruction.
 
 ### Step 8 — Surface preview URL → Gate #2 (the only human gate)
