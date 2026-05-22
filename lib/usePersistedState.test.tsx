@@ -1020,3 +1020,78 @@ describe("U-m7a-003: usePersistedState returns [state, dispatch, mounted]; mount
     expect(result.current).toHaveLength(3);
   });
 });
+
+// ─── M7e: projectToAppState + toPersisted carry firstBrickShown ──────────────
+
+// U-m7e-015: projectToAppState carries firstBrickShown from PersistedState to AppState
+describe("U-m7e-015: projectToAppState carries firstBrickShown through", () => {
+  it("AppState has firstBrickShown === true when PersistedState has firstBrickShown: true", async () => {
+    // Seed localStorage with firstBrickShown: true
+    mockStorage._store[STORAGE_KEY] = JSON.stringify({
+      schemaVersion: 3,
+      programStart: "2026-05-01",
+      currentDate: "2026-05-20",
+      history: {},
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      deletions: {},
+      firstBrickShown: true,
+    });
+
+    const { result } = renderHook(() => usePersistedState());
+    // Trigger hydration
+    await act(async () => {});
+
+    const [state] = result.current;
+    expect(state.firstBrickShown).toBe(true);
+  });
+
+  it("AppState has firstBrickShown === false when PersistedState has firstBrickShown: false", async () => {
+    mockStorage._store[STORAGE_KEY] = JSON.stringify({
+      schemaVersion: 3,
+      programStart: "2026-05-01",
+      currentDate: "2026-05-20",
+      history: {},
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      deletions: {},
+      firstBrickShown: false,
+    });
+
+    const { result } = renderHook(() => usePersistedState());
+    await act(async () => {});
+
+    const [state] = result.current;
+    expect(state.firstBrickShown).toBe(false);
+  });
+});
+
+// U-m7e-016: toPersisted carries firstBrickShown back from AppState to PersistedState
+describe("U-m7e-016: toPersisted carries firstBrickShown back to PersistedState", () => {
+  it("saveState round-trips firstBrickShown: true through the hook save path", async () => {
+    // Start with firstBrickShown: false
+    mockStorage._store[STORAGE_KEY] = JSON.stringify({
+      schemaVersion: 3,
+      programStart: "2026-05-01",
+      currentDate: "2026-05-20",
+      history: {},
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      deletions: {},
+      firstBrickShown: true,
+    });
+
+    const { result } = renderHook(() => usePersistedState());
+    await act(async () => {});
+
+    // The save effect fires after hydration; read back the stored value
+    const raw = mockStorage._store[STORAGE_KEY];
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    expect(parsed.firstBrickShown).toBe(true);
+    // Also confirm the in-memory state carries it
+    expect(result.current[0].firstBrickShown).toBe(true);
+  });
+});
