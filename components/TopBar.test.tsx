@@ -144,6 +144,43 @@ describe("C-m5-001: TopBar pencil toggles Locked ↔ Unlocked; state visually + 
   });
 });
 
+// C-m7e-023: <TopBar state={state}> wraps brand-mark with BrandMarkLongPress;
+//            <TopBar /> without state renders un-wrapped — backwards compat
+
+describe("C-m7e-023: <TopBar state={state}> wraps brand-mark with <BrandMarkLongPress>; no state → un-wrapped", () => {
+  const fixtureState = {
+    blocks: [],
+    categories: [],
+    looseBricks: [],
+    programStart: "2026-01-01",
+    currentDate: "2026-05-20",
+    history: {},
+    deletions: {},
+    firstBrickShown: false as boolean | undefined,
+  };
+
+  it("(a) TopBar with state mounts data-testid='brand-mark-longpress' AND DHARMA inside it", () => {
+    render(
+      <EditModeProvider>
+        <TopBar state={fixtureState} />
+      </EditModeProvider>,
+    );
+    const wrapper = screen.getByTestId("brand-mark-longpress");
+    expect(wrapper).toBeTruthy();
+    expect(wrapper.textContent).toContain("DHARMA");
+  });
+
+  it("(b) TopBar without state renders DHARMA WITHOUT brand-mark-longpress wrapper", () => {
+    render(
+      <EditModeProvider>
+        <TopBar />
+      </EditModeProvider>,
+    );
+    expect(screen.queryByTestId("brand-mark-longpress")).toBeNull();
+    expect(screen.getByText("DHARMA")).toBeTruthy();
+  });
+});
+
 // ─── C-m5-002: haptic on toggle; Edit Mode NOT persisted, boots Locked ─────────
 
 describe("C-m5-002: TopBar — light haptic on toggle; Edit Mode is NOT persisted, boots Locked", () => {
