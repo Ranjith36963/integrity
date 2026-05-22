@@ -108,4 +108,23 @@ describe("C-m0-027: Modal exposes an accessible name", () => {
     expect(dialog).toHaveAttribute("aria-labelledby", "my-heading");
     expect(dialog).not.toHaveAttribute("aria-label");
   });
+
+  // TEST-2: previously missing — Modal now mirrors Sheet's third sub-case
+  // for symmetric guard coverage. Per NEW-2, title is the defensive
+  // fallback even when aria-labelledby is present.
+  it("keeps title as aria-label fallback even when aria-labelledby is also provided", () => {
+    render(
+      <Modal
+        open
+        onClose={vi.fn()}
+        title="Fallback"
+        aria-labelledby="my-heading"
+      >
+        <h2 id="my-heading">Inner heading</h2>
+      </Modal>,
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAttribute("aria-labelledby", "my-heading");
+    expect(dialog).toHaveAttribute("aria-label", "Fallback");
+  });
 });

@@ -41,7 +41,9 @@ export function Sheet({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={ariaLabelledBy ? undefined : title}
+      // NEW-2: see Modal.tsx — keep title as defensive aria-label fallback
+      // even when aria-labelledby is set.
+      aria-label={title}
       aria-labelledby={ariaLabelledBy}
       className="fixed inset-0 z-50 flex"
     >

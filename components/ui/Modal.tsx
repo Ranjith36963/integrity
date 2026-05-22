@@ -41,7 +41,13 @@ export function Modal({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={ariaLabelledBy ? undefined : title}
+      // NEW-2: keep aria-label={title} as a defensive fallback even when
+      // aria-labelledby is set. ARIA spec gives aria-labelledby precedence
+      // when its referenced element exists — but if the id is typo'd, lazy-
+      // rendered, or conditionally absent, the dialog would otherwise be
+      // nameless. The fallback is harmless when labelledby resolves; lifesaving
+      // when it doesn't.
+      aria-label={title}
       aria-labelledby={ariaLabelledBy}
       className="fixed inset-0 z-50 flex items-end justify-center"
     >

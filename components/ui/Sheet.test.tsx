@@ -90,7 +90,12 @@ describe("C-m0-026: Sheet exposes an accessible name", () => {
     expect(dialog).not.toHaveAttribute("aria-label");
   });
 
-  it("aria-labelledby wins over title when both are provided", () => {
+  // NEW-2 behavior: title remains as defensive aria-label fallback even
+  // when aria-labelledby is set. Per ARIA spec, aria-labelledby wins for
+  // screen readers if the referenced element exists; the aria-label fallback
+  // only matters when the labelledby reference is broken (typo'd id, lazy
+  // render, conditional mount).
+  it("keeps title as aria-label fallback even when aria-labelledby is also provided", () => {
     render(
       <Sheet
         open
@@ -103,6 +108,6 @@ describe("C-m0-026: Sheet exposes an accessible name", () => {
     );
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveAttribute("aria-labelledby", "my-heading");
-    expect(dialog).not.toHaveAttribute("aria-label");
+    expect(dialog).toHaveAttribute("aria-label", "Fallback");
   });
 });
