@@ -132,6 +132,11 @@ test("E-m1-006: no horizontal overflow at 430px viewport", async ({ page }) => {
 });
 
 // E-m1-007: Safe-area insets (iOS notch + home indicator)
+// R1-SG-4 strengthened: previously only asserted the element with
+// '--safe-bottom' in its inline style is visible (true even if the var resolves
+// to 0). Now asserts the COMPUTED paddingBottom is at least the simulated home-
+// indicator height (34px). With the plan-spec contract paddingBottom =
+// calc(20px + --safe-bottom), 20 + 34 = 54 → assert >= 54.
 test("E-m1-007: BottomBar respects safe-area insets", async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 900 });
   await page.addInitScript(() => {
@@ -140,10 +145,15 @@ test("E-m1-007: BottomBar respects safe-area insets", async ({ page }) => {
   });
   await page.goto("/");
 
-  // Check that padding-bottom references var(--safe-bottom)
-  // We verify by checking the dock wrapper has paddingBottom > 20px
   const dockWrapper = page.locator("[style*='--safe-bottom']").first();
   await expect(dockWrapper).toBeVisible();
+
+  // Strengthened assertion: computed paddingBottom must include the
+  // simulated home-indicator space (>= 54 = 20px base + 34px inset).
+  const computedPaddingBottom = await dockWrapper.evaluate(
+    (el) => parseFloat(window.getComputedStyle(el).paddingBottom) || 0,
+  );
+  expect(computedPaddingBottom).toBeGreaterThanOrEqual(54);
 });
 
 // E-m1-008: Viewport height < 600px (tight height)

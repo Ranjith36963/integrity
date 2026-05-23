@@ -16,11 +16,10 @@ describe("U-m1-006: timeToOffsetPx returns 768 for 12:00", () => {
 });
 
 // U-m1-007: near-bottom 23:59
-// Note: tests.md says "open range (1535, 1536)" but the actual math gives
-// 23 * 64 + (59/60) * 64 = 1472 + 62.933... = 1534.933. The spec's "1535.0667"
-// figure is a calculation error in tests.md. Implementing the correct range
-// (1534, 1536) to match the actual math while honoring the intent (near-but-below 1536).
-// This discrepancy is surfaced to the orchestrator as tests.md gap U-m1-007.
+// Math: 23 * 64 + (59/60) * 64 = 1472 + 62.933... = 1534.933.
+// The test asserts the open range (1534, 1536) — strictly less than the 24-hour
+// floor (1536) and above the 23:00 mark (1472). tests.md line 206 has a stale
+// half-open range "[1535, 1536)" (R1-NIT-2 — superseded by the math above).
 describe("U-m1-007: timeToOffsetPx for 23:59 is near (but strictly less than) 1536", () => {
   it("returns a value strictly between 1534 and 1536 for 23:59", () => {
     const result = timeToOffsetPx("23:59", 64);
@@ -61,10 +60,42 @@ describe("U-m1-009: clampOffsetPx clamps to [0, 24*hourHeightPx]", () => {
 });
 
 // U-m1-010: HOUR_HEIGHT_PX is exactly 64
+// R1-SG-7 strengthened: also asserts no consumer hardcodes 64 inline. Was only
+// checking the constant value — a future contributor could hardcode 64 px in
+// any consumer without tripping any test.
 describe("U-m1-010: HOUR_HEIGHT_PX constant is exactly 64", () => {
   it("exports HOUR_HEIGHT_PX as 64", () => {
     expect(HOUR_HEIGHT_PX).toBe(64);
     expect(typeof HOUR_HEIGHT_PX).toBe("number");
+  });
+
+  it("no component file hardcodes 64 in a height/top style", async () => {
+    // Read the known consumers and assert every reference is via the symbol,
+    // not a literal `64`. This catches drift across Timeline, NowLine,
+    // SlotTapTargets, TimelineBlock, TimedLooseBrickCard, DraggableTimelineBlock.
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const files = [
+      "components/Timeline.tsx",
+      "components/NowLine.tsx",
+      "components/SlotTapTargets.tsx",
+      "components/TimelineBlock.tsx",
+      "components/TimedLooseBrickCard.tsx",
+      "components/DraggableTimelineBlock.tsx",
+    ];
+    for (const f of files) {
+      const src = fs.readFileSync(path.join(__dirname, "..", f), "utf-8");
+      // The file must import HOUR_HEIGHT_PX (so it has the symbol available).
+      expect(src.includes("HOUR_HEIGHT_PX")).toBe(true);
+      // Any standalone `: 64` or `* 64` or `64 *` would be the smell.
+      // We grep for height/top style patterns specifically.
+      const badHeightPattern = /(height|top)\s*[:=]\s*[^,;)]*\b64\b/g;
+      const matches = src.match(badHeightPattern);
+      expect(
+        matches,
+        `${f} contains a hardcoded 64 in a height/top style: ${matches?.join(", ")}`,
+      ).toBeNull();
+    }
   });
 });
 

@@ -203,7 +203,7 @@
   WHEN the NowLine element (`[data-testid="now-line"]`) is queried
   THEN it is present in the DOM, has computed `background-color` referencing `--accent`, and its inline-style `top` (or computed `top`) equals `512px` (i.e., `8 * 64`, the pixel offset of `08:00`).
   AND when rendered with `now="00:00"`, `top` equals `0px`.
-  AND when rendered with `now="23:59"`, `top` is in the half-open range `[1535, 1536)`.
+  AND when rendered with `now="23:59"`, `top` is in the open range `(1534, 1536)` — exact value is `23*64 + (59/60)*64 ≈ 1534.933` (R1-NIT-2: superseded earlier "[1535, 1536)" doc value with the correct math).
   Tested by: `components/NowLine.test.tsx` + `components/Timeline.test.tsx`
 
 - ID: C-m1-011

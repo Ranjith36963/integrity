@@ -131,6 +131,19 @@ export function Timeline({
   const activeId = activeBlockId(visibleBlockList, now);
 
   // Auto-scroll on mount so NowLine is vertically centered in the visible viewport.
+  //
+  // R1-P1-5 INVARIANT (deliberate deps-less effect):
+  // Reads `now` from the render closure ONCE on mount; never re-scrolls when
+  // `now` ticks (otherwise the user's manual scrolling would be hijacked every
+  // minute). This is safe TODAY because Timeline only mounts inside the
+  // `hydrated===true` branch of BuildingClient — so the initial `now` is the
+  // real client clock, not a stale SSR value.
+  //
+  // If a future refactor mounts Timeline pre-hydration (no skeleton gate),
+  // the auto-scroll would use the SSR clock (potentially off by the user's
+  // entire UTC offset) → NowLine off-viewport at first paint. Mitigation
+  // path: convert to useLayoutEffect that runs after `hydrated` transitions
+  // true, OR pass `hydrated` down as a prop and gate the effect on it.
   useEffect(() => {
     if (!scrollRef.current) return;
     const containerHeight = scrollRef.current.clientHeight;
