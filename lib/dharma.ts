@@ -163,14 +163,16 @@ export function today(d: Date = new Date()): string {
  * Date in the user's local TZ. dayNumber, dateLabel, BuildingClient's
  * totalDays calc, and DayCell's aria-label all go through here.
  *
- * R4-P3-2 contract:
+ * R4-P3-2 / R5-P2-1 contract:
  *   - INPUT must be exactly "YYYY-MM-DD" (10 chars, hyphens at positions 4 + 7).
  *   - Malformed input → JS produces `Invalid Date`. Callers that pass through
  *     to `getFullYear()` / `getTime()` etc. silently degrade (NaN, 365, etc.).
- *     Validation happens at the system boundary (persist.ts migration), not
- *     here. Today() is the only in-tree producer and is well-formed by
- *     construction. If a future source can produce malformed input,
- *     validate at THAT source, not here.
+ *   - Corruption-resistance comes from `today()` being well-formed by
+ *     construction (zero-padded local components). It is the only in-tree
+ *     producer. Persist.ts validates the TYPE of `programStart` but not the
+ *     SHAPE — corrupted localStorage could in theory feed garbage through
+ *     this helper. Tolerating that today (no observed crashes) is a known
+ *     deferral; future hardening would add a regex check in persist.ts.
  *   - Strings with a `T...` time component already (`"2025-01-01T15:30:00"`)
  *     will produce an invalid double-T string. Do NOT call this with
  *     pre-suffixed values.
