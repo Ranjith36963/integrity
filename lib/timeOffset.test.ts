@@ -18,8 +18,8 @@ describe("U-m1-006: timeToOffsetPx returns 768 for 12:00", () => {
 // U-m1-007: near-bottom 23:59
 // Math: 23 * 64 + (59/60) * 64 = 1472 + 62.933... = 1534.933.
 // The test asserts the open range (1534, 1536) — strictly less than the 24-hour
-// floor (1536) and above the 23:00 mark (1472). tests.md line 206 has a stale
-// half-open range "[1535, 1536)" (R1-NIT-2 — superseded by the math above).
+// floor (1536) and above the 23:00 mark (1472). m1/tests.md:206 originally
+// said "[1535, 1536)"; aligned to "(1534, 1536)" by R2-SG-2.
 describe("U-m1-007: timeToOffsetPx for 23:59 is near (but strictly less than) 1536", () => {
   it("returns a value strictly between 1534 and 1536 for 23:59", () => {
     const result = timeToOffsetPx("23:59", 64);

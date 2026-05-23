@@ -533,7 +533,8 @@ describe("C-m8-007: BuildingClient feeds dayNumber(programStart, todayIso) to He
     expect(dayCounter).not.toBeNull();
     const text = dayCounter?.textContent?.replace(/\s+/g, " ").trim();
     // dayNumber("2026-05-01", "2026-05-15") === 15 (day 15 of program)
-    // totalDays = daysInYear(new Date("2026-05-15")) = 365
+    // totalDays = daysInYear(isoToLocalDate("2026-05-15")) = 365
+    // (R3-P2-2: production switched from `new Date(iso)` to `isoToLocalDate`.)
     expect(text).toBe("Building 15 of 365");
   });
 

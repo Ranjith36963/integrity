@@ -198,6 +198,17 @@ test("A-m1-006: NowLine has role=img + aria-label, BlueprintBar has aria-label, 
   // R1-P1-1: BlueprintBar's now-pin must be aria-hidden (decorative).
   const nowPin = page.locator('[data-testid="now-pin"]');
   await expect(nowPin).toHaveAttribute("aria-hidden", "true");
+
+  // R3-P1-2 regression: the VISIBLE time-text div inside BlueprintBar
+  // (sibling to the "day blueprint" label) must also be aria-hidden, or
+  // SR users would hear the time twice (once via reading-order traversal
+  // of the visible text, once via NowLine's aria-label). R2-SG-5 added
+  // aria-hidden to that div; this assertion locks it.
+  const blueprintTime = page
+    .locator('[aria-label="Day blueprint"]')
+    .locator("div", { hasText: /^\d{2}:\d{2}$/ })
+    .first();
+  await expect(blueprintTime).toHaveAttribute("aria-hidden", "true");
 });
 
 // A-m1-007: typecheck/lint gate (asserted via npm run typecheck/lint — test ID exists for auditability)

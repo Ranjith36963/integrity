@@ -14,6 +14,12 @@
  */
 import { describe, it, expect } from "vitest";
 import { dayOfYear, daysInYear } from "./dayOfYear";
+// R3-P1-1: import the SAME helper production uses so this test exercises the
+// real call path. The previous R2-P0-1 test duplicated the parse logic inline,
+// so a mutation that reverted BuildingClient to `new Date(iso)` left the test
+// green. Now any change to isoToLocalDate breaks BOTH BuildingClient AND this
+// test simultaneously — mutation-resistant by construction.
+import { isoToLocalDate } from "./dharma";
 
 describe("dayOfYear (TZ=America/Los_Angeles)", () => {
   it("DST spring-forward (Mar 8 2026) does not skip a day", () => {
@@ -56,42 +62,29 @@ describe("dayOfYear (TZ=America/Los_Angeles)", () => {
     }
   });
 
-  // R2-P0-1 regression: exercise the actual BuildingClient call shape.
-  // Previously this suite only used local-component constructors
-  // (new Date(y, m, d, ...)) which always returns the right local year.
-  // Production code derives the date from todayIso (a "YYYY-MM-DD" string).
-  // The R1 fix attempted `new Date(todayIso)` which is parsed as UTC midnight —
-  // breaking Jan 1 in negative-UTC TZs. The R2 fix splits the ISO and uses
-  // the local-component constructor.
-  describe("R2-P0-1: daysInYear via the BuildingClient call shape", () => {
-    // Mirror BuildingClient.tsx:243-256.
-    function daysInYearFromIso(iso: string): number {
-      const [y, m, d] = iso.split("-").map(Number);
-      return daysInYear(new Date(y, m - 1, d));
-    }
-
+  // R2-P0-1 + R3-P1-1 regression: exercise the actual BuildingClient call
+  // shape via the shared `isoToLocalDate` helper that production imports.
+  // Mutation-resistant: any change to isoToLocalDate breaks BOTH the
+  // production call site AND these tests.
+  describe("daysInYear via the production isoToLocalDate(iso) call shape", () => {
     it("PT 'today=2025-01-01' returns 365 (year 2025 is not leap)", () => {
-      expect(daysInYearFromIso("2025-01-01")).toBe(365);
+      expect(daysInYear(isoToLocalDate("2025-01-01"))).toBe(365);
     });
 
     it("PT 'today=2028-01-01' returns 366 (year 2028 IS leap)", () => {
-      expect(daysInYearFromIso("2028-01-01")).toBe(366);
+      expect(daysInYear(isoToLocalDate("2028-01-01"))).toBe(366);
     });
 
     it("PT 'today=2024-12-31' returns 366 (year 2024 IS leap)", () => {
-      expect(daysInYearFromIso("2024-12-31")).toBe(366);
+      expect(daysInYear(isoToLocalDate("2024-12-31"))).toBe(366);
     });
 
     it("PT 'today=2025-12-31' returns 365 (year 2025 is not leap)", () => {
-      expect(daysInYearFromIso("2025-12-31")).toBe(365);
-    });
-
-    // Sanity check that the buggy R1 form would have failed these.
-    it("BUGGY R1 form `new Date(iso)` proves the bug: returns 366 for Jan 1 2025 PT (wrong)", () => {
-      // This documents the regression. `new Date("2025-01-01")` parses as
-      // UTC midnight → PT 2024-12-31 16:00 → getFullYear() === 2024 (leap).
-      const buggy = daysInYear(new Date("2025-01-01"));
-      expect(buggy).toBe(366); // wrong answer — would be 365 with the fix.
+      expect(daysInYear(isoToLocalDate("2025-12-31"))).toBe(365);
     });
   });
 });
+
+// R3-P3-3: removed the documentary "BUGGY R1 form" test — it pinned JS Date
+// parser behavior, not production. The historical context is captured in the
+// `isoToLocalDate` JSDoc + BuildingClient comment.

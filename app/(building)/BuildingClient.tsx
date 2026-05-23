@@ -24,7 +24,13 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import type { Dispatch } from "react";
 import { toast } from "@/components/Toaster";
 import { FirstBrickCard } from "@/components/FirstBrickCard";
-import { today, dateLabel, dayPct, dayNumber } from "@/lib/dharma";
+import {
+  today,
+  dateLabel,
+  dayPct,
+  dayNumber,
+  isoToLocalDate,
+} from "@/lib/dharma";
 import { daysInYear } from "@/lib/dayOfYear";
 import { useFirstPaintAfterHydration } from "@/lib/firstPaint";
 import { useNow } from "@/lib/useNow";
@@ -241,22 +247,15 @@ export function BuildingClient({
   // dayNumber returns number | undefined; undefined only if programStart is empty (never in practice).
   // totalDays keeps daysInYear — the program is a one-year arc.
   //
-  // R2-P0-1 fix (meta-bug from R1-P2-3): the previous R1 fix used
-  // `new Date(todayIso)`, which parses "YYYY-MM-DD" as UTC midnight. In any
-  // negative-UTC-offset TZ (e.g. PT), `new Date("2025-01-01")` becomes
-  // 2024-12-31 16:00 PT and `.getFullYear()` returns 2024 → daysInYear
-  // returned the WRONG year on every Jan 1. Use the local-date constructor
-  // (matches how today() itself computes the local date) so the year is
-  // derived in the user's TZ, not UTC.
-  // R1-P2-3 intent (secondary inconsistency removed) is preserved: totalDays
-  // is still a deterministic function of todayIso. The primary SSR/CSR
-  // mismatch on todayIso itself remains the responsibility of ADR-023.
+  // R3-P2-3: parse todayIso via the shared `isoToLocalDate` helper (lib/dharma.ts)
+  // so this call site uses the SAME parse strategy as dayNumber + dateLabel.
+  // The helper appends "T00:00:00" to force local-midnight parsing, avoiding
+  // the R1-P2-3 Jan-1 negative-UTC-TZ bug (`new Date("2025-01-01")` parses as
+  // UTC midnight = 2024-12-31 16:00 PT, getFullYear() returns 2024 → wrong
+  // totalDays). Closes R3-P1-1: a mutation of the production parse will now
+  // also break dayNumber + dateLabel tests, not just totalDays.
   const dayNumberValue = dayNumber(state.programStart, todayIso);
-  const [yStr, mStr, dStr] = todayIso.split("-");
-  const todayYear = Number(yStr);
-  const todayMonth = Number(mStr);
-  const todayDay = Number(dStr);
-  const totalDays = daysInYear(new Date(todayYear, todayMonth - 1, todayDay));
+  const totalDays = daysInYear(isoToLocalDate(todayIso));
   const dateLabelValue = dateLabel(todayIso);
 
   // M3: dayPct now takes full AppState (blocks + looseBricks)

@@ -152,17 +152,34 @@ export function today(d: Date = new Date()): string {
 }
 
 /**
+ * R3-P2-3: shared helper for parsing a "YYYY-MM-DD" ISO string as LOCAL
+ * midnight (NOT UTC midnight). The `+ "T00:00:00"` suffix forces the ISO
+ * 8601 parser to treat the value as local time per spec; without it,
+ * `new Date("YYYY-MM-DD")` parses as UTC midnight, which becomes the
+ * previous calendar day in any negative-UTC TZ — the exact R1-P2-3 bug
+ * that the R2-P0-1 fix had to chase down.
+ *
+ * Use this from any caller that takes a `today()`-style ISO and wants a
+ * Date in the user's local TZ. dayNumber, dateLabel, and BuildingClient's
+ * totalDays calc all go through here.
+ */
+export function isoToLocalDate(iso: string): Date {
+  return new Date(iso + "T00:00:00");
+}
+
+/**
  * Returns the 1-based program day number (day 1 = programStart).
  * Returns `undefined` if programStart is null, undefined, or empty string.
- * Both ISO strings are parsed as local midnight to keep DST-safe integer math.
+ * Both ISO strings are parsed as local midnight (via isoToLocalDate) to
+ * keep DST-safe integer math.
  */
 export function dayNumber(
   programStart: string | null | undefined,
   todayIso: string,
 ): number | undefined {
   if (!programStart) return undefined;
-  const start = new Date(programStart + "T00:00:00");
-  const end = new Date(todayIso + "T00:00:00");
+  const start = isoToLocalDate(programStart);
+  const end = isoToLocalDate(todayIso);
   const delta = Math.floor((end.getTime() - start.getTime()) / 86_400_000);
   return delta + 1;
 }
@@ -173,10 +190,9 @@ export function dayNumber(
  * If locale-aware formatting is needed later, introduce a follow-up feature.
  */
 export function dateLabel(todayIso: string): string {
-  const d = new Date(todayIso + "T00:00:00");
   return new Intl.DateTimeFormat("en-US", {
     weekday: "short",
     month: "short",
     day: "numeric",
-  }).format(d);
+  }).format(isoToLocalDate(todayIso));
 }
