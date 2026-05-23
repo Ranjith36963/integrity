@@ -240,8 +240,14 @@ export function BuildingClient({
   // programStart comes from persisted AppState (set to today on first run, preserved thereafter).
   // dayNumber returns number | undefined; undefined only if programStart is empty (never in practice).
   // totalDays keeps daysInYear — the program is a one-year arc.
+  // R1-P2-3: derive totalDays deterministically from todayIso (not `new Date()`)
+  // so the SSR-vs-CSR mismatch potential is reduced to whatever todayIso already
+  // resolves to. `new Date("YYYY-MM-DD")` parses as UTC, but daysInYear only
+  // calls getFullYear() — the year is stable for any date in that ISO. Before
+  // this fix, the bare `new Date()` on the server could land in a different
+  // calendar year than the client near NYE midnight UTC, flipping 365/366.
   const dayNumberValue = dayNumber(state.programStart, todayIso);
-  const totalDays = daysInYear(new Date());
+  const totalDays = daysInYear(new Date(todayIso));
   const dateLabelValue = dateLabel(todayIso);
 
   // M3: dayPct now takes full AppState (blocks + looseBricks)
