@@ -160,8 +160,20 @@ export function today(d: Date = new Date()): string {
  * that the R2-P0-1 fix had to chase down.
  *
  * Use this from any caller that takes a `today()`-style ISO and wants a
- * Date in the user's local TZ. dayNumber, dateLabel, and BuildingClient's
- * totalDays calc all go through here.
+ * Date in the user's local TZ. dayNumber, dateLabel, BuildingClient's
+ * totalDays calc, and DayCell's aria-label all go through here.
+ *
+ * R4-P3-2 contract:
+ *   - INPUT must be exactly "YYYY-MM-DD" (10 chars, hyphens at positions 4 + 7).
+ *   - Malformed input → JS produces `Invalid Date`. Callers that pass through
+ *     to `getFullYear()` / `getTime()` etc. silently degrade (NaN, 365, etc.).
+ *     Validation happens at the system boundary (persist.ts migration), not
+ *     here. Today() is the only in-tree producer and is well-formed by
+ *     construction. If a future source can produce malformed input,
+ *     validate at THAT source, not here.
+ *   - Strings with a `T...` time component already (`"2025-01-01T15:30:00"`)
+ *     will produce an invalid double-T string. Do NOT call this with
+ *     pre-suffixed values.
  */
 export function isoToLocalDate(iso: string): Date {
   return new Date(iso + "T00:00:00");
