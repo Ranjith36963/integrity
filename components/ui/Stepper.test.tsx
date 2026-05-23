@@ -177,54 +177,137 @@ describe("C-m0-030: Stepper valueRef does not reset during long-press on unrelat
   });
 
   it("unrelated parent state changes during press do not reset valueRef to stale prop", () => {
-    // A parent that re-renders on a sibling state change while the press is
-    // active. With the NEW-1 fix (isPressedRef guard skipping the effect's
-    // valueRef sync during press), valueRef advances correctly. Without
-    // the guard, the effect's sync overwrites valueRef with the stale prop
-    // each unrelated re-render, undoing in-flight commits.
+    // R3-2 strengthening (previous version was tautological): the parent
+    // intentionally HOLDS `value` at 0 during the press (does NOT update via
+    // setV), simulating a debounced/lagged controlled parent. Then unrelated
+    // sibling state changes force re-renders.
+    //
+    // With the bug (effect unconditionally syncs valueRef = value):
+    //   every sibling re-render writes valueRef = 0 → next tick re-commits
+    //   from 0 → onChange repeatedly fires (1).
+    //
+    // With the fix (isPressedRef guard skips sync while pressed):
+    //   valueRef stays at the optimistic advance → onChange fires 1, 2, 3...
     const allCalls: number[] = [];
-    // Use a container object so TS doesn't narrow the assignment site.
     const trigger: { fn?: () => void } = {};
 
-    function Flickering() {
-      const [v, setV] = React.useState(0);
-      const [tick, setTick] = React.useState(0);
+    function FrozenParent() {
+      // `value` deliberately frozen at 0 to simulate parent NOT flowing
+      // committed value back (debounced setState, controlled-by-server, etc.).
+      const [, setTick] = React.useState(0);
       trigger.fn = () => setTick((t) => t + 1);
-      void tick;
+      return (
+        <Stepper
+          value={0}
+          max={1000}
+          onChange={(n) => {
+            allCalls.push(n);
+          }}
+        />
+      );
+    }
+    render(<FrozenParent />);
+    const incBtn = screen.getByRole("button", { name: "Increment" });
+
+    incBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
+    vi.advanceTimersByTime(300); // Tick 1 → onChange(1), valueRef=1
+    trigger.fn?.(); // sibling re-render — with bug, effect resets valueRef→0
+    vi.advanceTimersByTime(300); // Tick 2 → with fix, onChange(2); with bug, onChange(1)
+    trigger.fn?.();
+    vi.advanceTimersByTime(300); // Tick 3 → with fix, onChange(3); with bug, onChange(1)
+
+    incBtn.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+
+    // With the bug, every call would be 1 (valueRef reset by each sibling
+    // re-render). With the fix, calls advance monotonically.
+    expect(Math.max(...allCalls)).toBeGreaterThanOrEqual(3);
+    // Stronger: at least 3 DISTINCT values must have been emitted.
+    const uniqueValues = new Set(allCalls);
+    expect(uniqueValues.size).toBeGreaterThanOrEqual(3);
+  }, 10_000);
+});
+
+// C-m0-034 — R3-1 mutation guard: interval stops when boundary is hit
+describe("C-m0-034: Stepper long-press stops the interval at boundary", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("when value hits max during press, interval is cleared (no leak after disabled flips)", () => {
+    // R3-1 trigger: once value === max, the button receives disabled=true,
+    // which adds pointer-events-none — pointerup/leave/cancel never reach
+    // the button → stopLongPress never runs → setInterval leaks.
+    // Fix: commit() detects next === current and calls stopLongPress itself.
+    const allCalls: number[] = [];
+    const Spy = () => {
+      const [v, setV] = React.useState(0);
       return (
         <Stepper
           value={v}
-          max={1000}
+          max={3}
           onChange={(n) => {
             allCalls.push(n);
             setV(n);
           }}
         />
       );
-    }
-    render(<Flickering />);
+    };
+    render(<Spy />);
     const incBtn = screen.getByRole("button", { name: "Increment" });
 
     incBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
 
-    // Tick 1
-    vi.advanceTimersByTime(300);
-    // Sibling re-render mid-press (would reset valueRef under the bug)
-    trigger.fn?.();
-    // Tick 2
-    vi.advanceTimersByTime(300);
-    // Another sibling re-render
-    trigger.fn?.();
-    // Tick 3
-    vi.advanceTimersByTime(300);
+    // Drive past the boundary. Max is 3; at base rate (1 commit/tick) we hit
+    // boundary on tick 3. Advance enough time that the interval would have
+    // fired many more times if it were still alive.
+    vi.advanceTimersByTime(5000);
+
+    // No more than `max` commits should have occurred; the interval must
+    // have stopped itself once the boundary was hit. Without the fix, allCalls
+    // would still contain the boundary value over and over (early-return
+    // pre-commit, but the interval is still alive on each tick).
+    expect(Math.max(...allCalls)).toBe(3);
+    // Critical assertion: vi.getTimerCount() === 0 after boundary stop.
+    expect(vi.getTimerCount()).toBe(0);
+
+    // Cleanup (no-op since interval already stopped; defensive).
+    incBtn.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+  }, 10_000);
+});
+
+// C-m0-035 — R3-3 mutation guard: double pointerdown does not leak an interval
+describe("C-m0-035: Stepper guards against re-entrant pointerdown", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("second pointerdown without intervening pointerup does not create a second interval", () => {
+    // R3-3 trigger: a buggy gesture library re-fires pointerdown. Without
+    // the guard, intervalRef gets overwritten by the new setInterval — the
+    // first interval keeps firing but its handle is lost forever.
+    const Spy = () => {
+      const [v, setV] = React.useState(0);
+      return <Stepper value={v} max={1000} onChange={setV} />;
+    };
+    render(<Spy />);
+    const incBtn = screen.getByRole("button", { name: "Increment" });
+
+    incBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    // Re-entrant pointerdown — the guard should make this a no-op.
+    incBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
+    // Exactly ONE active timer (the original interval) — not two.
+    expect(vi.getTimerCount()).toBe(1);
 
     incBtn.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
-
-    // After 3 ticks at base rate, value should advance ≥ 3. With the bug,
-    // each sibling re-render would reset valueRef → repeated onChange(1).
-    expect(Math.max(...allCalls)).toBeGreaterThanOrEqual(3);
-    const uniqueValues = new Set(allCalls);
-    expect(uniqueValues.size).toBeGreaterThanOrEqual(3);
+    expect(vi.getTimerCount()).toBe(0);
   }, 10_000);
 });
 

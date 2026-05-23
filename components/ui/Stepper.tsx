@@ -41,32 +41,53 @@ export function Stepper({
 
   // SC-1 fix: track latest value/onChange so the long-press interval
   // closure reads fresh props on every tick, not the snapshot from press-start.
+  // R3-4: also track min/max via refs so a parent that mutates bounds
+  // mid-press (rare, but legal) takes effect immediately rather than waiting
+  // for the next pointer event to recreate the closure.
   const valueRef = React.useRef(value);
   const onChangeRef = React.useRef(onChange);
+  const minRef = React.useRef(min);
+  const maxRef = React.useRef(max);
+  const stepRef = React.useRef(step);
   React.useEffect(() => {
     if (!isPressedRef.current) {
       valueRef.current = value;
     }
     onChangeRef.current = onChange;
+    minRef.current = min;
+    maxRef.current = max;
+    stepRef.current = step;
   });
 
   function clamp(n: number): number {
     let result = n;
-    if (min !== undefined) result = Math.max(min, result);
-    if (max !== undefined) result = Math.min(max, result);
+    if (minRef.current !== undefined) result = Math.max(minRef.current, result);
+    if (maxRef.current !== undefined) result = Math.min(maxRef.current, result);
     return result;
   }
 
   function commit(dir: 1 | -1) {
     const current = valueRef.current;
-    const next = clamp(current + dir * step);
-    if (next === current) return; // at boundary — no commit
+    const next = clamp(current + dir * stepRef.current);
+    if (next === current) {
+      // R3-1: reached boundary mid-press → stop the interval. Otherwise
+      // disabled:pointer-events-none on the button (added by Tailwind once
+      // canIncrement/canDecrement flips false) swallows pointerup, and the
+      // interval would leak until unmount.
+      stopLongPress();
+      return;
+    }
     onChangeRef.current(next);
     valueRef.current = next; // advance for the next iteration within the same tick
     haptics.light();
   }
 
   function startLongPress(dir: 1 | -1) {
+    // R3-3: a second pointerdown without an intervening pointerup
+    // (multi-touch, gesture-lib re-fire, etc.) would otherwise overwrite
+    // intervalRef without clearing the first interval — silent leak.
+    if (intervalRef.current !== null) return;
+
     isPressedRef.current = true;
     pressStartRef.current = Date.now();
     accelRef.current = 1;
