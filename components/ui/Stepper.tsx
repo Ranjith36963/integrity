@@ -125,7 +125,6 @@ export function Stepper({
         "inline-flex items-center gap-2 font-mono text-[--ink]",
         className,
       )}
-      data-testid="stepper"
     >
       <button
         type="button"
