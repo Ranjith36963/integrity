@@ -126,7 +126,11 @@ export function BlueprintBar({
         >
           day blueprint
         </div>
+        {/* R2-SG-5: aria-hidden so SR users don't hear the time again — the
+            canonical "Now HH:MM" landmark is NowLine in the Timeline
+            (per ADR-051). Sighted users still see the visible label. */}
         <div
+          aria-hidden="true"
           className="text-[10px] tracking-[0.18em]"
           style={{ color: "var(--ink-dim)" }}
         >

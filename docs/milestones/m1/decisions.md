@@ -80,7 +80,7 @@ No code change. This ADR records the spec drift so future readers do not flag th
 
 **Status:** Accepted · 2026-05-23 · proposed by R1 hardening review (P1-2)
 
-**Context.** `globals.css` declared `--safe-top: env(safe-area-inset-top, 0px)` but no element in the M1 render tree referenced it. The TopBar header used Tailwind '`pt-5`' (20px fixed), so on iPhones with a notch the header content overlapped the safe-area inset. The original E-m1-016 test was tautological (`box.y >= 0`) and did not catch it.
+**Context.** `globals.css` declared `--safe-top: env(safe-area-inset-top)` but no element in the M1 render tree referenced it. The TopBar header used Tailwind '`pt-5`' (20px fixed), so on iPhones with a notch the header content overlapped the safe-area inset. The original E-m1-016 test was tautological (`box.y >= 0`) and did not catch it. (R2-SG-4: original ADR text wrongly included a `, 0px` argument inside `env()`; the `0px` fallback actually lives inside the inline `var(--safe-top, 0px)` call.)
 
 **Decision.** TopBar applies `paddingTop: calc(20px + var(--safe-top, 0px))` via inline style (Tailwind has no arbitrary-syntax escape for `calc()` with a CSS var in a way that compiles cleanly across our setup). The Tailwind `pb-3` for bottom padding is kept (no notch-equivalent at the bottom of the top bar).
 

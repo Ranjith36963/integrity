@@ -135,15 +135,14 @@ export function Timeline({
   // R1-P1-5 INVARIANT (deliberate deps-less effect):
   // Reads `now` from the render closure ONCE on mount; never re-scrolls when
   // `now` ticks (otherwise the user's manual scrolling would be hijacked every
-  // minute). This is safe TODAY because Timeline only mounts inside the
-  // `hydrated===true` branch of BuildingClient — so the initial `now` is the
-  // real client clock, not a stale SSR value.
+  // minute). Safe because Timeline only mounts inside the `hydrated===true`
+  // branch of BuildingClient — initial `now` is the real client clock, not
+  // SSR.
   //
-  // If a future refactor mounts Timeline pre-hydration (no skeleton gate),
-  // the auto-scroll would use the SSR clock (potentially off by the user's
-  // entire UTC offset) → NowLine off-viewport at first paint. Mitigation
-  // path: convert to useLayoutEffect that runs after `hydrated` transitions
-  // true, OR pass `hydrated` down as a prop and gate the effect on it.
+  // R2-SG-7: this contract is locked by C-m7a-009 (BuildingClient.test.tsx:657)
+  // which asserts `[data-testid="hour-grid"]` is null when `hydrated={false}`.
+  // A future refactor that mounts Timeline pre-hydration will fail that test
+  // before this comment becomes wrong.
   useEffect(() => {
     if (!scrollRef.current) return;
     const containerHeight = scrollRef.current.clientHeight;

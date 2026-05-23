@@ -55,4 +55,43 @@ describe("dayOfYear (TZ=America/Los_Angeles)", () => {
       expect(daysInYear(d)).toBe(366);
     }
   });
+
+  // R2-P0-1 regression: exercise the actual BuildingClient call shape.
+  // Previously this suite only used local-component constructors
+  // (new Date(y, m, d, ...)) which always returns the right local year.
+  // Production code derives the date from todayIso (a "YYYY-MM-DD" string).
+  // The R1 fix attempted `new Date(todayIso)` which is parsed as UTC midnight —
+  // breaking Jan 1 in negative-UTC TZs. The R2 fix splits the ISO and uses
+  // the local-component constructor.
+  describe("R2-P0-1: daysInYear via the BuildingClient call shape", () => {
+    // Mirror BuildingClient.tsx:243-256.
+    function daysInYearFromIso(iso: string): number {
+      const [y, m, d] = iso.split("-").map(Number);
+      return daysInYear(new Date(y, m - 1, d));
+    }
+
+    it("PT 'today=2025-01-01' returns 365 (year 2025 is not leap)", () => {
+      expect(daysInYearFromIso("2025-01-01")).toBe(365);
+    });
+
+    it("PT 'today=2028-01-01' returns 366 (year 2028 IS leap)", () => {
+      expect(daysInYearFromIso("2028-01-01")).toBe(366);
+    });
+
+    it("PT 'today=2024-12-31' returns 366 (year 2024 IS leap)", () => {
+      expect(daysInYearFromIso("2024-12-31")).toBe(366);
+    });
+
+    it("PT 'today=2025-12-31' returns 365 (year 2025 is not leap)", () => {
+      expect(daysInYearFromIso("2025-12-31")).toBe(365);
+    });
+
+    // Sanity check that the buggy R1 form would have failed these.
+    it("BUGGY R1 form `new Date(iso)` proves the bug: returns 366 for Jan 1 2025 PT (wrong)", () => {
+      // This documents the regression. `new Date("2025-01-01")` parses as
+      // UTC midnight → PT 2024-12-31 16:00 → getFullYear() === 2024 (leap).
+      const buggy = daysInYear(new Date("2025-01-01"));
+      expect(buggy).toBe(366); // wrong answer — would be 365 with the fix.
+    });
+  });
 });

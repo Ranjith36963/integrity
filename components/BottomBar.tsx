@@ -22,7 +22,7 @@ export function BottomBar({ onAddPress }: Props) {
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20">
       <div
         className="mx-auto max-w-[430px] px-5"
-        style={{ paddingBottom: "calc(20px + var(--safe-bottom))" }}
+        style={{ paddingBottom: "calc(20px + var(--safe-bottom, 0px))" }}
       >
         <div className="pointer-events-auto flex items-center gap-2">
           {/* Voice button: visibly disabled per SG-m1-04.

@@ -54,7 +54,8 @@ describe("C-m0-007: Sheet close affordances and safe-area padding", () => {
     const dialog = screen.getByRole("dialog");
     const sheet = dialog.querySelector("[data-variant='full']") as HTMLElement;
     expect(sheet).toBeTruthy();
-    expect(sheet.style.paddingBottom).toContain("var(--safe-bottom)");
+    // R2-SG-3: regex matches both bare and fallback forms.
+    expect(sheet.style.paddingBottom).toMatch(/var\(--safe-bottom(,\s*\S+)?\)/);
   });
 
   it("dialog not in DOM when open=false", () => {

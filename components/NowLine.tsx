@@ -5,9 +5,11 @@
 // No transition on top: NowLine always snaps to new position.
 // When useNow() ticks every 60s, the top value updates immediately (ADR-023).
 // Honors prefers-reduced-motion by design: no transition defined at all.
-// R1-NIT-3: z-10 keeps NowLine above the EmptyState card (z-0). Previous
-// comment referenced "SG-m1-10" but tests.md never defined that ID; the
-// rationale is the z-stack contract, not a spec line.
+// SG-m1-10 (m1/tests.md:554): z-10 keeps NowLine above EmptyState card (z-0).
+// The spec gap was about the z-index *strategy* being unspecified; this
+// constant locks the chosen value as the regression guard's anchor.
+// R2-P1-1: this comment was wrongly removed by R1-NIT-3 (the SG ID IS
+// defined in m1/tests.md:554 and docs/tests.md:1580 — restored).
 
 import { timeToOffsetPx, HOUR_HEIGHT_PX } from "@/lib/timeOffset";
 

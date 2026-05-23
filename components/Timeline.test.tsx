@@ -114,14 +114,16 @@ describe("C-m1-010 (Timeline): NowLine pixel position via Timeline (re-authored 
     expect(style).toContain("0px");
   });
 
-  it("now-line top is in [1534, 1536) for now=23:59", () => {
+  it("now-line top is in open range (1534, 1536) for now=23:59", () => {
+    // R2-SG-1: aligned with m1/tests.md:206 spec — open range, exact math
+    // 23*64 + (59/60)*64 = 1534.933.
     const { container } = render(<Timeline {...defaultProps} now="23:59" />);
     const nowLine = container.querySelector('[data-testid="now-line"]');
     const style = (nowLine as HTMLElement).getAttribute("style") ?? "";
     const match = style.match(/top:\s*([\d.]+)px/);
     expect(match).not.toBeNull();
     const topVal = parseFloat(match![1]);
-    expect(topVal).toBeGreaterThanOrEqual(1534);
+    expect(topVal).toBeGreaterThan(1534);
     expect(topVal).toBeLessThan(1536);
   });
 });

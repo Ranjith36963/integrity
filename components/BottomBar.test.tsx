@@ -93,7 +93,8 @@ describe("C-m1-018: BottomBar outer wrapper has safe-area padding-bottom", () =>
     const wrapper = container.querySelector("[style*='--safe-bottom']");
     expect(wrapper).not.toBeNull();
     const style = (wrapper as HTMLElement).getAttribute("style") ?? "";
-    expect(style).toContain("var(--safe-bottom)");
+    // R2-SG-3: regex matches both bare and fallback forms.
+    expect(style).toMatch(/var\(--safe-bottom(,\s*\S+)?\)/);
   });
 });
 

@@ -240,14 +240,23 @@ export function BuildingClient({
   // programStart comes from persisted AppState (set to today on first run, preserved thereafter).
   // dayNumber returns number | undefined; undefined only if programStart is empty (never in practice).
   // totalDays keeps daysInYear — the program is a one-year arc.
-  // R1-P2-3: derive totalDays deterministically from todayIso (not `new Date()`)
-  // so the SSR-vs-CSR mismatch potential is reduced to whatever todayIso already
-  // resolves to. `new Date("YYYY-MM-DD")` parses as UTC, but daysInYear only
-  // calls getFullYear() — the year is stable for any date in that ISO. Before
-  // this fix, the bare `new Date()` on the server could land in a different
-  // calendar year than the client near NYE midnight UTC, flipping 365/366.
+  //
+  // R2-P0-1 fix (meta-bug from R1-P2-3): the previous R1 fix used
+  // `new Date(todayIso)`, which parses "YYYY-MM-DD" as UTC midnight. In any
+  // negative-UTC-offset TZ (e.g. PT), `new Date("2025-01-01")` becomes
+  // 2024-12-31 16:00 PT and `.getFullYear()` returns 2024 → daysInYear
+  // returned the WRONG year on every Jan 1. Use the local-date constructor
+  // (matches how today() itself computes the local date) so the year is
+  // derived in the user's TZ, not UTC.
+  // R1-P2-3 intent (secondary inconsistency removed) is preserved: totalDays
+  // is still a deterministic function of todayIso. The primary SSR/CSR
+  // mismatch on todayIso itself remains the responsibility of ADR-023.
   const dayNumberValue = dayNumber(state.programStart, todayIso);
-  const totalDays = daysInYear(new Date(todayIso));
+  const [yStr, mStr, dStr] = todayIso.split("-");
+  const todayYear = Number(yStr);
+  const todayMonth = Number(mStr);
+  const todayDay = Number(dStr);
+  const totalDays = daysInYear(new Date(todayYear, todayMonth - 1, todayDay));
   const dateLabelValue = dateLabel(todayIso);
 
   // M3: dayPct now takes full AppState (blocks + looseBricks)

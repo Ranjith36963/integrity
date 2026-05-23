@@ -69,7 +69,9 @@ describe("C-m0-006: Modal sheet root has padding-bottom: var(--safe-bottom)", ()
       "[data-variant='bottom-sheet']",
     ) as HTMLElement;
     expect(sheet).toBeTruthy();
-    expect(sheet.style.paddingBottom).toContain("var(--safe-bottom)");
+    // R2-SG-3: matches both `var(--safe-bottom)` and `var(--safe-bottom, 0px)`
+    // (the fallback form added in R2 for safety against globals.css load races).
+    expect(sheet.style.paddingBottom).toMatch(/var\(--safe-bottom(,\s*\S+)?\)/);
   });
 
   it("enforces ESC listener cleanup on unmount", () => {
