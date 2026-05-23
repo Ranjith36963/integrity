@@ -202,11 +202,16 @@ export function BlueprintBar({
           </div>
         )}
 
-        {/* NOW pin */}
+        {/* NOW pin — purely decorative.
+            R1-P1-1: dropped role="img" + aria-label="Now ${now}". The Timeline's
+            NowLine exposes the same accessible name; having BOTH made screen
+            readers announce "Now 12:34, image" twice when traversing landmarks.
+            BlueprintBar's section aria-label ("Day blueprint") + the visible
+            "now" text already give sighted users the cue; SR users still hear
+            the now-time via NowLine. */}
         <div
           data-testid="now-pin"
-          role="img"
-          aria-label={`Now ${now}`}
+          aria-hidden="true"
           className="absolute top-0 bottom-0"
           style={{ left: `${nowPct}%`, transform: "translateX(-50%)" }}
         >

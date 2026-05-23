@@ -159,6 +159,10 @@ test("A-m1-005: focus order includes all interactive elements with visible focus
 });
 
 // A-m1-006: NowLine + BlueprintBar a11y landmarks
+// R1-SG-5 strengthened: previously only asserted NowLine's role/label. Now
+// also asserts the BlueprintBar NOW pin is NOT duplicating the same accessible
+// name — otherwise screen-reader users would hear "Now HH:MM" twice when
+// traversing landmarks (R1-P1-1 fix locked here).
 test("A-m1-006: NowLine has role=img + aria-label, BlueprintBar has aria-label, EmptyState accessible name", async ({
   page,
 }) => {
@@ -178,6 +182,22 @@ test("A-m1-006: NowLine has role=img + aria-label, BlueprintBar has aria-label, 
   const emptyState = page.locator('[data-testid="empty-state"]');
   const emptyText = await emptyState.textContent();
   expect(emptyText).toContain("Tap any slot to lay your first block.");
+
+  // R1-P1-1 uniqueness: only ONE element on the page exposes an aria-label
+  // matching /^Now \d{2}:\d{2}$/ — the NowLine. The BlueprintBar NOW pin
+  // must be aria-hidden (decorative), or SR users would hear the time twice.
+  const allNowLabeled = await page
+    .locator('[aria-label^="Now "]')
+    .evaluateAll((els) =>
+      els
+        .map((el) => el.getAttribute("aria-label"))
+        .filter((l) => l !== null && /^Now \d{2}:\d{2}$/.test(l)),
+    );
+  expect(allNowLabeled).toHaveLength(1);
+
+  // R1-P1-1: BlueprintBar's now-pin must be aria-hidden (decorative).
+  const nowPin = page.locator('[data-testid="now-pin"]');
+  await expect(nowPin).toHaveAttribute("aria-hidden", "true");
 });
 
 // A-m1-007: typecheck/lint gate (asserted via npm run typecheck/lint — test ID exists for auditability)

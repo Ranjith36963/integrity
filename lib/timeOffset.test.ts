@@ -88,3 +88,26 @@ describe("U-m1-011: timeToOffsetPx defensive parse of malformed input", () => {
     expect(timeToOffsetPx("12:00", 64)).toBe(768);
   });
 });
+
+// C-m1-023 — R1-P2-1 mutation guard: out-of-range minute rejected, not silently rolled over
+describe("C-m1-023: timeToOffsetPx rejects out-of-range minutes (R1-P2-1)", () => {
+  it("returns 0 for '12:60' (minute > 59 is malformed, not '13:00')", () => {
+    // Pre-fix: 12:60 → 13:00 → 832 (silent rollover).
+    // Post-fix: rejected → 0.
+    expect(timeToOffsetPx("12:60", 64)).toBe(0);
+  });
+
+  it("returns 0 for '08:99' (minute > 59)", () => {
+    expect(timeToOffsetPx("08:99", 64)).toBe(0);
+  });
+
+  it("returns 0 for '12:-5' (negative minute)", () => {
+    expect(timeToOffsetPx("12:-5", 64)).toBe(0);
+  });
+
+  it("still accepts valid minutes 0..59 unchanged", () => {
+    expect(timeToOffsetPx("12:00", 64)).toBe(768);
+    expect(timeToOffsetPx("12:30", 64)).toBe(800);
+    expect(timeToOffsetPx("12:59", 64)).toBeCloseTo(831, 0);
+  });
+});

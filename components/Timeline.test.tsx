@@ -251,6 +251,28 @@ describe("C-m1-014 (Timeline): EmptyBlocks card inside timeline column (re-autho
     const emptyState = container.querySelector('[data-testid="empty-state"]');
     expect(hourGrid?.contains(emptyState)).toBe(true);
   });
+
+  // R1-P0-2 mutation guard: empty-state card must be anchored NEAR the now-line
+  // (which auto-scroll-to-now centers in the viewport), not at a fixed top:20px
+  // hundreds of pixels above. Pre-fix, the card was invisible at any non-pre-dawn time.
+  it("EmptyBlocks wrapper top tracks the now-line position (R1-P0-2)", () => {
+    // At now=12:00 → timeToOffsetPx = 12*64 = 768. Wrapper top = 768 - 80 = 688px.
+    const { container } = render(<Timeline {...defaultProps} now="12:00" />);
+    const wrapper = container.querySelector('[data-testid="empty-state"]')
+      ?.parentElement as HTMLElement | null;
+    expect(wrapper).not.toBeNull();
+    const topPx = parseFloat(wrapper!.style.top);
+    expect(topPx).toBe(688);
+  });
+
+  it("EmptyBlocks wrapper falls back to top:20px in the pre-dawn (now < 01:40) window", () => {
+    // At now=00:30 → offset = 32. 32 - 80 = -48 → clamped to floor 20.
+    const { container } = render(<Timeline {...defaultProps} now="00:30" />);
+    const wrapper = container.querySelector('[data-testid="empty-state"]')
+      ?.parentElement as HTMLElement | null;
+    expect(wrapper).not.toBeNull();
+    expect(wrapper!.style.top).toBe("20px");
+  });
 });
 
 // C-bld-016 (re-authored M2): Timeline empty state shows locked SPEC copy

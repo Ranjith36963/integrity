@@ -45,14 +45,23 @@ export function TopBar({ state }: TopBarProps = {}) {
   );
 
   return (
-    <header className="flex items-center justify-between px-5 pt-5 pb-3">
+    // R1-P1-2: consume env(safe-area-inset-top) via the --safe-top CSS var that
+    // globals.css declares but no element referenced. Without this, the header
+    // overlapped the iPhone notch (and the existing E-m1-016 test was tautological
+    // — it asserted box.y >= 0 which is true of any rendered element).
+    <header
+      className="flex items-center justify-between px-5 pb-3"
+      style={{ paddingTop: "calc(20px + var(--safe-top, 0px))" }}
+    >
       {state !== undefined ? (
         <BrandMarkLongPress state={state}>{brandMark}</BrandMarkLongPress>
       ) : (
         brandMark
       )}
       <div className="flex items-center gap-2">
+        {/* R1-P2-4: type="button" guards against future <form> wrapping. */}
         <button
+          type="button"
           aria-label={editMode ? "Edit mode, on" : "Edit mode, off"}
           aria-pressed={editMode}
           onClick={handleEditToggle}
@@ -70,6 +79,7 @@ export function TopBar({ state }: TopBarProps = {}) {
           />
         </button>
         <button
+          type="button"
           aria-label="Settings"
           className="grid h-11 w-11 place-items-center rounded-md border border-white/5 transition-colors hover:border-white/15"
           style={{ background: "var(--card)" }}

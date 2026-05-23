@@ -5,7 +5,10 @@
 //   Stays as <button> (NOT <div>) so SR users hear the disabled state.
 //   No native `disabled` attribute (must remain focusable for screen readers).
 //   Visual: opacity-50 + cursor-not-allowed.
-//   Click handler: preventDefault() to defang without removing from tab order.
+//   R1-P1-3: dropped the dead `onClick={(e) => e.preventDefault()}` —
+//   `<button>` outside a form has no default action to suppress, and the
+//   handler shadowed nothing. Lack of any onClick = no-op = correct M1 intent.
+//   The `aria-disabled` already covers the SR announcement.
 // - Outer wrapper: paddingBottom calc(20px + var(--safe-bottom)) for iOS home-indicator.
 
 import { Mic, Plus } from "lucide-react";
@@ -24,12 +27,13 @@ export function BottomBar({ onAddPress }: Props) {
         <div className="pointer-events-auto flex items-center gap-2">
           {/* Voice button: visibly disabled per SG-m1-04.
               aria-disabled (not disabled) keeps it in the tab order for SR users.
-              onClick preventDefault defangs the click without removing focus. */}
+              R1-P1-3: removed dead preventDefault; aria-disabled is the contract.
+              R1-P2-4: explicit type="button" so a future wrap in <form> can't
+              accidentally make this a submit. */}
           <button
+            type="button"
             aria-label="Voice Log (coming in a later release)"
             aria-disabled="true"
-            tabIndex={0}
-            onClick={(e) => e.preventDefault()}
             className="flex h-12 flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-full text-[12px] tracking-[0.18em] uppercase opacity-50"
             style={{
               background:
@@ -42,8 +46,10 @@ export function BottomBar({ onAddPress }: Props) {
             <Mic size={16} />
             Voice Log
           </button>
-          {/* Add button: M2 wires onAddPress. M0 primary amber, 44×44, aria-label="Add". */}
+          {/* Add button: M2 wires onAddPress. M0 primary amber, 44×44, aria-label="Add".
+              R1-P2-4: explicit type="button". */}
           <button
+            type="button"
             aria-label="Add"
             className="grid h-12 w-12 place-items-center rounded-full"
             style={{

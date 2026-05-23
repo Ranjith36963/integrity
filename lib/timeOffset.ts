@@ -28,6 +28,13 @@ export function timeToOffsetPx(hhmm: string, hourHeightPx: number): number {
 
   if (Number.isNaN(h) || Number.isNaN(m)) return 0;
 
+  // R1-P2-1: reject malformed minute (e.g., "12:60"). Previously these
+  // silently produced valid pixel offsets (12:60 → 13:00), masking upstream
+  // bugs that pass bad strings. Hour clamping stays lenient — the existing
+  // U-m1-008 contract clamps h≥24 to the bound (semantically "end of day"),
+  // which is forgiving for time-edge inputs.
+  if (m < 0 || m > 59) return 0;
+
   const totalMinutes = h * 60 + m;
 
   if (totalMinutes < 0) return 0;

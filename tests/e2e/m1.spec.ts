@@ -35,9 +35,7 @@ test("E-m1-001: all seven M1 regions visible on first paint", async ({
     page.getByText("Tap any slot to lay your first block."),
   ).toBeVisible();
   // Voice and + buttons
-  await expect(
-    page.getByRole("button", { name: /voice log/i }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: /voice log/i })).toBeVisible();
   await expect(page.getByRole("button", { name: "Add" })).toBeVisible();
 });
 
@@ -112,9 +110,9 @@ test("E-m1-005: no timeline-block, block-card, or brick-chip elements", async ({
   page,
 }) => {
   await page.goto("/");
-  await expect(
-    page.locator('[data-component="timeline-block"]'),
-  ).toHaveCount(0);
+  await expect(page.locator('[data-component="timeline-block"]')).toHaveCount(
+    0,
+  );
   await expect(page.locator('[data-component="block-card"]')).toHaveCount(0);
   await expect(page.locator('[data-component="brick-chip"]')).toHaveCount(0);
 });
@@ -167,13 +165,13 @@ test("E-m1-008: timeline is scrollable at 430x500 viewport", async ({
   await expect(hourGrid).toBeVisible();
 
   // Timeline container has overflow-y (scrollable)
-  const isScrollable = await page.locator('[data-testid="hour-grid"]').evaluate(
-    (el) => {
+  const isScrollable = await page
+    .locator('[data-testid="hour-grid"]')
+    .evaluate((el) => {
       const parent = el.closest("[class*='overflow-y']") ?? el.parentElement;
       const overflow = window.getComputedStyle(parent!).overflowY;
       return overflow === "auto" || overflow === "scroll";
-    },
-  );
+    });
   expect(isScrollable).toBe(true);
 });
 
@@ -348,6 +346,10 @@ test("E-m1-015: NowLine is visible (not occluded by EmptyState card)", async ({
 });
 
 // E-m1-016: TopBar safe-area inset (top)
+// R1-SG-3 strengthened: was tautological (asserted box.y >= 0, true of ANY
+// rendered element). Now asserts the header actually consumes --safe-top via
+// computed paddingTop, AND that the brand mark inside the header is positioned
+// below the simulated notch (y >= 47px).
 test("E-m1-016: TopBar does not clip behind top safe-area inset", async ({
   page,
 }) => {
@@ -357,11 +359,27 @@ test("E-m1-016: TopBar does not clip behind top safe-area inset", async ({
   });
   await page.goto("/");
 
-  // Header is visible and not behind the notch
   const header = page.locator("header");
   await expect(header).toBeVisible();
+
+  // (1) The header itself starts at the viewport top (the safe-area is consumed
+  // via paddingTop, not by translating the box downward).
   const box = await header.boundingBox();
   expect(box).not.toBeNull();
-  // Header top should be >= 0 (not hidden)
   expect(box!.y).toBeGreaterThanOrEqual(0);
+
+  // (2) The header's computed paddingTop must be at least the simulated notch
+  // height (47px). With the fix: paddingTop = calc(20px + 47px) = 67px.
+  // With the bug: paddingTop = 20px (Tailwind pt-5), header content overlaps notch.
+  const computedPaddingTop = await header.evaluate(
+    (el) => parseFloat(window.getComputedStyle(el).paddingTop) || 0,
+  );
+  expect(computedPaddingTop).toBeGreaterThanOrEqual(47);
+
+  // (3) The DHARMA brand element (header content) must start BELOW the
+  // simulated notch boundary (y >= 47).
+  const brand = page.getByText("DHARMA", { exact: false }).first();
+  const brandBox = await brand.boundingBox();
+  expect(brandBox).not.toBeNull();
+  expect(brandBox!.y).toBeGreaterThanOrEqual(47);
 });
