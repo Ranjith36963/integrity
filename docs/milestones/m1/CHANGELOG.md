@@ -2,6 +2,131 @@
 
 ## [unreleased]
 
+### Changed (M1) — Post-ship Hardening Pass
+
+A targeted code-review loop (Rounds 1–6) on the already-shipped M1 Empty
+Building Shell surfaced and fixed 33 issues across the shell components and
+time-math libs. Render-layer + lib-layer only; no schema bump (still v3);
+no public-API breaking changes; no new dependency.
+
+**Why this exists (not in original M1):** M1 originally shipped + tap-tested.
+A subsequent re-verification dispatched the same multi-round code-review
+loop that hardened M0. The loop terminated on Round 6 with zero findings.
+
+**Convergence trend:**
+
+- Round 1: 13 findings (original bugs in shipped M1)
+- Round 2: 8 findings — 6 meta-bugs from R1 fixes (incl. a P0: my own NYE
+  fix had a Jan-1 negative-UTC-TZ bug)
+- Round 3: 8 findings — same headline count, but 2 were STRUCTURAL
+  (mutation-resistance gaps: R2 tests duplicated production logic, so a
+  revert of the production code would have left tests green)
+- Round 4: 3 findings — sharp drop after R3's structural fix
+  (shared `isoToLocalDate` helper)
+- Round 5: 1 finding (doc-only JSDoc overstatement)
+- Round 6: 0 findings → loop terminated
+
+**Real bug classes caught (not in M0's catalog):**
+
+- **DST + negative-UTC-TZ Jan 1 bug** — `new Date("YYYY-MM-DD")` parses as
+  UTC midnight, so in PT on Jan 1 2025 `.getFullYear()` returned 2024 →
+  Hero showed "Building 1 of 366" instead of 365. R1 introduced the bug
+  via an attempted hydration-mismatch fix; R2 caught it via TZ-pinned
+  tests; R3 fixed structurally via a shared `isoToLocalDate(iso)` helper.
+- **Mutation-resistance gap** — R2's "regression guard" duplicated
+  production logic inline, so reverting the production fix left the test
+  green. R3 made the test IMPORT the production helper, ensuring any
+  mutation breaks both.
+- **Tautological spec test** — pre-R1, E-m1-016 asserted `box.y >= 0`
+  (true of any rendered element); never verified TopBar actually consumed
+  `--safe-top`. R1 fix added the consumption + strengthened the test to
+  assert computed paddingTop >= 47.
+- **Schedule-region misalignment** — Tailwind `absolute` was silently
+  overridden by inline `position: "relative"` on the same element,
+  shifting the entire schedule 56px right. Invisible in jsdom; hidden in
+  Playwright by `overflow-x-hidden`.
+- **Empty-state card buried by auto-scroll-to-now** — hardcoded `top:20px`
+  was hundreds of px above the viewport at any non-pre-dawn time.
+
+**Components touched:**
+
+- **Timeline.tsx** — schedule-region absolute positioning restored;
+  empty-state card now anchored near the now-line; auto-scroll INVARIANT
+  documented with cross-ref to C-m7a-009 (which already locks the
+  pre-hydration contract).
+- **BlueprintBar.tsx** — NOW pin aria-hidden (was duplicating NowLine's
+  "Now HH:MM" announcement); visible time-text div ALSO aria-hidden so
+  SR users don't hear the time three times.
+- **TopBar.tsx** — `paddingTop: calc(20px + var(--safe-top, 0px))` for
+  iPhone-notch clearance; `type="button"` on Edit + Settings.
+- **BottomBar.tsx** — dropped dead `preventDefault` on the disabled
+  voice button (it suppressed nothing); explicit `type="button"`;
+  `var(--safe-bottom, 0px)` fallback.
+- **NowLine.tsx** — comment cleanup; canonical SR landmark per ADR-051.
+- **Hero.tsx / BuildingClient.tsx** — totalDays now flows through the
+  shared `isoToLocalDate` helper; deterministic across SSR/CSR.
+- **DayCell.tsx** — refactored to use the shared helper (last inline
+  ISO-as-local-midnight call site eliminated).
+- **lib/dharma.ts** — new `isoToLocalDate(iso): Date` exported helper;
+  `dayNumber` + `dateLabel` refactored to use it.
+- **lib/timeOffset.ts** — `timeToOffsetPx` rejects out-of-range minutes
+  (`m > 59`, `m < 0`); hour clamping stays lenient per the U-m1-008 contract.
+- **Modal.tsx / Sheet.tsx** — `var(--safe-bottom, 0px)` fallback added for
+  defensive parity with TopBar.
+
+**Test surface:**
+
+- 1589 Vitest tests across 97 files (+7 since pre-hardening: C-m1-023
+  for time-validation + strengthened C-m1-014 dual + C-m1-023 fixed via
+  helper share, etc.).
+- 20 TZ-pinned tests (was 11; +9 for dayOfYear coverage exercising the
+  EXACT production call shape `daysInYear(isoToLocalDate(iso))`).
+- 0 TS errors. 19 lint warnings (under the ≤ 20 ceiling).
+- Mutation-resistance: every R3+ test imports the production helper so a
+  revert breaks both production and the regression guard simultaneously.
+
+**Closed test IDs / strengthenings (added or modified by the hardening pass):**
+
+- `C-m1-023` — timeToOffsetPx rejects out-of-range minutes (new)
+- `U-m1-010` — widened to grep all 6 HOUR_HEIGHT_PX consumers, rejects
+  any hardcoded `64` in height/top styles
+- `U-m1-007` — comment + spec drift aligned to `(1534, 1536)` open range
+- `E-m1-007` — strengthened to assert computed paddingBottom >= 54
+- `E-m1-016` — strengthened to assert computed paddingTop >= 47 + brand y >= 47
+- `A-m1-006` — strengthened to assert exactly ONE `Now HH:MM` aria-label
+  - NowPin aria-hidden + BlueprintBar visible-time div aria-hidden
+- `C-m1-014` — added two sub-cases for empty-state position tracking
+  the now-line, with pre-dawn fallback to top:20px
+- `lib/dayOfYear.tz.test.ts` — new file, DST + leap + NYE + production-
+  call-shape regression coverage
+
+**Ship commits (chronological):**
+
+- `ed356b3` — R1 batch 1: P0/P1/P2 fixes (Timeline, BlueprintBar, TopBar, BottomBar, timeToOffsetPx)
+- `bae0225` — R1 batch 2: NYE-mismatch guard, TZ-pinned dayOfYear, 3 ADRs
+- `95fec10` — R1 batch 3: SG-3..SG-7 test strengthening + NITs
+- `feb89c8` — R2: Jan-1 negative-UTC P0 fix + 7 meta-bug closes
+- `3082451` — R3: shared `isoToLocalDate` helper + mutation-resistance closes
+- `98ce112` — R4: DayCell residual inline duplicate refactored
+- `66a3b64` — R5: JSDoc accuracy fix (no code change)
+
+**ADR notes:** Added ADR-049 (M1 ACs #5 + #7 superseded by M8 + M7c —
+no code change, just spec drift recorded), ADR-050 (TopBar uses inline
+`calc()` because Tailwind has no clean arbitrary-syntax escape for
+`calc()` with a CSS var), ADR-051 (NowLine is the canonical
+screen-reader landmark for current time; BlueprintBar is decorative).
+
+**Retro:** the dayOfYear bug (R2-P0-1) is the single most important
+learning. R1 introduced a fix WITHOUT a TZ-pinned regression test
+exercising the production call shape. The R1 tests existed
+(`dayOfYear.tz.test.ts`) but used a different code path — local-component
+constructor vs. UTC-parse string. Lesson: when adding a regression test
+for an existing bug, the test MUST exercise the EXACT production call,
+not a parallel reconstruction of the math. R3 fixed this structurally
+by having the test import the same helper production uses.
+
+---
+
 ### Added (M1)
 
 - **M1 — Empty Building Shell:** spatial 24-hour timeline with amber now-line, hero (date +
