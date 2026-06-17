@@ -329,3 +329,68 @@ describe("C-m7c-012 — Hero threads firstPaintCountUp to HeroRing; default fals
     expect(svg?.getAttribute("aria-label")).toContain("42");
   });
 });
+
+// R7-ROOT-5 — Hero pre-hydration skeleton for date surfaces
+describe("R7-ROOT-5: Hero hides server-clock date until hydrated", () => {
+  it("when hydrated=false: dateLabel shows em-dash placeholder, not the prop value", () => {
+    const { container } = render(
+      <Hero
+        dateLabel="Wed, May 20"
+        dayNumber={126}
+        totalDays={365}
+        pct={42}
+        hydrated={false}
+      />,
+    );
+    const dateLabel = container.querySelector('[data-testid="hero-date-label"]');
+    expect(dateLabel).not.toBeNull();
+    expect(dateLabel?.textContent).not.toContain("Wed, May 20");
+    expect(dateLabel?.textContent ?? "").toMatch(/—/); // em-dash placeholder
+    expect(dateLabel?.getAttribute("aria-busy")).toBe("true");
+  });
+
+  it("when hydrated=false: dayNumber shows em-dash, not '126'", () => {
+    const { container } = render(
+      <Hero
+        dateLabel="Wed, May 20"
+        dayNumber={126}
+        totalDays={365}
+        pct={42}
+        hydrated={false}
+      />,
+    );
+    const dayLine = container.querySelector('[data-testid="hero-day-number"]');
+    expect(dayLine).not.toBeNull();
+    expect(dayLine?.textContent ?? "").not.toContain("126");
+    expect(dayLine?.textContent ?? "").not.toContain("365");
+    expect(dayLine?.getAttribute("aria-busy")).toBe("true");
+  });
+
+  it("when hydrated=true (default): real dateLabel + dayNumber render", () => {
+    const { container } = render(
+      <Hero
+        dateLabel="Wed, May 20"
+        dayNumber={126}
+        totalDays={365}
+        pct={42}
+      />,
+    );
+    expect(container.textContent).toContain("Wed, May 20");
+    expect(container.textContent).toContain("126");
+    expect(container.textContent).toContain("365");
+  });
+
+  it("pct numeral always reflects the prop (skeleton policy is date-only)", () => {
+    // The ring/pct path is NOT gated by hydrated — only the date surfaces are.
+    const { container } = render(
+      <Hero
+        dateLabel="Wed, May 20"
+        dayNumber={126}
+        totalDays={365}
+        pct={42}
+        hydrated={false}
+      />,
+    );
+    expect(container.textContent).toContain("42%");
+  });
+});

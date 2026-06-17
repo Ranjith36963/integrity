@@ -560,6 +560,7 @@ export function BuildingClient({
           totalDays={totalDays}
           pct={heroPct}
           firstPaintCountUp={stagger}
+          hydrated={hydrated} /* R7-ROOT-5: hide SSR clock until client locks in */
         />
         {/* M7a: skeleton / real subtree branch (ADR-023 two-pass hydration).
              !hydrated → skeleton placeholders; hydrated → real surfaces + stagger.
