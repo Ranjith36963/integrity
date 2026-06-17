@@ -194,7 +194,12 @@ export function dayNumber(
   if (!programStart) return undefined;
   const start = isoToLocalDate(programStart);
   const end = isoToLocalDate(todayIso);
-  const delta = Math.floor((end.getTime() - start.getTime()) / 86_400_000);
+  // R7-ROOT-3 (DST-safe): `Math.round` instead of `Math.floor` absorbs the
+  // ±1-hour drift introduced by DST spring-forward / fall-back. Without this,
+  // dayNumber("2026-03-07", "2026-03-09") returns 2 in PT (47-hour gap →
+  // floor(47/24) = 1 → 2) instead of 3. The same trick is used in
+  // lib/dayOfYear.ts:dayOfYear(). Surfaced by lib/dharma.tz.test.ts.
+  const delta = Math.round((end.getTime() - start.getTime()) / 86_400_000);
   return delta + 1;
 }
 
