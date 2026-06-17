@@ -224,6 +224,8 @@ The project's durable context is sharded **per milestone** under `docs/milestone
 
 **Decisions read pattern:** any agent that reads decisions must read BOTH `docs/milestones/m{slug}/decisions.md` (if it exists for the current feature) AND `docs/milestones/_general/decisions.md`. Cross-cutting ADRs (e.g., ADR-025 The Loop, ADR-027 commit prefixes, ADR-041 single-gate) live in `_general/` and apply to every feature.
 
+**Spec AC supersession convention (R7-ROOT-7):** when a later milestone changes the contract of an earlier AC (e.g., M8 replaced M1's "Building N of 365" semantics), the original milestone's `spec.md` gets a `### Supersessions` section listing each superseded AC + the milestone+AC that took over + the ADR that records the drift. Reviewers reading the original spec see the drift inline and don't re-flag it as a bug. Pattern enforced in `docs/milestones/m1/spec.md`; extend to other milestones when supersessions occur.
+
 `CLAUDE.md` (this file) and `AGENTS.md` are operating-manual files, not project state.
 `README.md` is for humans visiting GitHub.
 `feedback.md` and `glossary.md` may be added if the workflow demands them; not required today.

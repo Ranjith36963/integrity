@@ -2,6 +2,13 @@
 
 > **Pillars:** § 0.1 (spatial timeline as the wedge), § 0.3 (visual identity — single-% ring + per-category bar), § 0.5 (three-ways-to-add chrome), § 0.6 (calendar hierarchy — Building = 1 day), § 0.9 (data model — blocks always timed, app starts with `blocks: []`), ADR-023 (`useNow()` server-paint), ADR-039 (ships empty).
 
+### Supersessions
+
+> R7-ROOT-7: post-ship ACs that have been superseded by later milestones. Each line: original AC → the milestone+AC that took over + the ADR that records the drift. Listed here (in the original milestone's spec) so reviewers don't double-flag the supersession as a bug.
+
+- **AC #5** ("`Building N of 365` where N = today's calendar day-of-year") → superseded by M8 AC #13 (program-relative day via persisted `programStart`). Recorded in ADR-049.
+- **AC #7** ("0% does not animate on mount — count-up arrives in M3") → superseded by M7c `firstPaintCountUp` for non-empty states; empty-state pct=0 is observationally unchanged. Recorded in ADR-049.
+
 ### Intent
 
 Render the main day screen — the "Building" — in its empty state. The full chrome of the daily surface is visible: top bar (DHARMA logo, Edit toggle, Settings), hero (date · "Building N of 365" · 0%), Day Blueprint bar (empty outline), 24-hour vertical timeline with faded hour labels and an amber now-line that tracks real time, and the floating bottom dock (Voice Log + `+`) with both buttons rendered but inert. Inside the timeline: zero blocks, zero bricks, and a single pulsing empty-state card.
