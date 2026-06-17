@@ -1,0 +1,53 @@
+name: Mutation Testing
+
+# R7-ROOT-2: mutation testing via Stryker.
+#
+# Cost: a full Stryker run takes ~5-15 minutes for the initial scope of
+# 3 lib files (dharma, dayOfYear, timeOffset). We run on:
+#   - manual workflow_dispatch (anyone can trigger)
+#   - weekly schedule (Sunday 06:00 UTC — keeps baseline fresh)
+#   - PRs that TOUCH lib/ files (catches mutation-resistance regressions
+#     at PR time without spending compute on doc-only PRs).
+#
+# This job is currently NON-BLOCKING (continue-on-error: true). After
+# one full green week, promote to required by removing continue-on-error
+# and adding `mutation` to the ci-gate `needs:` in ci.yml.
+#
+# Reports are uploaded as a workflow artifact (HTML report) for review.
+
+on:
+  schedule:
+    - cron: "0 6 * * 0" # Sunday 06:00 UTC
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "lib/**"
+      - "stryker.config.json"
+      - ".github/workflows/mutation.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mutation:
+    name: Stryker mutation testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true # advisory until baseline is stable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - name: Run Stryker
+        run: npm run test:mutation
+      - name: Upload Stryker HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stryker-report
+          path: reports/mutation/
+          retention-days: 14

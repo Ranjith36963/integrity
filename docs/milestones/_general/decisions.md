@@ -449,3 +449,40 @@ Vercel deploy continues to deploy preview URLs for every PR — but the user (an
 - Future jobs (mutation testing R7-ROOT-2, doc-ref checksum R7-ROOT-9, pre-commit TZ guard R7-ROOT-10) plug into the same `needs:` list.
 
 ---
+
+## ADR-054 — Mutation testing via Stryker (initial scope: pure date libs)
+
+**Status:** Accepted · 2026-05-23 · proposed by R7 root-cause hardening
+
+**Context.** The two M0 + M1 hardening loops surfaced a recurring "tests pass for the wrong reason" failure mode. The most expensive instance was M1's R2-P0-1 P0 — a Jan-1 negative-UTC bug — where the R1 "regression guard" (`lib/dayOfYear.tz.test.ts`) used a parallel inline implementation of the ISO-date-parse trick. The production code path was never exercised; the test would have stayed green after a revert. The R3 fix forced the test to import the production helper.
+
+That's one bug fixed by inspection. The broader question is: how many other tests in the suite have the same flaw? Mutation testing is the structural answer — Stryker rewrites operators / branches / values in the production code and reports which mutations the test suite catches (mutation score). Low scores flag tests that can't tell the production code from a mutation.
+
+**Decision.** Add Stryker via `@stryker-mutator/core` + `@stryker-mutator/vitest-runner`. Initial mutation scope: three small pure libs that absorbed the most root-cause hardening:
+
+- `lib/dharma.ts` (today, isoToLocalDate, dayNumber, dateLabel, dayPct)
+- `lib/dayOfYear.ts` (dayOfYear, daysInYear)
+- `lib/timeOffset.ts` (timeToOffsetPx, clampOffsetPx, HOUR_HEIGHT_PX)
+
+Run modes:
+
+- `npm run test:mutation` — local invocation.
+- `.github/workflows/mutation.yml` — runs on (a) Sunday 06:00 UTC schedule, (b) manual workflow_dispatch, (c) PRs touching `lib/**` or the Stryker config. Currently `continue-on-error: true` — advisory, not blocking. Promote to required after one stable green week by removing the flag and adding `mutation` to `ci-gate`'s `needs:`.
+
+Thresholds (in `stryker.config.json`):
+
+- `high: 90` (gold standard)
+- `low: 75` (yellow flag)
+- `break: 60` (red — fail Stryker; flagged for inspection)
+
+Incremental mode is enabled (`incrementalFile: .stryker-tmp/incremental.json`) so re-runs after small code changes are fast. The `.stryker-tmp` and `reports/` dirs are gitignored.
+
+**Consequences.**
+
+- New dev-only deps: `@stryker-mutator/core` (~6 MB unpacked, dev only) + `@stryker-mutator/vitest-runner`. Zero impact on the production bundle.
+- Initial run takes ~5-15 minutes. Subsequent incremental runs much faster.
+- The HTML report uploaded as a GitHub Actions artifact is the audit surface — open the URL after a run to see which mutations survived.
+- Expanding scope to `lib/history.ts`, `lib/appliesOn.ts`, `lib/overlap.ts`, etc. is a follow-up: add file path to the `mutate` array in `stryker.config.json` once initial scope holds.
+- The mutation score is a NEW metric tracked over time. Initial baseline TBD on the first run; document the actual score in this ADR via amendment once measured.
+
+---

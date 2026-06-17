@@ -42,3 +42,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# R7-ROOT-2 mutation testing
+.stryker-tmp/
+reports/
+stryker.log
