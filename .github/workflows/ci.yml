@@ -148,10 +148,23 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
+  # ── Doc-ref integrity (R7-ROOT-9) ────────────────────────────────────────
+  doc-refs:
+    name: Doc reference integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # need full history for commit-hash resolution
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: npm run check:docs
+
   # ── Aggregate gate: required for branch protection ───────────────────────
   ci-gate:
     name: CI Gate
-    needs: [lint, typecheck, unit-tests, tz-tests, e2e, a11y]
+    needs: [lint, typecheck, unit-tests, tz-tests, e2e, a11y, doc-refs]
     runs-on: ubuntu-latest
     if: always()
     steps:
