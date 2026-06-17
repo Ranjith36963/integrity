@@ -7,13 +7,24 @@
 ## Snapshot
 
 - **Branch:** `claude/verify-m0-deployment-s4XRy` · `main` at `c3ef9f1` (feature branch not yet merged)
-- **Last ship:** M1 — Post-ship hardening pass (6-round code-review loop, 13→8→8→3→1→0 convergence; 33 fixes across Timeline/BlueprintBar/TopBar/BottomBar/Hero/NowLine/DayCell + time-math libs; +7 new test IDs incl. C-m1-023; +9 new TZ-pinned tests; new shared `isoToLocalDate` helper; 3 ADRs added; render-layer + lib-layer only; no schema bump). Single P0 caught in R2 — DST + negative-UTC-TZ Jan 1 bug introduced by R1's own NYE fix, closed structurally in R3 via the shared helper. Branch `claude/verify-m0-deployment-s4XRy`. Date: 2026-05-23. Previous ship: M0 — Post-ship Hardening Pass.
+- **Last ship:** R7 root-cause infrastructure pass — 8 commits adding valibot schema validation at persist boundary; multi-TZ test coverage across 4 zones (PT/Tokyo/UTC/Nepal — caught a real DST bug in `dayNumber`); GitHub Actions CI workflow blocking merge on lint+typecheck+unit+TZ×4+e2e+a11y+doc-refs; doc-reference integrity checker with ratchet; pre-commit TZ-coverage guard; Spec AC supersession convention applied to M1; Hero pre-hydration skeleton for SSR/CSR clock-mismatch window; Stryker mutation testing infrastructure. 3 new ADRs (052/053/054). Date: 2026-05-23. Prior: M1 — Post-ship hardening pass (13→8→8→3→1→0). Prior: M0 — Post-ship hardening pass (24→12→5→1→0).
 - **Last preview URL:** `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (stable branch alias; auto-tracks latest deployment for this branch). Sandbox `curl -I` returns HTTP 403 `x-deny-reason: host_not_allowed` (Vercel Deployment Protection — same as M0–M7d; not a failure; signed-in browser sessions serve normally).
 - **Persisted schema: v3** (ADR-045 + M5). `AppState`/`PersistedState` now carry `deletions: Record<string,true>`. Additive lossless v2→v3 migrator. `loadState` migrates v1→v2→v3 with no data loss.
 - **ADR-047 (M5):** `currentDayBlocks.ts` resolves `deletions` only; `appliesOn` Day-view wiring is deferred to a dedicated spec entry.
 - **Proposed ADR-048 (M6 — not yet written):** "Post-dispatch readback for optimistic UI rejection uses an incrementing sequence + `useEffect` (not microtask) so React's batched re-render flushes before detection." Draft ADR to be authored in a follow-up session.
 - **ADR-046:** period-aggregate helpers are pure — they derive "today" from `state.currentDate`, never the wall clock.
 - **Methodology:** The Loop (SDD-outside, TDD-inside) per ADR-025; **single human gate** (preview tap-test only) per ADR-041 — the VERIFIER agent now replaces the planning gate; per-phase commit prefixes per ADR-027.
+
+### R7 root-cause infrastructure (in force, ADRs 052/053/054)
+
+- **Persist boundary**: `lib/persist.ts` now validates SHAPE via `lib/persistSchemas.ts` (valibot) on load. Per-field recovery preserves good fields; corrupt fields reset to defaults; UI shows a toast. `loadStateWithReport()` exposes the recovery log. `saveState()` validates the payload against the v3 schema in dev only.
+- **TZ test infrastructure**: `npm run test:tz` runs the same `lib/**/*.tz.test.ts` glob under FOUR pinned timezones (PT, Tokyo, UTC, Nepal +5:45) in sequence. CI `tz-tests` matrix job runs them in parallel.
+- **CI gate**: `.github/workflows/ci.yml` runs lint (with ratchet at 19 warnings) + typecheck + unit + TZ×4 + e2e + a11y + doc-refs. `ci-gate` is the aggregate required check.
+- **Doc-ref integrity**: `npm run check:docs` validates every backtick-wrapped commit hash and `path/file.ext:NNN` reference across the docs tree. Ratchet locked at 271 broken refs (legacy m{N}-shard drift); CI fails if count grows.
+- **Pre-commit TZ guard**: `.lintstagedrc.json` runs `scripts/check-tz-coverage.mjs` on every staged `lib/*.ts`. Date-touching files without a sibling `*.tz.test.ts` either pass with a baseline warning (existing) or fail hard (new).
+- **Spec AC supersession convention**: each `m{N}/spec.md` carries a `### Supersessions` block listing ACs amended by later milestones + the ADR that records the drift. Applied to m1 today.
+- **Hero pre-hydration skeleton**: `<Hero hydrated={false}>` shows em-dash placeholders for the date/dayNumber rows during the SSR-vs-CSR clock skew window (ADR-023). Layout stable, aria-busy true.
+- **Mutation testing**: `npm run test:mutation` runs Stryker over `lib/dharma.ts` + `lib/dayOfYear.ts` + `lib/timeOffset.ts`. CI job `mutation` runs weekly + on PRs touching `lib/`; currently advisory (not blocking).
 
 ## Plan in force
 
