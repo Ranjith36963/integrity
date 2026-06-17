@@ -1,0 +1,169 @@
+name: CI
+
+# R7-ROOT-6: e2e + a11y are no longer "deferred to preview" — they BLOCK
+# merge on every PR. Combined with the unit + multi-TZ suite, this is the
+# minimum gate before any code reaches the deploy branch.
+#
+# Parallelism: each job runs independently; the workflow fails fast if any
+# one fails.
+#
+# To skip a job for an emergency hotfix: add `[skip ci]` to the commit
+# message (GitHub Actions native behavior). Use sparingly.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Cancel in-progress runs on the same branch when a new commit lands.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  # ── Static checks: fastest, fail-fast ────────────────────────────────────
+  lint:
+    name: Lint (ratchet)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: ESLint with ratchet
+        run: |
+          set -o pipefail
+          OUT=$(npm run --silent lint 2>&1 || true)
+          echo "$OUT"
+          # R7-ROOT-8: ratchet — extract the warning count from ESLint's
+          # summary line and fail if it grew above the locked ceiling.
+          # Locked ceiling (2026-05-23): 19 warnings.
+          CEILING=19
+          COUNT=$(echo "$OUT" | grep -oE '[0-9]+ problems? \([0-9]+ errors?, [0-9]+ warnings?\)' | grep -oE '[0-9]+ warnings?' | grep -oE '^[0-9]+' | head -1)
+          COUNT=${COUNT:-0}
+          echo "Current warnings: $COUNT (ceiling: $CEILING)"
+          if [ "$COUNT" -gt "$CEILING" ]; then
+            echo "::error::Lint warnings increased from $CEILING to $COUNT. The ratchet only allows the count to drop."
+            exit 1
+          fi
+          # If any errors present (not just warnings), the npm run lint will
+          # have exited non-zero already.
+          echo "$OUT" | grep -qE '[1-9][0-9]* errors?' && exit 1 || true
+
+  typecheck:
+    name: TypeScript
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+
+  # ── Unit + TZ tests: matrix across 4 zones ───────────────────────────────
+  unit-tests:
+    name: Vitest (default TZ)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  tz-tests:
+    name: Vitest (TZ=${{ matrix.tz.label }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tz:
+          - { script: "test:tz:pt",     label: "America/Los_Angeles" }
+          - { script: "test:tz:tokyo",  label: "Asia/Tokyo" }
+          - { script: "test:tz:utc",    label: "UTC" }
+          - { script: "test:tz:nepal",  label: "Asia/Kathmandu" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run ${{ matrix.tz.script }}
+
+  # ── e2e: Playwright (R7-ROOT-6 — was 'deferred to preview') ──────────────
+  e2e:
+    name: Playwright e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  # ── a11y: axe-core via Playwright (R7-ROOT-6) ────────────────────────────
+  a11y:
+    name: Playwright a11y (axe)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - run: npm run test:a11y
+      - name: Upload a11y report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-report
+          path: playwright-report/
+          retention-days: 7
+
+  # ── Aggregate gate: required for branch protection ───────────────────────
+  ci-gate:
+    name: CI Gate
+    needs: [lint, typecheck, unit-tests, tz-tests, e2e, a11y]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Verify all upstream jobs succeeded
+        run: |
+          # ${{ toJson(needs) }} is a JSON map of needs → result. If any
+          # result is not 'success', fail the gate so branch protection
+          # blocks merge.
+          ALL_RESULTS='${{ toJson(needs) }}'
+          echo "Job results: $ALL_RESULTS"
+          if echo "$ALL_RESULTS" | grep -qE '"result":\s*"(failure|cancelled)"'; then
+            echo "::error::One or more required jobs failed."
+            exit 1
+          fi
+          echo "All required jobs passed."

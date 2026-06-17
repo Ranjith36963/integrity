@@ -417,3 +417,35 @@ The public surface is backward-compatible: `migrate(raw): PersistedState | null`
 - R5-P2-1 closed by side effect.
 
 ---
+
+## ADR-053 — CI pipeline blocks merge on e2e + a11y + multi-TZ failures
+
+**Status:** Accepted · 2026-05-23 · proposed by R7 root-cause hardening
+
+**Context.** Through M0..M7e the per-milestone CHANGELOGs read "E-mN-XXX + A-mN-XXX deferred-to-preview" — Playwright and axe ran only when someone remembered to run `npm run eval` locally. Vercel deployed regardless of e2e/a11y state. The original R1 of M1 missed a real schedule-region misalignment (P0-1) precisely because the e2e Playwright suite uses `overflow-x-hidden` and the visual test never ran in CI. Same lineage: A-m1-006 was tautological (R1-SG-3, R1-SG-4, R1-SG-5) because no continuous automation forced anyone to fix it.
+
+The R7 ratchet on lint warnings (ADR-NEXT) has no teeth either if CI doesn't run lint on every PR.
+
+**Decision.** A GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every PR + push to `main` and on manual dispatch. Jobs:
+
+1. **lint (ratchet)** — runs `npm run lint`, fails if warning count exceeds the locked ceiling (initial = 19). Errors fail unconditionally.
+2. **typecheck** — `npm run typecheck`.
+3. **unit-tests** — `npm test` (Vitest default).
+4. **tz-tests** (matrix × 4) — runs `npm run test:tz:pt`, `:tokyo`, `:utc`, `:nepal` in parallel.
+5. **e2e** — `npm run test:e2e` (Playwright). Uploads report on failure.
+6. **a11y** — `npm run test:a11y` (Playwright + axe). Uploads report on failure.
+7. **ci-gate** — aggregate, `needs: [all]`. The branch-protection required check.
+
+`concurrency` cancels in-progress runs on the same branch (cost control). Each PR cancels its own previous run.
+
+Vercel deploy continues to deploy preview URLs for every PR — but the user (and main branch) only get a merge-able state once `ci-gate` passes. Production main is the only `main` deploy target.
+
+**Consequences.**
+
+- Adds GitHub-billable CI minutes. Estimate: ~12 min per PR (lint 1, typecheck 1, unit 2, tz×4 in parallel = 2, e2e 4, a11y 2). Within free tier for personal accounts.
+- Playwright installation is cached via `actions/setup-node`'s `cache: npm` — first PR takes longer, subsequent are fast.
+- e2e and a11y tests that have been "deferred to preview" in CHANGELOGs (M4a..M9e + M1 hardening rounds) now actually run. Any latent failure becomes visible at PR time.
+- The aggregate `ci-gate` exists so branch protection rules can require a single check name. Adding/removing jobs upstream does not change the required check.
+- Future jobs (mutation testing R7-ROOT-2, doc-ref checksum R7-ROOT-9, pre-commit TZ guard R7-ROOT-10) plug into the same `needs:` list.
+
+---
