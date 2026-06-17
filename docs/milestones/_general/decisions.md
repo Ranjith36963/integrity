@@ -384,3 +384,36 @@ The orchestrator (Main Claude or the `/feature` slash command) treats VERIFIER's
 - Auto-detection of milestone-vs-task scope (when VERIFIER notices a milestone is too large to ship in one cycle, suggest splitting). Useful but separable concern. Defer.
 
 ---
+
+## ADR-052 — Persisted state uses valibot SHAPE validation with per-field recovery
+
+**Status:** Accepted · 2026-05-23 · proposed by R7 root-cause hardening
+
+**Context.** Pre-R7 `lib/persist.ts` validated only the TYPE of each top-level field (`typeof === "string"`, `Array.isArray`, etc.) and direct-cast the contents (`obj.blocks as Block[]`). Corrupted `localStorage` could carry malformed inner values (e.g., a block missing `recurrence`, a brick with `target: NaN`) through the boundary into downstream helpers. Three example failure modes seen in review:
+
+- `new Date("not-a-date")` → `Invalid Date` → `getFullYear()` returns NaN → `daysInYear` silently returns 365 (the year-overshoot class R2-P0-1 came from).
+- A `Brick` of kind `units` with `target: NaN` → live-scoring helpers compute `done / target = NaN` → Hero shows 0% or blank.
+- A `recurrence` with missing `kind` discriminator → `appliesOn` falls into an exhaustiveness-check default branch.
+
+The R5-P2-1 JSDoc was the last symptom: it claimed "validation happens at the system boundary (persist.ts)" — false. The boundary only type-checked.
+
+**Decision.** Replace the type-coercion code path with valibot-based SHAPE validation. Schemas live in `lib/persistSchemas.ts`. The migrate flow now parses each top-level field independently. On any field parse failure, that field resets to its `defaultPersisted()` value and the field name is appended to `LoadReport.resetFields`. Other fields are preserved as-is. The UI hook (`usePersistedState`) surfaces the report via toast:
+
+- `kind: "clean" | "fresh" | "migrated"` → silent (normal user paths).
+- `kind: "recovered"` → info toast listing reset fields.
+- `kind: "discarded"` → error toast ("Saved data was unreadable. Starting fresh.").
+
+`saveState` writes are validated against the v3 schema in dev only (`process.env.NODE_ENV !== "production"`) and log to console on failure — corruption-on-write is a real bug we want to know about in dev, but we never block the write or white-screen the user.
+
+The public surface is backward-compatible: `migrate(raw): PersistedState | null` and `loadState(): PersistedState` keep their pre-R7 signatures (returning just the state). New callers use `loadStateWithReport()` to access the `LoadReport`.
+
+**Consequences.**
+
+- New runtime dependency: `valibot` (~3 KB gzipped). Picked over zod (~12 KB) for the smaller bundle on a mobile-first PWA. valibot's tree-shaking is functional-first, so unused schema kinds drop cleanly.
+- Schemas in `persistSchemas.ts` MIRROR `lib/types.ts`. If the types ever drift, the vitest run picks it up.
+- ISO-date regex only validates digit positions (`^\d{4}-\d{2}-\d{2}$`), not month/day range. So "2026-13-99" passes the schema. Documented in `lib/persist.r7.test.ts`. Tightening range would require a custom `v.check` transform — deferred until it bites in production.
+- A future schema version bump (`SCHEMA_VERSION 3 → 4`) adds a new case to `migrate()` AND a new top-level schema in `persistSchemas.ts`. The per-field recovery flow is reusable.
+- ADRs 044 + 045 (additive field discipline) remain in force; this ADR doesn't change them.
+- R5-P2-1 closed by side effect.
+
+---

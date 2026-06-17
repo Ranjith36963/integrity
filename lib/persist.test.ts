@@ -713,12 +713,37 @@ describe("U-m9b-005: loadState migrates schemaVersion:1 payload to v2", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-18T10:00:00"));
 
+    // R7-ROOT-1 amendment: fixtures now use FULL valid shapes (matching
+    // persistSchemas.ts). The previous fixtures used `[{ id: "b1" }]`-style
+    // partial objects — those now correctly reset to [] under the new
+    // shape-validation contract (per-field recovery). The migration
+    // semantics tested by U-m9b-005 (v1→v3 version bump + currentDate seed
+    // + programStart preservation) are unchanged.
+    const validBlock = {
+      id: "b1",
+      name: "Work",
+      start: "09:00",
+      end: "17:00",
+      categoryId: null,
+      recurrence: { kind: "every-weekday" },
+      bricks: [],
+    };
+    const validCategory = { id: "c1", name: "Cat", color: "#ff0000" };
+    const validBrick = {
+      id: "t1",
+      name: "Brick",
+      categoryId: null,
+      parentBlockId: null,
+      hasDuration: false,
+      kind: "tick",
+      done: false,
+    };
     mockStorage._store[STORAGE_KEY] = JSON.stringify({
       schemaVersion: 1,
       programStart: "2026-03-10",
-      blocks: [{ id: "b1" }],
-      categories: [{ id: "c1" }],
-      looseBricks: [{ id: "t1" }],
+      blocks: [validBlock],
+      categories: [validCategory],
+      looseBricks: [validBrick],
       deletions: {}, // M5
     });
 
@@ -727,9 +752,9 @@ describe("U-m9b-005: loadState migrates schemaVersion:1 payload to v2", () => {
     expect(result.programStart).toBe("2026-03-10"); // preserved, NOT re-stamped
     expect(result.currentDate).toBe("2026-05-18"); // set to today
     expect(result.history).toEqual({});
-    expect(result.blocks).toEqual([{ id: "b1" }]);
-    expect(result.categories).toEqual([{ id: "c1" }]);
-    expect(result.looseBricks).toEqual([{ id: "t1" }]);
+    expect(result.blocks).toEqual([validBlock]);
+    expect(result.categories).toEqual([validCategory]);
+    expect(result.looseBricks).toEqual([validBrick]);
 
     vi.useRealTimers();
   });
@@ -895,14 +920,27 @@ describe("U-m9b-009: partial v2 payload → defensive coercion of missing/non-st
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-18T10:00:00"));
 
+    // R7-ROOT-1 amendment: blocks fixture upgraded to valid shape. Absent
+    // top-level fields still coerce to defaults (the test's primary claim);
+    // the block-shape detail is incidental — using the valid shape so the
+    // assertion proves coercion, not partial-block tolerance.
+    const validBlock = {
+      id: "b1",
+      name: "Work",
+      start: "09:00",
+      end: "17:00",
+      categoryId: null,
+      recurrence: { kind: "every-weekday" },
+      bricks: [],
+    };
     mockStorage._store[STORAGE_KEY] = JSON.stringify({
       schemaVersion: 3,
       history: {},
-      blocks: [{ id: "b1" }],
+      blocks: [validBlock],
     });
 
     const result = loadState();
-    expect(result.blocks).toEqual([{ id: "b1" }]);
+    expect(result.blocks).toEqual([validBlock]);
     expect(result.categories).toEqual([]);
     expect(result.looseBricks).toEqual([]);
     expect(result.programStart).toBe("2026-05-18");

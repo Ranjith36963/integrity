@@ -18,10 +18,15 @@ import { useState, useEffect, useCallback } from "react";
 import type { Dispatch } from "react";
 import type { AppState, Action } from "./types";
 import { reducer } from "./data";
-import { loadState, saveState, defaultPersisted } from "./persist";
+import {
+  loadStateWithReport,
+  saveState,
+  defaultPersisted,
+} from "./persist";
 import type { PersistedState } from "./persist";
 import { rollover } from "./history";
 import { today } from "./dharma";
+import { toast } from "@/components/Toaster";
 
 /**
  * projectToAppState — strips schemaVersion from PersistedState (SG-m8-04).
@@ -87,11 +92,26 @@ export function usePersistedState(): [AppState, Dispatch<Action>, boolean] {
   // setMounted(true) after setState so the save effect's mounted guard unblocks only
   // after hydration has completed.
   useEffect(() => {
-    const loaded = loadState();
+    // R7-ROOT-1: loadStateWithReport returns both the recovered state and a
+    // LoadReport. We surface the report to the user via toast for the two
+    // user-visible recovery paths:
+    //   - "recovered": some fields were corrupt and reset; user should know.
+    //   - "discarded": the whole payload was unparseable; user should know.
+    // "fresh", "clean", and "migrated" are silent (normal user paths).
+    const { state: loaded, report } = loadStateWithReport();
     const rolled = rollover(loaded, today()); // M9b: rollover once on mount
     // eslint-disable-next-line react-hooks/set-state-in-effect -- M9b two-pass hydration (plan.md § Hydration wiring, ADR-018, ADR-044, ADR-045): setState here is intentional — replaces the SSR empty default with the post-rollover persisted state post-mount. A HYDRATE action is blocked by the M4f schema lock (plan § Risks R3).
     setState(projectToAppState(rolled));
     setMounted(true);
+
+    if (report.kind === "recovered") {
+      toast(
+        `Some saved data was reset (${report.resetFields.join(", ")}). Your other data is intact.`,
+        "info",
+      );
+    } else if (report.kind === "discarded") {
+      toast("Saved data was unreadable. Starting fresh.", "error");
+    }
   }, []);
 
   // Save effect: fires whenever state changes, but ONLY after hydration (mounted guard — R2).
