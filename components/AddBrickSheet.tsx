@@ -103,11 +103,11 @@ export function AddBrickSheet({
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
   // R7-ROOT-M4-P1-1 (mirror of M2-06): reset all draft state on each open.
-  // AddBrickSheet is always mounted (BuildingClient single-instance pattern);
-  // closing without saving left title/kind/targetStr/unit/hasDuration/start/end
-  // populated. The next "+ Add brick" reopened with stale values — Duration
-  // toggle stuck ON, prior title still typed, etc. Mirrors the AddBlockSheet
-  // hardening from R7-ROOT-M2-06.
+  // R7-ROOT-R2-P1-1 follow-up: also reset selectedCategoryId to the prop
+  // default — without this, the user picks a category, cancels, reopens
+  // with the same defaultCategoryId, and sees their previous pick stale.
+  // The prop-sync effect below has dep [defaultCategoryId] only (not [open]),
+  // so it doesn't fire on a same-default reopen.
   useEffect(() => {
     if (!open) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- R7-ROOT-M4-P1-1: reset on open per AC "Cancel discards sheet state".
@@ -120,7 +120,8 @@ export function AddBrickSheet({
     setEnd("");
     setRecurrence({ kind: "just-today", date: todayISO() });
     setView("brick");
-  }, [open]);
+    setSelectedCategoryId(defaultCategoryId);
+  }, [open, defaultCategoryId]);
 
   // Sync pre-fill when defaultCategoryId prop changes (SG-m3-04).
   // R7-ROOT-M3-P2-2: dropped `open` from the dep array. Pre-R7 the effect

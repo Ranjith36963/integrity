@@ -10,10 +10,25 @@ import { test, expect, type Page } from "@playwright/test";
 // picks "Add Block". Pre-R7 this helper clicked + and expected the Title input
 // directly — fill() raced against the still-loading chooser, sometimes timing
 // out, sometimes silently filling the wrong field.
-async function addBlock(page: Page, title: string) {
+// R7-ROOT-R2-P0: opts.end is now supported so tests that need a CLOSED-END
+// block (e.g., E-m2-008 overlap detection) get a real end-time. Pre-R2 the
+// helper only filled Title, leaving End empty — selectAllTimedItems skips
+// no-end blocks, so overlap tests had nothing to overlap against.
+async function addBlock(
+  page: Page,
+  title: string,
+  opts?: { start?: string; end?: string },
+) {
   await page.getByRole("button", { name: "Add" }).click();
   await page.getByRole("button", { name: "Add Block" }).click();
   await page.getByLabel(/Title/i).fill(title);
+  if (opts?.start !== undefined) {
+    await page.getByLabel(/Start/i).fill(opts.start);
+  }
+  if (opts?.end !== undefined) {
+    await page.getByLabel(/End/i).fill(opts.end);
+    await page.keyboard.press("Tab"); // commit on blur if validator requires it
+  }
   await page.getByRole("button", { name: /Save/i }).click();
 }
 
@@ -274,7 +289,10 @@ test("E-m2-008: overlapping block raises an alert and Save is disabled (M4e cont
   await page.goto("/");
 
   // Add first block: 09:00–10:00 via chooser → AddBlockSheet.
-  await addBlock(page, "Existing");
+  // R7-ROOT-R2-P0: explicit start+end so the block is CLOSED-END.
+  // selectAllTimedItems skips no-end blocks; without explicit end the
+  // overlap detection has nothing to flag.
+  await addBlock(page, "Existing", { start: "09:00", end: "10:00" });
 
   // Open chooser → AddBlockSheet again with overlapping range.
   await page.getByRole("button", { name: "Add" }).click();

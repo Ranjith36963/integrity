@@ -140,6 +140,13 @@ export const archivedDaySchema = v.object({
 
 // Record<string, ArchivedDay> keyed by ISO date.
 // valibot has no first-class "record with key schema" — emulate via record().
+// R7-ROOT-R2-NIT: this top-level historySchema is no longer used by
+// persist.ts (R7-ROOT-M8/M9-P0 inlined per-day validation in parsePerField
+// so individual corrupted days can be dropped without losing the rest).
+// Kept as an export for documentation + potential future utility (e.g.,
+// schema-only consumers). Internal use is deprecated.
+/** @deprecated Internal callers should use parsePerField in persist.ts; this
+ *  schema validates the whole history record all-or-nothing. */
 export const historySchema = v.record(isoDateSchema, archivedDaySchema);
 
 // Record<string, true> keyed by `${currentDate}:${blockId}` form.

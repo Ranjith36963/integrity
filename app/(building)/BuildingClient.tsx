@@ -671,7 +671,10 @@ export function BuildingClient({
           prefersReducedMotion={Boolean(prefersReducedMotion)}
         />
         {/* M4a: Fireworks overlay — day-100% celebration (motion ON path) */}
-        <Fireworks active={fireworksActive} />
+        {/* R7-ROOT-R2-P1-2: prmOverride keeps Fireworks symmetric with
+            DayCompleteCard's frozen-PRM gate. Pre-R2 only the card was
+            frozen — Fireworks read live PRM and could vanish mid-burst. */}
+        <Fireworks active={fireworksActive} prmOverride={celebratingPrm} />
         {/* M7d: DayCompleteCard — PRM-only "Day complete." text card.
             active predicate: fireworksActive && prefersReducedMotion.
             Under motion ON: prefersReducedMotion===false → card receives active={false} → renders null.

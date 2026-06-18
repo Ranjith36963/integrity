@@ -39,10 +39,22 @@ function makeParticles(): Particle[] {
 
 interface Props {
   active: boolean;
+  /**
+   * R7-ROOT-R2-P1-2: optional PRM override. When provided, this value
+   * is used instead of the live useReducedMotion() reading — lets the
+   * parent freeze PRM at celebration start so a mid-window OS toggle
+   * doesn't flip Fireworks invisibility while DayCompleteCard stays
+   * frozen-hidden. BuildingClient.tsx passes celebratingPrm.
+   */
+  prmOverride?: boolean | null;
 }
 
-export function Fireworks({ active }: Props) {
-  const prefersReducedMotion = useReducedMotion();
+export function Fireworks({ active, prmOverride }: Props) {
+  const livePrm = useReducedMotion();
+  // R7-ROOT-R2-P1-2: prefer the frozen override when supplied, fall back to
+  // the live reading otherwise.
+  const prefersReducedMotion =
+    prmOverride !== null && prmOverride !== undefined ? prmOverride : livePrm;
   // particles drives visibility; null means not playing
   const [particles, setParticles] = useState<Particle[] | null>(null);
 

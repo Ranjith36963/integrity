@@ -108,7 +108,12 @@ export function HeroRing({ pct, firstPaintCountUp = false, children }: Props) {
       </span>
       <svg
         role="img"
-        aria-label={`Day score: ${roundedDisplayPct}%`}
+        // R7-ROOT-R2-NIT: lock the svg's aria-label to round(pct) so it
+        // doesn't mutate 50 times during the tween. The visible numeral
+        // animates via children-as-function; the aria-label is the final
+        // canonical value. Rotor/focus inspection mid-tween now sees the
+        // settled value.
+        aria-label={`Day score: ${Math.round(pct)}%`}
         width={SIZE}
         height={SIZE}
         viewBox={`0 0 ${SIZE} ${SIZE}`}
