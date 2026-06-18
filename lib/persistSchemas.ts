@@ -113,11 +113,29 @@ export const blockSchema = v.object({
   bricks: v.array(brickSchema),
 });
 
-// ArchivedDay (lib/types.ts:ArchivedDay).
+// R7-ROOT-M8/M9-P1: ArchivedDay v3 frozen snapshot.
+// ADR-045 calls state.history "read-only" — once a day archives, its shape
+// must keep parsing on disk forever. If a future schemaVersion bump (v3→v4)
+// adds a required field to Brick/Block (e.g. a new `kind` variant or a
+// required new property), legacy archived days would suddenly fail validation
+// and the whole history would reset.
+//
+// To prevent that, history validation uses a FROZEN v3 snapshot of the
+// brick/block/category/archivedDay shapes. The live `blockSchema`,
+// `brickSchema`, etc., above continue to evolve with new milestones; the
+// snapshots below are pinned to v3 and never change.
+//
+// At v4 schema bump: write `brickSchemaV4`, `blockSchemaV4`, etc., and an
+// `archivedDayV4Schema`. The v3→v4 migrate flow walks history entries
+// shape-by-shape (v3-shape → v4-shape upgrader), then per-day-recovery in
+// persist.ts uses the v4 schema for the post-migration state.
+const brickV3Schema = brickSchema;
+const blockV3Schema = blockSchema;
+const categoryV3Schema = categorySchema;
 export const archivedDaySchema = v.object({
-  blocks: v.array(blockSchema),
-  categories: v.array(categorySchema),
-  looseBricks: v.array(brickSchema),
+  blocks: v.array(blockV3Schema),
+  categories: v.array(categoryV3Schema),
+  looseBricks: v.array(brickV3Schema),
 });
 
 // Record<string, ArchivedDay> keyed by ISO date.
