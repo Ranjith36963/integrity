@@ -18,11 +18,11 @@ import * as v from "valibot";
 import type { Block, Category, Brick, ArchivedDay } from "./types";
 import { today } from "./dharma";
 import {
+  archivedDaySchema,
   blockSchema,
   brickSchema,
   categorySchema,
   deletionsSchema,
-  historySchema,
   isoDateSchema,
   persistedStateV3Schema,
   type PersistedFieldName,
@@ -59,7 +59,16 @@ export type LoadReport =
   | { kind: "fresh" }
   | { kind: "clean" }
   | { kind: "migrated"; fromVersion: number }
-  | { kind: "recovered"; resetFields: PersistedFieldName[] }
+  | {
+      kind: "recovered";
+      resetFields: PersistedFieldName[];
+      // R7-ROOT-M8/M9-P0: when 1+ archived days inside `history` fail validation
+      // but other days are good, the per-day recovery flow drops the bad ones
+      // and keeps the rest — instead of resetting the entire history field.
+      // droppedHistoryDays lists the ISO dates that were dropped, so the UI
+      // can include them in the recovery toast.
+      droppedHistoryDays?: string[];
+    }
   | { kind: "discarded"; reason: "json" | "unknown-version" | "non-object" };
 
 /**
@@ -102,9 +111,14 @@ export function defaultPersisted(): PersistedState {
  */
 function parsePerField(
   obj: Record<string, unknown>,
-): { state: PersistedState; resetFields: PersistedFieldName[] } {
+): {
+  state: PersistedState;
+  resetFields: PersistedFieldName[];
+  droppedHistoryDays: string[];
+} {
   const defaults = defaultPersisted();
   const resetFields: PersistedFieldName[] = [];
+  const droppedHistoryDays: string[] = [];
 
   // For each field: try schema parse. On failure, fall back to default and
   // record the name.
@@ -121,7 +135,42 @@ function parsePerField(
 
   const programStart = pick("programStart", isoDateSchema, defaults.programStart);
   const currentDate = pick("currentDate", isoDateSchema, defaults.currentDate);
-  const history = pick("history", historySchema, defaults.history);
+
+  // R7-ROOT-M8/M9-P0: history needs PER-DAY recovery, not all-or-nothing.
+  // The previous `pick("history", historySchema, ...)` was all-or-nothing —
+  // a single corrupted ArchivedDay in one ISO key wiped out every other day.
+  // That was especially dangerous given ADR-045 calls history "read-only":
+  // a future additive change to blockSchema (e.g. new required field) would
+  // invalidate every legacy day in one go.
+  //
+  // The per-day flow:
+  //   - Reject the whole history field only if it's not a plain object.
+  //   - For each ISO key: validate the key shape AND the value's ArchivedDay
+  //     shape. Bad days are dropped (added to droppedHistoryDays); good days
+  //     are kept. If 1+ days are dropped, history is reported as "recovered"
+  //     but NOT as fully reset.
+  let history: Record<string, ArchivedDay>;
+  if (
+    obj.history === null ||
+    typeof obj.history !== "object" ||
+    Array.isArray(obj.history)
+  ) {
+    history = defaults.history;
+    resetFields.push("history");
+  } else {
+    history = {};
+    const rawHistory = obj.history as Record<string, unknown>;
+    for (const isoKey of Object.keys(rawHistory)) {
+      const keyParse = v.safeParse(isoDateSchema, isoKey);
+      const dayParse = v.safeParse(archivedDaySchema, rawHistory[isoKey]);
+      if (keyParse.success && dayParse.success) {
+        history[isoKey] = dayParse.output;
+      } else {
+        droppedHistoryDays.push(isoKey);
+      }
+    }
+  }
+
   const blocks = pick("blocks", v.array(blockSchema), defaults.blocks);
   const categories = pick(
     "categories",
@@ -162,6 +211,7 @@ function parsePerField(
       firstBrickShown,
     },
     resetFields,
+    droppedHistoryDays,
   };
 }
 
@@ -198,12 +248,24 @@ function migrateWithReport(
     }
     case 3: {
       const recovered = parsePerField(obj);
-      if (recovered.resetFields.length === 0) {
+      // R7-ROOT-M8/M9-P0: a recovered report fires when either top-level
+      // fields were reset OR specific history days were dropped. Pre-R7
+      // dropped days never surfaced — the whole history field was
+      // either clean or fully reset.
+      const cleanFields = recovered.resetFields.length === 0;
+      const cleanHistory = recovered.droppedHistoryDays.length === 0;
+      if (cleanFields && cleanHistory) {
         return { state: recovered.state, report: { kind: "clean" } };
       }
       return {
         state: recovered.state,
-        report: { kind: "recovered", resetFields: recovered.resetFields },
+        report: {
+          kind: "recovered",
+          resetFields: recovered.resetFields,
+          ...(recovered.droppedHistoryDays.length > 0
+            ? { droppedHistoryDays: recovered.droppedHistoryDays }
+            : {}),
+        },
       };
     }
     default:

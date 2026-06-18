@@ -51,6 +51,12 @@ export function HeroRing({ pct, firstPaintCountUp = false, children }: Props) {
     }
 
     // No-tween path: PRM, pct===0, or firstPaintCountUp===false — snap to final value.
+    // C-m7c-010 LOCKS the behavior that pct change mid-tween snaps to the new
+    // value (cancels the tween via cleanup). Originally flagged as P1 in M7 R1
+    // review but the reviewer missed that useFirstPaintAfterHydration is a
+    // one-shot ref-machine: firstPaintCountUp flips true→false ONCE per mount
+    // and pct only changes when state changes (not on useNow ticks). The
+    // tween-cancel-on-mid-flight-prop-change is intentional per AC.
     setDisplayPct(pct);
   }, [firstPaintCountUp, pct, prefersReducedMotion]);
 

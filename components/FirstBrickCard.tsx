@@ -26,12 +26,22 @@ export function FirstBrickCard({
   prefersReducedMotion = false,
 }: FirstBrickCardProps) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // R7-ROOT-M7-NIT-4: stabilize onDismiss via a ref. Pre-R7 the effect deps
+  // included onDismiss; BuildingClient passes an inline arrow (() => setFirstCardOpen(false))
+  // so every parent re-render produced a new function identity, re-firing the
+  // effect → clearing + rescheduling the timer at full 3000ms. If useNow ticks
+  // landed near the timer boundary, the card could stay up indefinitely.
+  const onDismissRef = useRef(onDismiss);
+  useEffect(() => {
+    onDismissRef.current = onDismiss;
+  });
 
   useEffect(() => {
     if (!visible) return;
-    // Schedule auto-dismiss after 3000 ms (AC #3)
+    // Schedule auto-dismiss after 3000 ms (AC #3). Calls the ref so the
+    // effect itself only runs on the visible edge, not on every parent render.
     timerRef.current = setTimeout(() => {
-      onDismiss();
+      onDismissRef.current();
     }, 3000);
     return () => {
       if (timerRef.current !== null) {
@@ -39,7 +49,7 @@ export function FirstBrickCard({
         timerRef.current = null;
       }
     };
-  }, [visible, onDismiss]);
+  }, [visible]);
 
   function handleClick() {
     // Synchronous dismiss on tap — cancel the auto-dismiss timer (AC #3)
