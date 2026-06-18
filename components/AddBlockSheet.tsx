@@ -131,14 +131,15 @@ export function AddBlockSheet({
       const container = sheetContentRef.current;
       if (!container) return;
 
+      // R7-ROOT-M2-10: dropped the dead .filter — the CSS selector already
+      // excludes self-aria-disabled elements, and the previous filter was a
+      // tautological `!closest(disabled) || getAttribute !== "true"`
+      // (always true). If a future need to exclude ancestor-disabled trees
+      // returns, use `&&` not `||`.
       const focusable = Array.from(
         container.querySelectorAll<HTMLElement>(
           'button:not([disabled]):not([aria-disabled="true"]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
         ),
-      ).filter(
-        (el) =>
-          !el.closest("[aria-disabled='true']") ||
-          el.getAttribute("aria-disabled") !== "true",
       );
 
       if (focusable.length === 0) return;

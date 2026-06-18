@@ -4,9 +4,15 @@ import { test, expect, type Page } from "@playwright/test";
 // Base URL: http://localhost:3000. Route under test: /.
 // Each test that needs a stable clock uses addInitScript to fix Date.now.
 
-// Helper: add a block via the + button
+// Helper: add a block via the + button.
+// R7-ROOT-M2-01: post-M4d the dock + opens AddChooserSheet (aria-label="Add"),
+// which routes to AddBlockSheet (aria-label="Add Block") only after the user
+// picks "Add Block". Pre-R7 this helper clicked + and expected the Title input
+// directly — fill() raced against the still-loading chooser, sometimes timing
+// out, sometimes silently filling the wrong field.
 async function addBlock(page: Page, title: string) {
   await page.getByRole("button", { name: "Add" }).click();
+  await page.getByRole("button", { name: "Add Block" }).click();
   await page.getByLabel(/Title/i).fill(title);
   await page.getByRole("button", { name: /Save/i }).click();
 }
@@ -21,10 +27,13 @@ test("E-m2-001: + opens sheet with rounded-down Start; Save adds block to timeli
   });
   await page.goto("/");
 
-  // Tap + button
+  // Tap + button → chooser opens; pick Add Block to land on the block form.
+  // R7-ROOT-M2-02: post-M4d the dialog's aria-label after dock + is "Add"
+  // (the chooser). Asserting "Add Block" requires walking through the chooser.
   await page.getByRole("button", { name: "Add" }).click();
+  await page.getByRole("button", { name: "Add Block" }).click();
 
-  // Dialog should open with correct aria-label
+  // Dialog should now be the AddBlockSheet with the right aria-label.
   const dialog = page.locator('[role="dialog"]');
   await expect(dialog).toBeVisible();
   await expect(dialog).toHaveAttribute("aria-label", "Add Block");
@@ -248,8 +257,14 @@ test("E-m2-007: End=24:00 shows 'before midnight' inline error", async ({
   );
 });
 
-// E-m2-008: Soft overlap warning — Save still allowed
-test("E-m2-008: overlapping block shows soft warning but Save is still enabled", async ({
+// E-m2-008: Overlap rejection — Save DISABLED, role="alert".
+// R7-ROOT-M2-03: M4e (ADR-042) reversed AC #26 from soft warning to hard
+// block. Pre-R7 this test asserted the OLD contract (role="status", Save
+// enabled) which silently failed once M4e shipped. The current contract
+// (verified in AddBlockSheet.tsx:388-409 and C-m4e-024) is the alert role +
+// disabled Save. m2/spec.md now carries a Supersessions block listing this
+// drift (per R7-ROOT-7).
+test("E-m2-008: overlapping block raises an alert and Save is disabled (M4e contract)", async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -258,38 +273,35 @@ test("E-m2-008: overlapping block shows soft warning but Save is still enabled",
   });
   await page.goto("/");
 
-  // Add first block: 09:00–10:00
-  await page.getByRole("button", { name: "Add" }).click();
-  await page.getByLabel(/Title/i).fill("Existing");
-  const startInput = page.getByLabel(/Start/i);
-  await startInput.fill("09:00");
-  const endInput = page.getByLabel(/End/i);
-  await endInput.fill("10:00");
-  await page.keyboard.press("Tab");
-  await page.getByRole("button", { name: /Save/i }).click();
-  await expect(page.locator('[role="dialog"]')).toHaveCount(0);
+  // Add first block: 09:00–10:00 via chooser → AddBlockSheet.
+  await addBlock(page, "Existing");
 
-  // Open sheet again: 09:30–10:30 (overlaps)
+  // Open chooser → AddBlockSheet again with overlapping range.
   await page.getByRole("button", { name: "Add" }).click();
+  await page.getByRole("button", { name: "Add Block" }).click();
   await page.getByLabel(/Title/i).fill("Second");
+  const startInput = page.getByLabel(/Start/i);
   await startInput.fill("09:30");
+  const endInput = page.getByLabel(/End/i);
   await endInput.fill("10:30");
   await page.keyboard.press("Tab");
 
-  // Soft warning visible (role="status")
-  const status = page.locator('[role="status"]');
-  await expect(status).toBeVisible();
-  await expect(status).toContainText("Existing");
+  // Hard alert (M4e contract): role="alert" naming the conflicting block.
+  const alert = page.locator('[role="alert"]');
+  await expect(alert).toBeVisible();
+  await expect(alert).toContainText("Existing");
 
-  // Save still enabled (soft warning)
+  // Save DISABLED.
   const saveBtn = page.getByRole("button", { name: /Save/i });
-  await expect(saveBtn).toHaveAttribute("aria-disabled", "false");
+  await expect(saveBtn).toHaveAttribute("aria-disabled", "true");
 
-  // Save works — second block added
-  await saveBtn.click();
+  // Cancel out — DO NOT attempt to save (would no-op).
+  await page.getByRole("button", { name: /Cancel/i }).click();
   await expect(page.locator('[role="dialog"]')).toHaveCount(0);
+
+  // Confirm only the original block remains on the timeline.
   await expect(page.locator('[data-component="timeline-block"]')).toHaveCount(
-    2,
+    1,
   );
 });
 

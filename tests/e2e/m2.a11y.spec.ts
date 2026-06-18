@@ -142,8 +142,9 @@ test("A-m2-003: dialog has role=dialog, aria-modal=true, dynamic aria-label", as
 }) => {
   await page.goto("/");
 
-  // Open sheet
+  // R7-ROOT-M2-02: walk through M4d chooser before asserting "Add Block" aria-label.
   await page.getByRole("button", { name: "Add" }).click();
+  await page.getByRole("button", { name: "Add Block" }).click();
   const dialog = page.locator('[role="dialog"]');
   await expect(dialog).toBeVisible();
 
@@ -172,9 +173,10 @@ test("A-m2-004: focus trap inside dialog; restored to + button on close", async 
 }) => {
   await page.goto("/");
 
-  // Open sheet
+  // R7-ROOT-M2-02: walk through M4d chooser to the block sheet.
   const addBtn = page.getByRole("button", { name: "Add" });
   await addBtn.click();
+  await page.getByRole("button", { name: "Add Block" }).click();
 
   const dialog = page.locator('[role="dialog"]');
   await expect(dialog).toBeVisible();
@@ -221,8 +223,14 @@ test("A-m2-005: tab order inside dialog: Title → Start → End → recurrence 
 }) => {
   await page.goto("/");
 
+  // R7-ROOT-M2-02 + M2-15: walk through M4d chooser AND fill Title before
+  // iterating Tab. Pre-R7 Save's `aria-disabled="true"` excluded it from the
+  // focus-trap selector, so saveIdx returned -1 and the toBeGreaterThanOrEqual(0)
+  // assertion would always fail once the chooser was traversed correctly.
   await page.getByRole("button", { name: "Add" }).click();
+  await page.getByRole("button", { name: "Add Block" }).click();
   await expect(page.locator('[role="dialog"]')).toBeVisible();
+  await page.getByLabel(/Title/i).fill("X"); // make Save enabled
 
   const sequence: string[] = [];
 
