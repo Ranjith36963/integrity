@@ -22,11 +22,13 @@ import {
   isValidCustomRange,
 } from "@/lib/blockValidation";
 import { findOverlaps, selectAllTimedItems } from "@/lib/overlap";
+import { currentDayBlocks } from "@/lib/currentDayBlocks";
 import { Sheet } from "@/components/ui/Sheet";
 import { RecurrenceChips } from "@/components/RecurrenceChips";
 import { CategoryPicker } from "@/components/CategoryPicker";
 import { NewCategoryForm } from "@/components/NewCategoryForm";
 import { haptics } from "@/lib/haptics";
+import { today } from "@/lib/dharma";
 
 interface Props {
   open: boolean;
@@ -42,7 +44,12 @@ interface Props {
 
 type View = "block" | "newCategory";
 
-const TODAY_ISO = new Date().toISOString().slice(0, 10);
+// R7-ROOT-M2-P0-1: the previous module-load constant
+// `new Date().toISOString().slice(0, 10)` produced UTC midnight — same bug
+// class as R1-P2-3 (Jan-1 negative-UTC). today() from lib/dharma.ts is the
+// local-TZ canonical (via R7 isoToLocalDate). Read lazily inside the
+// component on each render so a tab left open across midnight can't lock in
+// yesterday's ISO.
 
 export function AddBlockSheet({
   open,
@@ -58,10 +65,14 @@ export function AddBlockSheet({
   const [title, setTitle] = useState("");
   const [start, setStart] = useState(defaultStart);
   const [end, setEnd] = useState("");
-  const [recurrence, setRecurrence] = useState<Recurrence>({
+  // R7-ROOT-M2-P0-1 + M2-07: today() is local-TZ canonical (R7 isoToLocalDate);
+  // computed lazily inside the component so a tab open across midnight
+  // doesn't lock in yesterday's ISO. defaultPersisted() applies the same
+  // pattern.
+  const [recurrence, setRecurrence] = useState<Recurrence>(() => ({
     kind: "just-today",
-    date: TODAY_ISO,
-  });
+    date: today(),
+  }));
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
     null,
   );
@@ -74,23 +85,41 @@ export function AddBlockSheet({
   // AddBlockSheet is always mounted but initially closed (BuildingClient single-instance pattern).
   // When opened via the M4d chooser, the defaultStart prop changes at the same tick as open→true.
   // Without this sync, useState(defaultStart) keeps the stale "00:00" from initial mount.
+  //
+  // R7-ROOT-M2-06: also reset title/end/recurrence/selectedCategoryId/view on
+  // each open. Pre-R7 these states leaked across sheet sessions (Cancel left
+  // the form dirty so the next "+" reopened with stale values). Spec AC #12
+  // requires "Cancel discards sheet state and closes" — this is now enforced
+  // structurally on the open→true edge, not relying on Cancel to remember to
+  // clear.
   useEffect(() => {
     if (!open) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional prop-sync on open per M4d chooser routing (SG-m4d-03); same pattern as AddBrickSheet defaultCategoryId sync (SG-m3-04)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- M2-06 reset on open: defaultStart + clear stale form state per AC #12. The set fires before the user can interact with the freshly-shown sheet.
     setStart(defaultStart);
+    setTitle("");
+    setEnd("");
+    setRecurrence({ kind: "just-today", date: today() });
+    setSelectedCategoryId(null);
+    setView("block");
   }, [open, defaultStart]);
 
-  // Focus trap and autofocus
+  // Focus trap and autofocus.
+  // R7-ROOT-M2-08: returnFocusRef is captured ONLY on the open→true edge
+  // (deps reduced from [open, view] to [open]). Pre-R7 every view-toggle
+  // (e.g., clicking "+ New") overwrote returnFocusRef with the toggled
+  // button itself, so Cancel restored focus to a now-unmounted node instead
+  // of the original "+" trigger.
   useEffect(() => {
     if (!open) return;
-    // Store return target
     returnFocusRef.current = document.activeElement as HTMLElement;
+  }, [open]);
 
-    // Autofocus title input after mount
+  // Autofocus: refocus on view change so block↔newCategory view shifts the cursor.
+  useEffect(() => {
+    if (!open) return;
     const timer = setTimeout(() => {
       titleRef.current?.focus();
     }, 10);
-
     return () => clearTimeout(timer);
   }, [open, view]);
 
@@ -157,6 +186,11 @@ export function AddBlockSheet({
   // Only check when there is a valid end time AND title is filled (avoids noisy alerts).
   // M8: programStart is required on AppState (ADR-044); placeholder used here
   // because AddBlockSheet only needs blocks/categories/looseBricks for overlap detection.
+  //
+  // R7-ROOT-M2-14: filter `blocks` through currentDayBlocks(state) so blocks
+  // the user deleted-today don't show as overlap candidates. Pre-R7 a recurring
+  // block deleted for today was still "in the way" — user couldn't create a new
+  // block at that slot.
   const effectiveState = state ?? {
     blocks,
     categories,
@@ -166,9 +200,13 @@ export function AddBlockSheet({
     history: {}, // M9b — placeholder for overlap detection only
     deletions: {}, // M5 — placeholder for overlap detection only
   };
+  const stateForOverlap = {
+    ...effectiveState,
+    blocks: currentDayBlocks(effectiveState),
+  };
   const overlaps =
     titleValid && candidate
-      ? findOverlaps(candidate, selectAllTimedItems(effectiveState))
+      ? findOverlaps(candidate, selectAllTimedItems(stateForOverlap))
       : [];
   const hasOverlap = overlaps.length > 0;
 
@@ -412,7 +450,7 @@ export function AddBlockSheet({
             <RecurrenceChips
               value={recurrence}
               onChange={setRecurrence}
-              today={TODAY_ISO}
+              today={today()}
             />
 
             {/* Category picker */}

@@ -21,10 +21,28 @@ export function AddChooserSheet({ open, onPick, onCancel }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
-  // Store the element that triggered open so we can restore focus on close
+  // Store the element that triggered open so we can restore focus on close.
+  // R7-ROOT-M2-09: also autofocus the first focusable inside the chooser on
+  // open IF focus is currently outside the dialog. The "outside" check lets
+  // tests (and any future caller) pre-position focus on a specific button
+  // without being clobbered by the autofocus pass. setTimeout(10) ensures
+  // the focus call runs AFTER the Sheet portal mounts.
   useEffect(() => {
     if (!open) return;
     returnFocusRef.current = document.activeElement as HTMLElement;
+    const timer = setTimeout(() => {
+      const container = containerRef.current;
+      if (!container) return;
+      const focusInside =
+        document.activeElement instanceof Node &&
+        container.contains(document.activeElement);
+      if (focusInside) return;
+      const firstButton = container.querySelector<HTMLElement>(
+        "button:not([disabled]):not([aria-disabled='true'])",
+      );
+      firstButton?.focus();
+    }, 10);
+    return () => clearTimeout(timer);
   }, [open]);
 
   // Focus trap: Tab/Shift+Tab cycles within the chooser dialog

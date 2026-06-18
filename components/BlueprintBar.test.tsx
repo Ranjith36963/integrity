@@ -54,6 +54,68 @@ describe("U-m2-011: aggregateCategoryMinutes — category aggregation math", () 
   });
 });
 
+// R7-ROOT-M2-13 — opacity-denominator regression guard.
+// Pre-R7: aggregateCategoryMinutes accumulated blockPct into pctSumMap for ALL
+// categorized blocks (including no-end blocks at blockPct=0), pulling avgBlockPct
+// down to ~half for any category whose no-end block weight equaled its with-end
+// weight. The width math (minutes) correctly excluded no-end blocks; only opacity
+// was wrong. Fix: move pctSum/pctCount accumulators inside the `b.end === undefined`
+// guard so width and opacity share the same denominator set.
+describe("R7-ROOT-M2-13: avgBlockPct excludes no-end blocks from denominator", () => {
+  // Block factory variant that adds completed-tick bricks so blockPct > 0.
+  function mkBlockWithBricks(
+    id: string,
+    start: string,
+    end: string | undefined,
+    categoryId: string | null,
+    doneCount: number,
+    totalCount: number,
+  ): Block {
+    const bricks: Block["bricks"] = [];
+    for (let i = 0; i < totalCount; i++) {
+      bricks.push({
+        id: `${id}-br${i}`,
+        name: `br${i}`,
+        categoryId: null,
+        parentBlockId: id,
+        hasDuration: false,
+        kind: "tick",
+        done: i < doneCount,
+      });
+    }
+    return {
+      id,
+      name: id,
+      start,
+      end,
+      recurrence: { kind: "just-today", date: "2026-05-06" },
+      categoryId,
+      bricks,
+    };
+  }
+
+  it("ended block at 100% + no-end sibling → avgBlockPct = 100, not 50 (denominator excludes no-end)", () => {
+    const blocks: Block[] = [
+      mkBlockWithBricks("b1", "09:00", "10:00", "c1", 2, 2), // 100% complete
+      mkBlockWithBricks("b2", "11:00", undefined, "c1", 0, 2), // no-end → excluded
+    ];
+    const result = aggregateCategoryMinutes(blocks);
+    const c1 = result.find((e) => e.categoryId === "c1");
+    expect(c1?.avgBlockPct).toBe(100); // pre-R7 was 50 (100/2 with bad denominator)
+  });
+
+  it("two ended blocks at 100 + 50 + no-end sibling → avg = 75, not 50", () => {
+    const blocks: Block[] = [
+      mkBlockWithBricks("b1", "09:00", "10:00", "c1", 2, 2), // 100%
+      mkBlockWithBricks("b2", "11:00", "12:00", "c1", 1, 2), // 50%
+      mkBlockWithBricks("b3", "13:00", undefined, "c1", 0, 0), // no-end → excluded
+    ];
+    const result = aggregateCategoryMinutes(blocks);
+    const c1 = result.find((e) => e.categoryId === "c1");
+    expect(c1?.avgBlockPct).toBe(75); // pre-R7 was 50 (150/3 with bad denominator)
+  });
+});
+
 // C-m2-017: BlueprintBar non-empty path renders colored segments — re-authored M2
 describe("C-m2-017: BlueprintBar non-empty path renders colored segments (re-authored M2)", () => {
   const categories: Category[] = [
