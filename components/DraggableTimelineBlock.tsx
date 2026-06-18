@@ -97,11 +97,14 @@ export function DraggableTimelineBlock({
       // Accepted: parent re-rendered with new block.start → successful-commit haptic
       haptics.light();
     } else {
-      // Rejected: block.start unchanged (reducer returned state unchanged) → rejection path
+      // Rejected: block.start unchanged (reducer returned state unchanged) → rejection path.
+      // R7-ROOT-M5/M6-P0: only the haptic fires here. BuildingClient owns the
+      // specific aria-live message ("Cannot move Morning — overlaps Workout"
+      // — naming the conflicting block). Pre-R7 this branch also fired a
+      // GENERIC onAnnounce ("…overlaps another block") which overwrote the
+      // specific one in the same aria-live region — SR users always heard
+      // the less informative version.
       haptics.medium();
-      onAnnounceRef.current?.(
-        `Cannot move ${blockNameRef.current} — overlaps another block`,
-      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only react to dropSeq changes to avoid spurious re-runs on block.start transitions
   }, [dropSeq]);

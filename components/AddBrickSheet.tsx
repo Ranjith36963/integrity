@@ -40,11 +40,18 @@ function currentHourFloor(): string {
   return `${String(d.getHours()).padStart(2, "0")}:00`;
 }
 
-// Add 30 minutes to an HH:MM string (wraps within same day)
+// Add 30 minutes to an HH:MM string.
+// R7-ROOT-M4-P1-2: pre-R7 this WRAPPED around midnight (modulo 24h), so a
+// parent block starting at 23:45 auto-filled End=00:15 the moment the user
+// toggled Duration ON. endAfterStart returned false, the straddle heuristic
+// fired a confusing "must be same day" alert, and Save was disabled before
+// the user did anything. Now: clamp to 23:59 if the +30 would cross midnight.
+// The user can still type a different end manually if they really want one.
 function addThirtyMin(hhmm: string): string {
   const [hh, mm] = hhmm.split(":").map(Number);
   const total = hh * 60 + (mm ?? 0) + 30;
-  const newHH = Math.floor(total / 60) % 24;
+  if (total >= 24 * 60) return "23:59";
+  const newHH = Math.floor(total / 60);
   const newMM = total % 60;
   return `${String(newHH).padStart(2, "0")}:${String(newMM).padStart(2, "0")}`;
 }
@@ -94,6 +101,26 @@ export function AddBrickSheet({
   const titleRef = useRef<HTMLInputElement>(null);
   const sheetContentRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
+
+  // R7-ROOT-M4-P1-1 (mirror of M2-06): reset all draft state on each open.
+  // AddBrickSheet is always mounted (BuildingClient single-instance pattern);
+  // closing without saving left title/kind/targetStr/unit/hasDuration/start/end
+  // populated. The next "+ Add brick" reopened with stale values — Duration
+  // toggle stuck ON, prior title still typed, etc. Mirrors the AddBlockSheet
+  // hardening from R7-ROOT-M2-06.
+  useEffect(() => {
+    if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- R7-ROOT-M4-P1-1: reset on open per AC "Cancel discards sheet state".
+    setTitle("");
+    setKind("tick");
+    setTargetStr("");
+    setUnit("");
+    setHasDuration(false);
+    setStart("");
+    setEnd("");
+    setRecurrence({ kind: "just-today", date: todayISO() });
+    setView("brick");
+  }, [open]);
 
   // Sync pre-fill when defaultCategoryId prop changes (SG-m3-04).
   // R7-ROOT-M3-P2-2: dropped `open` from the dep array. Pre-R7 the effect

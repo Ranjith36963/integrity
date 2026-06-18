@@ -125,8 +125,17 @@ export const archivedDaySchema = v.object({
 export const historySchema = v.record(isoDateSchema, archivedDaySchema);
 
 // Record<string, true> keyed by `${currentDate}:${blockId}` form.
-// Key format is internal — we only validate value is literal true.
-export const deletionsSchema = v.record(v.string(), v.literal(true));
+// R7-ROOT-M5/M6-P2: key shape now validated — was previously v.string() which
+// accepted any garbage (":", "::", "2026-05-18:" with empty blockId, etc.).
+// Pattern is YYYY-MM-DD followed by ":" followed by non-empty blockId.
+const deletionsKeySchema = v.pipe(
+  v.string(),
+  v.regex(
+    /^\d{4}-\d{2}-\d{2}:.+$/,
+    "Expected 'YYYY-MM-DD:<blockId>' deletions key",
+  ),
+);
+export const deletionsSchema = v.record(deletionsKeySchema, v.literal(true));
 
 // PersistedState v3 — top-level shape (lib/persist.ts:PersistedState).
 // firstBrickShown is optional (additive M7e field, ADR-044).

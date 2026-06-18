@@ -345,8 +345,11 @@ describe("C-m6-008: DraggableTimelineBlock overlap rejection path", () => {
     // haptics.light fired only ONCE (the lift), NOT a second time on rejection
     // A mutant firing light instead of medium on rejection fails this
     expect(haptics.light).toHaveBeenCalledTimes(1);
-    // announce fires with rejection message
-    expect(onAnnounce).toHaveBeenCalledTimes(1);
+    // R7-ROOT-M5/M6-P0: announce is owned by BuildingClient (sets a specific
+    // "Cannot move <name> — overlaps <other>" message). DraggableTimelineBlock
+    // no longer fires its generic "overlaps another block" message — that
+    // overwrote BuildingClient's better one in the same aria-live region.
+    expect(onAnnounce).toHaveBeenCalledTimes(0);
   });
 });
 

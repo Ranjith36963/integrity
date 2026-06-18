@@ -112,7 +112,11 @@ export function UnitsEntrySheet({ brick, open, onClose, onSave }: Props) {
               margin: "4px 0 0",
             }}
           >
-            {"Today's " + brick.unit}
+            {/* R7-ROOT-M4-P2-1: brick.unit can be empty string (UI labels
+                it "Unit (optional)" in AddBrickSheet). Fall back to "count"
+                so SR readout isn't "Today's " with a dangling trailing space
+                and the visible text reads naturally. */}
+            {brick.unit ? `Today's ${brick.unit}` : "Today's count"}
           </p>
         </div>
 
@@ -125,7 +129,9 @@ export function UnitsEntrySheet({ brick, open, onClose, onSave }: Props) {
             inputMode="numeric"
             min="0"
             step="1"
-            aria-label={`Enter ${brick.unit} done today`}
+            aria-label={
+              brick.unit ? `Enter ${brick.unit} done today` : "Enter count done today"
+            }
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             style={{
