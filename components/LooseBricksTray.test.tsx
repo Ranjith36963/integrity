@@ -28,6 +28,7 @@ describe("C-m3-010: LooseBricksTray collapsed default", () => {
         looseBricks={[looseBrickA]}
         categories={[cat1]}
         onAddBrick={vi.fn()}
+        blocksExist={true}
       />,
     );
     const region = screen.getByRole("region", { name: /loose bricks/i });
@@ -40,6 +41,7 @@ describe("C-m3-010: LooseBricksTray collapsed default", () => {
         looseBricks={[looseBrickA]}
         categories={[cat1]}
         onAddBrick={vi.fn()}
+        blocksExist={true}
       />,
     );
     // BrickChip renders as button with aria-label containing 'brick A'
@@ -54,6 +56,7 @@ describe("C-m3-010: LooseBricksTray collapsed default", () => {
         looseBricks={[looseBrickA]}
         categories={[cat1]}
         onAddBrick={vi.fn()}
+        blocksExist={true}
       />,
     );
     const region = screen.getByRole("region", { name: /loose bricks/i });
@@ -82,6 +85,7 @@ describe("C-m3-011: LooseBricksTray chevron toggles expanded", () => {
         looseBricks={[looseBrickA]}
         categories={[cat1]}
         onAddBrick={vi.fn()}
+        blocksExist={true}
       />,
     );
     const region = screen.getByRole("region", { name: /loose bricks/i });
@@ -100,6 +104,7 @@ describe("C-m3-011: LooseBricksTray chevron toggles expanded", () => {
         looseBricks={[looseBrickA]}
         categories={[cat1]}
         onAddBrick={vi.fn()}
+        blocksExist={true}
       />,
     );
     const chevron = screen.getByRole("button", {
@@ -119,6 +124,7 @@ describe("C-m3-011: LooseBricksTray chevron toggles expanded", () => {
         looseBricks={[looseBrickA]}
         categories={[cat1]}
         onAddBrick={vi.fn()}
+        blocksExist={true}
       />,
     );
     const chevron = screen.getByRole("button", {
@@ -138,6 +144,7 @@ describe("C-m3-011: LooseBricksTray chevron toggles expanded", () => {
         looseBricks={[looseBrickA]}
         categories={[cat1]}
         onAddBrick={vi.fn()}
+        blocksExist={true}
       />,
     );
     const region = screen.getByRole("region", { name: /loose bricks/i });
@@ -162,6 +169,7 @@ describe("C-m3-012: LooseBricksTray + Brick pill calls onAddBrick", () => {
         looseBricks={[looseBrickA]}
         categories={[cat1]}
         onAddBrick={onAddBrick}
+        blocksExist={true}
       />,
     );
     const addBrick = screen.getByRole("button", { name: /add loose brick/i });
@@ -170,8 +178,15 @@ describe("C-m3-012: LooseBricksTray + Brick pill calls onAddBrick", () => {
   });
 
   it("with looseBricks=[] (tray visible), + Brick pill is still present", () => {
+    // R7-ROOT-M3-P1-2: blocksExist is now required. Pass true to force the
+    // tray-visible branch (same intent as the original test).
     render(
-      <LooseBricksTray looseBricks={[]} categories={[]} onAddBrick={vi.fn()} />,
+      <LooseBricksTray
+        looseBricks={[]}
+        categories={[]}
+        onAddBrick={vi.fn()}
+        blocksExist={true}
+      />,
     );
     const addBrick = screen.getByRole("button", { name: /add loose brick/i });
     expect(addBrick).toBeInTheDocument();
@@ -204,6 +219,7 @@ describe("C-m4b-021: LooseBricksTray threads onUnitsOpenSheet down to BrickChip 
         categories={[cat1]}
         onAddBrick={vi.fn()}
         onUnitsOpenSheet={onUnitsOpenSheet}
+        blocksExist={true}
       />,
     );
     // Expand the tray (collapsed mode shows sm chips; expand for default md path)
@@ -244,6 +260,7 @@ describe("C-m4e-022: LooseBricksTray renders pre-filtered list (no timed bricks)
         looseBricks={[brickA, brickB]}
         categories={[]}
         onAddBrick={vi.fn()}
+        blocksExist={true}
       />,
     );
     // Both chips are accessible buttons
@@ -322,6 +339,7 @@ describe("M4f regression: onTickToggle still works for tick bricks in tray", () 
         categories={[]}
         onAddBrick={vi.fn()}
         onTickToggle={onTickToggle}
+        blocksExist={true}
       />,
     );
     const expand = screen.getByRole("button", {
@@ -370,6 +388,7 @@ describe("C-m7a-008: <LooseBricksTray stagger> toggle — false byte-identical; 
         categories={[]}
         onAddBrick={vi.fn()}
         stagger={false}
+        blocksExist={true}
       />,
     );
     expect(
@@ -383,6 +402,7 @@ describe("C-m7a-008: <LooseBricksTray stagger> toggle — false byte-identical; 
         looseBricks={m7aBricks}
         categories={[]}
         onAddBrick={vi.fn()}
+        blocksExist={true}
       />,
     );
     expect(
@@ -397,6 +417,7 @@ describe("C-m7a-008: <LooseBricksTray stagger> toggle — false byte-identical; 
         categories={[]}
         onAddBrick={vi.fn()}
         stagger={true}
+        blocksExist={true}
       />,
     );
     expect(
@@ -409,6 +430,7 @@ describe("C-m7a-008: <LooseBricksTray stagger> toggle — false byte-identical; 
       <LooseBricksTray
         looseBricks={m7aBricks}
         categories={[]}
+        blocksExist={true}
         onAddBrick={vi.fn()}
         stagger={true}
       />,
@@ -434,6 +456,7 @@ describe("C-m7a-008: <LooseBricksTray stagger> toggle — false byte-identical; 
         categories={[]}
         onAddBrick={vi.fn()}
         stagger={true}
+        blocksExist={true}
       />,
     );
     const section = container.querySelector(
@@ -451,6 +474,7 @@ describe("C-m7a-008: <LooseBricksTray stagger> toggle — false byte-identical; 
         categories={[]}
         onAddBrick={vi.fn()}
         stagger={false}
+        blocksExist={true}
       />,
     );
     const addPill = container.querySelector(

@@ -96,10 +96,16 @@ export function AddBrickSheet({
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
   // Sync pre-fill when defaultCategoryId prop changes (SG-m3-04).
+  // R7-ROOT-M3-P2-2: dropped `open` from the dep array. Pre-R7 the effect
+  // fired on every open→true edge AND re-synced selectedCategoryId to the
+  // default — silently overwriting the user's pick if they re-opened the
+  // sheet after changing the category. The sheet currently closes on
+  // save/cancel, so the leak was latent; making the dep set tighter
+  // prevents the foot-gun.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional prop-sync per SG-m3-04
     setSelectedCategoryId(defaultCategoryId);
-  }, [defaultCategoryId, open]);
+  }, [defaultCategoryId]);
 
   // Focus trap and autofocus
   useEffect(() => {
@@ -111,10 +117,23 @@ export function AddBrickSheet({
     return () => clearTimeout(timer);
   }, [open, view]);
 
-  // Focus trap: Tab/Shift+Tab cycles within the sheet
+  const handleClose = useCallback(() => {
+    returnFocusRef.current?.focus();
+    onCancel();
+  }, [onCancel]);
+
+  // Focus trap: Tab/Shift+Tab cycles within the sheet.
+  // R7-ROOT-M3-P1-3: also intercept Escape → close. AddBlockSheet relies on
+  // Sheet primitive's own ESC handler, but AddBrickSheet's sheet content
+  // captures keydown at this level — Escape would otherwise reach the page.
   useEffect(() => {
     if (!open) return;
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        handleClose();
+        return;
+      }
       if (e.key !== "Tab") return;
       const container = sheetContentRef.current;
       if (!container) return;
@@ -140,12 +159,7 @@ export function AddBrickSheet({
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, view]);
-
-  const handleClose = useCallback(() => {
-    returnFocusRef.current?.focus();
-    onCancel();
-  }, [onCancel]);
+  }, [open, view, handleClose]);
 
   // M4e: Duration toggle handler
   function handleDurationToggle() {

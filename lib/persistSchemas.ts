@@ -91,8 +91,12 @@ export const brickSchema = v.variant("kind", [
   v.object({
     ...brickBaseFields,
     kind: v.literal("units"),
-    // target must be a finite, non-negative number (NaN/Infinity rejected).
-    target: v.pipe(v.number(), v.finite(), v.minValue(0)),
+    // R7-ROOT-M3-P2-4: target must be a finite, POSITIVE number (NaN/Infinity
+    // rejected; minValue 1 matches the UI's isValidBrickUnitsTarget). Pre-R7
+    // a persisted target=0 round-tripped cleanly but brickPct() then
+    // short-circuited to silent always-0 — visible bug if the user ever
+    // touched corrupted state.
+    target: v.pipe(v.number(), v.finite(), v.minValue(1)),
     unit: v.string(),
     done: v.pipe(v.number(), v.finite(), v.minValue(0)),
   }),
