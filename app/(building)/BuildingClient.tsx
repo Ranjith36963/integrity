@@ -20,9 +20,17 @@
 //      (ADR-023 pass-1 window). When true renders real subtree + stagger on first paint.
 //      useFirstPaintAfterHydration drives stagger=true exactly once per mount (AC #2).
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import type { Dispatch } from "react";
-import { today, dateLabel, dayPct, dayNumber } from "@/lib/dharma";
+import { toast } from "@/components/Toaster";
+import { FirstBrickCard } from "@/components/FirstBrickCard";
+import {
+  today,
+  dateLabel,
+  dayPct,
+  dayNumber,
+  isoToLocalDate,
+} from "@/lib/dharma";
 import { daysInYear } from "@/lib/dayOfYear";
 import { useFirstPaintAfterHydration } from "@/lib/firstPaint";
 import { useNow } from "@/lib/useNow";
@@ -33,9 +41,8 @@ import {
   findOverlaps,
 } from "@/lib/overlap";
 import { currentDayBlocks } from "@/lib/currentDayBlocks";
-import { useCrossUpEffect } from "@/lib/celebrations";
-import { haptics } from "@/lib/haptics";
-import { playChime } from "@/lib/audio";
+import { useDayCelebrationOnce, celebrate } from "@/lib/celebrations";
+import { useReducedMotion } from "motion/react";
 import { EditModeProvider } from "@/components/EditModeProvider";
 import { TopBar } from "@/components/TopBar";
 import { Hero } from "@/components/Hero";
@@ -50,6 +57,7 @@ import { UnitsEntrySheet } from "@/components/UnitsEntrySheet";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import type { DeleteTarget } from "@/components/DeleteConfirmModal";
 import { Fireworks } from "@/components/Fireworks";
+import { DayCompleteCard } from "@/components/DayCompleteCard";
 import { Skeleton } from "@/components/Skeleton";
 import type { AppState, Action, Block, Brick, Category } from "@/lib/types";
 
@@ -205,6 +213,31 @@ export function BuildingClient({
   // M6: aria-live announcement for reorder events (polite; screen-reader-discoverable).
   const [announcement, setAnnouncement] = useState("");
 
+  // M7e: FirstBrickCard — show on 0→1 brick transition when firstBrickShown was NOT true
+  //      at the prior render (ADR-039 first-brick narrative payoff).
+  // Tracks BOTH previous brickCount AND previous firstBrickShown to detect the exact crossing.
+  // The reducer flips firstBrickShown to true in the same dispatch as ADD_BRICK, so we must
+  // use the PREVIOUS value of firstBrickShown (captured before the dispatch) as the gate.
+  const brickCount =
+    state.blocks.reduce((sum, b) => sum + b.bricks.length, 0) +
+    state.looseBricks.length;
+  const prevBrickCountRef = useRef<number>(brickCount);
+  const prevFirstBrickShownRef = useRef<boolean | undefined>(
+    state.firstBrickShown,
+  );
+  const [firstCardOpen, setFirstCardOpen] = useState(false);
+
+  useEffect(() => {
+    const prevCount = prevBrickCountRef.current;
+    const prevFlag = prevFirstBrickShownRef.current;
+    prevBrickCountRef.current = brickCount;
+    prevFirstBrickShownRef.current = state.firstBrickShown;
+    // Gate: previous brickCount was 0 AND now is ≥1 AND flag was NOT already true before dispatch.
+    if (prevCount === 0 && brickCount >= 1 && prevFlag !== true) {
+      setFirstCardOpen(true);
+    }
+  }, [brickCount, state.firstBrickShown]);
+
   // Live clock (ADR-023: server-clock paint on SSR, reconciles within 60s)
   const now = useNow();
   const todayIso = today();
@@ -213,22 +246,55 @@ export function BuildingClient({
   // programStart comes from persisted AppState (set to today on first run, preserved thereafter).
   // dayNumber returns number | undefined; undefined only if programStart is empty (never in practice).
   // totalDays keeps daysInYear — the program is a one-year arc.
+  //
+  // R3-P2-3: parse todayIso via the shared `isoToLocalDate` helper (lib/dharma.ts)
+  // so this call site uses the SAME parse strategy as dayNumber + dateLabel.
+  // The helper appends "T00:00:00" to force local-midnight parsing, avoiding
+  // the R1-P2-3 Jan-1 negative-UTC-TZ bug (`new Date("2025-01-01")` parses as
+  // UTC midnight = 2024-12-31 16:00 PT, getFullYear() returns 2024 → wrong
+  // totalDays). Closes R3-P1-1: a mutation of the production parse will now
+  // also break dayNumber + dateLabel tests, not just totalDays.
   const dayNumberValue = dayNumber(state.programStart, todayIso);
-  const totalDays = daysInYear(new Date());
+  const totalDays = daysInYear(isoToLocalDate(todayIso));
   const dateLabelValue = dateLabel(todayIso);
 
   // M3: dayPct now takes full AppState (blocks + looseBricks)
   const heroPct = dayPct(state);
 
-  // M4a: day-100% cross-up — fires notification haptic + chime + fireworks once per crossing
-  const fireDayComplete = useCallback(() => {
-    haptics.notification();
-    playChime();
-    setFireworksActive(true);
-    window.setTimeout(() => setFireworksActive(false), 1700);
-  }, []);
+  // M7d: replace useCrossUpEffect+playChime with useDayCelebrationOnce+celebrate.
+  // shouldCelebrate is true for exactly one render on the FIRST 0→100 crossing per mount.
+  // celebrate("day", { withAudio: false }) routes haptics via the shim (audio deferred to M7f).
+  // PRM-conditional timer: 2000ms under PRM (DayCompleteCard), 1700ms under motion ON (Fireworks).
+  // timerIdRef holds the clearTimeout handle so unmount cleanup can cancel it safely.
+  const prefersReducedMotion = useReducedMotion();
+  const shouldCelebrate = useDayCelebrationOnce(heroPct);
+  const dayCelebTimerRef = useRef<number | null>(null);
 
-  useCrossUpEffect(heroPct, 100, fireDayComplete);
+  useEffect(() => {
+    if (!shouldCelebrate) return;
+    celebrate("day", { withAudio: false });
+    /* eslint-disable-next-line react-hooks/set-state-in-effect -- M7d plan.md: setFireworksActive(true) is gated by one-shot shouldCelebrate from useDayCelebrationOnce; no cascade. Same precedent as Fireworks.tsx (M4a). */
+    setFireworksActive(true);
+    const delay = prefersReducedMotion ? 2000 : 1700;
+    // Store ID in ref so unmount cleanup can cancel safely without returning cleanup here.
+    // Returning a cleanup function from this effect would cancel the timer when
+    // shouldCelebrate flips false on the next render (triggered by setFireworksActive),
+    // defeating the 1700/2000ms celebration window (plan.md M7d PRM-conditional timer).
+    dayCelebTimerRef.current = window.setTimeout(
+      () => setFireworksActive(false),
+      delay,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- shouldCelebrate is the only trigger dep; prefersReducedMotion is intentionally excluded to prevent React cleanup from cancelling the in-flight timer on the next render where shouldCelebrate flips false (plan.md M7d PRM-conditional timer invariant).
+  }, [shouldCelebrate]);
+
+  // Unmount cleanup: cancel the in-flight timer if the component unmounts early.
+  useEffect(() => {
+    return () => {
+      if (dayCelebTimerRef.current !== null) {
+        window.clearTimeout(dayCelebTimerRef.current);
+      }
+    };
+  }, []);
 
   // M4a: dispatch LOG_TICK_BRICK for tick chip taps; threaded to Timeline + LooseBricksTray
   const handleTickToggle = useCallback(
@@ -276,6 +342,7 @@ export function BuildingClient({
   const handleConfirmJustToday = useCallback(() => {
     if (pendingDelete?.blockId) {
       dispatch({ type: "DELETE_BLOCK_TODAY", blockId: pendingDelete.blockId });
+      toast("Block deleted", "info"); // M7e: AC #10 block-delete toast
     }
     setPendingDelete(null);
   }, [dispatch, pendingDelete]);
@@ -284,6 +351,7 @@ export function BuildingClient({
   const handleConfirmAll = useCallback(() => {
     if (pendingDelete?.blockId) {
       dispatch({ type: "DELETE_BLOCK_ALL", blockId: pendingDelete.blockId });
+      toast("Block deleted", "info"); // M7e: AC #10 block-delete toast
     }
     setPendingDelete(null);
   }, [dispatch, pendingDelete]);
@@ -292,8 +360,10 @@ export function BuildingClient({
   const handleConfirmDelete = useCallback(() => {
     if (pendingDelete?.blockId) {
       dispatch({ type: "DELETE_BLOCK_ALL", blockId: pendingDelete.blockId });
+      toast("Block deleted", "info"); // M7e: AC #10 block-delete toast
     } else if (pendingDelete?.brickId) {
       dispatch({ type: "DELETE_BRICK", brickId: pendingDelete.brickId });
+      toast("Brick deleted", "info"); // M7e: AC #10 brick-delete toast
     }
     setPendingDelete(null);
   }, [dispatch, pendingDelete]);
@@ -396,11 +466,13 @@ export function BuildingClient({
 
   function handleSave(block: Block) {
     dispatch({ type: "ADD_BLOCK", block });
+    toast("Block created", "success"); // M7e: AC #10 block-add toast
     closeSheet();
   }
 
   function handleSaveBrick(brick: Brick) {
     dispatch({ type: "ADD_BRICK", brick });
+    toast("Brick added", "success"); // M7e: AC #10 brick-add toast
     closeBrickSheet();
   }
 
@@ -481,13 +553,14 @@ export function BuildingClient({
         >
           {announcement}
         </span>
-        <TopBar />
+        <TopBar state={state} />
         <Hero
           dateLabel={dateLabelValue}
           dayNumber={dayNumberValue}
           totalDays={totalDays}
           pct={heroPct}
           firstPaintCountUp={stagger}
+          hydrated={hydrated} /* R7-ROOT-5: hide SSR clock until client locks in */
         />
         {/* M7a: skeleton / real subtree branch (ADR-023 two-pass hydration).
              !hydrated → skeleton placeholders; hydrated → real surfaces + stagger.
@@ -577,8 +650,23 @@ export function BuildingClient({
           onClose={handleUnitsClose}
           onSave={handleUnitsSave}
         />
-        {/* M4a: Fireworks overlay — day-100% celebration */}
+        {/* M7e: FirstBrickCard — slides up on first-ever brick (ADR-039 narrative payoff).
+             Visible when firstCardOpen=true; auto-dismisses after 3000 ms or on tap.
+             z-index 40 (above dock z-20, below sheet z-50). */}
+        <FirstBrickCard
+          visible={firstCardOpen}
+          onDismiss={() => setFirstCardOpen(false)}
+          prefersReducedMotion={Boolean(prefersReducedMotion)}
+        />
+        {/* M4a: Fireworks overlay — day-100% celebration (motion ON path) */}
         <Fireworks active={fireworksActive} />
+        {/* M7d: DayCompleteCard — PRM-only "Day complete." text card.
+            active predicate: fireworksActive && prefersReducedMotion.
+            Under motion ON: prefersReducedMotion===false → card receives active={false} → renders null.
+            Under PRM: Fireworks returns null (M4a behavior preserved); card mounts for 2000ms. */}
+        <DayCompleteCard
+          active={Boolean(fireworksActive && prefersReducedMotion)}
+        />
       </div>
       {/* M5: DeleteConfirmModal — pendingDelete drives open/target; independent of editMode */}
       <DeleteConfirmModal

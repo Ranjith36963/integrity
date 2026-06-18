@@ -1,4 +1,5 @@
 {
   "*.{ts,tsx}": ["eslint --fix", "prettier --write"],
-  "*.{js,jsx,mjs,cjs,json,md,css}": ["prettier --write"]
+  "*.{js,jsx,mjs,cjs,json,md,css}": ["prettier --write"],
+  "lib/**/*.ts": ["node scripts/check-tz-coverage.mjs"]
 }

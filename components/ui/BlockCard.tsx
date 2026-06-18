@@ -39,6 +39,15 @@ export function BlockCard({
 }: BlockCardProps) {
   const catColor = CAT_COLOR[category];
 
+  // NEW-4 fix: stable DOM identity — always render a <div> root. When
+  // interactive, an absolute-positioned <button> overlay (sibling, not
+  // wrapper) captures clicks + keyboard activation. Toggling editMode no
+  // longer unmounts/remounts the root, preserving focus, CSS transitions,
+  // and screen-reader context. The overlay also avoids button-in-button
+  // (the inner delete button stays valid HTML in edit mode) and avoids
+  // overriding the body's accessible name (children remain announceable).
+  const isInteractive = !editMode && typeof onClick === "function";
+
   return (
     <div
       data-testid="block-card"
@@ -49,8 +58,18 @@ export function BlockCard({
         status === "past" && "opacity-55",
         className,
       )}
-      onClick={!editMode ? onClick : undefined}
     >
+      {/* Interactive overlay: covers the card except where higher z-index
+          children sit (e.g., the delete button in edit mode is z-20). */}
+      {isInteractive && (
+        <button
+          type="button"
+          aria-label={`Open block: ${name}, ${start} to ${end}, ${Math.round(pct)}%`}
+          onClick={onClick}
+          className="absolute inset-0 z-10 cursor-pointer rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[--ink]"
+        />
+      )}
+
       {/* Scaffold bar (left accent) */}
       <div
         aria-hidden="true"
@@ -81,11 +100,12 @@ export function BlockCard({
               {name}
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="relative z-20 flex items-center gap-2">
             <span className="font-mono text-[--fs-12] text-[--ink-dim]">
               {Math.round(pct)}%
             </span>
-            {/* Delete affordance — always visible in edit mode per ADR-008 */}
+            {/* Delete affordance — always visible in edit mode per ADR-008.
+                z-20 keeps it above the interactive overlay (z-10). */}
             {editMode && (
               <button
                 type="button"

@@ -49,31 +49,34 @@ npm run test:e2e:install
 
 ## Status
 
-| Milestone                                          | State                                                                    |
-| -------------------------------------------------- | ------------------------------------------------------------------------ |
-| M0 — Design System                                 | Shipped + tap-tested                                                     |
-| M1 — Empty Building Shell                          | Shipped + tap-tested                                                     |
-| M2 — Add Block Flow                                | Shipped + tap-tested                                                     |
-| M3 — Add Brick + Live Scoring                      | Shipped + tap-tested                                                     |
-| M4a — Tick Brick Logging                           | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M4b — Goal Brick Stepper                           | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M4d — Add Chooser Sheet                            | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M4c — Time Brick Timer                             | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M4e — Brick Duration + Overlap                     | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M4f — Two Brick Kinds; Rip Timer                   | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M4g — Timer-era Dead-code Sweep                    | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M8 — Persistence                                   | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M9a — appliesOn recurrence resolver                | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M9b — Day rollover + history store                 | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M9c — Month view (Kingdom) + view switcher         | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M9d — Week view (Castle) + period scoring          | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M9e — Year view (Empire) + complete calendar       | Shipped to preview — awaiting Gate #2 tap-test                           |
-| **M9 — Calendar Nav**                              | **COMPLETE** — all four switcher segments (Day/Week/Month/Year) now live |
-| M5 — Edit Mode + Delete                            | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M6 — Drag Reorder                                  | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M7a — Stagger Fade-in + Skeleton Shimmer           | Shipped to preview — M7 chunk 1 of 5 (one Gate #2 tap at end of M7e)     |
-| M7b — Now-line Glow + Active-block Pulse + NOW Tag | Shipped to preview — M7 chunk 2 of 5                                     |
-| M7c — Hero % Count-up on First Load                | Shipped to preview — M7 chunk 3 of 5                                     |
+| Milestone                                                | State                                                                    |
+| -------------------------------------------------------- | ------------------------------------------------------------------------ |
+| M0 — Design System                                       | Shipped + tap-tested                                                     |
+| M1 — Empty Building Shell                                | Shipped + tap-tested                                                     |
+| M2 — Add Block Flow                                      | Shipped + tap-tested                                                     |
+| M3 — Add Brick + Live Scoring                            | Shipped + tap-tested                                                     |
+| M4a — Tick Brick Logging                                 | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M4b — Goal Brick Stepper                                 | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M4d — Add Chooser Sheet                                  | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M4c — Time Brick Timer                                   | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M4e — Brick Duration + Overlap                           | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M4f — Two Brick Kinds; Rip Timer                         | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M4g — Timer-era Dead-code Sweep                          | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M8 — Persistence                                         | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M9a — appliesOn recurrence resolver                      | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M9b — Day rollover + history store                       | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M9c — Month view (Kingdom) + view switcher               | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M9d — Week view (Castle) + period scoring                | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M9e — Year view (Empire) + complete calendar             | Shipped to preview — awaiting Gate #2 tap-test                           |
+| **M9 — Calendar Nav**                                    | **COMPLETE** — all four switcher segments (Day/Week/Month/Year) now live |
+| M5 — Edit Mode + Delete                                  | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M6 — Drag Reorder                                        | Shipped to preview — awaiting Gate #2 tap-test                           |
+| M7a — Stagger Fade-in + Skeleton Shimmer                 | Shipped to preview — M7 chunk 1 of 5                                     |
+| M7b — Now-line Glow + Active-block Pulse + NOW Tag       | Shipped to preview — M7 chunk 2 of 5                                     |
+| M7c — Hero % Count-up on First Load                      | Shipped to preview — M7 chunk 3 of 5                                     |
+| M7d — Block-100% Bloom + Day-100% Fireworks              | Shipped to preview — M7 chunk 4 of 5                                     |
+| M7e — Polish Layer (FirstBrickCard, Toaster, Easter Egg) | Shipped to preview — AWAITING GATE #2                                    |
+| **M7 — Polish Layer**                                    | **COMPLETE** — all 5 chunks shipped (M7a–M7e); 1552 tests; 19 warnings   |
 
 Latest preview: `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (branch alias; auto-tracks `claude/verify-m0-deployment-s4XRy`). Vercel Deployment Protection active — open in browser while signed in to Vercel.
 
@@ -97,7 +100,8 @@ components/          Shared UI components + unit tests
   BrickChip.tsx      Brick chip with type-specific render + foreground fill = brickPct%; tick chips are tappable; units chips open UnitsEntrySheet on tap; time-window badge for timed bricks (M4e)
   TimedLooseBrickCard.tsx Timed loose-brick chip with dashed outline; renders on the Timeline at its start row (M4e)
   UnitsEntrySheet.tsx Sheet for manual number entry on a units brick; single number input + Save/Cancel; opens on tap of a units brick chip (M4f)
-  Fireworks.tsx      Day-100% celebration overlay; ≤ 16 particles; ~1.6 s; suppressed under prefers-reduced-motion
+  Fireworks.tsx      Day-100% celebration overlay; ≤ 16 particles; ~1.6 s; suppressed under prefers-reduced-motion (UNCHANGED M7d)
+  DayCompleteCard.tsx PRM fallback card shown when day hits 100% and prefers-reduced-motion is active; role="status" aria-live="polite"; auto-dismisses after 2000 ms (M7d)
   CategoryPicker.tsx Category selector chip row with inline NewCategoryForm sub-view
   HeroRing.tsx       SVG arc around the Hero numeral; stroke tracks dayPct%; firstPaintCountUp prop triggers 0→pct% tween on first load; children-as-function render-prop exposes live displayPct to callers (M7c)
   LooseBricksTray    Pinned tray above dock; lists loose bricks + "+ Brick" pill
@@ -113,8 +117,12 @@ components/          Shared UI components + unit tests
   DraggableTimelineBlock.tsx Block card wrapper with visible drag handle; drag-to-retime with 30-min snap, overlap rejection, medium-haptic snap-back, aria-live announce; brick reorder via Framer Reorder.Group (M6)
   Skeleton.tsx        Shimmer placeholder cards rendered during two-pass hydration window; 4 variants: block/brick/bar/ring (M7a)
   NowTag.tsx          Amber "NOW" accent badge rendered top-right on the active block card; role="status"; pointer-events: none (M7b)
+  FirstBrickCard.tsx  Narrative payoff card shown once on user's first brick log; auto-dismisses 3 s; persists firstBrickShown flag (M7e)
+  BrandMarkLongPress.tsx Easter egg: 600 ms long-press on DHARMA brand mark opens YearHeatmapPreview overlay (M7e)
+  YearHeatmapPreview.tsx Year heatmap overlay (z-40); composes MonthCell in 3x4 grid; PRM-safe; tap scrim or x to close (M7e)
+  Toaster.tsx         Module-level toast(msg, kind) emitter; kind-discriminated ARIA; last-write-wins; auto-dismiss 2 s; z-30 singleton (M7e)
 lib/                 Domain logic: types, data, scoring, utilities
-  celebrations.ts    useCrossUpEffect hook — one-shot cross-up detection for bloom/fireworks
+  celebrations.ts    useBlockCelebrationOnce (Set<string> mount-scoped dedup) + useDayCelebrationOnce (boolean ref) + celebrate(kind, opts) shim; useCrossUpEffect retained for compat (M7d)
   audio.ts           playChime() — lazy HTMLAudioElement for /sounds/chime.mp3; SSR + iOS guard
   longPress.ts       useLongPressRepeat hook — 500ms hold → 50ms ticks; used by GoalStepperChip (M4b). Also exports useLongPress single-fire sibling
   overlap.ts         Pure half-open overlap engine: intervalsOverlap + findOverlaps (M4e)
@@ -132,6 +140,7 @@ lib/                 Domain logic: types, data, scoring, utilities
   motion.ts           motionTokens (8 tokens) + staggerForCount(n) helper — per-surface stagger cascade and count-up animation constants (M7a/M7c)
   firstPaint.ts       Reserved placeholder for first-paint timing utilities (M7a)
   activeBlock.ts      Pure activeBlockId(items, nowMinutes) helper — identifies the block whose half-open window straddles the current minute (M7b)
+  persist.ts          localStorage adapter (loadState/saveState/usePersistedState); exports hasAnyBrick() @internal helper for firstBrickShown back-fill (M7e)
 tests/
   e2e/               Playwright specs (e2e + a11y)
 docs/

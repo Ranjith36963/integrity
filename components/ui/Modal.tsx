@@ -7,6 +7,12 @@ export interface ModalProps {
   open: boolean;
   onClose(): void;
   title?: string;
+  /**
+   * id of an element inside the modal that names the dialog (for callers
+   * that render their own heading). Required when `title` is omitted,
+   * otherwise the dialog has no accessible name (MS-1).
+   */
+  "aria-labelledby"?: string;
   children?: React.ReactNode;
   className?: string;
 }
@@ -15,6 +21,7 @@ export function Modal({
   open,
   onClose,
   title,
+  "aria-labelledby": ariaLabelledBy,
   children,
   className,
 }: ModalProps) {
@@ -34,7 +41,14 @@ export function Modal({
     <div
       role="dialog"
       aria-modal="true"
+      // NEW-2: keep aria-label={title} as a defensive fallback even when
+      // aria-labelledby is set. ARIA spec gives aria-labelledby precedence
+      // when its referenced element exists — but if the id is typo'd, lazy-
+      // rendered, or conditionally absent, the dialog would otherwise be
+      // nameless. The fallback is harmless when labelledby resolves; lifesaving
+      // when it doesn't.
       aria-label={title}
+      aria-labelledby={ariaLabelledBy}
       className="fixed inset-0 z-50 flex items-end justify-center"
     >
       {/* Backdrop */}
@@ -52,7 +66,7 @@ export function Modal({
           "px-[--sp-16] pt-[--sp-16]",
           className,
         )}
-        style={{ paddingBottom: "var(--safe-bottom)" }}
+        style={{ paddingBottom: "var(--safe-bottom, 0px)" }}
       >
         {title && (
           <h2 className="mb-[--sp-12] font-mono text-[--fs-16] text-[--ink]">

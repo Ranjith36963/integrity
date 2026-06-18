@@ -152,18 +152,54 @@ export function today(d: Date = new Date()): string {
 }
 
 /**
+ * R3-P2-3: shared helper for parsing a "YYYY-MM-DD" ISO string as LOCAL
+ * midnight (NOT UTC midnight). The `+ "T00:00:00"` suffix forces the ISO
+ * 8601 parser to treat the value as local time per spec; without it,
+ * `new Date("YYYY-MM-DD")` parses as UTC midnight, which becomes the
+ * previous calendar day in any negative-UTC TZ — the exact R1-P2-3 bug
+ * that the R2-P0-1 fix had to chase down.
+ *
+ * Use this from any caller that takes a `today()`-style ISO and wants a
+ * Date in the user's local TZ. dayNumber, dateLabel, BuildingClient's
+ * totalDays calc, and DayCell's aria-label all go through here.
+ *
+ * R4-P3-2 / R5-P2-1 contract:
+ *   - INPUT must be exactly "YYYY-MM-DD" (10 chars, hyphens at positions 4 + 7).
+ *   - Malformed input → JS produces `Invalid Date`. Callers that pass through
+ *     to `getFullYear()` / `getTime()` etc. silently degrade (NaN, 365, etc.).
+ *   - Corruption-resistance comes from `today()` being well-formed by
+ *     construction (zero-padded local components). It is the only in-tree
+ *     producer. Persist.ts validates the TYPE of `programStart` but not the
+ *     SHAPE — corrupted localStorage could in theory feed garbage through
+ *     this helper. Tolerating that today (no observed crashes) is a known
+ *     deferral; future hardening would add a regex check in persist.ts.
+ *   - Strings with a `T...` time component already (`"2025-01-01T15:30:00"`)
+ *     will produce an invalid double-T string. Do NOT call this with
+ *     pre-suffixed values.
+ */
+export function isoToLocalDate(iso: string): Date {
+  return new Date(iso + "T00:00:00");
+}
+
+/**
  * Returns the 1-based program day number (day 1 = programStart).
  * Returns `undefined` if programStart is null, undefined, or empty string.
- * Both ISO strings are parsed as local midnight to keep DST-safe integer math.
+ * Both ISO strings are parsed as local midnight (via isoToLocalDate) to
+ * keep DST-safe integer math.
  */
 export function dayNumber(
   programStart: string | null | undefined,
   todayIso: string,
 ): number | undefined {
   if (!programStart) return undefined;
-  const start = new Date(programStart + "T00:00:00");
-  const end = new Date(todayIso + "T00:00:00");
-  const delta = Math.floor((end.getTime() - start.getTime()) / 86_400_000);
+  const start = isoToLocalDate(programStart);
+  const end = isoToLocalDate(todayIso);
+  // R7-ROOT-3 (DST-safe): `Math.round` instead of `Math.floor` absorbs the
+  // ±1-hour drift introduced by DST spring-forward / fall-back. Without this,
+  // dayNumber("2026-03-07", "2026-03-09") returns 2 in PT (47-hour gap →
+  // floor(47/24) = 1 → 2) instead of 3. The same trick is used in
+  // lib/dayOfYear.ts:dayOfYear(). Surfaced by lib/dharma.tz.test.ts.
+  const delta = Math.round((end.getTime() - start.getTime()) / 86_400_000);
   return delta + 1;
 }
 
@@ -173,10 +209,9 @@ export function dayNumber(
  * If locale-aware formatting is needed later, introduce a follow-up feature.
  */
 export function dateLabel(todayIso: string): string {
-  const d = new Date(todayIso + "T00:00:00");
   return new Intl.DateTimeFormat("en-US", {
     weekday: "short",
     month: "short",
     day: "numeric",
-  }).format(d);
+  }).format(isoToLocalDate(todayIso));
 }

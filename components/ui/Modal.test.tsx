@@ -69,7 +69,9 @@ describe("C-m0-006: Modal sheet root has padding-bottom: var(--safe-bottom)", ()
       "[data-variant='bottom-sheet']",
     ) as HTMLElement;
     expect(sheet).toBeTruthy();
-    expect(sheet.style.paddingBottom).toContain("var(--safe-bottom)");
+    // R3-P3-1 tightened: must be exactly `var(--safe-bottom, 0px)` (the R2-SG-3
+    // contract — the 0px fallback specifically, not any non-whitespace value).
+    expect(sheet.style.paddingBottom).toMatch(/var\(--safe-bottom,\s*0px\)/);
   });
 
   it("enforces ESC listener cleanup on unmount", () => {
@@ -83,5 +85,48 @@ describe("C-m0-006: Modal sheet root has padding-bottom: var(--safe-bottom)", ()
     // Firing ESC after unmount should not call spy again
     fireEvent.keyDown(document, { key: "Escape" });
     expect(spy).not.toHaveBeenCalled();
+  });
+});
+
+// C-m0-027 — MS-1 mutation guard: dialog must have an accessible name
+describe("C-m0-027: Modal exposes an accessible name", () => {
+  it("uses title as aria-label when title is provided", () => {
+    render(
+      <Modal open onClose={vi.fn()} title="My title">
+        body
+      </Modal>,
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAttribute("aria-label", "My title");
+  });
+
+  it("uses aria-labelledby when caller supplies an inner heading id", () => {
+    render(
+      <Modal open onClose={vi.fn()} aria-labelledby="my-heading">
+        <h2 id="my-heading">Inner heading</h2>
+      </Modal>,
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAttribute("aria-labelledby", "my-heading");
+    expect(dialog).not.toHaveAttribute("aria-label");
+  });
+
+  // TEST-2: previously missing — Modal now mirrors Sheet's third sub-case
+  // for symmetric guard coverage. Per NEW-2, title is the defensive
+  // fallback even when aria-labelledby is present.
+  it("keeps title as aria-label fallback even when aria-labelledby is also provided", () => {
+    render(
+      <Modal
+        open
+        onClose={vi.fn()}
+        title="Fallback"
+        aria-labelledby="my-heading"
+      >
+        <h2 id="my-heading">Inner heading</h2>
+      </Modal>,
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAttribute("aria-labelledby", "my-heading");
+    expect(dialog).toHaveAttribute("aria-label", "Fallback");
   });
 });

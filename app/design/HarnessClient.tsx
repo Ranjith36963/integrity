@@ -218,7 +218,6 @@ export function HarnessClient() {
         </h2>
         <div className="flex flex-col gap-3">
           <BlockCard
-            data-testid="block-card"
             name="Work"
             start="08:45"
             end="17:15"

@@ -152,8 +152,9 @@ describe("U-m8-002: saveState/loadState round-trip — exact done value fidelity
     expect(loaded.programStart).toBe("2026-05-01");
   });
 
-  it("raw localStorage JSON has exactly the 8 v3 keys — schemaVersion, programStart, currentDate, history, blocks, categories, looseBricks, deletions — and schemaVersion === 3", () => {
+  it("raw localStorage JSON has exactly the 9 v3 keys — schemaVersion, programStart, currentDate, history, blocks, categories, looseBricks, deletions, firstBrickShown — and schemaVersion === 3", () => {
     // Sanctioned M5 amendment: schema v2→v3 adds deletions; key count 7→8.
+    // Sanctioned M7e amendment: additive firstBrickShown field; key count 8→9.
     const state: PersistedState = {
       schemaVersion: 3,
       programStart: "2026-05-01",
@@ -176,6 +177,7 @@ describe("U-m8-002: saveState/loadState round-trip — exact done value fidelity
         "categories",
         "currentDate",
         "deletions",
+        "firstBrickShown",
         "history",
         "looseBricks",
         "programStart",
@@ -189,7 +191,7 @@ describe("U-m8-002: saveState/loadState round-trip — exact done value fidelity
 // ─── U-m8-003: saveState writes ADR-044 boundary shape ───────────────────────
 
 describe("U-m8-003: saveState writes ADR-045 persisted shape — schemaVersion is boundary-only", () => {
-  it("persisted JSON has schemaVersion: 3 and the exact 8 v3 keys — no leaked runtime fields", () => {
+  it("persisted JSON has schemaVersion: 3 and the exact 9 v3 keys — no leaked runtime fields", () => {
     const input: PersistedState = {
       schemaVersion: 3,
       programStart: "2026-05-01",
@@ -224,13 +226,15 @@ describe("U-m8-003: saveState writes ADR-045 persisted shape — schemaVersion i
     const raw = mockStorage._store[STORAGE_KEY];
     const parsed = JSON.parse(raw) as Record<string, unknown>;
 
-    // Exactly these 8 v3 keys — no extra fields (M5 sanctioned amendment: deletions added)
+    // Exactly these 9 v3 keys — no extra fields
+    // (M5 sanctioned amendment: deletions; M7e sanctioned amendment: firstBrickShown)
     expect(Object.keys(parsed).sort()).toEqual(
       [
         "blocks",
         "categories",
         "currentDate",
         "deletions",
+        "firstBrickShown",
         "history",
         "looseBricks",
         "programStart",
@@ -620,8 +624,9 @@ describe("U-m9b-002: saveState/loadState v2 round-trip", () => {
     expect(loaded.programStart).toBe("2026-05-01");
   });
 
-  it("raw localStorage JSON has exactly the 8 v3 keys and schemaVersion === 3", () => {
+  it("raw localStorage JSON has exactly the 9 v3 keys and schemaVersion === 3", () => {
     // Sanctioned M5 amendment: schema v2→v3 adds deletions; key count 7→8.
+    // Sanctioned M7e amendment: additive firstBrickShown field; key count 8→9.
     const state: PersistedState = {
       schemaVersion: 3,
       programStart: "2026-05-01",
@@ -644,6 +649,7 @@ describe("U-m9b-002: saveState/loadState v2 round-trip", () => {
         "categories",
         "currentDate",
         "deletions",
+        "firstBrickShown",
         "history",
         "looseBricks",
         "programStart",
@@ -707,12 +713,37 @@ describe("U-m9b-005: loadState migrates schemaVersion:1 payload to v2", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-18T10:00:00"));
 
+    // R7-ROOT-1 amendment: fixtures now use FULL valid shapes (matching
+    // persistSchemas.ts). The previous fixtures used `[{ id: "b1" }]`-style
+    // partial objects — those now correctly reset to [] under the new
+    // shape-validation contract (per-field recovery). The migration
+    // semantics tested by U-m9b-005 (v1→v3 version bump + currentDate seed
+    // + programStart preservation) are unchanged.
+    const validBlock = {
+      id: "b1",
+      name: "Work",
+      start: "09:00",
+      end: "17:00",
+      categoryId: null,
+      recurrence: { kind: "every-weekday" },
+      bricks: [],
+    };
+    const validCategory = { id: "c1", name: "Cat", color: "#ff0000" };
+    const validBrick = {
+      id: "t1",
+      name: "Brick",
+      categoryId: null,
+      parentBlockId: null,
+      hasDuration: false,
+      kind: "tick",
+      done: false,
+    };
     mockStorage._store[STORAGE_KEY] = JSON.stringify({
       schemaVersion: 1,
       programStart: "2026-03-10",
-      blocks: [{ id: "b1" }],
-      categories: [{ id: "c1" }],
-      looseBricks: [{ id: "t1" }],
+      blocks: [validBlock],
+      categories: [validCategory],
+      looseBricks: [validBrick],
       deletions: {}, // M5
     });
 
@@ -721,9 +752,9 @@ describe("U-m9b-005: loadState migrates schemaVersion:1 payload to v2", () => {
     expect(result.programStart).toBe("2026-03-10"); // preserved, NOT re-stamped
     expect(result.currentDate).toBe("2026-05-18"); // set to today
     expect(result.history).toEqual({});
-    expect(result.blocks).toEqual([{ id: "b1" }]);
-    expect(result.categories).toEqual([{ id: "c1" }]);
-    expect(result.looseBricks).toEqual([{ id: "t1" }]);
+    expect(result.blocks).toEqual([validBlock]);
+    expect(result.categories).toEqual([validCategory]);
+    expect(result.looseBricks).toEqual([validBrick]);
 
     vi.useRealTimers();
   });
@@ -889,14 +920,27 @@ describe("U-m9b-009: partial v2 payload → defensive coercion of missing/non-st
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-18T10:00:00"));
 
+    // R7-ROOT-1 amendment: blocks fixture upgraded to valid shape. Absent
+    // top-level fields still coerce to defaults (the test's primary claim);
+    // the block-shape detail is incidental — using the valid shape so the
+    // assertion proves coercion, not partial-block tolerance.
+    const validBlock = {
+      id: "b1",
+      name: "Work",
+      start: "09:00",
+      end: "17:00",
+      categoryId: null,
+      recurrence: { kind: "every-weekday" },
+      bricks: [],
+    };
     mockStorage._store[STORAGE_KEY] = JSON.stringify({
       schemaVersion: 3,
       history: {},
-      blocks: [{ id: "b1" }],
+      blocks: [validBlock],
     });
 
     const result = loadState();
-    expect(result.blocks).toEqual([{ id: "b1" }]);
+    expect(result.blocks).toEqual([validBlock]);
     expect(result.categories).toEqual([]);
     expect(result.looseBricks).toEqual([]);
     expect(result.programStart).toBe("2026-05-18");
@@ -1150,5 +1194,236 @@ describe("U-m5-011: defaultPersisted() carries deletions:{} + schemaVersion:3; n
     expect("editMode" in p).toBe(false);
     expect("edit_mode" in p).toBe(false);
     expect("edit-mode" in p).toBe(false);
+  });
+});
+
+// ─── M7e: hasAnyBrick + migrate back-fill + schema-lock anchors ───────────────
+
+import { hasAnyBrick } from "./persist";
+import type { Block, Brick } from "./types";
+
+const validBrick: Brick = {
+  id: "m7e-v1",
+  name: "Morning stretch",
+  categoryId: null,
+  parentBlockId: null,
+  hasDuration: false,
+  kind: "tick",
+  done: false,
+};
+
+function makeBlock(id: string, bricks: Brick[] = []): Block {
+  return {
+    id,
+    name: `Block ${id}`,
+    start: "09:00",
+    recurrence: { kind: "just-today", date: "2026-05-20" },
+    categoryId: null,
+    bricks,
+  };
+}
+
+// U-m7e-005: hasAnyBrick truth table
+describe("U-m7e-005: hasAnyBrick(blocks, looseBricks) truth table", () => {
+  it("([], []) → false", () => {
+    expect(hasAnyBrick([], [])).toBe(false);
+  });
+
+  it("([{ id: 'B1', bricks: [] }], []) → false", () => {
+    expect(hasAnyBrick([makeBlock("B1")], [])).toBe(false);
+  });
+
+  it("([], [validBrick]) → true", () => {
+    expect(hasAnyBrick([], [validBrick])).toBe(true);
+  });
+
+  it("([{ id: 'B1', bricks: [validBrick] }], []) → true", () => {
+    expect(hasAnyBrick([makeBlock("B1", [validBrick])], [])).toBe(true);
+  });
+
+  it("([{ bricks: [] }, { bricks: [validBrick] }], []) → true", () => {
+    expect(
+      hasAnyBrick([makeBlock("B1"), makeBlock("B2", [validBrick])], []),
+    ).toBe(true);
+  });
+});
+
+// Base fixture for v3 payloads — required fields
+const v3Base = {
+  schemaVersion: 3 as const,
+  programStart: "2026-05-01",
+  currentDate: "2026-05-20",
+  history: {},
+  categories: [],
+  deletions: {},
+};
+
+// U-m7e-006: migrate v3 — missing firstBrickShown + has bricks → back-fills to true
+describe("U-m7e-006: migrate v3 back-fill — absent firstBrickShown + bricks → true", () => {
+  it("returns firstBrickShown === true when payload has bricks and no firstBrickShown field", () => {
+    const raw = {
+      ...v3Base,
+      blocks: [makeBlock("B1", [{ ...validBrick, parentBlockId: "B1" }])],
+      looseBricks: [],
+    };
+    const result = migrate(raw);
+    expect(result).not.toBeNull();
+    expect(result!.firstBrickShown).toBe(true);
+  });
+});
+
+// U-m7e-007: migrate v3 — missing firstBrickShown + NO bricks → back-fills to false
+describe("U-m7e-007: migrate v3 back-fill — absent firstBrickShown + no bricks → false", () => {
+  it("returns firstBrickShown === false when payload has no bricks and no firstBrickShown field", () => {
+    const raw = {
+      ...v3Base,
+      blocks: [makeBlock("B1")], // block with empty bricks[]
+      looseBricks: [],
+    };
+    const result = migrate(raw);
+    expect(result).not.toBeNull();
+    expect(result!.firstBrickShown).toBe(false);
+  });
+});
+
+// U-m7e-008: migrate v3 round-trip — firstBrickShown present is preserved
+describe("U-m7e-008: migrate v3 round-trip — present firstBrickShown preserved verbatim", () => {
+  it("preserves firstBrickShown === true even when no bricks present", () => {
+    const raw = {
+      ...v3Base,
+      blocks: [],
+      looseBricks: [],
+      firstBrickShown: true,
+    };
+    const result = migrate(raw);
+    expect(result).not.toBeNull();
+    expect(result!.firstBrickShown).toBe(true);
+  });
+
+  it("preserves firstBrickShown === false even when bricks are present", () => {
+    const raw = {
+      ...v3Base,
+      blocks: [makeBlock("B1", [{ ...validBrick, parentBlockId: "B1" }])],
+      looseBricks: [],
+      firstBrickShown: false,
+    };
+    const result = migrate(raw);
+    expect(result).not.toBeNull();
+    expect(result!.firstBrickShown).toBe(false);
+  });
+});
+
+// U-m7e-009: migrate v2 → v3 cascade applies hasAnyBrick back-fill
+describe("U-m7e-009: migrate v2→v3 cascade applies hasAnyBrick back-fill", () => {
+  it("returns firstBrickShown === true for v2 payload with bricks", () => {
+    const raw = {
+      schemaVersion: 2 as const,
+      programStart: "2026-05-01",
+      currentDate: "2026-05-20",
+      history: {},
+      categories: [],
+      deletions: {},
+      blocks: [makeBlock("B1", [{ ...validBrick, parentBlockId: "B1" }])],
+      looseBricks: [],
+    };
+    const result = migrate(raw);
+    expect(result).not.toBeNull();
+    expect(result!.firstBrickShown).toBe(true);
+  });
+});
+
+// U-m7e-010: migrate v1 → v3 cascade lands at firstBrickShown: false
+describe("U-m7e-010: migrate v1→v3 cascade lands at firstBrickShown: false", () => {
+  it("returns firstBrickShown === false for v1 payload (no bricks in v1)", () => {
+    const raw = {
+      schemaVersion: 1 as const,
+      programStart: "2026-05-01",
+      categories: [],
+      blocks: [makeBlock("B1")], // v1 blocks have empty bricks[]
+      looseBricks: [],
+    };
+    const result = migrate(raw);
+    expect(result).not.toBeNull();
+    expect(result!.firstBrickShown).toBe(false);
+  });
+});
+
+// U-m7e-011: SCHEMA_VERSION === 3 (not bumped per ADR-044)
+describe("U-m7e-011: SCHEMA_VERSION stays at 3 — ADR-044 additive optional field", () => {
+  it("SCHEMA_VERSION is exactly 3", () => {
+    expect(SCHEMA_VERSION).toBe(3);
+  });
+});
+
+// U-m7e-012: defaultPersisted().firstBrickShown === false
+describe("U-m7e-012: defaultPersisted().firstBrickShown === false", () => {
+  it("returns firstBrickShown === false on fresh first-run state", () => {
+    const p = defaultPersisted();
+    expect(p.firstBrickShown).toBe(false);
+  });
+});
+
+// U-m7e-013: saveState writes firstBrickShown to JSON (including ?? false fallback)
+describe("U-m7e-013: saveState writes firstBrickShown to JSON with ?? false fallback", () => {
+  it("writes firstBrickShown: true when state.firstBrickShown === true", () => {
+    const state: PersistedState = {
+      ...defaultPersisted(),
+      firstBrickShown: true,
+    };
+    saveState(state);
+    const raw = mockStorage._store[STORAGE_KEY];
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    expect(parsed.firstBrickShown).toBe(true);
+  });
+
+  it("writes firstBrickShown: false when state.firstBrickShown === false", () => {
+    const state: PersistedState = {
+      ...defaultPersisted(),
+      firstBrickShown: false,
+    };
+    saveState(state);
+    const raw = mockStorage._store[STORAGE_KEY];
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    expect(parsed.firstBrickShown).toBe(false);
+  });
+
+  it("writes firstBrickShown: false when state.firstBrickShown === undefined (?? false fallback)", () => {
+    const state: PersistedState = {
+      ...defaultPersisted(),
+      firstBrickShown: undefined,
+    };
+    saveState(state);
+    const raw = mockStorage._store[STORAGE_KEY];
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    expect(parsed.firstBrickShown).toBe(false);
+  });
+});
+
+// U-m7e-014: defensive — corrupted firstBrickShown falls through to hasAnyBrick back-fill
+describe("U-m7e-014: defensive — corrupted firstBrickShown (string or number) → hasAnyBrick back-fill", () => {
+  it("returns firstBrickShown === false for firstBrickShown: 'yes' with no bricks", () => {
+    const raw = {
+      ...v3Base,
+      blocks: [],
+      looseBricks: [],
+      firstBrickShown: "yes", // string corruption
+    };
+    expect(() => migrate(raw)).not.toThrow();
+    const result = migrate(raw);
+    expect(result).not.toBeNull();
+    expect(result!.firstBrickShown).toBe(false);
+  });
+
+  it("returns firstBrickShown === false for firstBrickShown: 1 with no bricks", () => {
+    const raw = {
+      ...v3Base,
+      blocks: [],
+      looseBricks: [],
+      firstBrickShown: 1, // number corruption
+    };
+    expect(() => migrate(raw)).not.toThrow();
+    const result = migrate(raw);
+    expect(result).not.toBeNull();
+    expect(result!.firstBrickShown).toBe(false);
   });
 });

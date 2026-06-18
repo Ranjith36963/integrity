@@ -27,6 +27,19 @@ export interface ButtonProps
   extends
     React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
+  /**
+   * NEW-5 (intentional coupling, not a bug):
+   *
+   * When `loading` is true, the button is disabled (`disabled || loading`)
+   * and `aria-busy` is set. This is the standard pattern across MUI/Chakra/
+   * shadcn — it prevents double-submit, the #1 cause of duplicate API calls.
+   *
+   * There is deliberately NO override hatch (`loadingDisablesClick={false}`
+   * or similar). If a caller needs "show spinner but still allow click"
+   * (e.g., for cancel-while-loading), they should render their own cancel
+   * affordance — typically a separate Button — rather than overloading
+   * this one. Coupling the two states removes the foot-gun.
+   */
   loading?: boolean;
 }
 
@@ -46,16 +59,21 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     // When loading, children are hidden visually — derive the accessible label
     // from the children text so screen readers still announce the button purpose.
-    const loadingLabel =
-      loading && !ariaLabelProp && typeof children === "string"
-        ? children
-        : ariaLabelProp;
+    // Falls back to "Loading" for non-string children to avoid a nameless busy
+    // button (BT-2).
+    const loadingLabel = ariaLabelProp
+      ? ariaLabelProp
+      : loading
+        ? typeof children === "string"
+          ? children
+          : "Loading"
+        : undefined;
 
     return (
       <button
         ref={ref}
         className={cn(buttonVariants({ variant, size }), className)}
-        disabled={disabled ?? loading}
+        disabled={disabled || loading}
         aria-busy={loading ? "true" : undefined}
         aria-label={loadingLabel}
         {...props}

@@ -7,6 +7,12 @@ export interface SheetProps {
   open: boolean;
   onClose(): void;
   title?: string;
+  /**
+   * id of an element inside the sheet that names the dialog (for callers
+   * that render their own heading). Required when `title` is omitted,
+   * otherwise the dialog has no accessible name (MS-2).
+   */
+  "aria-labelledby"?: string;
   children?: React.ReactNode;
   className?: string;
 }
@@ -15,6 +21,7 @@ export function Sheet({
   open,
   onClose,
   title,
+  "aria-labelledby": ariaLabelledBy,
   children,
   className,
 }: SheetProps) {
@@ -34,7 +41,10 @@ export function Sheet({
     <div
       role="dialog"
       aria-modal="true"
+      // NEW-2: see Modal.tsx — keep title as defensive aria-label fallback
+      // even when aria-labelledby is set.
       aria-label={title}
+      aria-labelledby={ariaLabelledBy}
       className="fixed inset-0 z-50 flex"
     >
       {/* Backdrop */}
@@ -52,7 +62,7 @@ export function Sheet({
           "px-[--sp-16] pt-[--sp-16]",
           className,
         )}
-        style={{ paddingBottom: "var(--safe-bottom)" }}
+        style={{ paddingBottom: "var(--safe-bottom, 0px)" }}
       >
         {title && (
           <h2 className="mb-[--sp-12] font-mono text-[--fs-16] text-[--ink]">

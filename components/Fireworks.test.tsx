@@ -1,6 +1,8 @@
-// components/Fireworks.test.tsx — M4a Fireworks overlay tests
-// Covers: C-m4a-013, C-m4a-014
+// components/Fireworks.test.tsx — M4a Fireworks overlay tests + M7d source-inspection regression
+// Covers: C-m4a-013, C-m4a-014, C-m7d-015
 
+import { readFileSync, readdirSync, statSync } from "fs";
+import { join } from "path";
 import { describe, it, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { Fireworks } from "./Fireworks";
@@ -44,5 +46,59 @@ describe("C-m4a-014: Fireworks renders null when useReducedMotion=true", () => {
     vi.mocked(useReducedMotion).mockReturnValue(true);
     const { container } = render(<Fireworks active={true} />);
     expect(container.firstChild).toBeNull();
+  });
+});
+
+// ─── C-m7d-015: Fireworks.tsx unchanged by M7d; no new public assets ──────────
+
+describe("C-m7d-015: components/Fireworks.tsx is UNCHANGED by M7d; no new assets under public/", () => {
+  it("Fireworks.tsx contains PARTICLE_COUNT = 12", () => {
+    const src = readFileSync(
+      join(process.cwd(), "components/Fireworks.tsx"),
+      "utf-8",
+    );
+    expect(src).toContain("PARTICLE_COUNT = 12");
+  });
+
+  it("Fireworks.tsx COLORS array has 6 string literal entries (M4a-known)", () => {
+    const src = readFileSync(
+      join(process.cwd(), "components/Fireworks.tsx"),
+      "utf-8",
+    );
+    // COLORS array has exactly 6 string entries — count quoted string literals inside the array
+    // Note: use [\s\S] instead of . with /s flag (target ES2017, /s requires ES2018)
+    const match = src.match(/const COLORS\s*=\s*\[([\s\S]*?)\]/);
+    expect(match).not.toBeNull();
+    // Count entries by counting occurrences of quoted strings (both single and double quotes)
+    const stringLiterals = match![1].match(/["'][^"']+["']/g);
+    expect(stringLiterals).not.toBeNull();
+    expect(stringLiterals!).toHaveLength(6);
+  });
+
+  it("Fireworks.tsx contains the M4a-known 1700ms setTimeout constant", () => {
+    const src = readFileSync(
+      join(process.cwd(), "components/Fireworks.tsx"),
+      "utf-8",
+    );
+    expect(src).toContain("1700");
+  });
+
+  it("public/sounds/chime.mp3 exists with 431 bytes (M4a placeholder, UNCHANGED)", () => {
+    const chimePath = join(process.cwd(), "public/sounds/chime.mp3");
+    const stat = statSync(chimePath);
+    expect(stat.size).toBe(431);
+  });
+
+  it("public/ directory contains no new M7d assets (no new image, font, Lottie, or audio beyond pre-M7d set)", () => {
+    // Known pre-M7d public entries: icon.svg (app icon, M0) + sounds/ (M4a chime placeholder)
+    // M7d is explicitly forbidden from adding Lottie files, new SVGs, new audio, new fonts.
+    // We assert the directory listing matches the pre-M7d set exactly.
+    const publicDir = join(process.cwd(), "public");
+    const entries = (
+      readdirSync(publicDir, { recursive: false }) as string[]
+    ).sort();
+    // Pre-M7d known set (sorted)
+    const preM7dKnown = ["icon.svg", "sounds"].sort();
+    expect(entries).toEqual(preM7dKnown);
   });
 });

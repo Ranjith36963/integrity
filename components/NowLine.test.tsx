@@ -20,15 +20,16 @@ describe("C-m1-010 (NowLine): NowLine has correct pixel position and accent colo
     expect(style).toContain("0px");
   });
 
-  it("renders with top in [1535, 1536) for now=23:59", () => {
+  it("renders with top in open range (1534, 1536) for now=23:59", () => {
+    // R2-SG-1: aligned with m1/tests.md:206 spec — open range (1534, 1536),
+    // exact math 23*64 + (59/60)*64 = 1534.933.
     const { container } = render(<NowLine now="23:59" />);
     const line = container.querySelector('[data-testid="now-line"]');
     const style = (line as HTMLElement).getAttribute("style") ?? "";
-    // Extract top value
     const match = style.match(/top:\s*([\d.]+)px/);
     expect(match).not.toBeNull();
     const topVal = parseFloat(match![1]);
-    expect(topVal).toBeGreaterThanOrEqual(1534);
+    expect(topVal).toBeGreaterThan(1534);
     expect(topVal).toBeLessThan(1536);
   });
 

@@ -322,6 +322,41 @@ body {
   border-color: var(--accent) !important;
 }
 
+/* ── M7d: block-100% bloom opacity-flash (PRM fallback) ─────────────────────── */
+/* @keyframes blockBloomReduced — 600 ms opacity flash for prefers-reduced-motion path.
+   Runs once (animation-iteration-count: 1); component is keyed by bloomKey so each
+   crossing remounts the div and replays the animation fresh.
+   Used only when the spring motion.div bloom is suppressed by PRM (plan.md § M7d). */
+@keyframes blockBloomReduced {
+  0% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.bloom-reduced {
+  animation: blockBloomReduced 600ms ease-in-out forwards;
+}
+
+/* ── M7d: day-complete card (PRM) — center-screen; pointer-events:none ─────── */
+/* .day-complete-card is used by <DayCompleteCard> outer wrapper.
+   Inline styles in the component handle the fixed centering and z-index;
+   this class is a semantic marker for CSS overrides and tests.
+   No animation here — the card is a plain static element under PRM
+   (the 2000ms lifetime is controlled by the parent's setFireworksActive(false) timer). */
+.day-complete-card {
+  /* No extra styles needed — inline styles in component handle layout.
+     Class is retained for CSS override surface and test selector coverage. */
+}
+
 /* ── Reduced-motion: disable CSS-driven transitions/animations ── */
 @media (prefers-reduced-motion: reduce) {
   .brick-in,

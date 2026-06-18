@@ -31,31 +31,69 @@ export function Stepper({
   const intervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
   const accelRef = React.useRef(1);
   const pressStartRef = React.useRef(0);
-  const tickCountRef = React.useRef(0);
   const pendingDirRef = React.useRef<1 | -1>(1);
+  // NEW-1 guard: while a long-press is in flight, valueRef is owned by
+  // the press logic (advanced optimistically inside commit()). Unrelated
+  // parent re-renders during the press would otherwise reset valueRef
+  // backwards via the effect, undoing in-flight advances. We only sync
+  // from props when not pressing.
+  const isPressedRef = React.useRef(false);
+
+  // SC-1 fix: track latest value/onChange so the long-press interval
+  // closure reads fresh props on every tick, not the snapshot from press-start.
+  // R3-4: also track min/max via refs so a parent that mutates bounds
+  // mid-press (rare, but legal) takes effect immediately rather than waiting
+  // for the next pointer event to recreate the closure.
+  const valueRef = React.useRef(value);
+  const onChangeRef = React.useRef(onChange);
+  const minRef = React.useRef(min);
+  const maxRef = React.useRef(max);
+  const stepRef = React.useRef(step);
+  React.useEffect(() => {
+    if (!isPressedRef.current) {
+      valueRef.current = value;
+    }
+    onChangeRef.current = onChange;
+    minRef.current = min;
+    maxRef.current = max;
+    stepRef.current = step;
+  });
 
   function clamp(n: number): number {
     let result = n;
-    if (min !== undefined) result = Math.max(min, result);
-    if (max !== undefined) result = Math.min(max, result);
+    if (minRef.current !== undefined) result = Math.max(minRef.current, result);
+    if (maxRef.current !== undefined) result = Math.min(maxRef.current, result);
     return result;
   }
 
   function commit(dir: 1 | -1) {
-    const next = clamp(value + dir * step);
-    if (next === value) return; // at boundary — no commit
-    onChange(next);
+    const current = valueRef.current;
+    const next = clamp(current + dir * stepRef.current);
+    if (next === current) {
+      // R3-1: reached boundary mid-press → stop the interval. Otherwise
+      // disabled:pointer-events-none on the button (added by Tailwind once
+      // canIncrement/canDecrement flips false) swallows pointerup, and the
+      // interval would leak until unmount.
+      stopLongPress();
+      return;
+    }
+    onChangeRef.current(next);
+    valueRef.current = next; // advance for the next iteration within the same tick
     haptics.light();
   }
 
   function startLongPress(dir: 1 | -1) {
+    // R3-3: a second pointerdown without an intervening pointerup
+    // (multi-touch, gesture-lib re-fire, etc.) would otherwise overwrite
+    // intervalRef without clearing the first interval — silent leak.
+    if (intervalRef.current !== null) return;
+
+    isPressedRef.current = true;
     pressStartRef.current = Date.now();
     accelRef.current = 1;
-    tickCountRef.current = 0;
     pendingDirRef.current = dir;
 
     intervalRef.current = setInterval(() => {
-      tickCountRef.current++;
       const elapsed = Date.now() - pressStartRef.current;
       // Ramp acceleration over ACCEL_START_MS
       accelRef.current = Math.min(
@@ -69,6 +107,7 @@ export function Stepper({
   }
 
   function stopLongPress() {
+    isPressedRef.current = false;
     if (intervalRef.current !== null) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
@@ -86,7 +125,6 @@ export function Stepper({
         "inline-flex items-center gap-2 font-mono text-[--ink]",
         className,
       )}
-      data-testid="stepper"
     >
       <button
         type="button"
@@ -97,6 +135,7 @@ export function Stepper({
         onPointerDown={() => startLongPress(-1)}
         onPointerUp={stopLongPress}
         onPointerLeave={stopLongPress}
+        onPointerCancel={stopLongPress}
       >
         −
       </button>
@@ -117,6 +156,7 @@ export function Stepper({
         onPointerDown={() => startLongPress(1)}
         onPointerUp={stopLongPress}
         onPointerLeave={stopLongPress}
+        onPointerCancel={stopLongPress}
       >
         +
       </button>

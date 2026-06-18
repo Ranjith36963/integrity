@@ -131,6 +131,18 @@ export function Timeline({
   const activeId = activeBlockId(visibleBlockList, now);
 
   // Auto-scroll on mount so NowLine is vertically centered in the visible viewport.
+  //
+  // R1-P1-5 INVARIANT (deliberate deps-less effect):
+  // Reads `now` from the render closure ONCE on mount; never re-scrolls when
+  // `now` ticks (otherwise the user's manual scrolling would be hijacked every
+  // minute). Safe because Timeline only mounts inside the `hydrated===true`
+  // branch of BuildingClient — initial `now` is the real client clock, not
+  // SSR.
+  //
+  // R2-SG-7: this contract is locked by C-m7a-009 (BuildingClient.test.tsx:657)
+  // which asserts `[data-testid="hour-grid"]` is null when `hydrated={false}`.
+  // A future refactor that mounts Timeline pre-hydration will fail that test
+  // before this comment becomes wrong.
   useEffect(() => {
     if (!scrollRef.current) return;
     const containerHeight = scrollRef.current.clientHeight;
@@ -183,7 +195,12 @@ export function Timeline({
           style={{
             left: `${labelColumnWidth}px`,
             backgroundImage: `repeating-linear-gradient(to bottom, var(--grid) 0px, var(--grid) 1px, transparent 1px, transparent ${HOUR_HEIGHT_PX}px)`,
-            position: "relative",
+            // R1-P0-1 fix: drop `position: "relative"` here — it overrode the
+            // `absolute` Tailwind class on the same element, knocking the
+            // entire schedule region out of absolute positioning. The
+            // descendants need an absolute-positioned container; the `absolute`
+            // class already provides that (and Tailwind's `top-0 right-0 bottom-0`
+            // anchor it correctly).
           }}
         >
           {/* Layer 1: Slot tap targets (z=1, above hour-grid, below blocks) */}
@@ -249,12 +266,17 @@ export function Timeline({
                   </motion.div>
                 ),
               )}
-              {/* EmptyBlocks is also inside the stagger container when stagger=true */}
+              {/* EmptyBlocks is also inside the stagger container when stagger=true.
+                  R1-P0-2: anchor near the now-line (which auto-scroll centers in
+                  the viewport on mount). Hardcoded top:20px buried the card hundreds
+                  of px above the visible viewport once auto-scroll fires. */}
               {items.length === 0 && !hasLooseBricks && (
                 <motion.div variants={childVariants}>
                   <div
                     className="absolute inset-x-4 z-0"
-                    style={{ top: "20px" }}
+                    style={{
+                      top: `${Math.max(20, timeToOffsetPx(now, HOUR_HEIGHT_PX) - 80)}px`,
+                    }}
                   >
                     <EmptyBlocks />
                   </div>
@@ -307,9 +329,16 @@ export function Timeline({
                 ),
               )}
 
-              {/* Layer 2 (centered): EmptyBlocks card — only when items empty AND no loose bricks */}
+              {/* Layer 2 (centered): EmptyBlocks card — only when items empty AND no loose bricks.
+                  R1-P0-2: anchored near the now-line so it stays visible after
+                  auto-scroll-to-now (which centers the now-line on mount). */}
               {items.length === 0 && !hasLooseBricks && (
-                <div className="absolute inset-x-4 z-0" style={{ top: "20px" }}>
+                <div
+                  className="absolute inset-x-4 z-0"
+                  style={{
+                    top: `${Math.max(20, timeToOffsetPx(now, HOUR_HEIGHT_PX) - 80)}px`,
+                  }}
+                >
                   <EmptyBlocks />
                 </div>
               )}

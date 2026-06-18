@@ -4,16 +4,14 @@
 // - M6: GripVertical drag handle (≥44px, ADR-031) in Edit Mode (ADR-008).
 //   New props: dragControls (DragControls from Framer) + onReorderRequest.
 
-import { useState, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import type { DragControls } from "motion/react";
 import { Plus, X, GripVertical } from "lucide-react";
 import type { Block, Category } from "@/lib/types";
 import { HOUR_HEIGHT_PX, timeToOffsetPx } from "@/lib/timeOffset";
 import { fmtRange, blockPct } from "@/lib/dharma";
-import { useCrossUpEffect } from "@/lib/celebrations";
-import { haptics } from "@/lib/haptics";
-import { playChime } from "@/lib/audio";
+import { useBlockCelebrationOnce, celebrate } from "@/lib/celebrations";
 import { springConfigs } from "@/lib/motion";
 import { BrickChip } from "./BrickChip";
 import { BlockBrickReorderGroup } from "./BlockBrickReorderGroup";
@@ -84,14 +82,24 @@ export function TimelineBlock({
   const pct = blockPct(block);
   const scaffoldColor = category?.color ?? "var(--text-dim)";
 
-  // M4a: block-100% cross-up — fires bloom + chime + success haptic once per crossing
-  const fireBlockComplete = useCallback(() => {
-    haptics.success();
-    playChime();
-    setBloomKey((k) => k + 1);
-  }, []);
+  // M7d: replace useCrossUpEffect with useBlockCelebrationOnce (once per block per mount,
+  // never re-fires on 100→99→100 oscillations — resolves SG-m7d-02).
+  // celebrate("block", { withAudio: false }) routes haptics through the shim (audio deferred
+  // to M7f per plan.md § M7d invariants). Direct playChime import removed.
+  const shouldBloom = useBlockCelebrationOnce(block.id, pct);
 
-  useCrossUpEffect(pct, 100, fireBlockComplete);
+  // Consume the shouldBloom signal: celebrate + bump bloomKey when the first crossing fires.
+  // The eslint-disable is justified: shouldBloom is a one-shot signal per mount from
+  // useBlockCelebrationOnce (never oscillates between true/true). The setBloomKey call
+  // increments a counter that drives a keyed overlay — no cascading render loop possible
+  // (plan.md M7d SG-m7d-02: "once per block per mount" semantics; same pattern as
+  // Fireworks.tsx's eslint-disable for setParticles inside useEffect, M4a precedent).
+  useEffect(() => {
+    if (!shouldBloom) return;
+    celebrate("block", { withAudio: false });
+    /* eslint-disable-next-line react-hooks/set-state-in-effect -- M7d plan.md SG-m7d-02: one-shot shouldBloom signal, no cascade — same precedent as Fireworks.tsx (M4a). */
+    setBloomKey((k) => k + 1);
+  }, [shouldBloom]);
 
   const variants = {
     hidden: { opacity: 0, y: 4 },
@@ -208,6 +216,27 @@ export function TimelineBlock({
             style={{
               position: "absolute",
               inset: 0,
+              borderRadius: "6px",
+              background: category?.color
+                ? `${category.color}33`
+                : "var(--accent)33",
+              pointerEvents: "none",
+              zIndex: 3,
+            }}
+          />
+        )}
+        {/* M7d: PRM bloom fallback — 600 ms opacity flash via @keyframes blockBloomReduced.
+            Renders ONLY under prefers-reduced-motion (when spring motion.div is suppressed).
+            Keyed by bloomKey so each fire remounts and replays the animation. */}
+        {prefersReducedMotion && bloomKey > 0 && (
+          <div
+            key={bloomKey}
+            data-testid="bloom-overlay-reduced"
+            aria-hidden="true"
+            className="bloom-reduced"
+            style={{
+              position: "absolute",
+              inset: "0px",
               borderRadius: "6px",
               background: category?.color
                 ? `${category.color}33`

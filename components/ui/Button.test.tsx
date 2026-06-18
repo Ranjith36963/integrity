@@ -97,3 +97,49 @@ describe("C-m0-004: Button disabled state", () => {
     expect(btn.className).toContain("disabled:opacity-50");
   });
 });
+
+// C-m0-024 — BT-1 mutation guard: disabled || loading, not ??
+describe("C-m0-024: loading=true with explicit disabled=false still disables", () => {
+  it("does not call onClick when loading=true and disabled=false (was BT-1)", async () => {
+    const spy = vi.fn();
+    render(
+      <Button loading disabled={false} onClick={spy}>
+        Save
+      </Button>,
+    );
+    const btn = screen.getByRole("button");
+    expect(btn).toBeDisabled();
+    expect(btn).toHaveAttribute("aria-busy", "true");
+    await userEvent.click(btn);
+    expect(spy).not.toHaveBeenCalled();
+  });
+});
+
+// C-m0-025 — BT-2 mutation guard: nameless busy button with non-string children
+describe("C-m0-025: loading button with non-string children + no aria-label gets a fallback name", () => {
+  it("renders aria-label='Loading' when loading + non-string children + no aria-label", () => {
+    render(
+      <Button loading>
+        <span>Save</span>
+      </Button>,
+    );
+    const btn = screen.getByRole("button");
+    expect(btn).toHaveAttribute("aria-label", "Loading");
+  });
+
+  it("uses string children as aria-label even with loading", () => {
+    render(<Button loading>Save</Button>);
+    const btn = screen.getByRole("button");
+    expect(btn).toHaveAttribute("aria-label", "Save");
+  });
+
+  it("explicit aria-label wins over fallback", () => {
+    render(
+      <Button loading aria-label="Saving">
+        <span>Save</span>
+      </Button>,
+    );
+    const btn = screen.getByRole("button");
+    expect(btn).toHaveAttribute("aria-label", "Saving");
+  });
+});

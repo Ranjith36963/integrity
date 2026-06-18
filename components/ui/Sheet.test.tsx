@@ -54,7 +54,8 @@ describe("C-m0-007: Sheet close affordances and safe-area padding", () => {
     const dialog = screen.getByRole("dialog");
     const sheet = dialog.querySelector("[data-variant='full']") as HTMLElement;
     expect(sheet).toBeTruthy();
-    expect(sheet.style.paddingBottom).toContain("var(--safe-bottom)");
+    // R3-P3-1 tightened: must be exactly `var(--safe-bottom, 0px)`.
+    expect(sheet.style.paddingBottom).toMatch(/var\(--safe-bottom,\s*0px\)/);
   });
 
   it("dialog not in DOM when open=false", () => {
@@ -64,5 +65,50 @@ describe("C-m0-007: Sheet close affordances and safe-area padding", () => {
       </Sheet>,
     );
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});
+
+// C-m0-026 — MS-1 mutation guard: dialog must have an accessible name
+describe("C-m0-026: Sheet exposes an accessible name", () => {
+  it("uses title as aria-label when title is provided", () => {
+    render(
+      <Sheet open onClose={vi.fn()} title="My title">
+        body
+      </Sheet>,
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAttribute("aria-label", "My title");
+  });
+
+  it("uses aria-labelledby when caller supplies an inner heading id", () => {
+    render(
+      <Sheet open onClose={vi.fn()} aria-labelledby="my-heading">
+        <h2 id="my-heading">Inner heading</h2>
+      </Sheet>,
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAttribute("aria-labelledby", "my-heading");
+    expect(dialog).not.toHaveAttribute("aria-label");
+  });
+
+  // NEW-2 behavior: title remains as defensive aria-label fallback even
+  // when aria-labelledby is set. Per ARIA spec, aria-labelledby wins for
+  // screen readers if the referenced element exists; the aria-label fallback
+  // only matters when the labelledby reference is broken (typo'd id, lazy
+  // render, conditional mount).
+  it("keeps title as aria-label fallback even when aria-labelledby is also provided", () => {
+    render(
+      <Sheet
+        open
+        onClose={vi.fn()}
+        title="Fallback"
+        aria-labelledby="my-heading"
+      >
+        <h2 id="my-heading">Inner heading</h2>
+      </Sheet>,
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAttribute("aria-labelledby", "my-heading");
+    expect(dialog).toHaveAttribute("aria-label", "Fallback");
   });
 });

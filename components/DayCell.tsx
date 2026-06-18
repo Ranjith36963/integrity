@@ -23,6 +23,8 @@
  * ADR-038: missed = gray, no shame.
  */
 
+import { isoToLocalDate } from "@/lib/dharma";
+
 type DayCellPropsBlank = {
   kind: "blank";
 };
@@ -49,8 +51,10 @@ export type DayCellProps =
 
 /** Build the aria-label for a scored cell from the ISO date string and score. */
 function buildAriaLabel(date: string, score: number, isToday: boolean): string {
-  // Parse the ISO date as local midnight to get weekday/month/day/year
-  const d = new Date(date + "T00:00:00");
+  // R4-P2-1: parse via the shared isoToLocalDate helper instead of an inline
+  // `new Date(date + "T00:00:00")`. Single source of truth — any future
+  // hardening to the helper (e.g. malformed-input guard) applies here too.
+  const d = isoToLocalDate(date);
   const formatted = new Intl.DateTimeFormat("en-US", {
     weekday: "long",
     month: "long",

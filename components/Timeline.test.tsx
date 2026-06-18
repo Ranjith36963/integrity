@@ -114,14 +114,16 @@ describe("C-m1-010 (Timeline): NowLine pixel position via Timeline (re-authored 
     expect(style).toContain("0px");
   });
 
-  it("now-line top is in [1534, 1536) for now=23:59", () => {
+  it("now-line top is in open range (1534, 1536) for now=23:59", () => {
+    // R2-SG-1: aligned with m1/tests.md:206 spec — open range, exact math
+    // 23*64 + (59/60)*64 = 1534.933.
     const { container } = render(<Timeline {...defaultProps} now="23:59" />);
     const nowLine = container.querySelector('[data-testid="now-line"]');
     const style = (nowLine as HTMLElement).getAttribute("style") ?? "";
     const match = style.match(/top:\s*([\d.]+)px/);
     expect(match).not.toBeNull();
     const topVal = parseFloat(match![1]);
-    expect(topVal).toBeGreaterThanOrEqual(1534);
+    expect(topVal).toBeGreaterThan(1534);
     expect(topVal).toBeLessThan(1536);
   });
 });
@@ -250,6 +252,28 @@ describe("C-m1-014 (Timeline): EmptyBlocks card inside timeline column (re-autho
     const hourGrid = container.querySelector('[data-testid="hour-grid"]');
     const emptyState = container.querySelector('[data-testid="empty-state"]');
     expect(hourGrid?.contains(emptyState)).toBe(true);
+  });
+
+  // R1-P0-2 mutation guard: empty-state card must be anchored NEAR the now-line
+  // (which auto-scroll-to-now centers in the viewport), not at a fixed top:20px
+  // hundreds of pixels above. Pre-fix, the card was invisible at any non-pre-dawn time.
+  it("EmptyBlocks wrapper top tracks the now-line position (R1-P0-2)", () => {
+    // At now=12:00 → timeToOffsetPx = 12*64 = 768. Wrapper top = 768 - 80 = 688px.
+    const { container } = render(<Timeline {...defaultProps} now="12:00" />);
+    const wrapper = container.querySelector('[data-testid="empty-state"]')
+      ?.parentElement as HTMLElement | null;
+    expect(wrapper).not.toBeNull();
+    const topPx = parseFloat(wrapper!.style.top);
+    expect(topPx).toBe(688);
+  });
+
+  it("EmptyBlocks wrapper falls back to top:20px in the pre-dawn (now < 01:40) window", () => {
+    // At now=00:30 → offset = 32. 32 - 80 = -48 → clamped to floor 20.
+    const { container } = render(<Timeline {...defaultProps} now="00:30" />);
+    const wrapper = container.querySelector('[data-testid="empty-state"]')
+      ?.parentElement as HTMLElement | null;
+    expect(wrapper).not.toBeNull();
+    expect(wrapper!.style.top).toBe("20px");
   });
 });
 

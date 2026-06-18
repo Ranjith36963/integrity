@@ -77,7 +77,7 @@ beforeEach(() => {
 });
 
 describe("C-m4f-009: BuildingClient + on units at done:9/target:10 dispatches SET_UNITS_DONE; day-100 fires", () => {
-  it("after tap chip → UnitsEntrySheet → Save 10, haptics.notification fires once; playChime fires; Fireworks active", async () => {
+  it("after tap chip → UnitsEntrySheet → Save 10, haptics.notification fires once; playChime does NOT fire (M7d); Fireworks active", async () => {
     const { haptics } = await import("@/lib/haptics");
     const { playChime } = await import("@/lib/audio");
     vi.clearAllMocks();
@@ -113,8 +113,10 @@ describe("C-m4f-009: BuildingClient + on units at done:9/target:10 dispatches SE
     await user.click(saveBtn);
 
     expect(haptics.notification).toHaveBeenCalledTimes(1);
-    // playChime fires for both block-100 and day-100 cross-up cascades
-    expect(vi.mocked(playChime).mock.calls.length).toBeGreaterThanOrEqual(1);
+    // M7d sanctioned amendment: playChime is NO LONGER called directly by BuildingClient.
+    // celebrate("day", { withAudio: false }) is the M7d call shape; playChime is deferred
+    // to M7f. This assertion is updated per tests.md § C-m7d-010 sanctioned amendment.
+    expect(vi.mocked(playChime).mock.calls.length).toBe(0);
     expect(screen.getByTestId("fireworks")).toBeInTheDocument();
   });
 });

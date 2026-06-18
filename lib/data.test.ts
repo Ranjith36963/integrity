@@ -2695,3 +2695,164 @@ describe("U-m6-014: dayPct and blockPct are unchanged after REORDER_BRICK_IN_BLO
     expect(blockPct(blkANext)).toBe(blkABefore);
   });
 });
+
+// ─── M7e: firstBrickShown flag flip ──────────────────────────────────────────
+
+const validBrickFixture: Brick = {
+  id: "m7e-brick-1",
+  name: "Morning stretch",
+  categoryId: null,
+  parentBlockId: null,
+  hasDuration: false,
+  kind: "tick",
+  done: false,
+};
+
+const anotherBrickFixture: Brick = {
+  id: "m7e-brick-2",
+  name: "Meditation",
+  categoryId: null,
+  parentBlockId: null,
+  hasDuration: false,
+  kind: "tick",
+  done: false,
+};
+
+// Units-brick missing duration — violates the hasDuration invariant guard
+const invalidBrickFixture: Brick & { hasDuration: true } = {
+  id: "m7e-brick-invalid",
+  name: "Run 5k",
+  categoryId: null,
+  parentBlockId: null,
+  hasDuration: true,
+  // Missing start/end/recurrence — violates presence invariant
+  kind: "tick",
+  done: false,
+};
+
+function makeBaseState(overrides: Partial<AppState> = {}): AppState {
+  return {
+    blocks: [],
+    categories: [],
+    looseBricks: [],
+    programStart: "2026-05-01",
+    currentDate: "2026-05-20",
+    history: {},
+    deletions: {},
+    ...overrides,
+  };
+}
+
+// U-m7e-001: ADD_BRICK flips firstBrickShown from undefined to true
+describe("U-m7e-001: ADD_BRICK flips firstBrickShown from undefined to true", () => {
+  it("sets firstBrickShown === true on the first valid ADD_BRICK dispatch", () => {
+    const state = makeBaseState({ firstBrickShown: undefined });
+    const next = reducer(state, {
+      type: "ADD_BRICK",
+      brick: validBrickFixture,
+    });
+    expect(next.firstBrickShown).toBe(true);
+    // brick is present in looseBricks (parentBlockId === null)
+    expect(next.looseBricks).toHaveLength(1);
+  });
+});
+
+// U-m7e-002: ADD_BRICK is idempotent on firstBrickShown (second dispatch leaves flag true)
+describe("U-m7e-002: ADD_BRICK idempotent on firstBrickShown — second dispatch keeps flag true", () => {
+  it("keeps firstBrickShown === true after a second valid ADD_BRICK dispatch", () => {
+    const state = makeBaseState({ firstBrickShown: undefined });
+    const state1 = reducer(state, {
+      type: "ADD_BRICK",
+      brick: validBrickFixture,
+    });
+    expect(state1.firstBrickShown).toBe(true);
+    const state2 = reducer(state1, {
+      type: "ADD_BRICK",
+      brick: anotherBrickFixture,
+    });
+    expect(state2.firstBrickShown).toBe(true);
+    // never goes to false or undefined
+    expect(state2.firstBrickShown).not.toBe(false);
+    expect(state2.firstBrickShown).not.toBeUndefined();
+  });
+});
+
+// U-m7e-003: Rejected ADD_BRICK does NOT flip firstBrickShown
+describe("U-m7e-003: rejected ADD_BRICK does NOT flip firstBrickShown", () => {
+  it("returns state unchanged when brick violates the hasDuration presence invariant", () => {
+    const state = makeBaseState({ firstBrickShown: false });
+    const next = reducer(state, {
+      type: "ADD_BRICK",
+      brick: invalidBrickFixture,
+    });
+    // Reducer rejects and returns state unchanged
+    expect(next.firstBrickShown).toBe(false);
+    expect(next).toBe(state); // same reference — not a new object
+  });
+});
+
+// U-m7e-004: Other action arms do NOT flip firstBrickShown
+describe("U-m7e-004: other action arms do NOT flip firstBrickShown", () => {
+  const baseBlock: Block = {
+    id: "blk-u4",
+    name: "Block U4",
+    start: "08:00",
+    recurrence: { kind: "just-today", date: "2026-05-20" },
+    categoryId: null,
+    bricks: [{ ...validBrickFixture, id: "br-u4", parentBlockId: "blk-u4" }],
+  };
+  const stateWithBlock = makeBaseState({
+    blocks: [baseBlock],
+    firstBrickShown: false,
+  });
+
+  it("ADD_BLOCK does NOT flip firstBrickShown", () => {
+    const next = reducer(stateWithBlock, {
+      type: "ADD_BLOCK",
+      block: { ...baseBlock, id: "blk-new" },
+    });
+    expect(next.firstBrickShown).toBe(false);
+  });
+
+  it("DELETE_BLOCK_TODAY does NOT flip firstBrickShown", () => {
+    const next = reducer(stateWithBlock, {
+      type: "DELETE_BLOCK_TODAY",
+      blockId: "blk-u4",
+    });
+    expect(next.firstBrickShown).toBe(false);
+  });
+
+  it("DELETE_BLOCK_ALL does NOT flip firstBrickShown", () => {
+    const next = reducer(stateWithBlock, {
+      type: "DELETE_BLOCK_ALL",
+      blockId: "blk-u4",
+    });
+    expect(next.firstBrickShown).toBe(false);
+  });
+
+  it("LOG_TICK_BRICK does NOT flip firstBrickShown", () => {
+    const next = reducer(stateWithBlock, {
+      type: "LOG_TICK_BRICK",
+      brickId: "br-u4",
+    });
+    expect(next.firstBrickShown).toBe(false);
+  });
+
+  it("SET_UNITS_DONE does NOT flip firstBrickShown", () => {
+    // No units brick in state — this will be a no-op but the flag must stay false
+    const next = reducer(stateWithBlock, {
+      type: "SET_UNITS_DONE",
+      brickId: "nonexistent",
+      done: 5,
+    });
+    expect(next.firstBrickShown).toBe(false);
+  });
+
+  it("DELETE_BRICK does NOT flip firstBrickShown", () => {
+    const next = reducer(stateWithBlock, {
+      type: "DELETE_BRICK",
+      brickId: "br-u4",
+    });
+    expect(next.firstBrickShown).toBe(false);
+  });
+});

@@ -28,25 +28,25 @@ EVAL proves the green is real.
 SHIP puts it in front of the user.
 
 ### Phase 1 — SPEC (user owns)
-- User authors the feature entry in `/docs/spec.md`.
+- User authors the feature entry in `docs/milestones/m{slug}/spec.md` (creates the folder if new).
 - Required sections: Intent · Inputs · Outputs · Edge cases · Acceptance criteria.
 - This is the only phase where new requirements enter the system.
 - (Precondition to The Loop, not a Loop step. No agent gate.)
 
 ### Phase 2 — PLAN (PLANNER `mode: PLAN`)
-- PLANNER reads `/docs/spec.md` and emits the feature's `/docs/plan.md` entry: file structure, data models, components, design tokens, decisions to honor.
+- PLANNER reads `docs/milestones/m{slug}/spec.md` + `docs/milestones/m{slug}/decisions.md` + `docs/milestones/_general/decisions.md` and writes `docs/milestones/m{slug}/plan.md`: file structure, data models, components, design tokens, decisions to honor.
 - Commits as `docs(plan-<feature>): …`.
 - Auto-chains to Phase 3. No user gate.
 
 ### Phase 3 — TESTS (PLANNER `mode: TESTS`)
-- Separate PLANNER dispatch. Derives GIVEN/WHEN/THEN tests from the just-written `plan.md`.
+- Separate PLANNER dispatch. Derives GIVEN/WHEN/THEN tests from the just-written `docs/milestones/m{slug}/plan.md`.
 - Covers success, failure, and edge cases.
-- Output: `/docs/tests.md` entry for the feature.
+- Output: `docs/milestones/m{slug}/tests.md`.
 - Commits as `docs(tests-<feature>): …`.
 - Auto-chains to Phase 4. No user gate (per ADR-041).
 
 ### Phase 4 — VERIFY (VERIFIER owns)
-- Independent agent reads `/docs/spec.md` (named feature only), the just-written `plan.md` entry, and the just-written `tests.md` entry.
+- Independent agent reads `docs/milestones/m{slug}/spec.md`, the just-written `docs/milestones/m{slug}/plan.md`, the just-written `docs/milestones/m{slug}/tests.md`, and both decisions files (`m{slug}/decisions.md` + `_general/decisions.md`).
 - Five checks: spec-coverage, test grounding, plan↔spec consistency, test ID hygiene, schema lock + ADR honor.
 - Output: PASS (with AC → test-ID mapping) or FAIL (with gap list).
 - PASS → auto-chain to Phase 5.
@@ -66,7 +66,7 @@ SHIP puts it in front of the user.
 - FAIL → auto-chain back to BUILDER with gap list (capped at 3 retries per ADR-024). No user gate inside the FAIL loop.
 
 ### Phase 7 — SHIP (SHIPPER owns) → Gate #2
-- Updates README + CHANGELOG + `docs/status.md` (status update is **mandatory** — every ship commit includes it). Pushes to the deploy branch (Vercel auto-deploys preview).
+- Updates README + per-milestone CHANGELOG shard (`docs/milestones/m{slug}/CHANGELOG.md`) + `docs/status.md` (status update is **mandatory** — every ship commit includes it). Pushes to the deploy branch (Vercel auto-deploys preview).
 - Commits as `chore(ship-<feature>): …` and/or `docs(ship-<feature>): …`.
 - **STOP. User taps the preview, reacts.** Reaction feeds the next `/feature` invocation. **This is the only human gate** (per ADR-041).
 
@@ -101,16 +101,16 @@ Main Claude is the only orchestrator.
 
 ### 1. PLANNER
 Role: Senior staff engineer + product designer
-Reads: /docs/spec.md
+Reads: docs/milestones/m{slug}/spec.md + docs/milestones/m{slug}/decisions.md + docs/milestones/_general/decisions.md
 Writes:
-  - /docs/plan.md → file structure, data models, components, design tokens
-  - /docs/tests.md → every acceptance criterion as GIVEN/WHEN/THEN
-Forbidden: writing code, running tests, deploying
+  - docs/milestones/m{slug}/plan.md → file structure, data models, components, design tokens
+  - docs/milestones/m{slug}/tests.md → every acceptance criterion as GIVEN/WHEN/THEN
+Forbidden: writing code, running tests, deploying, touching the legacy monoliths (docs/spec.md, docs/plan.md, docs/tests.md, docs/decisions.md)
 Hands off to: VERIFIER
 
 ### 2. VERIFIER
 Role: Independent design auditor (replaces Gate #1 per ADR-041)
-Reads: /docs/spec.md (named feature) + just-written plan.md + just-written tests.md + /docs/decisions.md
+Reads: docs/milestones/m{slug}/spec.md + just-written m{slug}/plan.md + just-written m{slug}/tests.md + m{slug}/decisions.md + _general/decisions.md
 Checks (all five):
   - Spec coverage: every AC has a test ID
   - Test grounding: every test ID maps to an AC
@@ -125,7 +125,7 @@ Hands off to: BUILDER (on PASS) or PLANNER (on FAIL)
 
 ### 3. BUILDER
 Role: Senior full-stack engineer running strict TDD
-Reads: /docs/plan.md + /docs/tests.md + VERIFIER's PASS report (so it knows the design surface was audited)
+Reads: docs/milestones/m{slug}/plan.md + docs/milestones/m{slug}/tests.md + docs/milestones/m{slug}/decisions.md + docs/milestones/_general/decisions.md + VERIFIER's PASS report (so it knows the design surface was audited)
 Process per feature:
   1. Pick one test from tests.md
   2. Write the failing test (Vitest or Playwright)
@@ -138,7 +138,7 @@ Hands off to: EVALUATOR
 
 ### 4. EVALUATOR
 Role: Staff engineer running evals (like AI lab evals teams)
-Reads: BUILDER's diff + /docs/spec.md + /docs/tests.md + VERIFIER's PASS report
+Reads: BUILDER's diff + docs/milestones/m{slug}/spec.md + docs/milestones/m{slug}/tests.md + docs/milestones/m{slug}/decisions.md + docs/milestones/_general/decisions.md + VERIFIER's PASS report
 Tools: Playwright (runs the actual app, checks behavior)
 Checks:
   - Spec coverage: every acceptance criterion met?
@@ -158,7 +158,7 @@ Reads: EVALUATOR's PASS report
 Tasks:
   - Push to main → Vercel auto-deploys
   - Update README.md
-  - Update CHANGELOG.md
+  - Update `docs/milestones/m{slug}/CHANGELOG.md` (per-milestone shard, NOT root CHANGELOG.md)
   - Verify production URL is live
 Forbidden: writing features, reviewing code
 Hands off to: Main Claude
@@ -170,9 +170,9 @@ This is how every feature is shipped, post ADR-025/027/041. Step 10 is the user'
 **The user's role: tap the live preview and react. One check-in per feature (per ADR-041).**
 **Main Claude's role: drive 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 automatically, one feature at a time.**
 
-  1. **PLANNER (`mode: PLAN`)** — Main Claude dispatches. Reads `/docs/spec.md`. Writes `/docs/plan.md` entry for the named feature only. Commits as `docs(plan-<feature>):`. Auto-chains to step 2.
-  2. **PLANNER (`mode: TESTS`)** — Main Claude dispatches a second time. Reads the just-written `plan.md`. Writes `/docs/tests.md` entry for the named feature only (G/W/T IDs). Commits as `docs(tests-<feature>):`. Auto-chains to step 3.
-  3. **VERIFIER** — Main Claude dispatches. Reads spec.md (named feature only) + just-written plan.md + just-written tests.md + decisions.md. Returns PASS (with AC → test-ID mapping) or FAIL (with gap list).
+  1. **PLANNER (`mode: PLAN`)** — Main Claude dispatches. Reads `docs/milestones/m{slug}/spec.md` + `m{slug}/decisions.md` + `_general/decisions.md`. Writes `docs/milestones/m{slug}/plan.md`. Commits as `docs(plan-<feature>):`. Auto-chains to step 2.
+  2. **PLANNER (`mode: TESTS`)** — Main Claude dispatches a second time. Reads the just-written `m{slug}/plan.md`. Writes `docs/milestones/m{slug}/tests.md` (G/W/T IDs). Commits as `docs(tests-<feature>):`. Auto-chains to step 3.
+  3. **VERIFIER** — Main Claude dispatches. Reads `m{slug}/spec.md` + just-written `m{slug}/plan.md` + just-written `m{slug}/tests.md` + `m{slug}/decisions.md` + `_general/decisions.md`. Returns PASS (with AC → test-ID mapping) or FAIL (with gap list).
      - **FAIL → back to PLANNER, automatic.** Up to 2 retries (per ADR-041); then escalate to user with the standing gap list.
      - **PASS → BUILDER, automatic.** No user gate (per ADR-041).
   4. **BUILDER** — Main Claude dispatches. Picks **one feature**. Goes test by test: red → green → refactor → commit. Red commits as `test(<feature>):`; green/refactor as `feat(<feature>):` or `fix(<feature>):` (per ADR-027).
@@ -180,7 +180,7 @@ This is how every feature is shipped, post ADR-025/027/041. Step 10 is the user'
   6. **EVALUATOR** — runs `npm run eval` (lint + typecheck + vitest + e2e + a11y) plus spec-coverage and test-integrity review. Returns PASS or FAIL.
      - **FAIL → back to BUILDER, automatic.** Up to 3 retries (per ADR-024); then escalate.
      - **PASS → SHIPPER, automatic.**
-  7. **SHIPPER** — pushes to the deploy branch (Vercel auto-deploys preview). Updates README + CHANGELOG + **`docs/status.md` (mandatory, every ship, per ADR-041)**. Commits as `chore(ship-<feature>):` and/or `docs(ship-<feature>):`.
+  7. **SHIPPER** — pushes to the deploy branch (Vercel auto-deploys preview). Updates README + per-milestone CHANGELOG shard (`docs/milestones/m{slug}/CHANGELOG.md`) + **`docs/status.md` (mandatory, every ship, per ADR-041)**. Commits as `chore(ship-<feature>):` and/or `docs(ship-<feature>):`.
   8. **Main Claude reports back** with the preview URL and a one-line summary.
   9. (Awaiting Gate #2 — see step 10.)
  10. **User opens the preview, taps, reacts.** This is **Gate #2, the preview gate — the only human gate** (per ADR-041). Reaction feeds the next `/feature` invocation — usually a new spec entry (loop returns to step 1) or a follow-up test ID against the existing plan (loop returns to step 4).
@@ -199,22 +199,32 @@ User only talks to Main Claude. Never to sub-agents directly.
 ## Hand-off Rules
 
 - Hand-offs are file-based, not chat-based
-- BUILDER reads PLANNER's files, not PLANNER's chat
+- BUILDER reads PLANNER's files (`docs/milestones/m{slug}/plan.md` + `tests.md`), not PLANNER's chat
 - EVALUATOR reads BUILDER's commits, not BUILDER's reasoning
 - This keeps each agent's context clean
+- All agents read **only the per-milestone shard for the named feature**, never the legacy monolith — this keeps per-dispatch context windows small
 
 ## Repository knowledge files
 
-Six files carry the project's durable context. Every fresh session, Main Claude reads these first.
+The project's durable context is sharded **per milestone** under `docs/milestones/m{slug}/`. Each milestone folder holds four files: `spec.md`, `plan.md`, `tests.md`, and (when applicable) `decisions.md`. Cross-cutting ADRs live in `docs/milestones/_general/decisions.md`. Top-level monoliths (`docs/spec.md`, `docs/plan.md`, `docs/tests.md`, `docs/decisions.md`) are **frozen legacy reference** — they are NOT written to by agents going forward. All new PLANNER output, ADR additions, and reads target the per-milestone shards.
 
-| File | Owner (writes) | Read by | Updated when |
+| File pattern | Owner (writes) | Read by | Updated when |
 |---|---|---|---|
-| `docs/spec.md` | user | PLANNER | scope changes |
-| `docs/plan.md` | PLANNER | BUILDER, EVALUATOR | each new feature |
-| `docs/tests.md` | PLANNER | BUILDER, EVALUATOR | each new feature |
-| `docs/decisions.md` | Main Claude + EVALUATOR | PLANNER, BUILDER, EVALUATOR | every non-obvious choice |
+| `docs/milestones/m{slug}/spec.md` | user | PLANNER, VERIFIER, EVALUATOR | scope changes for that milestone |
+| `docs/milestones/m{slug}/plan.md` | PLANNER (mode: PLAN) | BUILDER, VERIFIER, EVALUATOR | each new feature |
+| `docs/milestones/m{slug}/tests.md` | PLANNER (mode: TESTS) | BUILDER, VERIFIER, EVALUATOR | each new feature |
+| `docs/milestones/m{slug}/decisions.md` | Main Claude + EVALUATOR | PLANNER, BUILDER, VERIFIER, EVALUATOR | milestone-specific ADRs |
+| `docs/milestones/_general/decisions.md` | Main Claude + EVALUATOR | PLANNER, BUILDER, VERIFIER, EVALUATOR | cross-cutting ADRs (Loop, methodology, agents) |
 | `docs/status.md` | SHIPPER + Main Claude | everyone (esp. on session restart) | every ship + every handoff |
-| `CHANGELOG.md` | SHIPPER | humans + future-me | every ship |
+| `docs/milestones/m{slug}/CHANGELOG.md` | SHIPPER | humans + future-me | every ship for that milestone |
+
+**Frozen root snapshots (never written to):** `docs/spec.md`, `docs/plan.md`, `docs/tests.md`, `docs/decisions.md`, root `CHANGELOG.md`. These were the pre-sharding monoliths and remain on disk as historical reference through M7e. The rule is uniform across all five: any new MD writes for any milestone go to `docs/milestones/m{slug}/{file}.md` only.
+
+**Slug examples:** `m0`, `m4a`, `m7e`, `m9b`, `m10`. Slugs match the milestone identifiers used in `status.md` and commit prefixes (per ADR-027).
+
+**Decisions read pattern:** any agent that reads decisions must read BOTH `docs/milestones/m{slug}/decisions.md` (if it exists for the current feature) AND `docs/milestones/_general/decisions.md`. Cross-cutting ADRs (e.g., ADR-025 The Loop, ADR-027 commit prefixes, ADR-041 single-gate) live in `_general/` and apply to every feature.
+
+**Spec AC supersession convention (R7-ROOT-7):** when a later milestone changes the contract of an earlier AC (e.g., M8 replaced M1's "Building N of 365" semantics), the original milestone's `spec.md` gets a `### Supersessions` section listing each superseded AC + the milestone+AC that took over + the ADR that records the drift. Reviewers reading the original spec see the drift inline and don't re-flag it as a bug. Pattern enforced in `docs/milestones/m1/spec.md`; extend to other milestones when supersessions occur.
 
 `CLAUDE.md` (this file) and `AGENTS.md` are operating-manual files, not project state.
 `README.md` is for humans visiting GitHub.
@@ -238,7 +248,7 @@ A feature ships only when:
 3. Playwright confirms behavior in real browser
 4. EVALUATOR returns PASS
 5. Deployed to Vercel production
-6. README + CHANGELOG updated
+6. README + per-milestone CHANGELOG shard (`docs/milestones/m{slug}/CHANGELOG.md`) updated
 
 ## Required Plugins / Tools
 
