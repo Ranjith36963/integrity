@@ -26,9 +26,17 @@ export function SlotTapTargets({ onSlotTap, editMode = false }: Props) {
   return (
     <>
       {HOURS.map((hour) => (
+        // R7-ROOT-M2-11: tabIndex={-1} removes the 24 invisible slot buttons
+        // from the main tab order. Pre-R7 SR users hit 24 sequential "Add
+        // block at HH:00" stops between page chrome and the timeline. The
+        // dock + button + slot-tap (pointer) remain the primary add paths;
+        // keyboard add is via the dock + → chooser route. Visible no-op
+        // affordance: cursor stays default (R7-ROOT-M2-17) so empty timeline
+        // doesn't suggest interactivity at every pixel.
         <button
           key={hour}
           type="button"
+          tabIndex={-1}
           aria-label={`Add block at ${formatHour(hour)}`}
           onClick={() => onSlotTap(hour)}
           style={{
@@ -39,7 +47,6 @@ export function SlotTapTargets({ onSlotTap, editMode = false }: Props) {
             height: `${HOUR_HEIGHT_PX}px`,
             background: "transparent",
             border: "none",
-            cursor: "pointer",
             zIndex: 1,
             padding: 0,
           }}

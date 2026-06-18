@@ -126,12 +126,18 @@ describe("C-m3-006: HeroRing SVG stroke-dashoffset math", () => {
 // ─── C-m3-007: a11y attrs ─────────────────────────────────────────────────────
 
 describe("C-m3-007: HeroRing a11y attrs", () => {
-  it("outer svg has role='img', aria-label='Day score: 42%', aria-live='polite'", () => {
+  it("outer svg has role='img' + aria-label; aria-live lives on a sibling status node", () => {
+    // R7-ROOT-M7-NIT-1: aria-live moved off the svg so the count-up tween
+    // doesn't fire 50+ polite announcements during 1.6s. The sibling
+    // role='status' span fires ONCE when the tween settles.
     const { container } = render(<HeroRing pct={42} />);
     const svg = container.querySelector("svg");
     expect(svg?.getAttribute("role")).toBe("img");
     expect(svg?.getAttribute("aria-label")).toBe("Day score: 42%");
-    expect(svg?.getAttribute("aria-live")).toBe("polite");
+    // Sibling status node carries the live region.
+    const status = container.querySelector("[role='status']");
+    expect(status?.getAttribute("aria-live")).toBe("polite");
+    expect(status?.textContent).toBe("Day score: 42%");
   });
 
   it("inner numeral has aria-hidden='true'", () => {
@@ -723,11 +729,12 @@ describe("C-m7c-011 — <HeroRing pct={50} /> (no firstPaintCountUp, no children
     expect(container.querySelector("[data-testid='day-fireworks']")).toBeNull();
   });
 
-  it("SVG role, aria-label, aria-live are byte-identical to C-m3-007", () => {
+  it("SVG role + aria-label byte-identical; aria-live now on sibling status (R7-ROOT-M7-NIT-1)", () => {
     const { container } = render(<HeroRing pct={42} />);
     const svg = container.querySelector("svg[role='img']");
     expect(svg?.getAttribute("role")).toBe("img");
     expect(svg?.getAttribute("aria-label")).toBe("Day score: 42%");
-    expect(svg?.getAttribute("aria-live")).toBe("polite");
+    const status = container.querySelector("[role='status']");
+    expect(status?.getAttribute("aria-live")).toBe("polite");
   });
 });

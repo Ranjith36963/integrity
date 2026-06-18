@@ -29,6 +29,14 @@ type ToastEvent = {
 
 // ─── Module-level event emitter (singleton) ────────────────────────────────
 // Using a Set of subscriber callbacks — O(1) emit, no React coupling.
+//
+// R7-ROOT-M7-P1-3: HMR caveat — if this module reloads while a previous
+// Toaster component is still mounted, the prior render's handler points at
+// the OLD subscribers Set and won't receive toasts from the NEW module's
+// emit. This is dev-only (HMR is disabled in production); production builds
+// load the module exactly once. The Toaster component's useEffect cleanup
+// runs on unmount and removes the handler — RTL auto-cleanup handles this
+// in tests. Documented here so a future "ghost toast" bug isn't a mystery.
 const subscribers = new Set<(t: ToastEvent | null) => void>();
 
 /**

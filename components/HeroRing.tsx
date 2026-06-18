@@ -79,10 +79,36 @@ export function HeroRing({ pct, firstPaintCountUp = false, children }: Props) {
         height: `${SIZE}px`,
       }}
     >
+      {/* R7-ROOT-M7-NIT-1: aria-live moved from the svg to a sibling
+          visually-hidden status node that updates only when displayPct
+          reaches the prop pct (i.e., AT tween completion, not every
+          frame). Pre-R7 the svg had aria-live='polite' AND
+          aria-label='Day score: <live tween value>%' — SR users heard 50
+          announcements ("Day score: 1%, Day score: 2%, ...") during the
+          1.6s count-up. */}
+      <span
+        role="status"
+        aria-live="polite"
+        style={{
+          position: "absolute",
+          width: "1px",
+          height: "1px",
+          padding: 0,
+          margin: "-1px",
+          overflow: "hidden",
+          clip: "rect(0,0,0,0)",
+          whiteSpace: "nowrap",
+          border: 0,
+        }}
+      >
+        {/* Only announce when displayPct === pct (tween settled or no-tween path). */}
+        {Math.abs(displayPct - pct) < 0.5
+          ? `Day score: ${Math.round(pct)}%`
+          : ""}
+      </span>
       <svg
         role="img"
         aria-label={`Day score: ${roundedDisplayPct}%`}
-        aria-live="polite"
         width={SIZE}
         height={SIZE}
         viewBox={`0 0 ${SIZE} ${SIZE}`}
