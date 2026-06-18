@@ -4,7 +4,7 @@ import AxeBuilder from "@axe-core/playwright";
 // A-m3 accessibility tests — axe-core zero violations for M3 surfaces.
 
 async function addBlock(page: import("@playwright/test").Page, title: string) {
-  await page.getByRole("button", { name: "Add" }).click();
+  await page.getByRole("button", { name: "Add", exact: true }).click();
   await page.getByLabel(/Title/i).fill(title);
   await page.getByRole("button", { name: /Save/i }).click();
   await expect(page.locator('[role="dialog"]')).toHaveCount(0);
