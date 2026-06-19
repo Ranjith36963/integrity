@@ -93,13 +93,23 @@ describe("C-m1-002: TopBar Edit button aria-pressed and toggle semantics", () =>
 
 // C-m1-003: TopBar Settings button (aria-label, gear icon, keyboard-focusable) (SG-m1-06)
 describe("C-m1-003: TopBar Settings button has correct accessibility attrs", () => {
-  it("has aria-label=Settings, is a button element, and is keyboard-focusable", async () => {
+  it("has aria-label, is a button element, aria-disabled until Settings ships, and is keyboard-focusable", async () => {
+    // R7-ROOT-AUDIT: Settings is intentionally not implemented yet. The
+    // button is aria-disabled='true' with the "coming in a later release"
+    // suffix, mirroring the Voice Log treatment. SR users hear the
+    // pending state; sighted users see opacity-50.
     const user = userEvent.setup();
     renderWithProvider();
-    const settingsBtn = screen.getByRole("button", { name: "Settings" });
-    expect(settingsBtn).toHaveAttribute("aria-label", "Settings");
+    const settingsBtn = screen.getByRole("button", {
+      name: /Settings.*coming/i,
+    });
+    expect(settingsBtn).toHaveAttribute(
+      "aria-label",
+      "Settings (coming in a later release)",
+    );
+    expect(settingsBtn).toHaveAttribute("aria-disabled", "true");
     expect(settingsBtn.tagName).toBe("BUTTON");
-    // clicking does not throw
+    // clicking does not throw (no-op when aria-disabled)
     await user.click(settingsBtn);
     // Has h-11 w-11 classes (44px = meets >=44px bounding box requirement)
     expect(settingsBtn.className).toMatch(/h-11/);

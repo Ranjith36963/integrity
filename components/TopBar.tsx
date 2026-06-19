@@ -78,10 +78,18 @@ export function TopBar({ state }: TopBarProps = {}) {
             color={editMode ? "var(--ink)" : "var(--ink-dim)"}
           />
         </button>
+        {/* R7-ROOT-AUDIT: Settings is intentionally not implemented yet
+            (planned for a future milestone). Pre-audit the button looked
+            clickable but did nothing — no disabled state, no feedback.
+            Same treatment as Voice Log (BottomBar): aria-disabled + visual
+            opacity-50 + cursor-not-allowed. SR users hear it as
+            "Settings (coming in a later release)". Sighted users see the
+            dimmed state. */}
         <button
           type="button"
-          aria-label="Settings"
-          className="grid h-11 w-11 place-items-center rounded-md border border-white/5 transition-colors hover:border-white/15"
+          aria-label="Settings (coming in a later release)"
+          aria-disabled="true"
+          className="grid h-11 w-11 cursor-not-allowed place-items-center rounded-md border border-white/5 opacity-50 transition-colors"
           style={{ background: "var(--card)" }}
         >
           <Settings size={15} color="var(--ink-dim)" />

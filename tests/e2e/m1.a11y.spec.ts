@@ -66,9 +66,14 @@ test("A-m1-003: TopBar Edit has aria-pressed=false, Settings has aria-label, nei
   await expect(editBtn).toHaveAttribute("aria-pressed", "false");
   await expect(editBtn).not.toHaveAttribute("role", "switch");
 
-  // Settings button
-  const settingsBtn = page.getByRole("button", { name: "Settings" });
-  await expect(settingsBtn).toHaveAttribute("aria-label", "Settings");
+  // Settings button — R7-ROOT-AUDIT: aria-disabled until Settings ships
+  // (mirrors Voice Log treatment). Label includes the "coming" suffix.
+  const settingsBtn = page.getByRole("button", { name: /Settings.*coming/i });
+  await expect(settingsBtn).toHaveAttribute(
+    "aria-label",
+    "Settings (coming in a later release)",
+  );
+  await expect(settingsBtn).toHaveAttribute("aria-disabled", "true");
   await expect(settingsBtn).not.toHaveAttribute("role", "switch");
 });
 
