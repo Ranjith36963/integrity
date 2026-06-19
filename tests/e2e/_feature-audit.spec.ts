@@ -732,7 +732,8 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
     //
     // ALSO: NewCategoryForm requires both a non-blank name AND a color
     // selection (aria-disabled until both). Audit must pick a color.
-    const firstColor = page.getByRole("radio", { name: /Color 1/i });
+    // exact: true — "Color 1" substring also matches "Color 10/11/12"
+    const firstColor = page.getByRole("radio", { name: "Color 1", exact: true });
     if ((await firstColor.count()) > 0) {
       await firstColor.first().click();
       await page.waitForTimeout(150);
