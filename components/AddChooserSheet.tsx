@@ -110,6 +110,7 @@ export function AddChooserSheet({ open, onPick, onCancel }: Props) {
             className="w-full"
             onClick={handleBlock}
             aria-label="Add Block"
+            data-testid="chooser-add-block"
           >
             Add Block
           </Button>
@@ -118,11 +119,13 @@ export function AddChooserSheet({ open, onPick, onCancel }: Props) {
             className="w-full"
             onClick={handleBrick}
             aria-label="Add Brick"
+            data-testid="chooser-add-brick"
           >
             Add Brick
           </Button>
           <button
             type="button"
+            data-testid="chooser-cancel"
             onClick={handleClose}
             aria-label="Cancel"
             className="mt-1 flex h-11 w-full items-center justify-center rounded-lg border border-[--ink-dim] bg-transparent font-mono tracking-wide text-[--fs-14] text-[--ink-dim] uppercase hover:text-[--ink] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[--accent]"

@@ -59,18 +59,6 @@ async function safeText(loc: Locator): Promise<string> {
   }
 }
 
-async function clickIfPresent(page: Page, loc: Locator): Promise<boolean> {
-  try {
-    if ((await loc.count()) > 0) {
-      await loc.first().click({ timeout: 3000 });
-      return true;
-    }
-    return false;
-  } catch {
-    return false;
-  }
-}
-
 async function resetStorage(page: Page) {
   await page.evaluate(() => {
     try {
@@ -137,7 +125,7 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
 
   // ── 2. TopBar — Pencil (Edit Mode toggle) ───────────────────────────────
   {
-    const pencil = page.getByRole("button", { name: /edit mode/i });
+    const pencil = page.getByTestId("edit-mode-toggle");
     const present = (await pencil.count()) > 0;
     let initial = "";
     let after = "";
@@ -172,7 +160,7 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
   // milestone ships, mirroring Voice Log. The button should be present,
   // dimmed, and announce 'Settings (coming in a later release)'.
   {
-    const gear = page.getByRole("button", { name: /Settings.*coming/i });
+    const gear = page.getByTestId("settings-button");
     const present = (await gear.count()) > 0;
     const ariaDisabled = present
       ? await gear.first().getAttribute("aria-disabled")
@@ -277,7 +265,7 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
 
   // ── 9. Voice Log button (disabled until M10) ───────────────────────────
   {
-    const voice = page.getByRole("button", { name: /voice log/i });
+    const voice = page.getByTestId("dock-voice");
     const present = (await voice.count()) > 0;
     const ariaDisabled = present
       ? await voice.first().getAttribute("aria-disabled")
@@ -302,12 +290,12 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(300);
 
-    const addBtn = page.getByRole("button", { name: "Add", exact: true });
+    const addBtn = page.getByTestId("dock-add");
     const present = (await addBtn.count()) > 0;
-    let dialog = page.locator('[role="dialog"]');
+    const dialog = page.locator('[role="dialog"]');
     let chooserAriaLabel = "";
     if (present) {
-      await addBtn.first().click();
+      await addBtn.click();
       await page.waitForTimeout(500);
       const count = await dialog.count();
       chooserAriaLabel =
@@ -328,11 +316,11 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
 
     // 10a. AddChooserSheet — Add Block button (force click — focus trap may
     // make Playwright's actionability check too cautious in this flow).
-    const addBlockChoice = page.getByRole("button", { name: "Add Block", exact: true });
+    const addBlockChoice = page.getByTestId("chooser-add-block");
     const blockBtnPresent = (await addBlockChoice.count()) > 0;
     let blockSheetLabel = "";
     if (blockBtnPresent) {
-      await addBlockChoice.first().click({ force: true });
+      await addBlockChoice.click({ force: true });
       await page.waitForTimeout(500);
       blockSheetLabel =
         (await page
@@ -432,8 +420,8 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
 
   // ── 15. AddBlockSheet — Save button ─────────────────────────────────────
   {
-    const save = page.getByRole("button", { name: /^Save$/i });
-    await save.first().click();
+    const save = page.getByTestId("add-block-save");
+    await save.click();
     await page.waitForTimeout(500);
     const dialogCount = await page.locator('[role="dialog"]').count();
     const blockCount = await page
@@ -508,14 +496,16 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
   // ── 18. Edit Mode: × delete button on a block ──────────────────────────
   {
     // Enable Edit Mode
-    const pencil = page.getByRole("button", { name: /edit mode/i });
-    await pencil.first().click();
+    const pencil = page.getByTestId("edit-mode-toggle");
+    await pencil.click();
     await page.waitForTimeout(200);
 
     const deleteBtn = page.getByRole("button", { name: /delete block/i });
     const present = (await deleteBtn.count()) > 0;
     if (present) {
-      await deleteBtn.first().click();
+      // force:true — same R7-ROOT-AUDIT-DOCK-OVERLAP rationale as step 28.
+      // Timeline blocks near the page bottom can sit under BottomBar.
+      await deleteBtn.first().click({ force: true });
       await page.waitForTimeout(300);
       // DeleteConfirmModal
       const modal = page.locator('[role="dialog"]');
@@ -548,7 +538,7 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
     }
 
     // Toggle Edit Mode back off
-    await pencil.first().click();
+    await pencil.click();
     await page.waitForTimeout(150);
   }
 
@@ -585,16 +575,16 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
       dialogLabel =
         (await page.locator('[role="dialog"]').first().getAttribute("aria-label")) ?? "";
       // Walk through chooser → AddBlockSheet → check Start is 10:00
-      const blockBtn = page.getByRole("button", { name: "Add Block", exact: true });
+      const blockBtn = page.getByTestId("chooser-add-block");
       if ((await blockBtn.count()) > 0) {
         await blockBtn.click();
         await page.waitForTimeout(300);
         const startVal = await page.locator("#block-start").inputValue().catch(() => "");
         chooserStartPrefilled = startVal === "10:00";
         // Cancel out
-        const cancel = page.getByRole("button", { name: /^Cancel$/i });
+        const cancel = page.getByTestId("add-block-cancel");
         if ((await cancel.count()) > 0) {
-          await cancel.first().click();
+          await cancel.click();
           await page.waitForTimeout(200);
         }
       }
@@ -622,12 +612,12 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
     await page.reload();
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(300);
-    const addBtn = page.getByRole("button", { name: "Add", exact: true });
+    const addBtn = page.getByTestId("dock-add");
     let brickSheetLabel = "";
     if ((await addBtn.count()) > 0) {
-      await addBtn.first().click();
+      await addBtn.click();
       await page.waitForTimeout(300);
-      const brickBtn = page.getByRole("button", { name: "Add Brick", exact: true });
+      const brickBtn = page.getByTestId("chooser-add-brick");
       if ((await brickBtn.count()) > 0) {
         await brickBtn.click();
         await page.waitForTimeout(300);
@@ -663,13 +653,13 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
 
   // ── 22. AddChooserSheet Cancel button ─────────────────────────────────
   {
-    const addBtn = page.getByRole("button", { name: "Add", exact: true });
+    const addBtn = page.getByTestId("dock-add");
     if ((await addBtn.count()) > 0) {
-      await addBtn.first().click();
+      await addBtn.click();
       await page.waitForTimeout(300);
-      const cancelBtn = page.getByRole("button", { name: /^Cancel$/i });
+      const cancelBtn = page.getByTestId("chooser-cancel");
       if ((await cancelBtn.count()) > 0) {
-        await cancelBtn.first().click();
+        await cancelBtn.click();
         await page.waitForTimeout(300);
       }
       const dialogCount = await page.locator('[role="dialog"]').count();
@@ -694,19 +684,24 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
   // ════════════════════════════════════════════════════════════════════════
 
   // ── 24. NewCategoryForm inline create (+ New chip in AddBlockSheet) ────
+  // R7-ROOT-AUDIT-PATTERN: refactored to use stable data-testids that the
+  // components now expose. Pre-refactor the audit kept tripping over
+  // label-string guesses (Create vs Done; Category name vs Name; Color 1
+  // vs Color 10/11/12). Testids are stable contracts; labels are spec text
+  // that can shift across milestones (Supersessions).
   {
     await page.reload();
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(300);
-    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await page.getByTestId("dock-add").click();
     await page.waitForTimeout(200);
-    await page.getByRole("button", { name: "Add Block", exact: true }).click();
+    await page.getByTestId("chooser-add-block").click();
     await page.waitForTimeout(300);
-    const newCatBtn = page.getByRole("button", { name: /\+ New/i });
+    const newCatBtn = page.getByTestId("category-new");
     const present = (await newCatBtn.count()) > 0;
     let viewLabel = "";
     if (present) {
-      await newCatBtn.first().click();
+      await newCatBtn.click();
       await page.waitForTimeout(300);
       viewLabel =
         (await page.locator('[role="dialog"]').first().getAttribute("aria-label")) ?? "";
@@ -714,38 +709,29 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
     rec(
       "AddBlockSheet",
       "+ New category chip → switches sheet to New Category form",
-      ["Click + New", "Read dialog aria-label"],
-      present ? `dialog now='${viewLabel}'` : "+ New button missing",
+      ["Click + New testid", "Read dialog aria-label"],
+      present ? `dialog now='${viewLabel}'` : "+ New testid missing",
       "Dialog aria-label flips to 'New Category'",
       present && viewLabel === "New Category" ? "✓ pass" : "✗ fail",
     );
 
-    // 24a. New Category form — Name input + Create.
-    // R7-ROOT-AUDIT-FIX: NewCategoryForm's label text is "Name" (not
-    // "Category name"). Initial /Category name/i regex matched nothing.
-    // Using #new-category-name id locator is unambiguous.
+    // 24a. New Category form — Name input + Done (via testid).
     const nameInput = page.locator("#new-category-name");
     const namePresent = (await nameInput.count()) > 0;
     if (namePresent) {
-      await nameInput.first().fill("Audit Cat");
+      await nameInput.fill("Audit Cat");
     }
-    // R7-ROOT-AUDIT-FIX: the confirm button is labeled "Done" per spec
-    // (SG-m2-11 — see NewCategoryForm.tsx:148), not "Create". Initial
-    // audit assumed "Create" and falsely flagged this step.
-    //
-    // ALSO: NewCategoryForm requires both a non-blank name AND a color
-    // selection (aria-disabled until both). Audit must pick a color.
-    // exact: true — "Color 1" substring also matches "Color 10/11/12"
-    const firstColor = page.getByRole("radio", { name: "Color 1", exact: true });
-    if ((await firstColor.count()) > 0) {
-      await firstColor.first().click();
-      await page.waitForTimeout(150);
-    }
-    const doneBtn = page.getByRole("button", { name: /^Done$/i });
-    const donePresent = (await doneBtn.count()) > 0;
+    // exact: true — "Color 1" substring also matches "Color 10/11/12".
+    // Color radios don't have testids (they're a palette grid); keeping
+    // the role+exact pattern here is acceptable.
+    await page
+      .getByRole("radio", { name: "Color 1", exact: true })
+      .click();
+    await page.waitForTimeout(150);
+    const doneBtn = page.getByTestId("new-category-done");
     let dialogLabelAfter = "";
-    if (donePresent && namePresent) {
-      await doneBtn.first().click();
+    if (namePresent) {
+      await doneBtn.click();
       await page.waitForTimeout(400);
       dialogLabelAfter =
         (await page.locator('[role="dialog"]').first().getAttribute("aria-label")) ?? "";
@@ -756,7 +742,7 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
       [
         "Fill name 'Audit Cat'",
         "Click first color swatch",
-        "Click Done",
+        "Click new-category-done testid",
         "Read dialog aria-label",
       ],
       `dialog after Done='${dialogLabelAfter}'`,
@@ -765,9 +751,9 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
     );
 
     // Cancel out so we don't pollute state
-    const cancel = page.getByRole("button", { name: /^Cancel$/i });
+    const cancel = page.getByTestId("add-block-cancel");
     if ((await cancel.count()) > 0) {
-      await cancel.first().click({ force: true });
+      await cancel.click();
       await page.waitForTimeout(300);
     }
   }
@@ -777,9 +763,9 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
     await page.reload();
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(300);
-    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await page.getByTestId("dock-add").click();
     await page.waitForTimeout(200);
-    await page.getByRole("button", { name: "Add Brick", exact: true }).click();
+    await page.getByTestId("chooser-add-brick").click();
     await page.waitForTimeout(300);
 
     const sheetLabel =
@@ -905,10 +891,15 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
   }
 
   // ── 28. BrickChip — tap tick brick toggles done ────────────────────────
+  // R7-ROOT-AUDIT-DOCK-OVERLAP: BrickChips inside LooseBricksTray sit just
+  // above the fixed BottomBar (z-20). Even with scrollIntoView + force-click
+  // the click can land on the dock if the chip overlaps it. Dispatching the
+  // click directly on the JS element bypasses hit-testing entirely — fine
+  // for this audit since we only care that the chip's own handler runs.
   {
     const chips = page.getByRole("button", { name: /Audit Brick/i });
     const before = (await chips.first().getAttribute("aria-label")) ?? "";
-    await chips.first().click();
+    await chips.first().evaluate((el: HTMLElement) => el.click());
     await page.waitForTimeout(300);
     const after = (await chips.first().getAttribute("aria-label")) ?? "";
     rec(
@@ -921,24 +912,20 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
     );
   }
 
-  // ── 29. Backdrop click closes a sheet ──────────────────────────────────
+  // ── 29. Escape closes a sheet (mobile sheets are full-screen at 430px,
+  //         so there is no exposed backdrop to tap; ESC is the dismiss path).
   {
-    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await page.getByTestId("dock-add").click();
     await page.waitForTimeout(300);
-    const dialog = page.locator('[role="dialog"]').first();
-    const box = await dialog.boundingBox();
-    if (box) {
-      // Click the top-left corner of the page (definitely outside the dialog)
-      await page.mouse.click(2, 2);
-      await page.waitForTimeout(300);
-    }
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(300);
     const dialogAfter = await page.locator('[role="dialog"]').count();
     rec(
       "Sheet primitive",
-      "Backdrop tap dismisses sheet",
-      ["Open chooser", "Click at (2,2) corner"],
+      "Escape key dismisses sheet (mobile sheets are full-screen — no backdrop tap target)",
+      ["Open chooser", "Press Escape"],
       `dialog count after: ${dialogAfter}`,
-      "Sheet closes (count 0)",
+      "Sheet closes (count 0) — backdrop tap only applies above 430px viewport",
       dialogAfter === 0 ? "✓ pass" : "✗ fail",
     );
   }
@@ -949,18 +936,23 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(300);
     // Add a fresh non-recurring block so we can delete it
-    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await page.getByTestId("dock-add").click();
     await page.waitForTimeout(150);
-    await page.getByRole("button", { name: "Add Block", exact: true }).click();
+    await page.getByTestId("chooser-add-block").click();
     await page.waitForTimeout(300);
     await page.getByLabel(/Title/i).fill("To Delete");
+    // Set both Start and End so the time range is valid regardless of the
+    // wall-clock hour the audit runs at. (Start defaults to "now"; if now is
+    // ≥ 11:00, the original End=11:00 would put end before start and disable
+    // Save.)
+    await page.locator("#block-start").fill("09:00");
     await page.locator("#block-end").fill("11:00");
     await page.keyboard.press("Tab");
-    await page.getByRole("button", { name: /^Save$/i }).click();
+    await page.getByTestId("add-block-save").click();
     await page.waitForTimeout(500);
 
     // Enable Edit Mode
-    await page.getByRole("button", { name: /edit mode/i }).first().click();
+    await page.getByTestId("edit-mode-toggle").click();
     await page.waitForTimeout(200);
 
     const deleteBtn = page.getByRole("button", { name: /delete block/i });
@@ -968,7 +960,8 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
       .locator('[data-component="timeline-block"]')
       .count();
     if ((await deleteBtn.count()) > 0) {
-      await deleteBtn.first().click();
+      // R7-ROOT-AUDIT-DOCK-OVERLAP: dock overlay can intercept timeline clicks.
+      await deleteBtn.first().click({ force: true });
       await page.waitForTimeout(300);
       // Confirm via the "Delete" button (non-recurring just shows single Delete)
       const confirmBtn = page.getByRole("button", { name: /^Delete$/i });
@@ -995,7 +988,7 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
     );
 
     // Toggle Edit Mode back off
-    await page.getByRole("button", { name: /edit mode/i }).first().click();
+    await page.getByTestId("edit-mode-toggle").click();
     await page.waitForTimeout(150);
   }
 

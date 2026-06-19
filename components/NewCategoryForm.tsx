@@ -128,6 +128,7 @@ export function NewCategoryForm({ onCreate, onCancel }: Props) {
       <div style={{ display: "flex", gap: "8px" }}>
         <button
           type="button"
+          data-testid="new-category-done"
           aria-disabled={isValid ? "false" : "true"}
           onClick={handleDone}
           style={{
@@ -149,6 +150,7 @@ export function NewCategoryForm({ onCreate, onCancel }: Props) {
         </button>
         <button
           type="button"
+          data-testid="new-category-cancel"
           onClick={onCancel}
           style={{
             flex: 1,

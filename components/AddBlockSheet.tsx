@@ -467,6 +467,7 @@ export function AddBlockSheet({
             <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
               <button
                 type="button"
+                data-testid="add-block-save"
                 aria-disabled={isValid ? "false" : "true"}
                 aria-describedby={hasOverlap ? "block-save-hint" : undefined}
                 onClick={handleSave}
@@ -494,6 +495,7 @@ export function AddBlockSheet({
               )}
               <button
                 type="button"
+                data-testid="add-block-cancel"
                 onClick={handleClose}
                 aria-label="Cancel"
                 style={{

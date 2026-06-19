@@ -99,6 +99,7 @@ export function CategoryPicker({
         </button>
         <button
           type="button"
+          data-testid="category-new"
           onClick={onRequestNewCategory}
           style={{
             padding: "8px 16px",

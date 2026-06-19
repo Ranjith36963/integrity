@@ -62,6 +62,7 @@ export function TopBar({ state }: TopBarProps = {}) {
         {/* R1-P2-4: type="button" guards against future <form> wrapping. */}
         <button
           type="button"
+          data-testid="edit-mode-toggle"
           aria-label={editMode ? "Edit mode, on" : "Edit mode, off"}
           aria-pressed={editMode}
           onClick={handleEditToggle}
@@ -87,6 +88,7 @@ export function TopBar({ state }: TopBarProps = {}) {
             dimmed state. */}
         <button
           type="button"
+          data-testid="settings-button"
           aria-label="Settings (coming in a later release)"
           aria-disabled="true"
           className="grid h-11 w-11 cursor-not-allowed place-items-center rounded-md border border-white/5 opacity-50 transition-colors"

@@ -32,6 +32,7 @@ export function BottomBar({ onAddPress }: Props) {
               accidentally make this a submit. */}
           <button
             type="button"
+            data-testid="dock-voice"
             aria-label="Voice Log (coming in a later release)"
             aria-disabled="true"
             className="flex h-12 flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-full text-[12px] tracking-[0.18em] uppercase opacity-50"
@@ -50,6 +51,7 @@ export function BottomBar({ onAddPress }: Props) {
               R1-P2-4: explicit type="button". */}
           <button
             type="button"
+            data-testid="dock-add"
             aria-label="Add"
             className="grid h-12 w-12 place-items-center rounded-full"
             style={{
