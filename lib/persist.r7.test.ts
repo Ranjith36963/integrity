@@ -255,3 +255,100 @@ describe("R7-ROOT-1: loadStateWithReport — migrated paths still recover field-
     expect(state.currentDate).toBe("2026-05-18"); // seeded
   });
 });
+
+// R7-ROOT-M8/M9-P0 — history per-day recovery (NOT all-or-nothing)
+describe("R7-ROOT-M8/M9-P0: history corrupt-day recovery preserves good days", () => {
+  const validArchivedDay = {
+    blocks: [validBlock],
+    categories: [validCategory],
+    looseBricks: [],
+  };
+
+  it("ONE bad day in history → bad day dropped, all good days preserved", () => {
+    mockStorage._store[STORAGE_KEY] = JSON.stringify({
+      schemaVersion: 3,
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: {
+        "2026-05-15": validArchivedDay, // good
+        "2026-05-16": { totally: "bad shape" }, // corrupt
+        "2026-05-17": validArchivedDay, // good
+      },
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      deletions: {},
+    });
+    const { state, report } = loadStateWithReport();
+    expect(report.kind).toBe("recovered");
+    if (report.kind === "recovered") {
+      expect(report.droppedHistoryDays).toEqual(["2026-05-16"]);
+      // resetFields does NOT include "history" — the field wasn't reset, just pruned
+      expect(report.resetFields).not.toContain("history");
+    }
+    // Good days preserved
+    expect(Object.keys(state.history).sort()).toEqual([
+      "2026-05-15",
+      "2026-05-17",
+    ]);
+  });
+
+  it("BAD ISO key (e.g., 'garbage' as date) drops the day, keeps the rest", () => {
+    mockStorage._store[STORAGE_KEY] = JSON.stringify({
+      schemaVersion: 3,
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: {
+        garbage: validArchivedDay, // invalid ISO key
+        "2026-05-17": validArchivedDay, // good
+      },
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      deletions: {},
+    });
+    const { state, report } = loadStateWithReport();
+    expect(report.kind).toBe("recovered");
+    if (report.kind === "recovered") {
+      expect(report.droppedHistoryDays).toEqual(["garbage"]);
+    }
+    expect(Object.keys(state.history)).toEqual(["2026-05-17"]);
+  });
+
+  it("history field that's not a plain object resets entirely (the field is corrupt as a whole)", () => {
+    mockStorage._store[STORAGE_KEY] = JSON.stringify({
+      schemaVersion: 3,
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: ["not an object"], // array — whole field is corrupt
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      deletions: {},
+    });
+    const { state, report } = loadStateWithReport();
+    expect(report.kind).toBe("recovered");
+    if (report.kind === "recovered") {
+      expect(report.resetFields).toContain("history");
+    }
+    expect(state.history).toEqual({});
+  });
+
+  it("clean history (all days valid) reports kind=clean", () => {
+    mockStorage._store[STORAGE_KEY] = JSON.stringify({
+      schemaVersion: 3,
+      programStart: "2026-05-01",
+      currentDate: "2026-05-18",
+      history: {
+        "2026-05-15": validArchivedDay,
+        "2026-05-16": validArchivedDay,
+      },
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      deletions: {},
+    });
+    const { report } = loadStateWithReport();
+    expect(report.kind).toBe("clean");
+  });
+});

@@ -51,6 +51,12 @@ export function HeroRing({ pct, firstPaintCountUp = false, children }: Props) {
     }
 
     // No-tween path: PRM, pct===0, or firstPaintCountUp===false — snap to final value.
+    // C-m7c-010 LOCKS the behavior that pct change mid-tween snaps to the new
+    // value (cancels the tween via cleanup). Originally flagged as P1 in M7 R1
+    // review but the reviewer missed that useFirstPaintAfterHydration is a
+    // one-shot ref-machine: firstPaintCountUp flips true→false ONCE per mount
+    // and pct only changes when state changes (not on useNow ticks). The
+    // tween-cancel-on-mid-flight-prop-change is intentional per AC.
     setDisplayPct(pct);
   }, [firstPaintCountUp, pct, prefersReducedMotion]);
 
@@ -73,10 +79,41 @@ export function HeroRing({ pct, firstPaintCountUp = false, children }: Props) {
         height: `${SIZE}px`,
       }}
     >
+      {/* R7-ROOT-M7-NIT-1: aria-live moved from the svg to a sibling
+          visually-hidden status node that updates only when displayPct
+          reaches the prop pct (i.e., AT tween completion, not every
+          frame). Pre-R7 the svg had aria-live='polite' AND
+          aria-label='Day score: <live tween value>%' — SR users heard 50
+          announcements ("Day score: 1%, Day score: 2%, ...") during the
+          1.6s count-up. */}
+      <span
+        role="status"
+        aria-live="polite"
+        style={{
+          position: "absolute",
+          width: "1px",
+          height: "1px",
+          padding: 0,
+          margin: "-1px",
+          overflow: "hidden",
+          clip: "rect(0,0,0,0)",
+          whiteSpace: "nowrap",
+          border: 0,
+        }}
+      >
+        {/* Only announce when displayPct === pct (tween settled or no-tween path). */}
+        {Math.abs(displayPct - pct) < 0.5
+          ? `Day score: ${Math.round(pct)}%`
+          : ""}
+      </span>
       <svg
         role="img"
-        aria-label={`Day score: ${roundedDisplayPct}%`}
-        aria-live="polite"
+        // R7-ROOT-R2-NIT: lock the svg's aria-label to round(pct) so it
+        // doesn't mutate 50 times during the tween. The visible numeral
+        // animates via children-as-function; the aria-label is the final
+        // canonical value. Rotor/focus inspection mid-tween now sees the
+        // settled value.
+        aria-label={`Day score: ${Math.round(pct)}%`}
         width={SIZE}
         height={SIZE}
         viewBox={`0 0 ${SIZE} ${SIZE}`}

@@ -29,9 +29,13 @@ interface Props {
   /**
    * M4e: whether any blocks exist in state.
    * Used to determine tray visibility: hidden when looseBricks is empty AND blocksExist is false.
-   * Defaults to true for backward compatibility with pre-M4e callers.
+   * R7-ROOT-M3-P1-2: now REQUIRED. The previous `blocksExist = true` default was a
+   * backward-compat scar that lied to the empty-state contract — a future caller
+   * forgetting to pass it while having zero blocks would render an empty tray
+   * (chevron + "+ Brick" pill) over the M1 empty-state card. Every in-tree
+   * caller already passes it; tests just need an explicit value.
    */
-  blocksExist?: boolean;
+  blocksExist: boolean;
   /** M5: called with brickId when a loose brick × is tapped. */
   onRequestDeleteBrick?: (brickId: string) => void;
   /** M7a: when true, wraps the chip list in a Framer Motion stagger container.
@@ -45,7 +49,7 @@ export function LooseBricksTray({
   onAddBrick,
   onTickToggle,
   onUnitsOpenSheet,
-  blocksExist = true,
+  blocksExist,
   onRequestDeleteBrick,
   stagger = false,
 }: Props) {

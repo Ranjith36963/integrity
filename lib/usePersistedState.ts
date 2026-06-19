@@ -105,8 +105,19 @@ export function usePersistedState(): [AppState, Dispatch<Action>, boolean] {
     setMounted(true);
 
     if (report.kind === "recovered") {
+      // R7-ROOT-M8/M9-P0: include droppedHistoryDays count in the toast when
+      // 1+ historical days were corrupted but the rest were preserved.
+      const parts: string[] = [];
+      if (report.resetFields.length > 0) {
+        parts.push(`fields: ${report.resetFields.join(", ")}`);
+      }
+      if (report.droppedHistoryDays && report.droppedHistoryDays.length > 0) {
+        parts.push(
+          `${report.droppedHistoryDays.length} archived day(s) dropped`,
+        );
+      }
       toast(
-        `Some saved data was reset (${report.resetFields.join(", ")}). Your other data is intact.`,
+        `Some saved data was recovered (${parts.join("; ")}). Your other data is intact.`,
         "info",
       );
     } else if (report.kind === "discarded") {

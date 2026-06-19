@@ -9,18 +9,25 @@
  *
  * Accessibility:
  *   - container: role="tablist" aria-label="Calendar view"
- *   - all four segments: role="tab" aria-selected (no segment is disabled)
+ *   - all four segments: role="tab" aria-selected
+ *   - R7-ROOT-M8/M9-P1: arrow-key navigation (Left/Right cycles) per WAI-ARIA
+ *     Authoring Practices for tablist. Roving tabIndex: only the active tab
+ *     has tabIndex={0}; inactive tabs are tabIndex={-1}.
  *
  * Design tokens: --accent (active bg), --bg (active text), --ink-dim (inactive)
  * ADR-031: segments ≥ 44px tall.
  */
 
+import { useRef } from "react";
+
+type ViewName = "day" | "month" | "week" | "year";
+
 type ViewSwitcherProps = {
-  view: "day" | "month" | "week" | "year";
-  onSelect: (view: "day" | "month" | "week" | "year") => void;
+  view: ViewName;
+  onSelect: (view: ViewName) => void;
 };
 
-type Segment = { label: string; value: "day" | "week" | "month" | "year" };
+type Segment = { label: string; value: ViewName };
 
 const SEGMENTS: Segment[] = [
   { label: "Day", value: "day" },
@@ -30,24 +37,55 @@ const SEGMENTS: Segment[] = [
 ];
 
 export function ViewSwitcher({ view, onSelect }: ViewSwitcherProps) {
+  // R7-ROOT-M8/M9-P1: arrow-key handler. Cycles within the four segments;
+  // Home/End jump to ends. Per WAI-ARIA tablist authoring guide.
+  const buttonsRef = useRef<(HTMLButtonElement | null)[]>([]);
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    const currentIndex = SEGMENTS.findIndex((s) => s.value === view);
+    let nextIndex = currentIndex;
+    if (e.key === "ArrowLeft") {
+      nextIndex =
+        currentIndex === 0 ? SEGMENTS.length - 1 : currentIndex - 1;
+    } else if (e.key === "ArrowRight") {
+      nextIndex = (currentIndex + 1) % SEGMENTS.length;
+    } else if (e.key === "Home") {
+      nextIndex = 0;
+    } else if (e.key === "End") {
+      nextIndex = SEGMENTS.length - 1;
+    } else {
+      return;
+    }
+    e.preventDefault();
+    const nextSeg = SEGMENTS[nextIndex];
+    onSelect(nextSeg.value);
+    // Focus the new active tab after the selection commits.
+    queueMicrotask(() => buttonsRef.current[nextIndex]?.focus());
+  }
+
   return (
     <div
       role="tablist"
       aria-label="Calendar view"
+      onKeyDown={handleKeyDown}
       className="flex w-full"
       style={{
         fontFamily: "var(--font-ui)",
         fontSize: "var(--fs-12)",
       }}
     >
-      {SEGMENTS.map((seg) => {
+      {SEGMENTS.map((seg, idx) => {
         // All four segments are live — Day, Week, Month, Year
         const isActive = view === seg.value;
         return (
           <button
             key={seg.value}
+            ref={(el) => {
+              buttonsRef.current[idx] = el;
+            }}
             role="tab"
             aria-selected={isActive}
+            tabIndex={isActive ? 0 : -1}
             type="button"
             onClick={() => onSelect(seg.value)}
             className="flex-1"

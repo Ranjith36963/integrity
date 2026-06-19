@@ -173,9 +173,15 @@ export function WeekView({ state, onOpenDay }: WeekViewProps) {
     if (isoDate === todayIso) {
       // Today → open the editable Building (Day) view
       onOpenDay(isoDate);
-    } else {
-      // Past archived day → open read-only PastDayDetail
+      return;
+    }
+    // R7-ROOT-M8/M9-P2 (mirror of MonthView fix): fall back to editable
+    // Day view if the iso isn't yet in state.history. Avoids silent
+    // no-op when a cell renders as scored but isn't archived.
+    if (isoDate in state.history) {
       setOpenDate(isoDate);
+    } else {
+      onOpenDay(isoDate);
     }
   }
 

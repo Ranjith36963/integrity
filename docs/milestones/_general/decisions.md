@@ -486,3 +486,33 @@ Incremental mode is enabled (`incrementalFile: .stryker-tmp/incremental.json`) s
 - The mutation score is a NEW metric tracked over time. Initial baseline TBD on the first run; document the actual score in this ADR via amendment once measured.
 
 ---
+
+## ADR-055 — Archived day shapes are validated against frozen v3 schema snapshots
+
+**Status:** Accepted · 2026-05-24 · proposed by R7-ROOT-M8/M9-P1 follow-up
+
+**Context.** R7-ROOT-1 added valibot SHAPE validation at the persist boundary. The v3 schema for `ArchivedDay` directly reused the live `blockSchema`, `brickSchema`, and `categorySchema`. ADR-045 says `state.history` is "read-only" — once a day archives, its shape on disk must keep parsing forever. But the validator treated archived days as live shapes: if a future schema bump (v3→v4) added a required field to `Brick` or `Block`, every legacy archived day would suddenly fail validation and the per-day recovery flow (added in R7-ROOT-M8/M9-P0) would drop them en masse.
+
+The R7-ROOT-M8/M9-P0 fix prevented total-history-loss from a single corrupted day, but didn't prevent total-history-loss from a future schema bump.
+
+**Decision.** History validation now references FROZEN v3 snapshots of the brick/block/category/archivedDay shapes:
+
+- `brickV3Schema`, `blockV3Schema`, `categoryV3Schema` are aliased to the current schemas at v3.
+- `archivedDaySchema` references only these v3 snapshots.
+- The live `brickSchema` / `blockSchema` / `categorySchema` continue to evolve with new milestones; the v3 snapshots are pinned and never change.
+
+At a future schema bump (v3→v4):
+
+1. Write `brickSchemaV4`, `blockSchemaV4`, etc. as the new live schemas.
+2. Write `archivedDayV4Schema` referencing the new v4 shapes.
+3. Add a `v3→v4` per-day shape upgrader in the migrate flow.
+4. After migration completes, `state.history` is all v4. Subsequent loads use `archivedDayV4Schema`.
+
+**Consequences.**
+
+- New top-level field on `Brick`/`Block`/`Category` in a v4 bump does NOT invalidate legacy archived days at load time. The v3→v4 migration is responsible for upgrading the on-disk shape.
+- ADR-045's "history is read-only" promise is now backed by validator code, not just an honor system.
+- The frozen snapshots are aliases, not copies — this works because v3 is the CURRENT version. Once we ship v4, the snapshots must become independent copies (move the v3 schema definitions to their own file or block).
+- R7-ROOT-M8/M9-P0's per-day recovery flow still catches corrupted individual days; this ADR catches the broader "live shape evolved" case.
+
+---

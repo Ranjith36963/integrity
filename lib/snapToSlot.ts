@@ -24,6 +24,12 @@ export function snapToSlot(
   offsetPx: number,
   hourHeightPx: number = HOUR_HEIGHT_PX,
 ): string {
+  // R7-ROOT-M5/M6-P2 (NaN guard): non-finite input (NaN, Infinity, multi-touch
+  // pointer event leak) would propagate via Math.round(NaN/30) → "NaN:NaN" all
+  // the way into the reducer's REORDER_BLOCK. Snap-to-zero is the safer floor.
+  if (!Number.isFinite(offsetPx) || !Number.isFinite(hourHeightPx) || hourHeightPx <= 0) {
+    return "00:00";
+  }
   const totalMin = (offsetPx / hourHeightPx) * 60;
   const snapped = Math.round(totalMin / SLOT_MIN) * SLOT_MIN;
   // SG-m6-08: clamp start to [0, 23:30] so even a single 30-min block fits at the bottom

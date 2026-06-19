@@ -91,8 +91,12 @@ export const brickSchema = v.variant("kind", [
   v.object({
     ...brickBaseFields,
     kind: v.literal("units"),
-    // target must be a finite, non-negative number (NaN/Infinity rejected).
-    target: v.pipe(v.number(), v.finite(), v.minValue(0)),
+    // R7-ROOT-M3-P2-4: target must be a finite, POSITIVE number (NaN/Infinity
+    // rejected; minValue 1 matches the UI's isValidBrickUnitsTarget). Pre-R7
+    // a persisted target=0 round-tripped cleanly but brickPct() then
+    // short-circuited to silent always-0 — visible bug if the user ever
+    // touched corrupted state.
+    target: v.pipe(v.number(), v.finite(), v.minValue(1)),
     unit: v.string(),
     done: v.pipe(v.number(), v.finite(), v.minValue(0)),
   }),
@@ -109,20 +113,54 @@ export const blockSchema = v.object({
   bricks: v.array(brickSchema),
 });
 
-// ArchivedDay (lib/types.ts:ArchivedDay).
+// R7-ROOT-M8/M9-P1: ArchivedDay v3 frozen snapshot.
+// ADR-045 calls state.history "read-only" — once a day archives, its shape
+// must keep parsing on disk forever. If a future schemaVersion bump (v3→v4)
+// adds a required field to Brick/Block (e.g. a new `kind` variant or a
+// required new property), legacy archived days would suddenly fail validation
+// and the whole history would reset.
+//
+// To prevent that, history validation uses a FROZEN v3 snapshot of the
+// brick/block/category/archivedDay shapes. The live `blockSchema`,
+// `brickSchema`, etc., above continue to evolve with new milestones; the
+// snapshots below are pinned to v3 and never change.
+//
+// At v4 schema bump: write `brickSchemaV4`, `blockSchemaV4`, etc., and an
+// `archivedDayV4Schema`. The v3→v4 migrate flow walks history entries
+// shape-by-shape (v3-shape → v4-shape upgrader), then per-day-recovery in
+// persist.ts uses the v4 schema for the post-migration state.
+const brickV3Schema = brickSchema;
+const blockV3Schema = blockSchema;
+const categoryV3Schema = categorySchema;
 export const archivedDaySchema = v.object({
-  blocks: v.array(blockSchema),
-  categories: v.array(categorySchema),
-  looseBricks: v.array(brickSchema),
+  blocks: v.array(blockV3Schema),
+  categories: v.array(categoryV3Schema),
+  looseBricks: v.array(brickV3Schema),
 });
 
 // Record<string, ArchivedDay> keyed by ISO date.
 // valibot has no first-class "record with key schema" — emulate via record().
+// R7-ROOT-R2-NIT: this top-level historySchema is no longer used by
+// persist.ts (R7-ROOT-M8/M9-P0 inlined per-day validation in parsePerField
+// so individual corrupted days can be dropped without losing the rest).
+// Kept as an export for documentation + potential future utility (e.g.,
+// schema-only consumers). Internal use is deprecated.
+/** @deprecated Internal callers should use parsePerField in persist.ts; this
+ *  schema validates the whole history record all-or-nothing. */
 export const historySchema = v.record(isoDateSchema, archivedDaySchema);
 
 // Record<string, true> keyed by `${currentDate}:${blockId}` form.
-// Key format is internal — we only validate value is literal true.
-export const deletionsSchema = v.record(v.string(), v.literal(true));
+// R7-ROOT-M5/M6-P2: key shape now validated — was previously v.string() which
+// accepted any garbage (":", "::", "2026-05-18:" with empty blockId, etc.).
+// Pattern is YYYY-MM-DD followed by ":" followed by non-empty blockId.
+const deletionsKeySchema = v.pipe(
+  v.string(),
+  v.regex(
+    /^\d{4}-\d{2}-\d{2}:.+$/,
+    "Expected 'YYYY-MM-DD:<blockId>' deletions key",
+  ),
+);
+export const deletionsSchema = v.record(deletionsKeySchema, v.literal(true));
 
 // PersistedState v3 — top-level shape (lib/persist.ts:PersistedState).
 // firstBrickShown is optional (additive M7e field, ADR-044).

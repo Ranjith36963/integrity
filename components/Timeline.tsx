@@ -24,6 +24,7 @@ import { staggerForCount } from "@/lib/motion";
 import { NowLine } from "./NowLine";
 import { EmptyBlocks } from "./EmptyBlocks";
 import { SlotTapTargets } from "./SlotTapTargets";
+import { useEditMode } from "./EditModeProvider";
 import { TimelineBlock } from "./TimelineBlock";
 import { DraggableTimelineBlock } from "./DraggableTimelineBlock";
 import { TimedLooseBrickCard } from "./TimedLooseBrickCard";
@@ -122,6 +123,14 @@ export function Timeline({
       }
     : undefined;
 
+  // R7-ROOT-M2-04: read editMode from the provider so SlotTapTargets can
+  // suppress its 24 invisible buttons when entering Edit Mode. Pre-R7
+  // Timeline never threaded this — the contract existed in
+  // SlotTapTargets.tsx:8 ("editMode === true → null") but the wiring was
+  // dead. Result: jiggling Edit Mode blocks were covered by 24 transparent
+  // buttons that swallowed clicks meant for drag.
+  const { editMode } = useEditMode();
+
   // M7b: compute the active block id — O(n) once per render; no useMemo needed.
   // Derives visibleBlockList from items (post-M5 deletions filter) so deleted blocks
   // cannot be candidates. activeId is null when no block contains now. AC #6/#7.
@@ -204,7 +213,7 @@ export function Timeline({
           }}
         >
           {/* Layer 1: Slot tap targets (z=1, above hour-grid, below blocks) */}
-          <SlotTapTargets onSlotTap={onSlotTap} />
+          <SlotTapTargets onSlotTap={onSlotTap} editMode={editMode} />
 
           {/* Layer 2: Timeline items — block cards OR timed loose brick cards */}
           {/* M7a: when stagger===true, wrap the items list in a Framer Motion stagger container.

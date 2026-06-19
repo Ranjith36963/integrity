@@ -278,17 +278,17 @@ describe("C-m5-017: Edit mode suppresses brick log; locked mode logs normally", 
       render(<BuildingClientHarness />);
     });
     await enableEditMode(user);
-    // In edit mode, tapping the block card body is inert (SG-m5-05)
-    // The block card should not expand — find the card via data-component
+    // R7-ROOT-M5/M6-P1: dropped the `if (blockCard)` guard. If the block
+    // doesn't render the test should FAIL — pre-R7 the if-guard silently
+    // swallowed the regression and the test became a no-op.
     const blockCard = document.querySelector(
       '[data-component="timeline-block"]',
-    ) as HTMLElement;
-    if (blockCard) {
-      expect(blockCard.getAttribute("aria-expanded")).toBe("false");
-      // Click outside the × button
-      await user.click(blockCard);
-      expect(blockCard.getAttribute("aria-expanded")).toBe("false");
-    }
+    ) as HTMLElement | null;
+    expect(blockCard).not.toBeNull();
+    expect(blockCard!.getAttribute("aria-expanded")).toBe("false");
+    // Click outside the × button — Edit Mode suppresses tap-expand (SG-m5-05).
+    await user.click(blockCard!);
+    expect(blockCard!.getAttribute("aria-expanded")).toBe("false");
   });
 
   it("in locked mode tapping a block card expands it (normal M4 behavior)", async () => {
@@ -296,14 +296,14 @@ describe("C-m5-017: Edit mode suppresses brick log; locked mode logs normally", 
     await act(async () => {
       render(<BuildingClientHarness />);
     });
+    // R7-ROOT-M5/M6-P1: dropped the `if (blockCard)` guard (same reason).
     const blockCard = document.querySelector(
       '[data-component="timeline-block"]',
-    ) as HTMLElement;
-    if (blockCard) {
-      expect(blockCard.getAttribute("aria-expanded")).toBe("false");
-      await user.click(blockCard);
-      expect(blockCard.getAttribute("aria-expanded")).toBe("true");
-    }
+    ) as HTMLElement | null;
+    expect(blockCard).not.toBeNull();
+    expect(blockCard!.getAttribute("aria-expanded")).toBe("false");
+    await user.click(blockCard!);
+    expect(blockCard!.getAttribute("aria-expanded")).toBe("true");
   });
 });
 

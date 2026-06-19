@@ -194,6 +194,11 @@ export function reducer(state: AppState, action: Action): AppState {
       // Removes the block template from state.blocks only.
       // state.history is NOT touched (ADR-045 — history is read-only).
       // state.deletions is NOT pruned — stale keys for the removed block are left in place (SG-m5-06).
+      // R7-ROOT-M5/M6-P1 no-op short-circuit: if the blockId is not present,
+      // return the original state reference so memoization callers
+      // (useMemo over state.blocks) don't re-fire. Matches the DELETE_BRICK /
+      // SET_UNITS_DONE no-op identity discipline.
+      if (state.blocks.every((b) => b.id !== action.blockId)) return state;
       return {
         ...state,
         blocks: state.blocks.filter((b) => b.id !== action.blockId),

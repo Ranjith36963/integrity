@@ -32,6 +32,11 @@ interface Props {
  */
 export function aggregateCategoryMinutes(
   blocks: Block[],
+  // R7-ROOT-M2-16: optional category list used for stable, user-meaningful
+  // sort order (by name, then by id as tie-breaker). When undefined, falls
+  // back to id-only sort — the pre-R7 behavior — so existing test fixtures
+  // (which use string ids like "c1", "c2") keep passing without change.
+  categories?: { id: string; name: string }[],
 ): { categoryId: string; minutes: number; avgBlockPct: number }[] {
   const minuteMap = new Map<string, number>();
   const pctSumMap = new Map<string, number>();
@@ -39,22 +44,38 @@ export function aggregateCategoryMinutes(
 
   for (const b of blocks) {
     if (b.categoryId === null) continue;
-    // Accumulate blockPct for all categorized blocks (with or without end)
+    // R7-ROOT-M2-13: only count blocks WITH an end in both width AND opacity
+    // accumulators. Pre-R7 the avgBlockPct denominator included no-end blocks
+    // (which always have blockPct = 0), pulling the average down to half its
+    // true value for any category that had even one no-end block. Width
+    // already excluded them; opacity now matches. The bug only surfaced once
+    // M3 introduced real blockPct > 0 — by then the visual was wrong.
+    if (b.end === undefined) continue;
+    const mins = toMin(b.end) - toMin(b.start);
+    if (mins <= 0) continue;
+    minuteMap.set(b.categoryId, (minuteMap.get(b.categoryId) ?? 0) + mins);
     pctSumMap.set(
       b.categoryId,
       (pctSumMap.get(b.categoryId) ?? 0) + blockPct(b),
     );
     pctCountMap.set(b.categoryId, (pctCountMap.get(b.categoryId) ?? 0) + 1);
-    // Only accumulate minutes for blocks with a valid end
-    if (b.end === undefined) continue;
-    const mins = toMin(b.end) - toMin(b.start);
-    if (mins <= 0) continue;
-    minuteMap.set(b.categoryId, (minuteMap.get(b.categoryId) ?? 0) + mins);
   }
 
-  // Build result from categoryIds that have at least some duration (minute entries)
+  // Build result from categoryIds that have at least some duration (minute entries).
+  // R7-ROOT-M2-16: name-aware sort when categories are provided.
+  const nameById = new Map(
+    (categories ?? []).map((c) => [c.id, c.name] as const),
+  );
   return [...minuteMap.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([idA], [idB]) => {
+      const nameA = nameById.get(idA);
+      const nameB = nameById.get(idB);
+      if (nameA && nameB) {
+        const cmp = nameA.localeCompare(nameB);
+        if (cmp !== 0) return cmp;
+      }
+      return idA.localeCompare(idB);
+    })
     .map(([categoryId, minutes]) => {
       const pctCount = pctCountMap.get(categoryId) ?? 1;
       const pctSum = pctSumMap.get(categoryId) ?? 0;
@@ -69,7 +90,7 @@ export function BlueprintBar({
   now,
   stagger = false,
 }: Props) {
-  const aggregated = aggregateCategoryMinutes(blocks);
+  const aggregated = aggregateCategoryMinutes(blocks, categories);
   const totalMinutes = aggregated.reduce((s, e) => s + e.minutes, 0);
   const hasSegments = aggregated.length > 0 && totalMinutes > 0;
 

@@ -265,6 +265,11 @@ export function BuildingClient({
   // shouldCelebrate is true for exactly one render on the FIRST 0→100 crossing per mount.
   // celebrate("day", { withAudio: false }) routes haptics via the shim (audio deferred to M7f).
   // PRM-conditional timer: 2000ms under PRM (DayCompleteCard), 1700ms under motion ON (Fireworks).
+  // R7-ROOT-M7-P1-2: capture PRM at celebration START so a mid-window OS toggle
+  // doesn't desync the in-flight timer from DayCompleteCard's active gate.
+  // celebratingPrm holds the frozen PRM value while a celebration is in
+  // flight (true | false); null when not celebrating.
+  const [celebratingPrm, setCelebratingPrm] = useState<boolean | null>(null);
   // timerIdRef holds the clearTimeout handle so unmount cleanup can cancel it safely.
   const prefersReducedMotion = useReducedMotion();
   const shouldCelebrate = useDayCelebrationOnce(heroPct);
@@ -275,15 +280,22 @@ export function BuildingClient({
     celebrate("day", { withAudio: false });
     /* eslint-disable-next-line react-hooks/set-state-in-effect -- M7d plan.md: setFireworksActive(true) is gated by one-shot shouldCelebrate from useDayCelebrationOnce; no cascade. Same precedent as Fireworks.tsx (M4a). */
     setFireworksActive(true);
+    // R7-ROOT-M7-P1-2: capture PRM at the moment the celebration starts.
+    // The DayCompleteCard active gate reads from this state while a
+    // celebration is in flight, freezing PRM until the timer clears.
+    // Pre-R7 a mid-window OS PRM toggle could surface the card briefly
+    // under newly-enabled PRM or keep Fireworks playing under newly-
+    // disabled PRM.
+    setCelebratingPrm(Boolean(prefersReducedMotion));
     const delay = prefersReducedMotion ? 2000 : 1700;
     // Store ID in ref so unmount cleanup can cancel safely without returning cleanup here.
     // Returning a cleanup function from this effect would cancel the timer when
     // shouldCelebrate flips false on the next render (triggered by setFireworksActive),
     // defeating the 1700/2000ms celebration window (plan.md M7d PRM-conditional timer).
-    dayCelebTimerRef.current = window.setTimeout(
-      () => setFireworksActive(false),
-      delay,
-    );
+    dayCelebTimerRef.current = window.setTimeout(() => {
+      setFireworksActive(false);
+      setCelebratingPrm(null); // release the freeze
+    }, delay);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- shouldCelebrate is the only trigger dep; prefersReducedMotion is intentionally excluded to prevent React cleanup from cancelling the in-flight timer on the next render where shouldCelebrate flips false (plan.md M7d PRM-conditional timer invariant).
   }, [shouldCelebrate]);
 
@@ -659,13 +671,21 @@ export function BuildingClient({
           prefersReducedMotion={Boolean(prefersReducedMotion)}
         />
         {/* M4a: Fireworks overlay — day-100% celebration (motion ON path) */}
-        <Fireworks active={fireworksActive} />
+        {/* R7-ROOT-R2-P1-2: prmOverride keeps Fireworks symmetric with
+            DayCompleteCard's frozen-PRM gate. Pre-R2 only the card was
+            frozen — Fireworks read live PRM and could vanish mid-burst. */}
+        <Fireworks active={fireworksActive} prmOverride={celebratingPrm} />
         {/* M7d: DayCompleteCard — PRM-only "Day complete." text card.
             active predicate: fireworksActive && prefersReducedMotion.
             Under motion ON: prefersReducedMotion===false → card receives active={false} → renders null.
             Under PRM: Fireworks returns null (M4a behavior preserved); card mounts for 2000ms. */}
         <DayCompleteCard
-          active={Boolean(fireworksActive && prefersReducedMotion)}
+          active={Boolean(
+            fireworksActive &&
+              // R7-ROOT-M7-P1-2: read from frozen state while a celebration
+              // is in flight; fall back to live PRM otherwise (defensive).
+              (celebratingPrm ?? prefersReducedMotion),
+          )}
         />
       </div>
       {/* M5: DeleteConfirmModal — pendingDelete drives open/target; independent of editMode */}

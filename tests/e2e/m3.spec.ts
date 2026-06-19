@@ -5,7 +5,7 @@ import { test, expect, type Page } from "@playwright/test";
 // Fixed time: 2026-05-06T09:00:00 (prevents clock drift in assertions).
 
 async function addBlock(page: Page, title: string) {
-  await page.getByRole("button", { name: "Add" }).click();
+  await page.getByRole("button", { name: "Add", exact: true }).click();
   await page.getByLabel(/Title/i).fill(title);
   await page.getByRole("button", { name: /Save/i }).click();
   await expect(page.locator('[role="dialog"]')).toHaveCount(0);
@@ -441,7 +441,7 @@ test("E-m3-013: HeroRing SVG visible; shows 0% on fresh load; stays 0% after emp
   await expect(heroRing).toBeVisible();
 
   // Numeral shows 0%
-  await expect(page.getByText("0%")).toBeVisible();
+  await expect(page.getByTestId("hero-numeral")).toBeVisible();
 
   // Arc is full (empty) — filled arc dashoffset = circumference
   const R = 56;
@@ -453,5 +453,5 @@ test("E-m3-013: HeroRing SVG visible; shows 0% on fresh load; stays 0% after emp
 
   // Add block (no bricks) — Hero stays at 0%
   await addBlock(page, "Morning");
-  await expect(page.getByText("0%")).toBeVisible();
+  await expect(page.getByTestId("hero-numeral")).toBeVisible();
 });

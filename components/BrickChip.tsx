@@ -47,7 +47,14 @@ function buildAriaLabel(brick: Brick, pct: number): string {
   // units — M4f
   const roundedPct = Math.round(pct);
   const unitSuffix = brick.unit ? ` ${brick.unit}` : "";
-  return `${brick.name}, units, ${roundedPct}% complete, ${brick.done} of ${brick.target}${unitSuffix}`;
+  const base = `${brick.name}, units, ${roundedPct}% complete, ${brick.done} of ${brick.target}${unitSuffix}`;
+  // R7-ROOT-M3-P1-1: include scheduled HH:MM-to-HH:MM for hasDuration units
+  // bricks (mirrors the tick branch above). Pre-R7 only tick chips announced
+  // their time window — SR users of units bricks lost the temporal context.
+  if (brick.hasDuration && brick.start && brick.end) {
+    return `${base}, scheduled ${brick.start} to ${brick.end}`;
+  }
+  return base;
 }
 
 // M4e: Time-window badge — shown below the name when hasDuration === true

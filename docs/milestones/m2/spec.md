@@ -2,6 +2,13 @@
 
 > **Pillars:** § 0.1 (the wedge — calendars show plans, Dharma needs blocks before it can show proof), § 0.3 (visual identity — categories light the BlueprintBar; Block cards land at their `start` row), § 0.5 (interaction primitives — three ways to add; plain forms in M2 per ADR-036), § 0.9 (data model — blocks always timed; `parentBlockId` reserved for M3 bricks), § 0.14 (no factory categories, no factory blocks), ADR-006 (half-open `[start, end)` intervals), ADR-019 (`Recurrence` discriminated union), ADR-032 (user-defined categories, unlimited count), ADR-036 (plain forms in M2, voice in M10), ADR-039 (ships empty).
 
+### Supersessions
+
+> R7-ROOT-7: ACs that have been superseded by later milestones. Each line: original AC → milestone+AC that took over + ADR.
+
+- **AC #1 + #2** (dock `+` and slot tap "open the Add Block sheet directly") → intercepted by **M4d AddChooserSheet** (dock `+` opens chooser; chooser routes to Add Block / Add Brick / Cancel). The direct-open path is preserved only for the inside-block "+ Add brick" and the tray "+ Brick" pill (per M4d plan).
+- **AC #26** (overlap shows "a soft inline warning … Save is still allowed") → reversed by **M4e (ADR-042)** to a HARD block: `role="alert"` and Save disabled while any overlap is detected. The soft-warning behavior is gone; the alert role + disabled Save is the current contract.
+
 ### Intent
 
 Wire the first interactive verb. From the empty Building Shell that M1 ships, a user creates their first block: tap the floating `+` button (sheet at default time) **or** tap an empty timeline hour-row (sheet pre-filled with that hour). The Add Block sheet uses plain forms — Title, Start, End (optional), Recurrence, Category — saves to in-memory state, slides down, and the new block enters the timeline at its `start` row with stagger fade-in. The empty-state card disappears. The hero stays at `0%` because scoring is M3.

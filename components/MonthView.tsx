@@ -90,9 +90,18 @@ export function MonthView({ state, onOpenDay, initialMonth }: MonthViewProps) {
     if (isoDate === todayIso) {
       // Today → open the editable Building (Day) view
       onOpenDay(isoDate);
-    } else {
-      // Past archived day → open read-only PastDayDetail
+      return;
+    }
+    // R7-ROOT-M8/M9-P2: pre-R7 dead-end — if a cell rendered as "scored"
+    // because dayScore() found a live state.currentDate but iso wasn't yet
+    // in state.history, tapping set openDate but the PastDayDetail's
+    // `openDate in state.history` guard returned false → modal never
+    // mounted, user saw silent no-op. Fallback: if the iso isn't in
+    // history, route to the editable Day view (it's the active day).
+    if (isoDate in state.history) {
       setOpenDate(isoDate);
+    } else {
+      onOpenDay(isoDate);
     }
   }
 
@@ -163,17 +172,27 @@ export function MonthView({ state, onOpenDay, initialMonth }: MonthViewProps) {
         </button>
       </div>
 
-      {/* Grid */}
-      <div role="grid" style={{ width: "100%" }}>
+      {/* Grid — R7-ROOT-M8/M9-P2: added aria-rowcount + aria-colcount and per-
+          cell aria-rowindex/colindex so SR users in grid-aware mode (NVDA / JAWS)
+          get anchored cells. WAI-ARIA grid pattern: header row is rowindex 1;
+          data rows are 2..N. Columns are 1..7. */}
+      <div
+        role="grid"
+        aria-rowcount={rows.length + 1}
+        aria-colcount={7}
+        style={{ width: "100%" }}
+      >
         {/* Weekday header row */}
         <div
           role="row"
+          aria-rowindex={1}
           style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}
         >
-          {WEEKDAY_HEADERS.map((day) => (
+          {WEEKDAY_HEADERS.map((day, idx) => (
             <div
               key={day}
               role="columnheader"
+              aria-colindex={idx + 1}
               style={{
                 textAlign: "center",
                 fontSize: "var(--fs-10, 0.625rem)",
@@ -192,6 +211,7 @@ export function MonthView({ state, onOpenDay, initialMonth }: MonthViewProps) {
           <div
             key={rowIndex}
             role="row"
+            aria-rowindex={rowIndex + 2}
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(7, 1fr)",
@@ -202,7 +222,7 @@ export function MonthView({ state, onOpenDay, initialMonth }: MonthViewProps) {
               const key = `${rowIndex}-${cellIndex}`;
               if (cell.kind === "blank") {
                 return (
-                  <div key={key} role="gridcell">
+                  <div key={key} role="gridcell" aria-colindex={cellIndex + 1}>
                     <DayCell kind="blank" />
                   </div>
                 );
@@ -220,7 +240,7 @@ export function MonthView({ state, onOpenDay, initialMonth }: MonthViewProps) {
               if (score !== null) {
                 // scored — has a history entry or is today
                 return (
-                  <div key={key} role="gridcell">
+                  <div key={key} role="gridcell" aria-colindex={cellIndex + 1}>
                     <DayCell
                       kind="scored"
                       date={iso}
@@ -235,7 +255,7 @@ export function MonthView({ state, onOpenDay, initialMonth }: MonthViewProps) {
 
               if (isFuture) {
                 return (
-                  <div key={key} role="gridcell">
+                  <div key={key} role="gridcell" aria-colindex={cellIndex + 1}>
                     <DayCell kind="future" date={iso} dayOfMonth={dayOfMonth} />
                   </div>
                 );
@@ -243,7 +263,7 @@ export function MonthView({ state, onOpenDay, initialMonth }: MonthViewProps) {
 
               if (isPreStart) {
                 return (
-                  <div key={key} role="gridcell">
+                  <div key={key} role="gridcell" aria-colindex={cellIndex + 1}>
                     <DayCell
                       kind="pre-start"
                       date={iso}
@@ -256,7 +276,7 @@ export function MonthView({ state, onOpenDay, initialMonth }: MonthViewProps) {
               if (isPastInRange) {
                 // Past, in-range, no history entry → missed
                 return (
-                  <div key={key} role="gridcell">
+                  <div key={key} role="gridcell" aria-colindex={cellIndex + 1}>
                     <DayCell kind="missed" date={iso} dayOfMonth={dayOfMonth} />
                   </div>
                 );
@@ -264,7 +284,7 @@ export function MonthView({ state, onOpenDay, initialMonth }: MonthViewProps) {
 
               // Fallback (shouldn't occur in practice)
               return (
-                <div key={key} role="gridcell">
+                <div key={key} role="gridcell" aria-colindex={cellIndex + 1}>
                   <DayCell kind="future" date={iso} dayOfMonth={dayOfMonth} />
                 </div>
               );
