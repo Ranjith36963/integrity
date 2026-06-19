@@ -82,7 +82,9 @@ async function resetStorage(page: Page) {
 }
 
 test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
-  test.setTimeout(900_000); // 15 min — full audit has 32 steps with many sheet open/close cycles
+  // 30 min — full audit has ~35 steps; many involve full page reloads
+  // (~5s each via networkidle) plus sheet open/close cycles (300-500ms waits).
+  test.setTimeout(1_800_000);
 
   // ── 0. First load + reset ───────────────────────────────────────────────
   await page.goto("/");
@@ -724,20 +726,36 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
     if (namePresent) {
       await nameInput.first().fill("Audit Cat");
     }
-    const createBtn = page.getByRole("button", { name: /^Create$/i });
-    const createPresent = (await createBtn.count()) > 0;
+    // R7-ROOT-AUDIT-FIX: the confirm button is labeled "Done" per spec
+    // (SG-m2-11 — see NewCategoryForm.tsx:148), not "Create". Initial
+    // audit assumed "Create" and falsely flagged this step.
+    //
+    // ALSO: NewCategoryForm requires both a non-blank name AND a color
+    // selection (aria-disabled until both). Audit must pick a color.
+    const firstColor = page.getByRole("radio", { name: /Color 1/i });
+    if ((await firstColor.count()) > 0) {
+      await firstColor.first().click();
+      await page.waitForTimeout(150);
+    }
+    const doneBtn = page.getByRole("button", { name: /^Done$/i });
+    const donePresent = (await doneBtn.count()) > 0;
     let dialogLabelAfter = "";
-    if (createPresent && namePresent) {
-      await createBtn.first().click();
+    if (donePresent && namePresent) {
+      await doneBtn.first().click();
       await page.waitForTimeout(400);
       dialogLabelAfter =
         (await page.locator('[role="dialog"]').first().getAttribute("aria-label")) ?? "";
     }
     rec(
       "NewCategoryForm",
-      "Create button — saves category, returns to block form",
-      ["Fill name 'Audit Cat'", "Click Create", "Read dialog aria-label"],
-      `dialog after Create='${dialogLabelAfter}'`,
+      "Done button — saves category, returns to block form (SG-m2-11)",
+      [
+        "Fill name 'Audit Cat'",
+        "Click first color swatch",
+        "Click Done",
+        "Read dialog aria-label",
+      ],
+      `dialog after Done='${dialogLabelAfter}'`,
       "Dialog flips back to 'Add Block' with new category auto-selected",
       dialogLabelAfter === "Add Block" ? "✓ pass" : "✗ fail",
     );
