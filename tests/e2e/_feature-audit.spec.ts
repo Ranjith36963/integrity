@@ -720,8 +720,11 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
       present && viewLabel === "New Category" ? "✓ pass" : "✗ fail",
     );
 
-    // 24a. New Category form — Name input + Create
-    const nameInput = page.getByLabel(/Category name/i);
+    // 24a. New Category form — Name input + Create.
+    // R7-ROOT-AUDIT-FIX: NewCategoryForm's label text is "Name" (not
+    // "Category name"). Initial /Category name/i regex matched nothing.
+    // Using #new-category-name id locator is unambiguous.
+    const nameInput = page.locator("#new-category-name");
     const namePresent = (await nameInput.count()) > 0;
     if (namePresent) {
       await nameInput.first().fill("Audit Cat");
