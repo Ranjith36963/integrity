@@ -82,7 +82,7 @@ async function resetStorage(page: Page) {
 }
 
 test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
-  test.setTimeout(360_000);
+  test.setTimeout(900_000); // 15 min — full audit has 32 steps with many sheet open/close cycles
 
   // ── 0. First load + reset ───────────────────────────────────────────────
   await page.goto("/");
@@ -683,6 +683,346 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
   }
 
   // ── 23. Reset storage to leave clean state ─────────────────────────────
+  await resetStorage(page);
+
+  // ════════════════════════════════════════════════════════════════════════
+  // PART 2 — extended coverage (AddBrickSheet, BrickChip, NewCategoryForm,
+  //  UnitsEntrySheet, DeleteConfirmModal full flow, LooseBricksTray,
+  //  backdrop close, NewCategory inline create, ViewSwitcher keyboard).
+  // ════════════════════════════════════════════════════════════════════════
+
+  // ── 24. NewCategoryForm inline create (+ New chip in AddBlockSheet) ────
+  {
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(300);
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await page.waitForTimeout(200);
+    await page.getByRole("button", { name: "Add Block", exact: true }).click();
+    await page.waitForTimeout(300);
+    const newCatBtn = page.getByRole("button", { name: /\+ New/i });
+    const present = (await newCatBtn.count()) > 0;
+    let viewLabel = "";
+    if (present) {
+      await newCatBtn.first().click();
+      await page.waitForTimeout(300);
+      viewLabel =
+        (await page.locator('[role="dialog"]').first().getAttribute("aria-label")) ?? "";
+    }
+    rec(
+      "AddBlockSheet",
+      "+ New category chip → switches sheet to New Category form",
+      ["Click + New", "Read dialog aria-label"],
+      present ? `dialog now='${viewLabel}'` : "+ New button missing",
+      "Dialog aria-label flips to 'New Category'",
+      present && viewLabel === "New Category" ? "✓ pass" : "✗ fail",
+    );
+
+    // 24a. New Category form — Name input + Create
+    const nameInput = page.getByLabel(/Category name/i);
+    const namePresent = (await nameInput.count()) > 0;
+    if (namePresent) {
+      await nameInput.first().fill("Audit Cat");
+    }
+    const createBtn = page.getByRole("button", { name: /^Create$/i });
+    const createPresent = (await createBtn.count()) > 0;
+    let dialogLabelAfter = "";
+    if (createPresent && namePresent) {
+      await createBtn.first().click();
+      await page.waitForTimeout(400);
+      dialogLabelAfter =
+        (await page.locator('[role="dialog"]').first().getAttribute("aria-label")) ?? "";
+    }
+    rec(
+      "NewCategoryForm",
+      "Create button — saves category, returns to block form",
+      ["Fill name 'Audit Cat'", "Click Create", "Read dialog aria-label"],
+      `dialog after Create='${dialogLabelAfter}'`,
+      "Dialog flips back to 'Add Block' with new category auto-selected",
+      dialogLabelAfter === "Add Block" ? "✓ pass" : "✗ fail",
+    );
+
+    // Cancel out so we don't pollute state
+    const cancel = page.getByRole("button", { name: /^Cancel$/i });
+    if ((await cancel.count()) > 0) {
+      await cancel.first().click({ force: true });
+      await page.waitForTimeout(300);
+    }
+  }
+
+  // ── 25. AddBrickSheet — Title, Kind toggle, Save ───────────────────────
+  {
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(300);
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await page.waitForTimeout(200);
+    await page.getByRole("button", { name: "Add Brick", exact: true }).click();
+    await page.waitForTimeout(300);
+
+    const sheetLabel =
+      (await page.locator('[role="dialog"]').first().getAttribute("aria-label")) ?? "";
+    rec(
+      "AddBrickSheet",
+      "Sheet opens with aria-label='Add Brick'",
+      ["Click + → Add Brick"],
+      `aria-label='${sheetLabel}'`,
+      "Sheet aria-label='Add Brick'",
+      sheetLabel === "Add Brick" ? "✓ pass" : "✗ fail",
+    );
+
+    const titleInput = page.getByLabel(/Title/i);
+    const titlePresent = (await titleInput.count()) > 0;
+    if (titlePresent) {
+      await titleInput.first().fill("Audit Brick");
+    }
+    rec(
+      "AddBrickSheet",
+      "Title input",
+      ["Fill 'Audit Brick'"],
+      titlePresent ? "Title filled" : "Title input not found",
+      "Title editable; required for Save",
+      titlePresent ? "✓ pass" : "✗ fail",
+    );
+
+    // Kind toggle: tick / units
+    const unitsRadio = page.getByRole("radio", { name: /units/i });
+    const unitsPresent = (await unitsRadio.count()) > 0;
+    let unitsChecked = "";
+    if (unitsPresent) {
+      await unitsRadio.first().click();
+      await page.waitForTimeout(200);
+      unitsChecked =
+        (await unitsRadio.first().getAttribute("aria-checked")) ?? "";
+    }
+    rec(
+      "AddBrickSheet",
+      "Kind toggle — tick / units",
+      ["Click 'units' radio", "Check aria-checked"],
+      unitsPresent ? `aria-checked='${unitsChecked}'` : "units radio missing",
+      "Selected radio has aria-checked='true'",
+      unitsChecked === "true" ? "✓ pass" : "✗ fail",
+    );
+
+    // When units selected, Target + Unit inputs appear
+    const targetInput = page.getByLabel(/Target/i);
+    const targetPresent = (await targetInput.count()) > 0;
+    if (targetPresent) {
+      await targetInput.first().fill("10");
+    }
+    rec(
+      "AddBrickSheet",
+      "Target input (visible when kind=units)",
+      ["Fill target '10'"],
+      targetPresent ? "Target filled with 10" : "Target input missing",
+      "Editable number input; required",
+      targetPresent ? "✓ pass" : "✗ fail",
+    );
+
+    // Switch back to tick (simpler for save)
+    const tickRadio = page.getByRole("radio", { name: /^tick$/i });
+    if ((await tickRadio.count()) > 0) {
+      await tickRadio.first().click();
+      await page.waitForTimeout(150);
+    }
+
+    // Save the brick — should appear in LooseBricksTray (loose, no parent)
+    const saveBrick = page.getByRole("button", { name: /^Save$/i });
+    await saveBrick.first().click();
+    await page.waitForTimeout(500);
+    const dialogAfter = await page.locator('[role="dialog"]').count();
+    rec(
+      "AddBrickSheet",
+      "Save — persists loose brick, closes sheet",
+      ["Click Save"],
+      `dialog count after Save: ${dialogAfter}`,
+      "Sheet closes",
+      dialogAfter === 0 ? "✓ pass" : "✗ fail",
+    );
+  }
+
+  // ── 26. LooseBricksTray — visible with at least one brick ──────────────
+  {
+    const tray = page.locator('[data-testid="loose-bricks-tray"]');
+    const visible = await tray.isVisible().catch(() => false);
+    rec(
+      "LooseBricksTray",
+      "Tray visible after at least one loose brick exists",
+      ["Locate tray testid"],
+      visible ? "Tray section visible" : "Tray not visible",
+      "Tray renders once looseBricks.length > 0 OR blocksExist",
+      visible ? "✓ pass" : "✗ fail",
+    );
+  }
+
+  // ── 27. LooseBricksTray — chevron expand/collapse ──────────────────────
+  {
+    const chevron = page.getByRole("button", {
+      name: /expand loose bricks|collapse loose bricks/i,
+    });
+    const present = (await chevron.count()) > 0;
+    let initial = "";
+    let afterClick = "";
+    if (present) {
+      const region = page.getByRole("region", { name: /loose bricks/i });
+      initial = (await region.getAttribute("aria-expanded")) ?? "<unset>";
+      await chevron.first().click();
+      await page.waitForTimeout(200);
+      afterClick = (await region.getAttribute("aria-expanded")) ?? "<unset>";
+    }
+    rec(
+      "LooseBricksTray",
+      "Chevron toggles aria-expanded",
+      ["Click chevron", "Read aria-expanded before/after"],
+      present
+        ? `aria-expanded: '${initial}' → '${afterClick}'`
+        : "Chevron not found",
+      "aria-expanded flips true ↔ false on click",
+      present && initial !== afterClick ? "✓ pass" : "✗ fail",
+    );
+  }
+
+  // ── 28. BrickChip — tap tick brick toggles done ────────────────────────
+  {
+    const chips = page.getByRole("button", { name: /Audit Brick/i });
+    const before = (await chips.first().getAttribute("aria-label")) ?? "";
+    await chips.first().click();
+    await page.waitForTimeout(300);
+    const after = (await chips.first().getAttribute("aria-label")) ?? "";
+    rec(
+      "BrickChip",
+      "Tap tick brick → toggles done (aria-label changes)",
+      ["Read brick aria-label", "Tap", "Read again"],
+      `before='${before.slice(0, 60)}', after='${after.slice(0, 60)}'`,
+      "Label flips between 'not done' and 'done'",
+      before !== after ? "✓ pass" : "✗ fail",
+    );
+  }
+
+  // ── 29. Backdrop click closes a sheet ──────────────────────────────────
+  {
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await page.waitForTimeout(300);
+    const dialog = page.locator('[role="dialog"]').first();
+    const box = await dialog.boundingBox();
+    if (box) {
+      // Click the top-left corner of the page (definitely outside the dialog)
+      await page.mouse.click(2, 2);
+      await page.waitForTimeout(300);
+    }
+    const dialogAfter = await page.locator('[role="dialog"]').count();
+    rec(
+      "Sheet primitive",
+      "Backdrop tap dismisses sheet",
+      ["Open chooser", "Click at (2,2) corner"],
+      `dialog count after: ${dialogAfter}`,
+      "Sheet closes (count 0)",
+      dialogAfter === 0 ? "✓ pass" : "✗ fail",
+    );
+  }
+
+  // ── 30. DeleteConfirmModal — confirm a delete (Just today vs single) ──
+  {
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(300);
+    // Add a fresh non-recurring block so we can delete it
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await page.waitForTimeout(150);
+    await page.getByRole("button", { name: "Add Block", exact: true }).click();
+    await page.waitForTimeout(300);
+    await page.getByLabel(/Title/i).fill("To Delete");
+    await page.locator("#block-end").fill("11:00");
+    await page.keyboard.press("Tab");
+    await page.getByRole("button", { name: /^Save$/i }).click();
+    await page.waitForTimeout(500);
+
+    // Enable Edit Mode
+    await page.getByRole("button", { name: /edit mode/i }).first().click();
+    await page.waitForTimeout(200);
+
+    const deleteBtn = page.getByRole("button", { name: /delete block/i });
+    const blocksBefore = await page
+      .locator('[data-component="timeline-block"]')
+      .count();
+    if ((await deleteBtn.count()) > 0) {
+      await deleteBtn.first().click();
+      await page.waitForTimeout(300);
+      // Confirm via the "Delete" button (non-recurring just shows single Delete)
+      const confirmBtn = page.getByRole("button", { name: /^Delete$/i });
+      if ((await confirmBtn.count()) > 0) {
+        await confirmBtn.first().click();
+        await page.waitForTimeout(400);
+      }
+    }
+    const blocksAfter = await page
+      .locator('[data-component="timeline-block"]')
+      .count();
+    rec(
+      "DeleteConfirmModal",
+      "Confirm delete (non-recurring) — block is removed from timeline",
+      [
+        "Add non-recurring block",
+        "Enable Edit Mode",
+        "Click × on block",
+        "Click Delete in modal",
+      ],
+      `blocks: ${blocksBefore} → ${blocksAfter}`,
+      "Block count decreases by 1",
+      blocksAfter < blocksBefore ? "✓ pass" : "✗ fail",
+    );
+
+    // Toggle Edit Mode back off
+    await page.getByRole("button", { name: /edit mode/i }).first().click();
+    await page.waitForTimeout(150);
+  }
+
+  // ── 31. ViewSwitcher — arrow-key keyboard navigation (R7-ROOT-M8/M9-P1) ─
+  {
+    const dayTab = page.getByRole("tab", { name: "Day" });
+    if ((await dayTab.count()) > 0) {
+      await dayTab.first().focus();
+      await page.waitForTimeout(100);
+      await page.keyboard.press("ArrowRight");
+      await page.waitForTimeout(200);
+      const weekSelected = await page
+        .getByRole("tab", { name: "Week" })
+        .getAttribute("aria-selected");
+      await page.keyboard.press("ArrowRight");
+      await page.waitForTimeout(200);
+      const monthSelected = await page
+        .getByRole("tab", { name: "Month" })
+        .getAttribute("aria-selected");
+      // Wrap test: ArrowLeft from Day goes to Year
+      await dayTab.first().click();
+      await page.waitForTimeout(150);
+      await dayTab.first().focus();
+      await page.keyboard.press("ArrowLeft");
+      await page.waitForTimeout(200);
+      const yearSelected = await page
+        .getByRole("tab", { name: "Year" })
+        .getAttribute("aria-selected");
+      rec(
+        "ViewSwitcher",
+        "Arrow-key navigation (R7-ROOT-M8/M9-P1) — Right cycles forward, Left wraps to last",
+        [
+          "Focus Day tab",
+          "Right → Week aria-selected?",
+          "Right → Month aria-selected?",
+          "Click Day, focus, Left → Year aria-selected?",
+        ],
+        `Week='${weekSelected}', Month='${monthSelected}', Year(via wrap)='${yearSelected}'`,
+        "All three should be 'true' in sequence",
+        weekSelected === "true" &&
+          monthSelected === "true" &&
+          yearSelected === "true"
+          ? "✓ pass"
+          : "✗ fail",
+      );
+    }
+  }
+
+  // ── 32. Reset storage for clean ending ─────────────────────────────────
   await resetStorage(page);
 
   // ── Write report ───────────────────────────────────────────────────────
