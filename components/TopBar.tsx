@@ -66,7 +66,7 @@ export function TopBar({ state }: TopBarProps = {}) {
           aria-label={editMode ? "Edit mode, on" : "Edit mode, off"}
           aria-pressed={editMode}
           onClick={handleEditToggle}
-          className="grid h-11 w-11 place-items-center rounded-md border transition-colors"
+          className="tap grid h-11 w-11 place-items-center rounded-md border transition-colors"
           style={{
             background: editMode ? "var(--accent)" : "var(--card)",
             borderColor: editMode

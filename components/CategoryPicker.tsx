@@ -42,6 +42,7 @@ export function CategoryPicker({
                 aria-label={cat.name}
                 data-category-id={cat.id}
                 onClick={() => onSelect(cat.id)}
+                className="tap"
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -81,6 +82,7 @@ export function CategoryPicker({
         <button
           type="button"
           onClick={onSkip}
+          className="tap"
           style={{
             padding: "8px 16px",
             minHeight: "44px",
@@ -101,6 +103,7 @@ export function CategoryPicker({
           type="button"
           data-testid="category-new"
           onClick={onRequestNewCategory}
+          className="tap"
           style={{
             padding: "8px 16px",
             minHeight: "44px",

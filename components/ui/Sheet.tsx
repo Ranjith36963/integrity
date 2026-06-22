@@ -74,7 +74,7 @@ export function Sheet({
               data-testid="sheet-close"
               aria-label="Close"
               onClick={onClose}
-              className="grid h-11 w-11 place-items-center rounded-md text-[var(--fs-22)] text-[var(--ink-dim)] hover:text-[var(--ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+              className="tap grid h-11 w-11 place-items-center rounded-md text-[var(--fs-22)] text-[var(--ink-dim)] hover:text-[var(--ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
             >
               ×
             </button>

@@ -472,6 +472,7 @@ export function AddBlockSheet({
                 aria-disabled={isValid ? "false" : "true"}
                 aria-describedby={hasOverlap ? "block-save-hint" : undefined}
                 onClick={handleSave}
+                className="tap"
                 style={{
                   flex: 1,
                   height: "48px",

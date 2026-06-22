@@ -128,7 +128,7 @@ export function AddChooserSheet({ open, onPick, onCancel }: Props) {
             data-testid="chooser-cancel"
             onClick={handleClose}
             aria-label="Cancel"
-            className="mt-1 flex h-11 w-full items-center justify-center rounded-lg border border-[var(--ink-dim)] bg-transparent font-mono tracking-wide text-[var(--fs-14)] text-[var(--ink-dim)] uppercase hover:text-[var(--ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+            className="tap mt-1 flex h-11 w-full items-center justify-center rounded-lg border border-[var(--ink-dim)] bg-transparent font-mono tracking-wide text-[var(--fs-14)] text-[var(--ink-dim)] uppercase hover:text-[var(--ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
           >
             Cancel
           </button>

@@ -105,6 +105,28 @@
   --font-mono: var(--font-jetbrains-mono);
 }
 
+/* ─── Tap feedback ────────────────────────────────────────────────────────
+   Production-grade iOS/Android feel: every primary interactive surface
+   should respond to touch with a 100ms scale-down. The Button primitive
+   already has this via Tailwind's active:scale-[0.96]; raw <button>
+   elements (dock, topbar, sheet chips, color swatches) opt in by adding
+   the `tap` class. Disabled / aria-disabled buttons are excluded so the
+   Voice Log / Settings dimmed states stay inert under the finger.
+   ─────────────────────────────────────────────────────────────────────── */
+@media (hover: hover) {
+  .tap:hover {
+    filter: brightness(1.05);
+  }
+}
+.tap {
+  transition:
+    transform 100ms ease-out,
+    filter 100ms ease-out;
+}
+.tap:active:not(:disabled):not([aria-disabled="true"]) {
+  transform: scale(0.96);
+}
+
 html,
 body {
   background: var(--bg);

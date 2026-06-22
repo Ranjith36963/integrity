@@ -108,6 +108,7 @@ export function NewCategoryForm({ onCreate, onCancel }: Props) {
               aria-label={`Color ${index}`}
               aria-checked={selected}
               onClick={() => setSelectedIndex(index)}
+              className="tap"
               style={{
                 height: "44px",
                 borderRadius: "8px",
@@ -131,6 +132,7 @@ export function NewCategoryForm({ onCreate, onCancel }: Props) {
           data-testid="new-category-done"
           aria-disabled={isValid ? "false" : "true"}
           onClick={handleDone}
+          className="tap"
           style={{
             flex: 1,
             height: "44px",
@@ -152,6 +154,7 @@ export function NewCategoryForm({ onCreate, onCancel }: Props) {
           type="button"
           data-testid="new-category-cancel"
           onClick={onCancel}
+          className="tap"
           style={{
             flex: 1,
             height: "44px",
