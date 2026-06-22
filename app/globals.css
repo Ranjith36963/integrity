@@ -264,6 +264,29 @@ body {
   animation: brick-in 380ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
+/* Welcome hero brick stack — each brick falls in from above and settles.
+   More cinematic than the standard brick-in (longer drop, slightly
+   overshoots). data-motion="brick-in" hooks the PRM block (line ~425)
+   to collapse to instant for reduced-motion users.
+   animation-fill-mode: both (initial state from 0% before delay,
+   final state retained after end). */
+@keyframes welcome-brick-fall {
+  0% {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.96);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.welcome-brick-in {
+  animation: welcome-brick-fall 520ms cubic-bezier(0.18, 0.89, 0.32, 1.15) both;
+}
+
 @keyframes glow-pulse {
   0%,
   100% {

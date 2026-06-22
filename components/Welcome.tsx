@@ -123,7 +123,12 @@ export function Welcome({ onBegin }: Props) {
         ))}
       </ul>
 
-      {/* Hero stack — the brick metaphor as a real spatial idea, not an icon */}
+      {/* Hero stack — the brick metaphor as a real spatial idea, not an icon.
+          Each brick falls into place via CSS animation, staggered by 80ms.
+          The signature first-frame moment: the user sees the metaphor BUILT
+          before being asked to build their own. Respects prefers-reduced-
+          motion via globals.css: data-motion="brick-in" collapses to instant
+          via the [data-motion] PRM rule. */}
       <div
         aria-hidden
         style={{
@@ -134,7 +139,7 @@ export function Welcome({ onBegin }: Props) {
           maxWidth: "200px",
         }}
       >
-        {[1, 2, 3].map((row) => (
+        {[1, 2, 3].map((row, rowIdx) => (
           <div
             key={row}
             style={{
@@ -143,16 +148,23 @@ export function Welcome({ onBegin }: Props) {
               opacity: 0.35 + row * 0.15,
             }}
           >
-            {Array.from({ length: row + 1 }, (_, i) => (
-              <span
-                key={i}
-                className="brick"
-                style={{
-                  height: "18px",
-                  width: `${40 + (i % 2) * 8}px`,
-                }}
-              />
-            ))}
+            {Array.from({ length: row + 1 }, (_, i) => {
+              // Stagger: bricks fall left-to-right within a row, rows top-down.
+              // (rowIdx * row's brick count) + i ensures monotonic delay.
+              const delayMs = (rowIdx * 2 + i) * 80;
+              return (
+                <span
+                  key={i}
+                  className="brick welcome-brick-in"
+                  data-motion="brick-in"
+                  style={{
+                    height: "18px",
+                    width: `${40 + (i % 2) * 8}px`,
+                    animationDelay: `${delayMs}ms`,
+                  }}
+                />
+              );
+            })}
           </div>
         ))}
       </div>
