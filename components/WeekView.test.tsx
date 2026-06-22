@@ -118,13 +118,17 @@ describe("C-m9d-001: WeekView — seven Sun→Sat rows + date-range label", () =
     render(<WeekView state={makeWTodayState()} onOpenDay={vi.fn()} />);
     const list = screen.getByRole("list", { name: "Week days" });
     expect(list).toBeInTheDocument();
-    const items = screen.getAllByRole("listitem");
+    // Scope to the week-days list — the view also renders an InsightStrip
+    // <ul> below the grid, so getAllByRole on the document would also pick
+    // up its cards.
+    const items = within(list).getAllByRole("listitem");
     expect(items).toHaveLength(7);
   });
 
   it("first row has weekday 'Sun' and last row has weekday 'Sat'", () => {
     render(<WeekView state={makeWTodayState()} onOpenDay={vi.fn()} />);
-    const items = screen.getAllByRole("listitem");
+    const list = screen.getByRole("list", { name: "Week days" });
+    const items = within(list).getAllByRole("listitem");
     expect(within(items[0]).getByText("Sun")).toBeInTheDocument();
     expect(within(items[6]).getByText("Sat")).toBeInTheDocument();
   });
@@ -239,8 +243,11 @@ describe("C-m9d-008: WeekAggregate — no-data state: em-dash, no '0%', ring ari
     // Navigate 1 week forward to reach W-future (fully future: 2026-05-24..2026-05-30)
     await user.click(screen.getByRole("button", { name: "Next week" }));
 
-    // em-dash should be visible
-    expect(screen.getByText("—")).toBeInTheDocument();
+    // em-dash should be visible in the WeekAggregate (the InsightStrip below
+    // the day list ALSO renders "—" when its avg-score is null, hence the
+    // scoped query into the aggregate's labelled SVG).
+    const ringRegion = screen.getByLabelText(/Week score/i);
+    expect(ringRegion.parentElement?.textContent).toContain("—");
   });
 
   it("no '0%' is rendered for a no-data week", async () => {
@@ -279,12 +286,15 @@ describe("C-m9d-009: WeekAggregate — ring + centered numeral for W-today week"
     expect(ring).toHaveAttribute("aria-label", "Week score 70 percent");
   });
 
-  it("aggregate ring uses only defined M0 tokens — no --surface-2 reference", () => {
-    const { container } = render(
-      <WeekView state={makeWTodayState()} onOpenDay={vi.fn()} />,
-    );
-    // Check the entire DOM output has no --surface-2 reference
-    expect(container.innerHTML).not.toContain("--surface-2");
+  it("aggregate ring uses only defined M0 tokens", () => {
+    // Original assertion was "DOM contains no --surface-2 reference" because
+    // --surface-2 was an undefined CSS var at the time. globals.css now
+    // defines --surface-2 (the InsightStrip border tint), so that defensive
+    // guard no longer makes sense. We still want the aggregate RING to use
+    // only the legacy tokens — scope the check to the svg subtree.
+    render(<WeekView state={makeWTodayState()} onOpenDay={vi.fn()} />);
+    const ring = screen.getByRole("img");
+    expect(ring.outerHTML).not.toContain("--surface-2");
   });
 });
 

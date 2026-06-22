@@ -27,8 +27,14 @@ import type { AppState } from "@/lib/types";
 import { today } from "@/lib/dharma";
 import { weekDates, addWeek, subWeek, weekRangeLabel } from "@/lib/weekGrid";
 import { dayScore, weekScore } from "@/lib/history";
+import {
+  longestStreak,
+  avgDailyScore,
+  daysCompleted,
+} from "@/lib/insights";
 import { WeekDayCell } from "./WeekDayCell";
 import { PastDayDetail } from "./PastDayDetail";
+import { InsightStrip } from "./InsightStrip";
 
 type WeekViewProps = {
   state: AppState;
@@ -341,6 +347,34 @@ export function WeekView({ state, onOpenDay }: WeekViewProps) {
           );
         })}
       </div>
+
+      {/* Insight strip — fills the dead space below the 7 day rows
+          with three concrete week-scoped KPIs. */}
+      {(() => {
+        const completed = daysCompleted(state, dates[0]!, dates[6]!);
+        const streak = longestStreak(state, dates[0]!, dates[6]!);
+        return (
+          <InsightStrip
+            items={[
+              {
+                label: "Avg score",
+                value: avgDailyScore(state, dates[0]!, dates[6]!),
+                suffix: "%",
+              },
+              {
+                label: "Complete",
+                value: completed,
+                suffix: completed === 1 ? "day" : "days",
+              },
+              {
+                label: "Streak",
+                value: streak,
+                suffix: streak === 1 ? "day" : "days",
+              },
+            ]}
+          />
+        );
+      })()}
 
       {/* PastDayDetail overlay — byte-identical usage to MonthView */}
       {openDate !== null && openDate in state.history && (

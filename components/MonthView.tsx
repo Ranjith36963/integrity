@@ -24,8 +24,14 @@ import type { AppState } from "@/lib/types";
 import { today } from "@/lib/dharma";
 import { monthGridCells, addMonth, subMonth } from "@/lib/monthGrid";
 import { dayScore } from "@/lib/history";
+import {
+  longestStreak,
+  avgDailyScore,
+  daysCompleted,
+} from "@/lib/insights";
 import { DayCell } from "./DayCell";
 import { PastDayDetail } from "./PastDayDetail";
+import { InsightStrip } from "./InsightStrip";
 
 type MonthViewProps = {
   state: AppState;
@@ -292,6 +298,40 @@ export function MonthView({ state, onOpenDay, initialMonth }: MonthViewProps) {
           </div>
         ))}
       </div>
+
+      {/* Insight strip — scoped to the displayed month (first → last). */}
+      {(() => {
+        const y = displayed.year;
+        const m = displayed.month;
+        const firstIso = `${y}-${String(m + 1).padStart(2, "0")}-01`;
+        // Last day of the month — Date(y, m+1, 0) returns the 0th day of the
+        // NEXT month, which is the last day of THIS month.
+        const lastDay = new Date(y, m + 1, 0).getDate();
+        const lastIso = `${y}-${String(m + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+        const completed = daysCompleted(state, firstIso, lastIso);
+        const streak = longestStreak(state, firstIso, lastIso);
+        return (
+          <InsightStrip
+            items={[
+              {
+                label: "Avg score",
+                value: avgDailyScore(state, firstIso, lastIso),
+                suffix: "%",
+              },
+              {
+                label: "Complete",
+                value: completed,
+                suffix: completed === 1 ? "day" : "days",
+              },
+              {
+                label: "Streak",
+                value: streak,
+                suffix: streak === 1 ? "day" : "days",
+              },
+            ]}
+          />
+        );
+      })()}
 
       {/* PastDayDetail overlay */}
       {openDate !== null && openDate in state.history && (

@@ -23,7 +23,13 @@ import type { AppState } from "@/lib/types";
 import { today } from "@/lib/dharma";
 import { yearMonths, addYear, subYear } from "@/lib/yearGrid";
 import { monthScore, yearScore } from "@/lib/history";
+import {
+  longestStreak,
+  avgDailyScore,
+  daysCompleted,
+} from "@/lib/insights";
 import { MonthCell } from "./MonthCell";
+import { InsightStrip } from "./InsightStrip";
 
 type YearViewProps = {
   state: AppState;
@@ -271,6 +277,35 @@ export function YearView({ state, onOpenMonth }: YearViewProps) {
           );
         })}
       </div>
+
+      {/* Insight strip — scoped to the displayed year (Jan 1 → Dec 31). */}
+      {(() => {
+        const from = `${displayedYear}-01-01`;
+        const to = `${displayedYear}-12-31`;
+        const completed = daysCompleted(state, from, to);
+        const streak = longestStreak(state, from, to);
+        return (
+          <InsightStrip
+            items={[
+              {
+                label: "Avg score",
+                value: avgDailyScore(state, from, to),
+                suffix: "%",
+              },
+              {
+                label: "Complete",
+                value: completed,
+                suffix: completed === 1 ? "day" : "days",
+              },
+              {
+                label: "Streak",
+                value: streak,
+                suffix: streak === 1 ? "day" : "days",
+              },
+            ]}
+          />
+        );
+      })()}
     </div>
   );
 }

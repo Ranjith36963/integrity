@@ -335,15 +335,14 @@ describe("C-m9e-006: YearAggregate ring — scored and no-data states (mutation-
     }
   });
 
-  it("no --surface-2 in the YearAggregate markup", () => {
-    const { container } = render(
-      <YearView state={makeStandingState()} onOpenMonth={vi.fn()} />,
-    );
-    // No element should reference --surface-2
-    const allStyles = Array.from(container.querySelectorAll("[style]"))
-      .map((el) => el.getAttribute("style"))
-      .join(" ");
-    expect(allStyles).not.toContain("--surface-2");
+  it("YearAggregate ring uses only defined M0 tokens", () => {
+    // Original assertion was "no --surface-2 in ANY element style" because
+    // --surface-2 was an undefined CSS var at the time. globals.css now
+    // defines --surface-2 (the InsightStrip border tint), so the broad
+    // guard no longer applies. Scope the check to the aggregate ring svg.
+    render(<YearView state={makeStandingState()} onOpenMonth={vi.fn()} />);
+    const ring = screen.getByRole("img");
+    expect(ring.outerHTML).not.toContain("--surface-2");
   });
 
   it("'Year' label is shown below the ring in all states", async () => {
