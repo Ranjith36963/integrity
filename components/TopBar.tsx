@@ -12,14 +12,26 @@ type TopBarProps = {
    * When absent, the brand mark renders un-wrapped (backwards compat with M0/M5).
    */
   state?: AppState;
+  /**
+   * Settings sheet open handler. When omitted, the gear button keeps its
+   * historical aria-disabled treatment ("coming in a later release").
+   * BuildingClient passes a real handler now that SettingsSheet exists.
+   */
+  onOpenSettings?: () => void;
 };
 
-export function TopBar({ state }: TopBarProps = {}) {
+export function TopBar({ state, onOpenSettings }: TopBarProps = {}) {
   const { editMode, toggle } = useEditMode();
 
   function handleEditToggle() {
     haptics.light();
     toggle();
+  }
+
+  function handleSettings() {
+    if (!onOpenSettings) return;
+    haptics.light();
+    onOpenSettings();
   }
 
   // Brand-mark cluster — wrapped in BrandMarkLongPress when state is provided (M7e).
@@ -79,19 +91,19 @@ export function TopBar({ state }: TopBarProps = {}) {
             color={editMode ? "var(--ink)" : "var(--ink-dim)"}
           />
         </button>
-        {/* R7-ROOT-AUDIT: Settings is intentionally not implemented yet
-            (planned for a future milestone). Pre-audit the button looked
-            clickable but did nothing — no disabled state, no feedback.
-            Same treatment as Voice Log (BottomBar): aria-disabled + visual
-            opacity-50 + cursor-not-allowed. SR users hear it as
-            "Settings (coming in a later release)". Sighted users see the
-            dimmed state. */}
+        {/* Settings — disabled when no handler is wired (legacy callers /
+            tests). Live when BuildingClient passes onOpenSettings. */}
         <button
           type="button"
           data-testid="settings-button"
-          aria-label="Settings (coming in a later release)"
-          aria-disabled="true"
-          className="grid h-11 w-11 cursor-not-allowed place-items-center rounded-md border border-white/5 opacity-50 transition-colors"
+          aria-label={onOpenSettings ? "Settings" : "Settings (coming in a later release)"}
+          aria-disabled={onOpenSettings ? undefined : "true"}
+          onClick={onOpenSettings ? handleSettings : undefined}
+          className={
+            onOpenSettings
+              ? "tap grid h-11 w-11 place-items-center rounded-md border border-white/5 transition-colors"
+              : "grid h-11 w-11 cursor-not-allowed place-items-center rounded-md border border-white/5 opacity-50 transition-colors"
+          }
           style={{ background: "var(--card)" }}
         >
           <Settings size={15} color="var(--ink-dim)" />

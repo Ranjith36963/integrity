@@ -161,24 +161,29 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
   }
 
   // ── 3. TopBar — Settings (gear) ─────────────────────────────────────────
-  // R7-ROOT-AUDIT: Settings is intentionally aria-disabled until that
-  // milestone ships, mirroring Voice Log. The button should be present,
-  // dimmed, and announce 'Settings (coming in a later release)'.
+  // Settings now opens a real sheet (was previously aria-disabled).
+  // Verify: click → dialog labelled "Settings" appears; ESC dismisses.
   {
     const gear = page.getByTestId("settings-button");
     const present = (await gear.count()) > 0;
-    const ariaDisabled = present
-      ? await gear.first().getAttribute("aria-disabled")
-      : null;
+    let sheetLabel = "";
+    if (present) {
+      await gear.click();
+      await page.waitForTimeout(300);
+      sheetLabel =
+        (await page.locator('[role="dialog"]').first().getAttribute("aria-label")) ?? "";
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(300);
+    }
     rec(
       "TopBar",
-      "Settings (gear) button — intentionally disabled until shipped",
-      ["Locate Settings button", "Read aria-disabled"],
+      "Settings (gear) button — opens SettingsSheet",
+      ["Click settings button", "Inspect dialog aria-label"],
       present
-        ? `aria-disabled='${ariaDisabled ?? "<unset>"}', label includes 'coming'`
+        ? `dialog after click: aria-label='${sheetLabel}'`
         : "Settings button not found",
-      "aria-disabled='true'; aria-label includes 'coming in a later release'",
-      present && ariaDisabled === "true" ? "✓ pass" : "✗ fail",
+      "Dialog aria-label='Settings'; ESC dismisses",
+      present && sheetLabel === "Settings" ? "✓ pass" : "✗ fail",
     );
   }
 

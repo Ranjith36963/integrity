@@ -52,11 +52,13 @@ import { BottomBar } from "@/components/BottomBar";
 import { AddChooserSheet } from "@/components/AddChooserSheet";
 import { AddBlockSheet } from "@/components/AddBlockSheet";
 import { Welcome } from "@/components/Welcome";
+import { SettingsSheet } from "@/components/SettingsSheet";
 import {
   hasSeenOnboarding,
   markOnboardingShown,
   hasPersistedState,
 } from "@/lib/onboarding";
+import { STORAGE_KEY } from "@/lib/persist";
 import { AddBrickSheet } from "@/components/AddBrickSheet";
 import { LooseBricksTray } from "@/components/LooseBricksTray";
 import { UnitsEntrySheet } from "@/components/UnitsEntrySheet";
@@ -202,6 +204,18 @@ export function BuildingClient({
   function dismissWelcome() {
     markOnboardingShown();
     setWelcomeOpen(false);
+  }
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  function handleResetAll() {
+    // Wipe everything Dharma owns — both the persisted state AND the
+    // onboarding flag so the user lands on Welcome again on next visit.
+    try {
+      window.localStorage.removeItem(STORAGE_KEY);
+      window.localStorage.removeItem("dharma:onboarding-shown");
+    } catch {
+      /* private mode / quota — best-effort */
+    }
+    window.location.reload();
   }
   const [sheetState, setSheetState] = useState<SheetState>({
     open: false,
@@ -586,7 +600,13 @@ export function BuildingClient({
         >
           {announcement}
         </span>
-        <TopBar state={state} />
+        <TopBar state={state} onOpenSettings={() => setSettingsOpen(true)} />
+        <SettingsSheet
+          open={settingsOpen}
+          state={state}
+          onClose={() => setSettingsOpen(false)}
+          onResetAll={handleResetAll}
+        />
         <Hero
           dateLabel={dateLabelValue}
           dayNumber={dayNumberValue}
