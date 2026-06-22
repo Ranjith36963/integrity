@@ -663,7 +663,10 @@ export function BuildingClient({
             )}
           </>
         )}
-        <BottomBar onAddPress={handleDockAdd} />
+        <BottomBar
+          onAddPress={handleDockAdd}
+          onQuickBrick={() => openBrickSheet(null, null)}
+        />
         {/* AddChooserSheet: M4d routing surface — opens before AddBlockSheet or AddBrickSheet */}
         <AddChooserSheet
           open={chooserState.open}

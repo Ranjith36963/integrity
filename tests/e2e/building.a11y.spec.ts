@@ -81,7 +81,7 @@ test("A-bld-003: no color-contrast violations", async ({ page }) => {
   expect(violations).toHaveLength(0);
 });
 
-// A-bld-004: focus order traversal via Tab — Edit, Settings, bricks, Voice Log, Add
+// A-bld-004: focus order traversal via Tab — Edit, Settings, bricks, quick Add brick, Add
 test("A-bld-004: Tab focus order passes through key interactive elements", async ({
   page,
 }) => {
@@ -105,8 +105,9 @@ test("A-bld-004: Tab focus order passes through key interactive elements", async
   );
   expect(settingsFocused).toBe(true);
 
-  // Tab through bricks until we reach Voice Log and Add
-  let reachedVoiceLog = false;
+  // Tab through bricks until we reach the quick-brick pill ("Log brick")
+  // and the + Add chooser button. Voice Log was retired in the polish pass.
+  let reachedQuickBrick = false;
   let reachedAdd = false;
   for (let i = 0; i < 100; i++) {
     await page.keyboard.press("Tab");
@@ -119,11 +120,11 @@ test("A-bld-004: Tab focus order passes through key interactive elements", async
         text: el.textContent?.trim().substring(0, 30),
       };
     });
-    if (focused?.text?.includes("Voice Log")) reachedVoiceLog = true;
+    if (focused?.label === "Log brick") reachedQuickBrick = true;
     if (focused?.label === "Add") reachedAdd = true;
-    if (reachedVoiceLog && reachedAdd) break;
+    if (reachedQuickBrick && reachedAdd) break;
   }
-  expect(reachedVoiceLog).toBe(true);
+  expect(reachedQuickBrick).toBe(true);
   expect(reachedAdd).toBe(true);
 });
 

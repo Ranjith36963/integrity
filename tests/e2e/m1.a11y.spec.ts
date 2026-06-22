@@ -66,35 +66,32 @@ test("A-m1-003: TopBar Edit has aria-pressed=false, Settings has aria-label, nei
   await expect(editBtn).toHaveAttribute("aria-pressed", "false");
   await expect(editBtn).not.toHaveAttribute("role", "switch");
 
-  // Settings button — R7-ROOT-AUDIT: aria-disabled until Settings ships
-  // (mirrors Voice Log treatment). Label includes the "coming" suffix.
-  const settingsBtn = page.getByRole("button", { name: /Settings.*coming/i });
-  await expect(settingsBtn).toHaveAttribute(
-    "aria-label",
-    "Settings (coming in a later release)",
-  );
-  await expect(settingsBtn).toHaveAttribute("aria-disabled", "true");
+  // Settings button — opens the live SettingsSheet (polish pass replaced
+  // the aria-disabled placeholder with a real handler).
+  const settingsBtn = page.getByRole("button", { name: /^Settings$/i });
+  await expect(settingsBtn).toHaveAttribute("aria-label", "Settings");
+  await expect(settingsBtn).not.toHaveAttribute("aria-disabled");
   await expect(settingsBtn).not.toHaveAttribute("role", "switch");
 });
 
-// A-m1-004: Voice button a11y (aria-disabled, accessible name, keyboard-focusable)
-test("A-m1-004: Voice button has aria-disabled=true, no native disabled, is keyboard-focusable", async ({
+// A-m1-004: dock buttons — quick brick + chooser — are reachable + enabled
+test("A-m1-004: dock quick-brick pill and + button are both enabled and keyboard-focusable", async ({
   page,
 }) => {
   await page.goto("/");
 
-  // Voice button by role
-  const voiceBtn = page.getByRole("button", { name: /voice log/i });
-  await expect(voiceBtn).toHaveAttribute("aria-disabled", "true");
-  await expect(voiceBtn).not.toHaveAttribute("disabled");
+  // Quick-brick pill (replaced the M10 Voice Log placeholder)
+  const quickBrick = page.getByRole("button", { name: /log brick/i });
+  await expect(quickBrick).not.toHaveAttribute("aria-disabled");
+  await expect(quickBrick).not.toHaveAttribute("disabled");
 
-  // Add button has no aria-disabled
+  // Add chooser
   const addBtn = page.getByRole("button", { name: "Add" });
   await expect(addBtn).not.toHaveAttribute("aria-disabled");
 
-  // Both buttons reachable via Tab
+  // Both reachable via Tab
   await page.keyboard.press("Tab");
-  let foundVoice = false;
+  let foundQuick = false;
   let foundAdd = false;
 
   for (let i = 0; i < 20; i++) {
@@ -105,17 +102,13 @@ test("A-m1-004: Voice button has aria-disabled=true, no native disabled, is keyb
         text: el?.textContent?.trim() ?? "",
       };
     });
-    if (
-      focused.label.includes("Voice Log") ||
-      focused.text.includes("Voice Log")
-    )
-      foundVoice = true;
+    if (focused.label === "Log brick") foundQuick = true;
     if (focused.label === "Add") foundAdd = true;
-    if (foundVoice && foundAdd) break;
+    if (foundQuick && foundAdd) break;
     await page.keyboard.press("Tab");
   }
 
-  expect(foundVoice).toBe(true);
+  expect(foundQuick).toBe(true);
   expect(foundAdd).toBe(true);
 });
 
@@ -148,18 +141,18 @@ test("A-m1-005: focus order includes all interactive elements with visible focus
     focusedElements.push(focused);
   }
 
-  // Should have reached Edit, Settings, Voice Log, Add
+  // Should have reached Edit, Settings, quick-brick pill, Add chooser
   const labels = focusedElements.map((e) =>
     (e.label + " " + e.text).toLowerCase(),
   );
   const hasEdit = labels.some((l) => l.includes("edit"));
   const hasSettings = labels.some((l) => l.includes("settings"));
-  const hasVoice = labels.some((l) => l.includes("voice"));
-  const hasAdd = labels.some((l) => l.includes("add"));
+  const hasQuickBrick = labels.some((l) => l.includes("log brick"));
+  const hasAdd = labels.some((l) => /\badd\b/.test(l));
 
   expect(hasEdit).toBe(true);
   expect(hasSettings).toBe(true);
-  expect(hasVoice).toBe(true);
+  expect(hasQuickBrick).toBe(true);
   expect(hasAdd).toBe(true);
 });
 

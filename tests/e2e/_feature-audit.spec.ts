@@ -273,22 +273,31 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
     );
   }
 
-  // ── 9. Voice Log button (disabled until M10) ───────────────────────────
+  // ── 9. Dock quick-brick pill — opens AddBrickSheet directly ─────────────
+  // Polish pass: replaced the M10-placeholder Voice Log with a functional
+  // quick-brick pill. The audit now checks that tapping it opens the brick
+  // sheet, bypassing the chooser dialog.
   {
-    const voice = page.getByTestId("dock-voice");
-    const present = (await voice.count()) > 0;
-    const ariaDisabled = present
-      ? await voice.first().getAttribute("aria-disabled")
-      : null;
+    const quick = page.getByTestId("dock-quick-brick");
+    const present = (await quick.count()) > 0;
+    let sheetLabel = "";
+    if (present) {
+      await quick.click();
+      await page.waitForTimeout(300);
+      sheetLabel =
+        (await page.locator('[role="dialog"]').first().getAttribute("aria-label")) ?? "";
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(200);
+    }
     rec(
       "BottomBar",
-      "Voice Log button (intentionally disabled until M10)",
-      ["Check aria-disabled attribute"],
+      "Quick-brick pill — opens AddBrickSheet directly (replaces M10 Voice Log placeholder)",
+      ["Click dock quick-brick pill", "Inspect dialog aria-label"],
       present
-        ? `aria-disabled: '${ariaDisabled ?? "<unset>"}'`
-        : "Voice Log button not found",
-      "aria-disabled='true' until M10 ships voice",
-      present && ariaDisabled === "true" ? "✓ pass" : "✗ fail",
+        ? `dialog aria-label='${sheetLabel}'`
+        : "Quick-brick pill not found",
+      "Dialog aria-label='Add Brick' (bypasses the chooser)",
+      present && sheetLabel === "Add Brick" ? "✓ pass" : "✗ fail",
     );
   }
 
