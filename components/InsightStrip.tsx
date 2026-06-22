@@ -43,6 +43,10 @@ function Numeric({ value, suffix }: { value: Item["value"]; suffix?: string }) {
       </span>
     );
   }
+  // A literal zero is honest data (the user has produced nothing yet for
+  // this period). Dim it so the eye reads it as "haven't started" rather
+  // than competing with real numbers. Non-zero values get full --ink.
+  const isZero = value === 0 || value === "0";
   return (
     <span
       style={{
@@ -52,7 +56,7 @@ function Numeric({ value, suffix }: { value: Item["value"]; suffix?: string }) {
         fontFamily: "var(--font-display)",
         fontStyle: "italic",
         fontSize: "var(--fs-32)",
-        color: "var(--ink)",
+        color: isZero ? "var(--ink-dim)" : "var(--ink)",
         letterSpacing: "-0.02em",
         lineHeight: 1,
       }}

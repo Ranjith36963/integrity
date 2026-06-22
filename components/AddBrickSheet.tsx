@@ -360,7 +360,7 @@ export function AddBrickSheet({
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Brick name"
+                placeholder="Drink water, Read 10 pages, Stretch…"
                 autoFocus
                 style={{
                   height: "44px",

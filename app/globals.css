@@ -126,6 +126,14 @@
 .tap:active:not(:disabled):not([aria-disabled="true"]) {
   transform: scale(0.96);
 }
+/* iOS pull-to-refresh on Safari reloads the page and loses scroll +
+   in-memory state (sheets, edit mode, etc). Disable the gesture on the
+   main app while keeping intentional overscroll inside scrollable
+   regions (sheets) working. */
+html,
+body {
+  overscroll-behavior-y: contain;
+}
 
 html,
 body {
@@ -400,6 +408,21 @@ body {
   [data-motion] {
     animation-duration: 0s !important;
     transition-duration: 0s !important;
+  }
+
+  /* .tap (press-down feedback) collapses to no movement. Users who opt
+     into prefers-reduced-motion (low-vision, vestibular sensitivity,
+     motion sickness) get no scale and no brightness shift on press.
+     The button still responds via :active state changes (focus ring,
+     etc.), just without movement. WCAG 2.3.3. */
+  .tap {
+    transition: none !important;
+  }
+  .tap:active:not(:disabled):not([aria-disabled="true"]) {
+    transform: none !important;
+  }
+  .tap:hover {
+    filter: none !important;
   }
 
   /* M7a: skeleton shimmer collapses to flat solid swatch under reduced motion */

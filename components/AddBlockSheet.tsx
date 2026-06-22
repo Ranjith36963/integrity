@@ -278,7 +278,7 @@ export function AddBlockSheet({
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Block name"
+                placeholder="Morning pages, Workout, Stand-up…"
                 autoFocus
                 aria-describedby={
                   !titleValid && title !== "" ? "title-error" : undefined
