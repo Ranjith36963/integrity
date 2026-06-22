@@ -105,6 +105,7 @@ describe("C-m7d-006: <BuildingClient> with dayPct===100 at hydration does NOT ac
     vi.useFakeTimers();
     vi.clearAllMocks();
     localStorage.clear();
+  localStorage.setItem("dharma:onboarding-shown", "true");
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -148,6 +149,7 @@ describe("C-m7d-007: <BuildingClient> activates fireworks on <100→100 transiti
     vi.useFakeTimers();
     vi.clearAllMocks();
     localStorage.clear();
+  localStorage.setItem("dharma:onboarding-shown", "true");
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -228,6 +230,7 @@ describe("C-m7d-008: under PRM, <BuildingClient> mounts <DayCompleteCard> on <10
     vi.useFakeTimers();
     vi.clearAllMocks();
     localStorage.clear();
+  localStorage.setItem("dharma:onboarding-shown", "true");
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -292,6 +295,7 @@ describe("C-m7d-009: under motion ON, <BuildingClient> does NOT mount <DayComple
     vi.useFakeTimers();
     vi.clearAllMocks();
     localStorage.clear();
+  localStorage.setItem("dharma:onboarding-shown", "true");
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -364,6 +368,7 @@ describe("C-m7d-010: <BuildingClient> on <100→100 invokes haptics.notification
     vi.useFakeTimers();
     vi.clearAllMocks();
     localStorage.clear();
+  localStorage.setItem("dharma:onboarding-shown", "true");
   });
   afterEach(() => {
     vi.useRealTimers();

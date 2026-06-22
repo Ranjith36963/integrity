@@ -51,6 +51,12 @@ import { Timeline } from "@/components/Timeline";
 import { BottomBar } from "@/components/BottomBar";
 import { AddChooserSheet } from "@/components/AddChooserSheet";
 import { AddBlockSheet } from "@/components/AddBlockSheet";
+import { Welcome } from "@/components/Welcome";
+import {
+  hasSeenOnboarding,
+  markOnboardingShown,
+  hasPersistedState,
+} from "@/lib/onboarding";
 import { AddBrickSheet } from "@/components/AddBrickSheet";
 import { LooseBricksTray } from "@/components/LooseBricksTray";
 import { UnitsEntrySheet } from "@/components/UnitsEntrySheet";
@@ -183,6 +189,20 @@ export function BuildingClient({
   // All logic below is unchanged.
   // M7a: stagger fires once per mount when hydrated transitions false→true (AC #2).
   const stagger = useFirstPaintAfterHydration(hydrated);
+  // Welcome overlay — only on a true first visit. Detection is via the
+  // raw localStorage flags (lib/onboarding), NOT the live state prop:
+  // usePersistedState is a two-pass hook (pass 1 always returns empty
+  // default state, pass 2 loads from disk). Reading the storage key
+  // synchronously side-steps that race and means tests that
+  // `saveState(BASE_FIXTURE)` in beforeEach correctly skip Welcome.
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
+  useEffect(() => {
+    if (!hasPersistedState() && !hasSeenOnboarding()) setWelcomeOpen(true);
+  }, []);
+  function dismissWelcome() {
+    markOnboardingShown();
+    setWelcomeOpen(false);
+  }
   const [sheetState, setSheetState] = useState<SheetState>({
     open: false,
     defaultStart: "00:00",
@@ -546,6 +566,7 @@ export function BuildingClient({
 
   return (
     <EditModeProvider>
+      {welcomeOpen && <Welcome onBegin={dismissWelcome} />}
       <div className="relative mx-auto min-h-dvh max-w-[430px]">
         {/* M6: aria-live region — polite, atomic, visually hidden (sr-only equivalent) */}
         <span

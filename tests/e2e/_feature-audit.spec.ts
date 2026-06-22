@@ -63,6 +63,11 @@ async function resetStorage(page: Page) {
   await page.evaluate(() => {
     try {
       localStorage.clear();
+      // Pre-stamp the onboarding flag so the audit (which drives the app
+      // post-reset) bypasses the Welcome overlay. The Welcome screen is
+      // covered by its own Vitest suite; audit's job is the main-app
+      // surface.
+      localStorage.setItem("dharma:onboarding-shown", "true");
     } catch {
       /* ignore */
     }

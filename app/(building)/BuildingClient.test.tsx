@@ -25,6 +25,7 @@ vi.mock("@/lib/uuid", () => ({ uuid: () => "uuid-1" }));
 // dispatch actions (add block, add brick) would leak state into subsequent tests.
 beforeEach(() => {
   localStorage.clear();
+  localStorage.setItem("dharma:onboarding-shown", "true");
 });
 
 // C-bld-034 (re-authored M2): BuildingClient initializes with empty blocks

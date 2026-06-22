@@ -38,6 +38,7 @@ beforeEach(() => {
   // M8: clear localStorage before each test — usePersistedState writes dharma:v1 after
   // every dispatch; without clearing, tests that add blocks/bricks would leak state.
   localStorage.clear();
+  localStorage.setItem("dharma:onboarding-shown", "true");
 });
 
 afterEach(() => {
