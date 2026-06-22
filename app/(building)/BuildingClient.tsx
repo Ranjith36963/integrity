@@ -191,12 +191,8 @@ export function BuildingClient({
   // All logic below is unchanged.
   // M7a: stagger fires once per mount when hydrated transitions false→true (AC #2).
   const stagger = useFirstPaintAfterHydration(hydrated);
-  // Welcome overlay — only on a true first visit. Detection is via the
-  // raw localStorage flags (lib/onboarding), NOT the live state prop:
-  // usePersistedState is a two-pass hook (pass 1 always returns empty
-  // default state, pass 2 loads from disk). Reading the storage key
-  // synchronously side-steps that race and means tests that
-  // `saveState(BASE_FIXTURE)` in beforeEach correctly skip Welcome.
+  // Welcome overlay — only on a true first visit. Detection via raw
+  // localStorage flags (pre-hydration-safe).
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   useEffect(() => {
     if (!hasPersistedState() && !hasSeenOnboarding()) setWelcomeOpen(true);

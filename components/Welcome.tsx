@@ -66,7 +66,7 @@ export function Welcome({ onBegin }: Props) {
           display: "flex",
           alignItems: "center",
           gap: "8px",
-          marginBottom: "var(--sp-48, 48px)",
+          marginBottom: "var(--sp-24, 24px)",
         }}
       >
         <div
@@ -92,6 +92,36 @@ export function Welcome({ onBegin }: Props) {
           DHARMA
         </span>
       </div>
+
+      {/* Tab strip preview — static labels mirroring the main app's
+          ViewSwitcher. "Day" is highlighted (where the user will land
+          after tapping the CTA); the other three are dim previews so the
+          user sees the four-view structure before committing. */}
+      <ul
+        aria-label="Calendar views available after first brick"
+        style={{
+          display: "flex",
+          gap: "var(--sp-16, 16px)",
+          margin: 0,
+          marginBottom: "var(--sp-32, 32px)",
+          padding: 0,
+          listStyle: "none",
+          fontFamily: "var(--font-ui)",
+          fontSize: "var(--fs-12, 12px)",
+        }}
+      >
+        {(["Day", "Week", "Month", "Year"] as const).map((label, i) => (
+          <li
+            key={label}
+            style={{
+              color: i === 0 ? "var(--accent)" : "var(--ink-dim)",
+              letterSpacing: "0.04em",
+            }}
+          >
+            {label}
+          </li>
+        ))}
+      </ul>
 
       {/* Hero stack — the brick metaphor as a real spatial idea, not an icon */}
       <div
