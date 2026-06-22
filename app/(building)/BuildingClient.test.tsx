@@ -167,8 +167,10 @@ describe("C-m2-012: New category persists if block Cancelled (re-authored M2)", 
       "Add Block",
     );
 
-    // Cancel the block form
-    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    // Close the block form via the Sheet header's × button.
+    // (Pre-redesign there was a paired "Cancel" button next to Save; the
+    // Sheet header now owns dismissal so the action bar is single-purpose.)
+    await user.click(screen.getByRole("button", { name: "Close" }));
 
     // Dialog should be gone
     expect(screen.queryByRole("dialog")).toBeNull();

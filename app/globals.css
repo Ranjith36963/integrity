@@ -14,6 +14,12 @@
   --ink-dim: rgba(245, 241, 232, 0.5);
   --accent: #fbbf24;
   --accent-deep: #d97706;
+  /* Surface tints used on top of --bg / --bg-elev for tracks, dividers,
+     and quiet panels. --surface-2 is the HeroRing track + any subtle
+     line-weight stroke on the blueprint. */
+  --surface-1: rgba(245, 241, 232, 0.04);
+  --surface-2: rgba(245, 241, 232, 0.08);
+  --surface-3: rgba(245, 241, 232, 0.12);
 
   /* Category palette — user picks one per category they create.
      No category names live in code; see ADR-032/039.

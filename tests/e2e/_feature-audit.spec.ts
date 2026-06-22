@@ -582,7 +582,7 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
         const startVal = await page.locator("#block-start").inputValue().catch(() => "");
         chooserStartPrefilled = startVal === "10:00";
         // Cancel out
-        const cancel = page.getByTestId("add-block-cancel");
+        const cancel = page.getByTestId("sheet-close");
         if ((await cancel.count()) > 0) {
           await cancel.click();
           await page.waitForTimeout(200);
@@ -751,7 +751,7 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
     );
 
     // Cancel out so we don't pollute state
-    const cancel = page.getByTestId("add-block-cancel");
+    const cancel = page.getByTestId("sheet-close");
     if ((await cancel.count()) > 0) {
       await cancel.click();
       await page.waitForTimeout(300);

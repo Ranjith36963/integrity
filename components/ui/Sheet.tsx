@@ -41,8 +41,6 @@ export function Sheet({
     <div
       role="dialog"
       aria-modal="true"
-      // NEW-2: see Modal.tsx — keep title as defensive aria-label fallback
-      // even when aria-labelledby is set.
       aria-label={title}
       aria-labelledby={ariaLabelledBy}
       className="fixed inset-0 z-50 flex"
@@ -57,19 +55,34 @@ export function Sheet({
       <div
         data-variant="full"
         className={cn(
-          "relative z-10 ml-auto h-full w-full max-w-[430px]",
+          "relative z-10 ml-auto flex h-full w-full max-w-[430px] flex-col",
           "bg-[var(--bg-elev)]",
-          "px-[var(--sp-16)] pt-[var(--sp-16)]",
           className,
         )}
-        style={{ paddingBottom: "var(--safe-bottom, 0px)" }}
+        style={{
+          paddingTop: "calc(var(--safe-top, 0px) + var(--sp-16))",
+          paddingBottom: "var(--safe-bottom, 0px)",
+        }}
       >
         {title && (
-          <h2 className="mb-[var(--sp-12)] font-mono text-[var(--fs-16)] text-[var(--ink)]">
-            {title}
-          </h2>
+          <header className="flex items-center justify-between gap-[var(--sp-12)] border-b border-white/5 px-[var(--sp-16)] pb-[var(--sp-12)]">
+            <h2 className="font-mono text-[var(--fs-22)] tracking-tight text-[var(--ink)]">
+              {title}
+            </h2>
+            <button
+              type="button"
+              data-testid="sheet-close"
+              aria-label="Close"
+              onClick={onClose}
+              className="grid h-11 w-11 place-items-center rounded-md text-[var(--fs-22)] text-[var(--ink-dim)] hover:text-[var(--ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+            >
+              ×
+            </button>
+          </header>
         )}
-        {children}
+        <div className="flex-1 overflow-y-auto px-[var(--sp-16)] pt-[var(--sp-16)]">
+          {children}
+        </div>
       </div>
     </div>
   );

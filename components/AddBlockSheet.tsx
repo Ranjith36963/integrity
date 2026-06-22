@@ -463,8 +463,9 @@ export function AddBlockSheet({
               onRequestNewCategory={() => setView("newCategory")}
             />
 
-            {/* Save + Cancel */}
-            <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+            {/* Save — full-width primary action. The Sheet header owns the
+                Close (×) affordance, so the action bar is single-purpose. */}
+            <div style={{ display: "flex", marginTop: "8px" }}>
               <button
                 type="button"
                 data-testid="add-block-save"
@@ -473,7 +474,7 @@ export function AddBlockSheet({
                 onClick={handleSave}
                 style={{
                   flex: 1,
-                  height: "44px",
+                  height: "48px",
                   borderRadius: "8px",
                   border: "none",
                   background: "var(--accent)",
@@ -493,27 +494,6 @@ export function AddBlockSheet({
                   Resolve the overlap to save.
                 </span>
               )}
-              <button
-                type="button"
-                data-testid="add-block-cancel"
-                onClick={handleClose}
-                aria-label="Cancel"
-                style={{
-                  height: "44px",
-                  width: "44px",
-                  borderRadius: "8px",
-                  border: "1px solid var(--ink-dim)",
-                  background: "transparent",
-                  color: "var(--ink-dim)",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                ×
-              </button>
             </div>
           </div>
         ) : (
