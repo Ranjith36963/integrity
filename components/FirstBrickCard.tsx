@@ -64,16 +64,23 @@ export function FirstBrickCard({
   const prmTransition: Transition = { duration: 0.2, ease: "linear" };
   const exitTransition: Transition = { duration: 0.22, ease: "easeIn" };
 
+  // Framer Motion writes the `transform` CSS property when animating x/y,
+  // which overrides any inline `transform: translateX(-50%)`. To keep the
+  // card centered we have to set the centering offset via Framer's `x`
+  // value too. Pre-fix the card slid up correctly but rendered starting at
+  // left:50% with no compensating translateX, so the right edge spilled
+  // 215px off-screen ("Your Emp…" cut off at the viewport edge).
   const variants = prefersReducedMotion
     ? {
-        initial: { opacity: 0 },
-        animate: { opacity: 1, transition: prmTransition },
-        exit: { opacity: 0, transition: prmTransition },
+        initial: { opacity: 0, x: "-50%" },
+        animate: { opacity: 1, x: "-50%", transition: prmTransition },
+        exit: { opacity: 0, x: "-50%", transition: prmTransition },
       }
     : {
-        initial: { opacity: 0, y: "100%" },
+        initial: { opacity: 0, x: "-50%", y: "100%" },
         animate: {
           opacity: 1,
+          x: "-50%",
           y: "0%",
           transition: {
             type: "spring",
@@ -83,6 +90,7 @@ export function FirstBrickCard({
         },
         exit: {
           opacity: 0,
+          x: "-50%",
           y: "100%",
           transition: exitTransition,
         },
@@ -105,7 +113,9 @@ export function FirstBrickCard({
             position: "fixed",
             bottom: 0,
             left: "50%",
-            transform: "translateX(-50%)",
+            // Centering happens via Framer's `x: "-50%"` in variants — do
+            // not duplicate as `transform: translateX(...)` here, Framer
+            // would silently overwrite it.
             width: "100%",
             maxWidth: "430px",
             zIndex: 40,
