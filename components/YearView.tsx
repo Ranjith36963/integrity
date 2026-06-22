@@ -17,7 +17,7 @@
  * No --surface-2 (undefined in globals.css).
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { AppState } from "@/lib/types";
 import { today } from "@/lib/dharma";
@@ -161,7 +161,19 @@ export function YearView({ state, onOpenMonth }: YearViewProps) {
   const todayMonth = Number(todayIso.slice(5, 7)) - 1; // 0-indexed
 
   const months = yearMonths(displayedYear);
-  const aggregateScore = yearScore(state, displayedYear);
+  // Memoize the 12 month scores + the year aggregate keyed on
+  // (state, displayedYear). Without this every parent re-render (toast,
+  // hydration tick, route nav) recomputed 12 × monthScore + 1 × yearScore,
+  // which collectively walk ~365 day entries from state.history each pass.
+  // Recompute only when the displayed year changes or persisted state mutates.
+  const aggregateScore = useMemo(
+    () => yearScore(state, displayedYear),
+    [state, displayedYear],
+  );
+  const monthScores = useMemo(
+    () => months.map((d) => monthScore(state, d.year, d.monthIndex)),
+    [state, months],
+  );
 
   function handlePrevYear() {
     setDisplayedYear((y) => subYear(y));
@@ -251,12 +263,8 @@ export function YearView({ state, onOpenMonth }: YearViewProps) {
           padding: "var(--sp-12, 12px)",
         }}
       >
-        {months.map((descriptor) => {
-          const score = monthScore(
-            state,
-            descriptor.year,
-            descriptor.monthIndex,
-          );
+        {months.map((descriptor, idx) => {
+          const score = monthScores[idx]!;
           const isCurrentMonth =
             descriptor.year === todayYear &&
             descriptor.monthIndex === todayMonth;

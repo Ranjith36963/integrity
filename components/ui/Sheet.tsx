@@ -25,6 +25,11 @@ export function Sheet({
   children,
   className,
 }: SheetProps) {
+  // Track whether the scrollable content region has scrolled — used to
+  // toggle a subtle elevation/shadow under the sticky header, iOS-style.
+  const [scrolled, setScrolled] = React.useState(false);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
   // Close on ESC key
   React.useEffect(() => {
     if (!open) return;
@@ -34,6 +39,16 @@ export function Sheet({
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [open, onClose]);
+
+  // Reset scroll state every time the sheet (re)opens.
+  React.useEffect(() => {
+    if (open) setScrolled(false);
+  }, [open]);
+
+  function handleScroll(e: React.UIEvent<HTMLDivElement>) {
+    const next = e.currentTarget.scrollTop > 2;
+    if (next !== scrolled) setScrolled(next);
+  }
 
   if (!open) return null;
 
@@ -65,7 +80,18 @@ export function Sheet({
         }}
       >
         {title && (
-          <header className="flex items-center justify-between gap-[var(--sp-12)] border-b border-white/5 px-[var(--sp-16)] pb-[var(--sp-12)]">
+          <header
+            data-scrolled={scrolled ? "true" : undefined}
+            className="flex items-center justify-between gap-[var(--sp-12)] border-b border-white/5 px-[var(--sp-16)] pb-[var(--sp-12)] transition-shadow duration-150"
+            style={{
+              // Subtle shadow only when content has scrolled under the header.
+              // Pre-scroll: flat hairline border-b carries the separation.
+              // Post-scroll: 0 4px 12px -4px black ~40% lifts the header.
+              boxShadow: scrolled
+                ? "0 4px 12px -4px rgba(0,0,0,0.5)"
+                : "none",
+            }}
+          >
             <h2 className="font-mono text-[var(--fs-22)] tracking-tight text-[var(--ink)]">
               {title}
             </h2>
@@ -80,7 +106,11 @@ export function Sheet({
             </button>
           </header>
         )}
-        <div className="flex-1 overflow-y-auto px-[var(--sp-16)] pt-[var(--sp-16)]">
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto px-[var(--sp-16)] pt-[var(--sp-16)]"
+        >
           {children}
         </div>
       </div>
