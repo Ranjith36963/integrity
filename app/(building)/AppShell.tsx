@@ -26,6 +26,7 @@ import { YearView } from "@/components/YearView";
 import { BuildingClient } from "./BuildingClient";
 import { MonthView } from "@/components/MonthView";
 import { Toaster } from "@/components/Toaster";
+import { InstallPrompt } from "@/components/InstallPrompt";
 
 export function AppShell() {
   // Single usePersistedState() call — shared between Day, Week, Month, and Year views.
@@ -77,6 +78,10 @@ export function AppShell() {
       {/* M7e: Toaster — mounted once as a ViewSwitcher sibling, outside the view branch.
            Lives here so it persists across Day→Week→Month→Year switches (C-m7e-035). */}
       <Toaster />
+      {/* PWA install affordance — null when already-installed, dismissed,
+           or browser doesn't support beforeinstallprompt. iOS Safari gets
+           a how-to overlay because it has no programmatic install path. */}
+      <InstallPrompt />
 
       {view === "day" ? (
         <BuildingClient state={state} dispatch={dispatch} hydrated={hydrated} />
