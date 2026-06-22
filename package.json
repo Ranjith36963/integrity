@@ -25,9 +25,20 @@
     "test:mutation": "stryker run",
     "verify": "npm run lint && npm run typecheck && npm run test && npm run check:docs",
     "eval": "npm run lint && npm run typecheck && npm run test && npm run test:tz && npm run test:e2e && npm run test:a11y",
-    "prepare": "husky"
+    "prepare": "husky",
+    "build:native": "CAPACITOR_BUILD=true next build",
+    "cap:sync": "npm run build:native && cap sync",
+    "cap:open:ios": "cap open ios",
+    "cap:open:android": "cap open android"
   },
   "dependencies": {
+    "@capacitor/app": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/filesystem": "^7.0.0",
+    "@capacitor/haptics": "^7.0.0",
+    "@capacitor/preferences": "^7.0.0",
+    "@capacitor/splash-screen": "^7.0.0",
+    "@capacitor/status-bar": "^7.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.14.0",
@@ -42,6 +53,9 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.2",
+    "@capacitor/cli": "^7.0.0",
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/ios": "^7.0.0",
     "@commitlint/cli": "^20.5.2",
     "@commitlint/config-conventional": "^20.5.0",
     "@playwright/test": "^1.59.1",
