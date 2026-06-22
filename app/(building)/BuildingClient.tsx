@@ -195,6 +195,7 @@ export function BuildingClient({
   // localStorage flags (pre-hydration-safe).
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot first-visit detection requires reading window.localStorage which is only available post-mount; SSR-safe two-pass pattern (welcomeOpen starts false → flips true once on the client if storage matches).
     if (!hasPersistedState() && !hasSeenOnboarding()) setWelcomeOpen(true);
   }, []);
   function dismissWelcome() {
@@ -609,7 +610,9 @@ export function BuildingClient({
           totalDays={totalDays}
           pct={heroPct}
           firstPaintCountUp={stagger}
-          hydrated={hydrated} /* R7-ROOT-5: hide SSR clock until client locks in */
+          hydrated={
+            hydrated
+          } /* R7-ROOT-5: hide SSR clock until client locks in */
         />
         {/* M7a: skeleton / real subtree branch (ADR-023 two-pass hydration).
              !hydrated → skeleton placeholders; hydrated → real surfaces + stagger.
@@ -722,9 +725,9 @@ export function BuildingClient({
         <DayCompleteCard
           active={Boolean(
             fireworksActive &&
-              // R7-ROOT-M7-P1-2: read from frozen state while a celebration
-              // is in flight; fall back to live PRM otherwise (defensive).
-              (celebratingPrm ?? prefersReducedMotion),
+            // R7-ROOT-M7-P1-2: read from frozen state while a celebration
+            // is in flight; fall back to live PRM otherwise (defensive).
+            (celebratingPrm ?? prefersReducedMotion),
           )}
         />
       </div>

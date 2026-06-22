@@ -96,12 +96,12 @@ export function BlockCard({
               style={{ background: catColor }}
               aria-hidden="true"
             />
-            <span className="truncate font-mono text-[var(--fs-14)] text-[var(--ink)]">
+            <span className="truncate font-mono [font-size:var(--fs-14)] text-[var(--ink)]">
               {name}
             </span>
           </div>
           <div className="relative z-20 flex items-center gap-2">
-            <span className="font-mono text-[var(--fs-12)] text-[var(--ink-dim)]">
+            <span className="font-mono [font-size:var(--fs-12)] text-[var(--ink-dim)]">
               {Math.round(pct)}%
             </span>
             {/* Delete affordance — always visible in edit mode per ADR-008.
@@ -122,7 +122,7 @@ export function BlockCard({
           </div>
         </div>
         {/* Time range */}
-        <span className="font-mono text-[var(--fs-12)] text-[var(--ink-dim)]">
+        <span className="font-mono [font-size:var(--fs-12)] text-[var(--ink-dim)]">
           {start}–{end}
         </span>
         {children}

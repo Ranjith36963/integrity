@@ -69,7 +69,7 @@ export function Modal({
         style={{ paddingBottom: "var(--safe-bottom, 0px)" }}
       >
         {title && (
-          <h2 className="mb-[var(--sp-12)] font-mono text-[var(--fs-16)] text-[var(--ink)]">
+          <h2 className="mb-[var(--sp-12)] font-mono [font-size:var(--fs-16)] text-[var(--ink)]">
             {title}
           </h2>
         )}

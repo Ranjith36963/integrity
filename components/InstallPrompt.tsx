@@ -75,7 +75,9 @@ export function InstallPrompt() {
     if (wasRecentlyDismissed()) return;
 
     if (isIOS()) {
-      // iOS — no beforeinstallprompt; show the static how-to pill.
+      // iOS has no beforeinstallprompt event — show the static how-to
+      // pill exactly once, on first mount, after we've verified the OS.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- post-mount platform detection sets initial visibility; render-time check would SSR-mismatch (navigator unavailable on the server).
       setShow(true);
       return;
     }

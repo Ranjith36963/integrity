@@ -77,7 +77,7 @@ export async function renderShareCard(
 
   // ── Top: DHARMA wordmark + year ───────────────────────────────────
   const padX = 80;
-  let y = 140;
+  const y = 140;
 
   // Brick icon
   const brickGrad = ctx.createLinearGradient(padX, y - 40, padX, y);
@@ -124,22 +124,8 @@ export async function renderShareCard(
   const monthsH = 520;
   const monthGap = 16;
   const monthCols = 12;
-  const monthW =
-    (CARD_W - padX * 2 - monthGap * (monthCols - 1)) / monthCols;
-  const labels = [
-    "J",
-    "F",
-    "M",
-    "A",
-    "M",
-    "J",
-    "J",
-    "A",
-    "S",
-    "O",
-    "N",
-    "D",
-  ];
+  const monthW = (CARD_W - padX * 2 - monthGap * (monthCols - 1)) / monthCols;
+  const labels = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
 
   for (let m = 0; m < 12; m++) {
     const ms = monthScore(state, year, m);
@@ -272,11 +258,7 @@ export async function shareOrDownload(
       canShare?: (data: ShareData) => boolean;
       share?: (data: ShareData) => Promise<void>;
     };
-    if (
-      nav.canShare &&
-      nav.share &&
-      nav.canShare({ files: [file] })
-    ) {
+    if (nav.canShare && nav.share && nav.canShare({ files: [file] })) {
       await nav.share({
         files: [file],
         title: `Dharma ${year}`,

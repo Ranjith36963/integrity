@@ -30,7 +30,9 @@ export function EmptyState({
         className,
       )}
     >
-      <p className="font-mono text-[var(--fs-14)] text-[var(--ink-dim)]">{message}</p>
+      <p className="font-mono [font-size:var(--fs-14)] text-[var(--ink-dim)]">
+        {message}
+      </p>
       {actionLabel && onAction && (
         <Button variant="ghost" size="sm" onClick={onAction}>
           {actionLabel}

@@ -165,9 +165,16 @@ export function Timeline({
   const labelColumnWidth = 56;
 
   return (
+    // A11y (axe scrollable-region-focusable): when a region scrolls, it
+    // must be reachable by keyboard. tabIndex=0 lets a Tab user focus it
+    // and use Page Up/Down + arrow keys to scroll the timeline; role and
+    // aria-label give screen readers context.
     <div
       ref={scrollRef}
-      className="relative overflow-x-hidden overflow-y-auto"
+      tabIndex={0}
+      role="region"
+      aria-label="Timeline"
+      className="relative overflow-x-hidden overflow-y-auto focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--accent)]"
       style={{
         maxHeight: "calc(100dvh - 360px)",
       }}

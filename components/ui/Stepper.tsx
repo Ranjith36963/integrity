@@ -130,7 +130,7 @@ export function Stepper({
         type="button"
         aria-label="Decrement"
         disabled={disabled || !canDecrement}
-        className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--ink-dim)]/30 text-[var(--fs-16)] text-[var(--ink-dim)] transition-colors hover:border-[var(--ink)] hover:text-[var(--ink)] disabled:pointer-events-none disabled:opacity-30"
+        className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--ink-dim)]/30 [font-size:var(--fs-16)] text-[var(--ink-dim)] transition-colors hover:border-[var(--ink)] hover:text-[var(--ink)] disabled:pointer-events-none disabled:opacity-30"
         onClick={() => commit(-1)}
         onPointerDown={() => startLongPress(-1)}
         onPointerUp={stopLongPress}
@@ -140,10 +140,12 @@ export function Stepper({
         −
       </button>
 
-      <span className="min-w-[3ch] text-center text-[var(--fs-16)]">
+      <span className="min-w-[3ch] text-center [font-size:var(--fs-16)]">
         {value}
         {unit && (
-          <span className="ml-1 text-[var(--fs-12)] text-[var(--ink-dim)]">{unit}</span>
+          <span className="ml-1 [font-size:var(--fs-12)] text-[var(--ink-dim)]">
+            {unit}
+          </span>
         )}
       </span>
 
@@ -151,7 +153,7 @@ export function Stepper({
         type="button"
         aria-label="Increment"
         disabled={disabled || !canIncrement}
-        className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--ink-dim)]/30 text-[var(--fs-16)] text-[var(--ink-dim)] transition-colors hover:border-[var(--ink)] hover:text-[var(--ink)] disabled:pointer-events-none disabled:opacity-30"
+        className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--ink-dim)]/30 [font-size:var(--fs-16)] text-[var(--ink-dim)] transition-colors hover:border-[var(--ink)] hover:text-[var(--ink)] disabled:pointer-events-none disabled:opacity-30"
         onClick={() => commit(1)}
         onPointerDown={() => startLongPress(1)}
         onPointerUp={stopLongPress}

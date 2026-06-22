@@ -40,8 +40,13 @@ export function Sheet({
     return () => document.removeEventListener("keydown", handler);
   }, [open, onClose]);
 
-  // Reset scroll state every time the sheet (re)opens.
+  // Reset scroll state every time the sheet (re)opens. The header
+  // shadow is a function of scrollTop; on every re-open the scroll
+  // container has scrolled itself back to 0, so the elevation must
+  // follow. setState in effect is correct here — it's a one-shot
+  // synchronization with an external state change (open prop flip).
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncs header shadow with the open prop edge; no cascade because the dep array is the prop itself.
     if (open) setScrolled(false);
   }, [open]);
 
@@ -87,12 +92,10 @@ export function Sheet({
               // Subtle shadow only when content has scrolled under the header.
               // Pre-scroll: flat hairline border-b carries the separation.
               // Post-scroll: 0 4px 12px -4px black ~40% lifts the header.
-              boxShadow: scrolled
-                ? "0 4px 12px -4px rgba(0,0,0,0.5)"
-                : "none",
+              boxShadow: scrolled ? "0 4px 12px -4px rgba(0,0,0,0.5)" : "none",
             }}
           >
-            <h2 className="font-mono text-[var(--fs-22)] tracking-tight text-[var(--ink)]">
+            <h2 className="font-mono [font-size:var(--fs-22)] tracking-tight text-[var(--ink)]">
               {title}
             </h2>
             <button
@@ -100,7 +103,7 @@ export function Sheet({
               data-testid="sheet-close"
               aria-label="Close"
               onClick={onClose}
-              className="tap grid h-11 w-11 place-items-center rounded-md text-[var(--fs-22)] text-[var(--ink-dim)] hover:text-[var(--ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+              className="tap grid h-11 w-11 place-items-center rounded-md [font-size:var(--fs-22)] text-[var(--ink-dim)] hover:text-[var(--ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
             >
               ×
             </button>

@@ -12,18 +12,21 @@ export const chipVariants = cva(
     variants: {
       tone: {
         neutral: "border-[var(--ink-dim)] text-[var(--ink-dim)]",
-        "category-health": "border-[var(--cat-health)] text-[var(--cat-health)]",
+        "category-health":
+          "border-[var(--cat-health)] text-[var(--cat-health)]",
         "category-mind": "border-[var(--cat-mind)] text-[var(--cat-mind)]",
-        "category-career": "border-[var(--cat-career)] text-[var(--cat-career)]",
-        "category-passive": "border-[var(--cat-passive)] text-[var(--cat-passive)]",
+        "category-career":
+          "border-[var(--cat-career)] text-[var(--cat-career)]",
+        "category-passive":
+          "border-[var(--cat-passive)] text-[var(--cat-passive)]",
       },
       selected: {
         true: "",
         false: "bg-transparent",
       },
       size: {
-        sm: "px-2 py-0.5 text-[var(--fs-10)]",
-        md: "px-3 py-1 text-[var(--fs-12)]",
+        sm: "px-2 py-0.5 [font-size:var(--fs-10)]",
+        md: "px-3 py-1 [font-size:var(--fs-12)]",
       },
     },
     compoundVariants: [
