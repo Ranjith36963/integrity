@@ -21,10 +21,10 @@
  *   - Notifications — defer until M10 (Voice Log) when push infra lands.
  */
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Sheet } from "@/components/ui/Sheet";
 import type { AppState } from "@/lib/types";
-import { STORAGE_KEY } from "@/lib/persist";
+import { STORAGE_KEY, migrate, saveState } from "@/lib/persist";
 import { haptics } from "@/lib/haptics";
 
 interface Props {
@@ -37,6 +37,48 @@ interface Props {
 
 export function SettingsSheet({ open, state, onClose, onResetAll }: Props) {
   const [confirmingReset, setConfirmingReset] = useState(false);
+  const [importStatus, setImportStatus] = useState<
+    { kind: "idle" } | { kind: "error"; message: string }
+  >({ kind: "idle" });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleImportClick() {
+    haptics.light();
+    fileInputRef.current?.click();
+  }
+
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    // Reset the input so re-selecting the same file fires the change event.
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text) as unknown;
+      // Pass through the same migration pipeline loadState uses so v1/v2
+      // backups are auto-upgraded. migrate() returns null on irrecoverable
+      // shape — surface that as an error rather than wiping their data.
+      const migrated = migrate(parsed);
+      if (!migrated) {
+        setImportStatus({
+          kind: "error",
+          message: "That file isn't a recognised Dharma backup.",
+        });
+        return;
+      }
+      saveState(migrated);
+      haptics.success();
+      // Hard reload so usePersistedState re-runs its two-pass hydration on
+      // the new payload and every view rebinds. Side-steps any race with
+      // the live reducer holding the old state.
+      window.location.reload();
+    } catch {
+      setImportStatus({
+        kind: "error",
+        message: "Couldn't parse the file. Make sure it's valid JSON.",
+      });
+    }
+  }
 
   function handleExport() {
     haptics.light();
@@ -127,6 +169,65 @@ export function SettingsSheet({ open, state, onClose, onResetAll }: Props) {
               Download a JSON backup
             </span>
           </button>
+          <button
+            type="button"
+            data-testid="settings-import"
+            onClick={handleImportClick}
+            className="tap"
+            style={{
+              width: "100%",
+              minHeight: "52px",
+              padding: "var(--sp-12, 12px) var(--sp-16, 16px)",
+              borderRadius: "10px",
+              border: "1px solid var(--surface-2)",
+              background: "var(--surface-1)",
+              color: "var(--ink)",
+              fontFamily: "var(--font-ui)",
+              fontSize: "var(--fs-14, 14px)",
+              textAlign: "left",
+              cursor: "pointer",
+              display: "flex",
+              flexDirection: "column",
+              gap: "2px",
+            }}
+          >
+            <span>Import backup</span>
+            <span
+              style={{
+                fontSize: "var(--fs-12, 12px)",
+                color: "var(--ink-dim)",
+              }}
+            >
+              Restore from a JSON file (replaces current data)
+            </span>
+          </button>
+          {/* Hidden file input — triggered by the Import button. */}
+          <input
+            ref={fileInputRef}
+            data-testid="settings-import-input"
+            type="file"
+            accept="application/json,.json"
+            onChange={handleImportFile}
+            style={{ display: "none" }}
+          />
+          {importStatus.kind === "error" && (
+            <p
+              role="alert"
+              data-testid="settings-import-error"
+              style={{
+                margin: 0,
+                marginTop: "4px",
+                padding: "8px 12px",
+                borderRadius: "8px",
+                background: "color-mix(in srgb, var(--cat-5) 15%, transparent)",
+                color: "var(--cat-5)",
+                fontFamily: "var(--font-ui)",
+                fontSize: "var(--fs-12, 12px)",
+              }}
+            >
+              {importStatus.message}
+            </p>
+          )}
         </section>
 
         {/* ─── Reset ────────────────────────────────────────────────── */}

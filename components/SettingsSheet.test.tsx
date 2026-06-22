@@ -114,6 +114,65 @@ describe("SettingsSheet", () => {
     expect(onResetAll).toHaveBeenCalledTimes(1);
   });
 
+  it("Import button is present", () => {
+    render(
+      <SettingsSheet
+        open
+        state={makeState()}
+        onClose={vi.fn()}
+        onResetAll={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId("settings-import")).toBeInTheDocument();
+  });
+
+  it("Import shows an error toast when the file is not valid JSON", async () => {
+    const user = userEvent.setup();
+    render(
+      <SettingsSheet
+        open
+        state={makeState()}
+        onClose={vi.fn()}
+        onResetAll={vi.fn()}
+      />,
+    );
+    const input = screen.getByTestId(
+      "settings-import-input",
+    ) as HTMLInputElement;
+    const garbage = new File(["not valid {json"], "garbage.json", {
+      type: "application/json",
+    });
+    await user.upload(input, garbage);
+    // Allow the async handler to settle
+    await new Promise((r) => setTimeout(r, 50));
+    expect(
+      screen.getByTestId("settings-import-error"),
+    ).toBeInTheDocument();
+  });
+
+  it("Import shows an error when the JSON shape is not recognised", async () => {
+    const user = userEvent.setup();
+    render(
+      <SettingsSheet
+        open
+        state={makeState()}
+        onClose={vi.fn()}
+        onResetAll={vi.fn()}
+      />,
+    );
+    const input = screen.getByTestId(
+      "settings-import-input",
+    ) as HTMLInputElement;
+    // Valid JSON, wrong shape (no schemaVersion)
+    const wrong = new File(['{"hello":"world"}'], "wrong.json", {
+      type: "application/json",
+    });
+    await user.upload(input, wrong);
+    await new Promise((r) => setTimeout(r, 50));
+    const err = screen.getByTestId("settings-import-error");
+    expect(err.textContent).toMatch(/recognised|recognized/i);
+  });
+
   it("About panel renders state summary (programStart, counts)", () => {
     render(
       <SettingsSheet
