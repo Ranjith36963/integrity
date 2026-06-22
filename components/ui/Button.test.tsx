@@ -19,10 +19,10 @@ describe("C-m0-001: Button renders with primary+md defaults", () => {
     // Verify the default variant classes from cva are present
     const primaryMdClasses = buttonVariants({ variant: "primary", size: "md" });
     // Split and check key classes
-    expect(classes).toContain("bg-[--accent]");
+    expect(classes).toContain("bg-[var(--accent)]");
     expect(classes).toContain("h-11");
     expect(classes).toContain("min-w-[44px]");
-    expect(primaryMdClasses).toContain("bg-[--accent]");
+    expect(primaryMdClasses).toContain("bg-[var(--accent)]");
     expect(primaryMdClasses).toContain("h-11");
   });
 });

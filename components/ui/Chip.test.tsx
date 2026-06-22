@@ -20,8 +20,8 @@ describe("C-m0-008: Chip variant matrix", () => {
     for (const tone of tones) {
       const selectedClasses = chipVariants({ tone, selected: true });
       const unselectedClasses = chipVariants({ tone, selected: false });
-      // Selected must have a bg- class for the tone
-      expect(selectedClasses).toMatch(/bg-\[--/);
+      // Selected must have a bg- class for the tone (Tailwind v4 syntax: bg-[var(--...)])
+      expect(selectedClasses).toMatch(/bg-\[var\(--/);
       // Unselected should be transparent
       expect(unselectedClasses).toContain("bg-transparent");
     }

@@ -4,19 +4,19 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 export const buttonVariants = cva(
-  "inline-flex items-center justify-center font-mono uppercase tracking-wide transition-transform active:scale-[0.96] disabled:pointer-events-none disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[--accent]",
+  "inline-flex items-center justify-center font-mono uppercase tracking-wide transition-transform active:scale-[0.96] disabled:pointer-events-none disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]",
   {
     variants: {
       variant: {
-        primary: "bg-[--accent] text-[--bg] hover:brightness-110",
+        primary: "bg-[var(--accent)] text-[var(--bg)] hover:brightness-110",
         secondary:
-          "border border-[--ink-dim] text-[--ink] hover:bg-[--bg-elev]",
-        ghost: "text-[--ink-dim] hover:text-[--ink]",
+          "border border-[var(--ink-dim)] text-[var(--ink)] hover:bg-[var(--bg-elev)]",
+        ghost: "text-[var(--ink-dim)] hover:text-[var(--ink)]",
       },
       size: {
-        sm: "min-h-[44px] px-3 text-[--fs-12] min-w-[44px]",
-        md: "h-11 px-4 text-[--fs-14] min-w-[44px]",
-        lg: "h-12 px-6 text-[--fs-16] min-w-[44px]",
+        sm: "min-h-[44px] px-3 text-[var(--fs-12)] min-w-[44px]",
+        md: "h-11 px-4 text-[var(--fs-14)] min-w-[44px]",
+        lg: "h-12 px-6 text-[var(--fs-16)] min-w-[44px]",
       },
     },
     defaultVariants: { variant: "primary", size: "md" },

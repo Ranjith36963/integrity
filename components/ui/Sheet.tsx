@@ -58,14 +58,14 @@ export function Sheet({
         data-variant="full"
         className={cn(
           "relative z-10 ml-auto h-full w-full max-w-[430px]",
-          "bg-[--bg-elev]",
-          "px-[--sp-16] pt-[--sp-16]",
+          "bg-[var(--bg-elev)]",
+          "px-[var(--sp-16)] pt-[var(--sp-16)]",
           className,
         )}
         style={{ paddingBottom: "var(--safe-bottom, 0px)" }}
       >
         {title && (
-          <h2 className="mb-[--sp-12] font-mono text-[--fs-16] text-[--ink]">
+          <h2 className="mb-[var(--sp-12)] font-mono text-[var(--fs-16)] text-[var(--ink)]">
             {title}
           </h2>
         )}

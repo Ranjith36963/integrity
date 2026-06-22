@@ -28,7 +28,7 @@ export function Toggle({
         // Ensure 44×44 minimum touch target
         "relative inline-flex h-11 w-11 items-center justify-center",
         "rounded-full transition-colors",
-        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[--accent]",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]",
         "disabled:pointer-events-none disabled:opacity-50",
         className,
       )}
@@ -38,13 +38,13 @@ export function Toggle({
       <span
         className={cn(
           "relative h-6 w-11 rounded-full transition-colors duration-200",
-          pressed ? "bg-[--accent]" : "bg-[--ink-dim]/30",
+          pressed ? "bg-[var(--accent)]" : "bg-[var(--ink-dim)]/30",
         )}
       >
         {/* Thumb */}
         <span
           className={cn(
-            "absolute top-0.5 h-5 w-5 rounded-full bg-[--ink] shadow transition-transform duration-200",
+            "absolute top-0.5 h-5 w-5 rounded-full bg-[var(--ink)] shadow transition-transform duration-200",
             pressed ? "left-[1.375rem]" : "left-0.5",
           )}
         />

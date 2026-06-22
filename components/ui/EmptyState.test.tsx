@@ -30,8 +30,8 @@ describe("C-m0-015: EmptyState message and CTA", () => {
     );
     const btn = screen.getByRole("button", { name: "Add" });
     expect(btn).toBeInTheDocument();
-    // ghost variant class — hover:text-[--ink] is the distinguishing ghost class
-    expect(btn.className).toContain("hover:text-[--ink]");
+    // ghost variant class — hover:text-[var(--ink)] is the distinguishing ghost class
+    expect(btn.className).toContain("hover:text-[var(--ink)]");
   });
 
   it("clicking the CTA button calls onAction once", async () => {

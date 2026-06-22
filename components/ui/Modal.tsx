@@ -62,14 +62,14 @@ export function Modal({
         data-variant="bottom-sheet"
         className={cn(
           "relative z-10 w-full max-w-[430px] rounded-t-2xl",
-          "border-t border-[--ink-dim]/20 bg-[--bg-elev]",
-          "px-[--sp-16] pt-[--sp-16]",
+          "border-t border-[var(--ink-dim)]/20 bg-[var(--bg-elev)]",
+          "px-[var(--sp-16)] pt-[var(--sp-16)]",
           className,
         )}
         style={{ paddingBottom: "var(--safe-bottom, 0px)" }}
       >
         {title && (
-          <h2 className="mb-[--sp-12] font-mono text-[--fs-16] text-[--ink]">
+          <h2 className="mb-[var(--sp-12)] font-mono text-[var(--fs-16)] text-[var(--ink)]">
             {title}
           </h2>
         )}

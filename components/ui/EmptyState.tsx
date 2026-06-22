@@ -25,12 +25,12 @@ export function EmptyState({
       data-testid="empty-state"
       data-pulse={pulse ? "true" : "false"}
       className={cn(
-        "empty-state-root flex flex-col items-center gap-[--sp-12] rounded-xl border border-[--ink-dim]/20 bg-[--bg-elev] p-[--sp-24] text-center",
-        tone === "info" && "border-[--accent]/30",
+        "empty-state-root flex flex-col items-center gap-[var(--sp-12)] rounded-xl border border-[var(--ink-dim)]/20 bg-[var(--bg-elev)] p-[var(--sp-24)] text-center",
+        tone === "info" && "border-[var(--accent)]/30",
         className,
       )}
     >
-      <p className="font-mono text-[--fs-14] text-[--ink-dim]">{message}</p>
+      <p className="font-mono text-[var(--fs-14)] text-[var(--ink-dim)]">{message}</p>
       {actionLabel && onAction && (
         <Button variant="ghost" size="sm" onClick={onAction}>
           {actionLabel}

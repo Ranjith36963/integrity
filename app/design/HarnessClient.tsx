@@ -31,7 +31,7 @@ export function HarnessClient() {
     <div className="flex flex-col gap-8">
       {/* ── Button ── */}
       <section>
-        <h2 className="mb-3 font-mono tracking-wider text-[--fs-12] text-[--ink-dim] uppercase">
+        <h2 className="mb-3 font-mono tracking-wider text-[var(--fs-12)] text-[var(--ink-dim)] uppercase">
           Button
         </h2>
         <div className="flex flex-wrap gap-3">
@@ -57,7 +57,7 @@ export function HarnessClient() {
 
       {/* ── Modal ── */}
       <section>
-        <h2 className="mb-3 font-mono tracking-wider text-[--fs-12] text-[--ink-dim] uppercase">
+        <h2 className="mb-3 font-mono tracking-wider text-[var(--fs-12)] text-[var(--ink-dim)] uppercase">
           Modal
         </h2>
         <Button
@@ -72,7 +72,7 @@ export function HarnessClient() {
           onClose={() => setModalOpen(false)}
           title="Modal Title"
         >
-          <p className="mb-4 font-mono text-[--fs-14] text-[--ink-dim]">
+          <p className="mb-4 font-mono text-[var(--fs-14)] text-[var(--ink-dim)]">
             Modal body content
           </p>
           <Button variant="primary" onClick={() => setModalOpen(false)}>
@@ -83,7 +83,7 @@ export function HarnessClient() {
 
       {/* ── Sheet ── */}
       <section>
-        <h2 className="mb-3 font-mono tracking-wider text-[--fs-12] text-[--ink-dim] uppercase">
+        <h2 className="mb-3 font-mono tracking-wider text-[var(--fs-12)] text-[var(--ink-dim)] uppercase">
           Sheet
         </h2>
         <Button
@@ -98,7 +98,7 @@ export function HarnessClient() {
           onClose={() => setSheetOpen(false)}
           title="Sheet Title"
         >
-          <p className="mb-4 font-mono text-[--fs-14] text-[--ink-dim]">
+          <p className="mb-4 font-mono text-[var(--fs-14)] text-[var(--ink-dim)]">
             Sheet body content
           </p>
           <Button variant="primary" onClick={() => setSheetOpen(false)}>
@@ -109,7 +109,7 @@ export function HarnessClient() {
 
       {/* ── Chip ── */}
       <section>
-        <h2 className="mb-3 font-mono tracking-wider text-[--fs-12] text-[--ink-dim] uppercase">
+        <h2 className="mb-3 font-mono tracking-wider text-[var(--fs-12)] text-[var(--ink-dim)] uppercase">
           Chip
         </h2>
         <div className="flex flex-wrap gap-3">
@@ -137,7 +137,7 @@ export function HarnessClient() {
 
       {/* ── Input ── */}
       <section>
-        <h2 className="mb-3 font-mono tracking-wider text-[--fs-12] text-[--ink-dim] uppercase">
+        <h2 className="mb-3 font-mono tracking-wider text-[var(--fs-12)] text-[var(--ink-dim)] uppercase">
           Input
         </h2>
         <div className="flex flex-col gap-3">
@@ -169,7 +169,7 @@ export function HarnessClient() {
 
       {/* ── Stepper ── */}
       <section>
-        <h2 className="mb-3 font-mono tracking-wider text-[--fs-12] text-[--ink-dim] uppercase">
+        <h2 className="mb-3 font-mono tracking-wider text-[var(--fs-12)] text-[var(--ink-dim)] uppercase">
           Stepper
         </h2>
         {/* wrapper div provides the data-testid for e2e targeting */}
@@ -186,7 +186,7 @@ export function HarnessClient() {
 
       {/* ── Toggle ── */}
       <section>
-        <h2 className="mb-3 font-mono tracking-wider text-[--fs-12] text-[--ink-dim] uppercase">
+        <h2 className="mb-3 font-mono tracking-wider text-[var(--fs-12)] text-[var(--ink-dim)] uppercase">
           Toggle
         </h2>
         {/* wrapper div provides the data-testid for e2e targeting */}
@@ -201,7 +201,7 @@ export function HarnessClient() {
 
       {/* ── EmptyState ── */}
       <section>
-        <h2 className="mb-3 font-mono tracking-wider text-[--fs-12] text-[--ink-dim] uppercase">
+        <h2 className="mb-3 font-mono tracking-wider text-[var(--fs-12)] text-[var(--ink-dim)] uppercase">
           EmptyState
         </h2>
         <EmptyState
@@ -213,7 +213,7 @@ export function HarnessClient() {
 
       {/* ── BlockCard ── */}
       <section>
-        <h2 className="mb-3 font-mono tracking-wider text-[--fs-12] text-[--ink-dim] uppercase">
+        <h2 className="mb-3 font-mono tracking-wider text-[var(--fs-12)] text-[var(--ink-dim)] uppercase">
           BlockCard
         </h2>
         <div className="flex flex-col gap-3">
@@ -246,7 +246,7 @@ export function HarnessClient() {
 
       {/* ── BrickChip ── */}
       <section>
-        <h2 className="mb-3 font-mono tracking-wider text-[--fs-12] text-[--ink-dim] uppercase">
+        <h2 className="mb-3 font-mono tracking-wider text-[var(--fs-12)] text-[var(--ink-dim)] uppercase">
           BrickChip
         </h2>
         <div className="flex flex-col gap-2">

@@ -53,7 +53,7 @@ export function BlockCard({
       data-testid="block-card"
       data-status={status}
       className={cn(
-        "relative flex gap-[--sp-12] rounded-xl border border-[--ink-dim]/10 bg-[--bg-elev] p-[--sp-12]",
+        "relative flex gap-[var(--sp-12)] rounded-xl border border-[var(--ink-dim)]/10 bg-[var(--bg-elev)] p-[var(--sp-12)]",
         status === "current" && "now-glow",
         status === "past" && "opacity-55",
         className,
@@ -66,7 +66,7 @@ export function BlockCard({
           type="button"
           aria-label={`Open block: ${name}, ${start} to ${end}, ${Math.round(pct)}%`}
           onClick={onClick}
-          className="absolute inset-0 z-10 cursor-pointer rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[--ink]"
+          className="absolute inset-0 z-10 cursor-pointer rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ink)]"
         />
       )}
 
@@ -86,7 +86,7 @@ export function BlockCard({
       </div>
 
       {/* Content */}
-      <div className="flex min-w-0 flex-1 flex-col gap-[--sp-4]">
+      <div className="flex min-w-0 flex-1 flex-col gap-[var(--sp-4)]">
         {/* Header row */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 truncate">
@@ -96,12 +96,12 @@ export function BlockCard({
               style={{ background: catColor }}
               aria-hidden="true"
             />
-            <span className="truncate font-mono text-[--fs-14] text-[--ink]">
+            <span className="truncate font-mono text-[var(--fs-14)] text-[var(--ink)]">
               {name}
             </span>
           </div>
           <div className="relative z-20 flex items-center gap-2">
-            <span className="font-mono text-[--fs-12] text-[--ink-dim]">
+            <span className="font-mono text-[var(--fs-12)] text-[var(--ink-dim)]">
               {Math.round(pct)}%
             </span>
             {/* Delete affordance — always visible in edit mode per ADR-008.
@@ -110,7 +110,7 @@ export function BlockCard({
               <button
                 type="button"
                 aria-label="Delete block"
-                className="flex h-6 w-6 items-center justify-center rounded-full text-[--ink-dim] hover:text-[--ink]"
+                className="flex h-6 w-6 items-center justify-center rounded-full text-[var(--ink-dim)] hover:text-[var(--ink)]"
                 onClick={(e) => {
                   e.stopPropagation();
                   onDelete?.();
@@ -122,7 +122,7 @@ export function BlockCard({
           </div>
         </div>
         {/* Time range */}
-        <span className="font-mono text-[--fs-12] text-[--ink-dim]">
+        <span className="font-mono text-[var(--fs-12)] text-[var(--ink-dim)]">
           {start}–{end}
         </span>
         {children}

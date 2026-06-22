@@ -11,46 +11,46 @@ export const chipVariants = cva(
   {
     variants: {
       tone: {
-        neutral: "border-[--ink-dim] text-[--ink-dim]",
-        "category-health": "border-[--cat-health] text-[--cat-health]",
-        "category-mind": "border-[--cat-mind] text-[--cat-mind]",
-        "category-career": "border-[--cat-career] text-[--cat-career]",
-        "category-passive": "border-[--cat-passive] text-[--cat-passive]",
+        neutral: "border-[var(--ink-dim)] text-[var(--ink-dim)]",
+        "category-health": "border-[var(--cat-health)] text-[var(--cat-health)]",
+        "category-mind": "border-[var(--cat-mind)] text-[var(--cat-mind)]",
+        "category-career": "border-[var(--cat-career)] text-[var(--cat-career)]",
+        "category-passive": "border-[var(--cat-passive)] text-[var(--cat-passive)]",
       },
       selected: {
         true: "",
         false: "bg-transparent",
       },
       size: {
-        sm: "px-2 py-0.5 text-[--fs-10]",
-        md: "px-3 py-1 text-[--fs-12]",
+        sm: "px-2 py-0.5 text-[var(--fs-10)]",
+        md: "px-3 py-1 text-[var(--fs-12)]",
       },
     },
     compoundVariants: [
       {
         tone: "neutral",
         selected: true,
-        className: "bg-[--ink-dim] text-[--bg]",
+        className: "bg-[var(--ink-dim)] text-[var(--bg)]",
       },
       {
         tone: "category-health",
         selected: true,
-        className: "bg-[--cat-health] text-[--bg]",
+        className: "bg-[var(--cat-health)] text-[var(--bg)]",
       },
       {
         tone: "category-mind",
         selected: true,
-        className: "bg-[--cat-mind] text-[--bg]",
+        className: "bg-[var(--cat-mind)] text-[var(--bg)]",
       },
       {
         tone: "category-career",
         selected: true,
-        className: "bg-[--cat-career] text-[--bg]",
+        className: "bg-[var(--cat-career)] text-[var(--bg)]",
       },
       {
         tone: "category-passive",
         selected: true,
-        className: "bg-[--cat-passive] text-[--bg]",
+        className: "bg-[var(--cat-passive)] text-[var(--bg)]",
       },
     ],
     defaultVariants: { tone: "neutral", selected: false, size: "md" },
