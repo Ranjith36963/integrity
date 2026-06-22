@@ -176,7 +176,8 @@ export function Welcome({ onBegin }: Props) {
         brick by brick.
       </h1>
 
-      {/* Body — three short lines, no marketing puff */}
+      {/* Body — the full unit chain from CLAUDE.md.
+          Bricks → Blocks → Buildings → Castles → Kingdoms → Empire. */}
       <p
         style={{
           fontFamily: "var(--font-ui)",
@@ -193,6 +194,12 @@ export function Welcome({ onBegin }: Props) {
         Blocks are routines.
         <br />
         Buildings are days.
+        <br />
+        Castles are weeks.
+        <br />
+        Kingdoms are months.
+        <br />
+        Empires are years.
       </p>
 
       {/* Primary CTA — single, full-width, the action the screen is for */}

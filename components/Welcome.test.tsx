@@ -15,11 +15,14 @@ describe("Welcome", () => {
     ).toBeInTheDocument();
   });
 
-  it("explains the brick → block → building chain in plain language", () => {
+  it("explains the full unit chain — habits → years", () => {
     render(<Welcome onBegin={vi.fn()} />);
     expect(screen.getByText(/Bricks are habits/i)).toBeInTheDocument();
     expect(screen.getByText(/Blocks are routines/i)).toBeInTheDocument();
     expect(screen.getByText(/Buildings are days/i)).toBeInTheDocument();
+    expect(screen.getByText(/Castles are weeks/i)).toBeInTheDocument();
+    expect(screen.getByText(/Kingdoms are months/i)).toBeInTheDocument();
+    expect(screen.getByText(/Empires are years/i)).toBeInTheDocument();
   });
 
   it("calls onBegin when the primary CTA is tapped", async () => {
