@@ -18,7 +18,7 @@
  */
 
 import { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Share2 } from "lucide-react";
 import type { AppState } from "@/lib/types";
 import { today } from "@/lib/dharma";
 import { yearMonths, addYear, subYear } from "@/lib/yearGrid";
@@ -28,6 +28,8 @@ import {
   avgDailyScore,
   daysCompleted,
 } from "@/lib/insights";
+import { shareOrDownload } from "@/lib/shareCard";
+import { haptics } from "@/lib/haptics";
 import { MonthCell } from "./MonthCell";
 import { InsightStrip } from "./InsightStrip";
 
@@ -251,6 +253,50 @@ export function YearView({ state, onOpenMonth }: YearViewProps) {
 
       {/* Year aggregate ring */}
       <YearAggregate score={aggregateScore} />
+
+      {/* Share — generates a stylized PNG card of this year and either
+          opens the native share sheet (iOS/Android) or downloads. The
+          viral loop: people screenshot the year view manually today; this
+          surface turns that into a one-tap action that promotes the
+          brand (DHARMA wordmark + tagline baked into the export). */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          marginTop: "var(--sp-8, 8px)",
+          marginBottom: "var(--sp-8, 8px)",
+        }}
+      >
+        <button
+          type="button"
+          data-testid="year-share"
+          aria-label={`Share ${displayedYear}`}
+          onClick={async () => {
+            haptics.light();
+            await shareOrDownload(state, displayedYear);
+          }}
+          className="tap"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            minHeight: "36px",
+            padding: "8px 14px",
+            borderRadius: "999px",
+            border: "1px solid var(--surface-2)",
+            background: "transparent",
+            color: "var(--ink-dim)",
+            fontFamily: "var(--font-ui)",
+            fontSize: "var(--fs-12, 12px)",
+            cursor: "pointer",
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+          }}
+        >
+          <Share2 size={14} />
+          Share {displayedYear}
+        </button>
+      </div>
 
       {/* 3×4 month grid */}
       <div
