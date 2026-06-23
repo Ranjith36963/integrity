@@ -104,6 +104,55 @@ export function daysCompleted(
  */
 export const FREEZES_PER_MONTH = 2;
 
+/**
+ * Current streak — consecutive scored OR frozen days ending at `today`.
+ * Walks BACKWARD from today until a non-scoring + non-frozen day is hit.
+ * Distinct from longestStreak (which scans a window for the max run).
+ *
+ * - today's score counts only if > 0
+ * - frozen days count regardless of score
+ * - the FIRST gap (non-scoring + not-frozen) breaks the count
+ *
+ * Returns 0 when today itself is neither scored nor frozen.
+ */
+export function currentStreak(state: AppState, todayIso: string): number {
+  const freezes = state.freezes ?? {};
+  let n = 0;
+  let cursor = todayIso;
+  // Hard cap at 10 years of walking — defends against an infinite loop
+  // if the cursor logic ever desyncs. Real streaks max ~365 anyway.
+  for (let safety = 0; safety < 3650; safety++) {
+    const s = dayScore(state, cursor);
+    const counts = (s !== null && s > 0) || freezes[cursor] === true;
+    if (!counts) break;
+    n += 1;
+    // Step backward one day. Mid-day UTC math keeps this DST-safe; the
+    // ISO output is sliced off, not date-shifted.
+    const d = new Date(`${cursor}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() - 1);
+    cursor = d.toISOString().slice(0, 10);
+  }
+  return n;
+}
+
+/**
+ * Milestones in the brick→empire metaphor. When the current streak
+ * lands ON one of these exact numbers for the first time, the UI
+ * surfaces the Empire-Glimpse cinematic.
+ */
+export const STREAK_MILESTONES = [7, 30, 100, 365] as const;
+export type StreakMilestone = (typeof STREAK_MILESTONES)[number];
+
+/**
+ * Returns the milestone NUMBER if `streak` equals one of the milestone
+ * values exactly, null otherwise. UI then checks localStorage to
+ * decide whether to actually show the cinematic.
+ */
+export function streakMilestone(streak: number): StreakMilestone | null {
+  for (const m of STREAK_MILESTONES) if (m === streak) return m;
+  return null;
+}
+
 export function freezesUsedThisMonth(state: AppState, isoDate: string): number {
   const prefix = isoDate.slice(0, 7);
   const freezes = state.freezes ?? {};

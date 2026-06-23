@@ -34,7 +34,17 @@ import {
   type Command,
 } from "@/components/CommandPalette";
 import { Calendar, CalendarDays, CalendarRange, Snowflake } from "lucide-react";
-import { freezesRemainingThisMonth } from "@/lib/insights";
+import {
+  freezesRemainingThisMonth,
+  currentStreak,
+  streakMilestone,
+  type StreakMilestone,
+} from "@/lib/insights";
+import {
+  EmpireGlimpse,
+  hasMilestoneBeenShown,
+  markMilestoneShown,
+} from "@/components/EmpireGlimpse";
 
 export function AppShell() {
   // Single usePersistedState() call — shared between Day, Week, Month, and Year views.
@@ -59,6 +69,23 @@ export function AppShell() {
   // Command palette — global ⌘K / Ctrl+K. The hook owns open/close state
   // plus the global keyboard shortcut binding.
   const palette = useCommandPalette();
+
+  // Sci-fi Phase 4e — Empire Glimpse milestone cinematic. The streak
+  // calc runs every render but its result is cheap (walks at most ~365
+  // days backward). When it lands on 7/30/100/365 AND localStorage
+  // hasn't yet stamped that milestone, we mount the overlay. The
+  // dismissal path stamps the flag so the same milestone never re-fires.
+  const streak = currentStreak(state, state.currentDate);
+  const milestone = streakMilestone(streak);
+  const [activeMilestone, setActiveMilestone] =
+    useState<StreakMilestone | null>(null);
+  useEffect(() => {
+    if (milestone && !hasMilestoneBeenShown(milestone)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot mount when a brand-new milestone is reached + not previously stamped. Cascade is impossible because markMilestoneShown writes the gate before the next render reads it.
+      setActiveMilestone(milestone);
+      markMilestoneShown(milestone);
+    }
+  }, [milestone]);
 
   function handleSelectView(v: "day" | "month" | "week" | "year") {
     // Clear monthTarget on direct nav — MonthView initializes to today
@@ -180,6 +207,13 @@ export function AppShell() {
            fireBurst() helper enqueues a 12-mote scatter at any viewport
            coordinate. Used by the brick-save and freeze-today moments. */}
       <BurstOverlay />
+      {/* Sci-fi Phase 4e — streak-milestone cinematic. One-time per
+           milestone per user-device, gated by localStorage. z-90 above
+           every other overlay so the moment isn't competing. */}
+      <EmpireGlimpse
+        milestone={activeMilestone}
+        onClose={() => setActiveMilestone(null)}
+      />
 
       {view === "day" ? (
         <BuildingClient state={state} dispatch={dispatch} hydrated={hydrated} />

@@ -9,6 +9,7 @@ import {
   avgDailyScore,
   daysCompleted,
   busiestHour,
+  currentStreak,
 } from "./insights";
 
 function makeState(history: Record<string, ArchivedDay>): AppState {
@@ -188,5 +189,95 @@ describe("insights — longestStreak with freezes", () => {
       freezes: { "2026-06-17": true },
     } as unknown as AppState;
     expect(longestStreak(state, "2026-06-15", "2026-06-18")).toBe(1);
+  });
+});
+
+describe("insights — currentStreak", () => {
+  function streakState(args: {
+    today: string;
+    history: Record<string, number>;
+    freezes?: string[];
+  }): AppState {
+    const hist: Record<string, ReturnType<typeof archived>> = {};
+    for (const [iso, pct] of Object.entries(args.history)) {
+      hist[iso] = archived(pct);
+    }
+    const freezes: Record<string, true> = {};
+    for (const f of args.freezes ?? []) freezes[f] = true;
+    return {
+      schemaVersion: 3,
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      programStart: "2026-01-01",
+      currentDate: args.today,
+      history: hist,
+      deletions: {},
+      freezes,
+    } as unknown as AppState;
+  }
+
+  it("returns 0 when today is neither scored nor frozen", () => {
+    const s = streakState({ today: "2026-06-22", history: {} });
+    expect(currentStreak(s, "2026-06-22")).toBe(0);
+  });
+
+  it("returns 1 when only today scores", () => {
+    const s = streakState({
+      today: "2026-06-22",
+      history: { "2026-06-22": 50 },
+    });
+    expect(currentStreak(s, "2026-06-22")).toBe(1);
+  });
+
+  it("counts a frozen today even when score is 0", () => {
+    const s = streakState({
+      today: "2026-06-22",
+      history: {},
+      freezes: ["2026-06-22"],
+    });
+    expect(currentStreak(s, "2026-06-22")).toBe(1);
+  });
+
+  it("walks backward through consecutive scored days", () => {
+    const s = streakState({
+      today: "2026-06-22",
+      history: {
+        "2026-06-22": 50,
+        "2026-06-21": 80,
+        "2026-06-20": 30,
+        "2026-06-19": 0, // breaks
+        "2026-06-18": 70,
+      },
+    });
+    expect(currentStreak(s, "2026-06-22")).toBe(3);
+  });
+
+  it("frozen days bridge gaps in the current streak", () => {
+    const s = streakState({
+      today: "2026-06-22",
+      history: { "2026-06-22": 50, "2026-06-20": 80 },
+      freezes: ["2026-06-21"],
+    });
+    expect(currentStreak(s, "2026-06-22")).toBe(3);
+  });
+});
+
+import { streakMilestone, STREAK_MILESTONES } from "./insights";
+describe("insights — streakMilestone", () => {
+  it("returns null for non-milestone numbers", () => {
+    expect(streakMilestone(1)).toBeNull();
+    expect(streakMilestone(6)).toBeNull();
+    expect(streakMilestone(31)).toBeNull();
+    expect(streakMilestone(101)).toBeNull();
+  });
+  it("returns the milestone number exactly when streak matches", () => {
+    expect(streakMilestone(7)).toBe(7);
+    expect(streakMilestone(30)).toBe(30);
+    expect(streakMilestone(100)).toBe(100);
+    expect(streakMilestone(365)).toBe(365);
+  });
+  it("STREAK_MILESTONES is the canonical list", () => {
+    expect(STREAK_MILESTONES).toEqual([7, 30, 100, 365]);
   });
 });
