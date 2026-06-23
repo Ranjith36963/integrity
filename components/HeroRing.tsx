@@ -192,6 +192,39 @@ export function HeroRing({ pct, firstPaintCountUp = false, children }: Props) {
           {roundedDisplayPct}%
         </div>
       )}
+
+      {/* Sci-fi Phase 1 — orbital particles. Three amber motes spinning
+          at varying angles + radii around the ring stroke. CSS-only,
+          aria-hidden, respects prefers-reduced-motion via globals.css.
+          MUST stay LAST in DOM order: C-m7c tests use the selector
+          container.querySelector("[aria-hidden='true']") to find the
+          numeral div. Numeral has to remain the FIRST aria-hidden match,
+          so this decorative cluster is appended at the end. */}
+      <div
+        className="scifi-orbital"
+        aria-hidden="true"
+        data-testid="hero-orbital"
+        style={{ position: "absolute", inset: 0 }}
+      >
+        <span
+          className="scifi-orbital-mote"
+          style={{ transform: `translate(${R + 14}px, 0)` }}
+        />
+        <span
+          className="scifi-orbital-mote"
+          style={{
+            transform: `rotate(135deg) translate(${R + 10}px, 0)`,
+            animationDelay: "0.9s",
+          }}
+        />
+        <span
+          className="scifi-orbital-mote"
+          style={{
+            transform: `rotate(245deg) translate(${R + 18}px, 0)`,
+            animationDelay: "1.7s",
+          }}
+        />
+      </div>
     </div>
   );
 }

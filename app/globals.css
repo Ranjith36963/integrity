@@ -21,6 +21,15 @@
   --surface-2: rgba(245, 241, 232, 0.08);
   --surface-3: rgba(245, 241, 232, 0.12);
 
+  /* ── Sci-fi atmosphere (Phase 1 — see sci-fi-design.md) ──
+     These layers ADD to the existing blueprint identity, they do not
+     replace it. Each one is restrained on purpose. */
+  --accent-glow: rgba(251, 191, 36, 0.42); /* halo around amber */
+  --accent-bloom: rgba(245, 158, 11, 0.22); /* outer light bleed */
+  --ember-core: rgba(245, 158, 11, 0.12); /* radial fade at hero */
+  --scan-tint: rgba(245, 241, 232, 0.014); /* horizontal scan-line stripe */
+  --data-cyan: #67e8f9; /* RESERVED for data-stream particles only */
+
   /* Category palette — user picks one per category they create.
      No category names live in code; see ADR-032/039.
      All 12 colors checked for WCAG AA contrast against --bg (#07090f).
@@ -143,22 +152,61 @@ body {
     var(--font-geist-sans), var(--font-jetbrains-mono), ui-sans-serif,
     system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  /* Sci-fi Phase 1: ALL numerals are tabular + slashed-zero.
+     Stops digit width-jump (50% → 100% no longer makes the page wobble)
+     and the slashed zero gives every number a "terminal readout" feel
+     instead of "spreadsheet." */
+  font-variant-numeric: tabular-nums slashed-zero;
 }
 
 body {
   background-image:
     linear-gradient(var(--grid) 1px, transparent 1px),
     linear-gradient(90deg, var(--grid) 1px, transparent 1px),
-    radial-gradient(
-      ellipse at 50% -10%,
-      rgba(245, 158, 11, 0.08),
-      transparent 60%
-    );
+    /* Sci-fi Phase 1: warmer, broader ember radial behind the hero.
+       Old: 8% amber, ends at 60%. New: split into a core (10% deep
+       amber at the very top) and a wider bloom (3% mid-tone). Gives
+       the page a "reactor glow" without changing the silhouette. */
+    radial-gradient(ellipse at 50% -6%, var(--accent-bloom), transparent 35%),
+    radial-gradient(ellipse at 50% 18%, var(--ember-core), transparent 55%);
   background-size:
     24px 24px,
     24px 24px,
+    100% 100%,
     100% 100%;
   background-attachment: fixed;
+}
+
+/* Sci-fi Phase 1: scan-line atmosphere overlay.
+   1px stripes at ~1.4% opacity. Almost invisible directly; the eye
+   reads it as a CRT haze. Drift very slowly so a static screenshot
+   doesn't show it but a real session feels alive. Pointer-events:none
+   so it never intercepts taps. prefers-reduced-motion zeros the drift
+   automatically via the existing PRM block in this file. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 2px,
+    var(--scan-tint) 2px,
+    var(--scan-tint) 3px
+  );
+  animation: scifi-scan-drift 12s linear infinite;
+  will-change: background-position;
+}
+
+@keyframes scifi-scan-drift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 60px;
+  }
 }
 
 .font-serif-italic {
@@ -262,6 +310,53 @@ body {
 }
 .brick-in {
   animation: brick-in 380ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* ─── Sci-fi Phase 1: orbital particles around the hero ring ───
+   .scifi-orbital is the rotating container (CSS-only, GPU-accelerated
+   via transform). It hosts N child motes positioned around a circle.
+   Each mote has its own offset so the cluster reads as live, not as
+   "regular spokes." The whole thing is aria-hidden in the JSX. */
+.scifi-orbital {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  animation: scifi-orbit 12s linear infinite;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+.scifi-orbital-mote {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  margin-top: -2px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow:
+    0 0 6px var(--accent-glow),
+    0 0 14px var(--accent-bloom);
+  opacity: 0.7;
+  animation: scifi-mote-pulse 2.8s ease-in-out infinite;
+}
+@keyframes scifi-orbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes scifi-mote-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.85;
+  }
 }
 
 /* Welcome hero brick stack — each brick falls in from above and settles.
@@ -431,6 +526,16 @@ body {
   [data-motion] {
     animation-duration: 0s !important;
     transition-duration: 0s !important;
+  }
+
+  /* Sci-fi Phase 1 ambient layers — zero motion for PRM users.
+     The scan-line stripe stays visible (it's static texture, not
+     movement) but stops drifting. The orbital ring particles also
+     stop circulating — they just sit at their initial angle. */
+  body::before,
+  .scifi-orbital,
+  .scifi-orbital-mote {
+    animation: none !important;
   }
 
   /* .tap (press-down feedback) collapses to no movement. Users who opt
