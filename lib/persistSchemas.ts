@@ -162,8 +162,16 @@ const deletionsKeySchema = v.pipe(
 );
 export const deletionsSchema = v.record(deletionsKeySchema, v.literal(true));
 
+// Streak-freeze keys: bare ISO date "YYYY-MM-DD" — no block-id suffix.
+// Values are literal(true) like deletions; presence === frozen.
+const freezeKeySchema = v.pipe(
+  v.string(),
+  v.regex(/^\d{4}-\d{2}-\d{2}$/, "Expected 'YYYY-MM-DD' freeze key"),
+);
+export const freezesSchema = v.record(freezeKeySchema, v.literal(true));
+
 // PersistedState v3 — top-level shape (lib/persist.ts:PersistedState).
-// firstBrickShown is optional (additive M7e field, ADR-044).
+// firstBrickShown + freezes are optional (additive fields).
 export const persistedStateV3Schema = v.object({
   schemaVersion: v.literal(3),
   programStart: isoDateSchema,
@@ -173,6 +181,7 @@ export const persistedStateV3Schema = v.object({
   categories: v.array(categorySchema),
   looseBricks: v.array(brickSchema),
   deletions: deletionsSchema,
+  freezes: v.optional(freezesSchema),
   firstBrickShown: v.optional(v.boolean()),
 });
 

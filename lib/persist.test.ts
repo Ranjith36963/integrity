@@ -152,9 +152,9 @@ describe("U-m8-002: saveState/loadState round-trip — exact done value fidelity
     expect(loaded.programStart).toBe("2026-05-01");
   });
 
-  it("raw localStorage JSON has exactly the 9 v3 keys — schemaVersion, programStart, currentDate, history, blocks, categories, looseBricks, deletions, firstBrickShown — and schemaVersion === 3", () => {
+  it("raw localStorage JSON has exactly the 10 v3 keys — schemaVersion, programStart, currentDate, history, blocks, categories, looseBricks, deletions, firstBrickShown — and schemaVersion === 3", () => {
     // Sanctioned M5 amendment: schema v2→v3 adds deletions; key count 7→8.
-    // Sanctioned M7e amendment: additive firstBrickShown field; key count 8→9.
+    // Sanctioned M7e amendment: additive firstBrickShown field; key count 9→10.
     const state: PersistedState = {
       schemaVersion: 3,
       programStart: "2026-05-01",
@@ -178,6 +178,7 @@ describe("U-m8-002: saveState/loadState round-trip — exact done value fidelity
         "currentDate",
         "deletions",
         "firstBrickShown",
+        "freezes",
         "history",
         "looseBricks",
         "programStart",
@@ -191,7 +192,7 @@ describe("U-m8-002: saveState/loadState round-trip — exact done value fidelity
 // ─── U-m8-003: saveState writes ADR-044 boundary shape ───────────────────────
 
 describe("U-m8-003: saveState writes ADR-045 persisted shape — schemaVersion is boundary-only", () => {
-  it("persisted JSON has schemaVersion: 3 and the exact 9 v3 keys — no leaked runtime fields", () => {
+  it("persisted JSON has schemaVersion: 3 and the exact 10 v3 keys — no leaked runtime fields", () => {
     const input: PersistedState = {
       schemaVersion: 3,
       programStart: "2026-05-01",
@@ -235,6 +236,7 @@ describe("U-m8-003: saveState writes ADR-045 persisted shape — schemaVersion i
         "currentDate",
         "deletions",
         "firstBrickShown",
+        "freezes",
         "history",
         "looseBricks",
         "programStart",
@@ -624,9 +626,9 @@ describe("U-m9b-002: saveState/loadState v2 round-trip", () => {
     expect(loaded.programStart).toBe("2026-05-01");
   });
 
-  it("raw localStorage JSON has exactly the 9 v3 keys and schemaVersion === 3", () => {
+  it("raw localStorage JSON has exactly the 10 v3 keys and schemaVersion === 3", () => {
     // Sanctioned M5 amendment: schema v2→v3 adds deletions; key count 7→8.
-    // Sanctioned M7e amendment: additive firstBrickShown field; key count 8→9.
+    // Sanctioned M7e amendment: additive firstBrickShown field; key count 9→10.
     const state: PersistedState = {
       schemaVersion: 3,
       programStart: "2026-05-01",
@@ -650,6 +652,7 @@ describe("U-m9b-002: saveState/loadState v2 round-trip", () => {
         "currentDate",
         "deletions",
         "firstBrickShown",
+        "freezes",
         "history",
         "looseBricks",
         "programStart",

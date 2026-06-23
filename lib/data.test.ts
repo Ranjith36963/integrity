@@ -2856,3 +2856,53 @@ describe("U-m7e-004: other action arms do NOT flip firstBrickShown", () => {
     expect(next.firstBrickShown).toBe(false);
   });
 });
+
+describe("FREEZE_DAY — streak-freeze reducer", () => {
+  function bare(): AppState {
+    return {
+      schemaVersion: 3,
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      programStart: "2026-06-01",
+      currentDate: "2026-06-22",
+      history: {},
+      deletions: {},
+    } as unknown as AppState;
+  }
+
+  it("sets freezes[date] = true on first call", () => {
+    const s = reducer(bare(), { type: "FREEZE_DAY", isoDate: "2026-06-22" });
+    expect(s.freezes).toEqual({ "2026-06-22": true });
+  });
+
+  it("is idempotent — re-freezing returns state unchanged", () => {
+    const a = reducer(bare(), { type: "FREEZE_DAY", isoDate: "2026-06-22" });
+    const b = reducer(a, { type: "FREEZE_DAY", isoDate: "2026-06-22" });
+    expect(b).toBe(a);
+  });
+
+  it("allows 2 freezes per calendar month", () => {
+    const a = reducer(bare(), { type: "FREEZE_DAY", isoDate: "2026-06-10" });
+    const b = reducer(a, { type: "FREEZE_DAY", isoDate: "2026-06-22" });
+    expect(Object.keys(b.freezes ?? {})).toHaveLength(2);
+  });
+
+  it("silently no-ops on the 3rd freeze in the same month", () => {
+    let s = bare();
+    s = reducer(s, { type: "FREEZE_DAY", isoDate: "2026-06-05" });
+    s = reducer(s, { type: "FREEZE_DAY", isoDate: "2026-06-10" });
+    const blocked = reducer(s, { type: "FREEZE_DAY", isoDate: "2026-06-15" });
+    expect(blocked).toBe(s); // no state change
+    expect(Object.keys(blocked.freezes ?? {})).toHaveLength(2);
+  });
+
+  it("counts freezes per-month — June + July each get 2", () => {
+    let s = bare();
+    s = reducer(s, { type: "FREEZE_DAY", isoDate: "2026-06-05" });
+    s = reducer(s, { type: "FREEZE_DAY", isoDate: "2026-06-10" });
+    s = reducer(s, { type: "FREEZE_DAY", isoDate: "2026-07-01" });
+    s = reducer(s, { type: "FREEZE_DAY", isoDate: "2026-07-15" });
+    expect(Object.keys(s.freezes ?? {})).toHaveLength(4);
+  });
+});

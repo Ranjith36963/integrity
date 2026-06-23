@@ -72,6 +72,11 @@ export type AppState = {
   currentDate: string; // M9b — ISO YYYY-MM-DD, the date of the in-progress day (ADR-045)
   history: Record<string, ArchivedDay>; // M9b — keyed by ISO YYYY-MM-DD (ADR-045)
   deletions: Record<string, true>; // M5 — key: `${currentDate}:${blockId}` — per-day "just today" overrides (ADR-018)
+  // Streak-freeze: ISO YYYY-MM-DD keys marking days the user "froze" so
+  // they count as scored for streak purposes even when otherwise empty.
+  // Capped to 2 per calendar month via the reducer. Additive field — old
+  // payloads without it parse as { freezes: {} } via per-field recovery.
+  freezes?: Record<string, true>;
   firstBrickShown?: boolean; // M7e — one-time flag; flipped by ADR-039 first-brick narrative; absent on load is back-filled by lib/persist.ts read-time projection.
 };
 
@@ -98,7 +103,11 @@ export type Action =
       blockId: string;
       fromIndex: number; // 0-based source index into block.bricks[]
       toIndex: number; // 0-based target index (post-removal semantics)
-    }; // M6 — in-block brick array shuffle (array-index is the position, per SG-m3-16)
+    } // M6 — in-block brick array shuffle (array-index is the position, per SG-m3-16)
+  | {
+      type: "FREEZE_DAY";
+      isoDate: string; // YYYY-MM-DD — caller's responsibility to pass a real date
+    }; // Streak-freeze: marks a day as "scored" for streak purposes. Reducer enforces 2-per-calendar-month cap.
 // START_TIMER, STOP_TIMER, TICK_TIMER, SET_TIMER_MINUTES: REMOVED in M4f
 // LOG_GOAL_BRICK: REMOVED in M4f
 

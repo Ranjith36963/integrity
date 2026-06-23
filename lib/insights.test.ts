@@ -147,3 +147,44 @@ describe("insights — busiestHour", () => {
     expect(busiestHour(state)).toBe("08:00");
   });
 });
+
+describe("insights — longestStreak with freezes", () => {
+  it("counts frozen days toward the streak even when score is null", () => {
+    // Day 15: scored 50%. Day 16: missed AND frozen. Day 17: missed AND
+    // frozen. Day 18: scored 80%. With freezes covering both gap days,
+    // 15-16-17-18 = streak of 4. Without freezes the streak resets at 16
+    // → best is 1.
+    const state: AppState = {
+      schemaVersion: 3,
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      programStart: "2026-06-01",
+      currentDate: "2026-06-20",
+      history: {
+        "2026-06-15": archived(50),
+        "2026-06-18": archived(80),
+      },
+      deletions: {},
+      freezes: { "2026-06-16": true, "2026-06-17": true },
+    } as unknown as AppState;
+    const noFreeze = { ...state, freezes: {} };
+    expect(longestStreak(noFreeze, "2026-06-15", "2026-06-18")).toBe(1);
+    expect(longestStreak(state, "2026-06-15", "2026-06-18")).toBe(4);
+  });
+
+  it("frozen day alone (no scored neighbors) is a streak of 1", () => {
+    const state: AppState = {
+      schemaVersion: 3,
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      programStart: "2026-06-01",
+      currentDate: "2026-06-20",
+      history: {},
+      deletions: {},
+      freezes: { "2026-06-17": true },
+    } as unknown as AppState;
+    expect(longestStreak(state, "2026-06-15", "2026-06-18")).toBe(1);
+  });
+});

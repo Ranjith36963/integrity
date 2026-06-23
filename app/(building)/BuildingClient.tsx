@@ -603,6 +603,9 @@ export function BuildingClient({
           state={state}
           onClose={() => setSettingsOpen(false)}
           onResetAll={handleResetAll}
+          onFreezeToday={() =>
+            dispatch({ type: "FREEZE_DAY", isoDate: state.currentDate })
+          }
         />
         <Hero
           dateLabel={dateLabelValue}

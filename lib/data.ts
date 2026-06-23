@@ -280,6 +280,25 @@ export function reducer(state: AppState, action: Action): AppState {
         ),
       };
     }
+    case "FREEZE_DAY": {
+      // Streak-freeze: marks an ISO date as "scored" for streak purposes.
+      // Cap of 2 freezes per calendar month (YYYY-MM prefix of the isoDate).
+      // Idempotent: re-freezing an already-frozen day returns state unchanged.
+      // No-op silently when the per-month cap is exhausted — UI guards
+      // disable the affordance when count is already at the limit.
+      const { isoDate } = action;
+      const freezes = state.freezes ?? {};
+      if (freezes[isoDate]) return state; // already frozen
+      const monthPrefix = isoDate.slice(0, 7); // "YYYY-MM"
+      const monthCount = Object.keys(freezes).filter((k) =>
+        k.startsWith(monthPrefix),
+      ).length;
+      if (monthCount >= 2) return state; // cap exhausted — silent no-op
+      return {
+        ...state,
+        freezes: { ...freezes, [isoDate]: true },
+      };
+    }
     default:
       return assertNever(action);
   }

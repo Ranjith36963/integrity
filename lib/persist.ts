@@ -23,6 +23,7 @@ import {
   brickSchema,
   categorySchema,
   deletionsSchema,
+  freezesSchema,
   isoDateSchema,
   persistedStateV3Schema,
   type PersistedFieldName,
@@ -40,6 +41,7 @@ export type PersistedState = {
   categories: Category[];
   looseBricks: Brick[];
   deletions: Record<string, true>; // M5 — per-day block override map (ADR-018)
+  freezes?: Record<string, true>; // Streak-freeze: ISO-YYYY-MM-DD → true. Additive field.
   firstBrickShown?: boolean; // M7e — additive within v3 (ADR-044 "optional fields are an additive change").
 };
 
@@ -109,9 +111,7 @@ export function defaultPersisted(): PersistedState {
  * Returns the recovered state + the list of fields that were reset.
  * `resetFields` is empty on clean v3 input.
  */
-function parsePerField(
-  obj: Record<string, unknown>,
-): {
+function parsePerField(obj: Record<string, unknown>): {
   state: PersistedState;
   resetFields: PersistedFieldName[];
   droppedHistoryDays: string[];
@@ -133,7 +133,11 @@ function parsePerField(
     return fallback;
   }
 
-  const programStart = pick("programStart", isoDateSchema, defaults.programStart);
+  const programStart = pick(
+    "programStart",
+    isoDateSchema,
+    defaults.programStart,
+  );
   const currentDate = pick("currentDate", isoDateSchema, defaults.currentDate);
 
   // R7-ROOT-M8/M9-P0: history needs PER-DAY recovery, not all-or-nothing.
@@ -184,6 +188,21 @@ function parsePerField(
   );
   const deletions = pick("deletions", deletionsSchema, defaults.deletions);
 
+  // freezes is optional (additive field). Absent → empty object; corrupt →
+  // reset to empty + record in resetFields.
+  let freezes: Record<string, true>;
+  if (obj.freezes === undefined) {
+    freezes = {};
+  } else {
+    const fz = v.safeParse(freezesSchema, obj.freezes);
+    if (fz.success) {
+      freezes = fz.output;
+    } else {
+      resetFields.push("freezes");
+      freezes = {};
+    }
+  }
+
   // firstBrickShown is optional; absent → back-fill via hasAnyBrick (not a reset).
   let firstBrickShown: boolean;
   if (obj.firstBrickShown === undefined) {
@@ -208,6 +227,7 @@ function parsePerField(
       categories,
       looseBricks,
       deletions,
+      freezes,
       firstBrickShown,
     },
     resetFields,
@@ -292,10 +312,14 @@ export function migrate(raw: unknown): PersistedState | null {
  * Never throws. Falls back to defaultPersisted() on every error path.
  * Per SG-m8-05: corrupt key is left in place (passive overwrite on next save).
  */
-export function loadStateWithReport(): { state: PersistedState; report: LoadReport } {
+export function loadStateWithReport(): {
+  state: PersistedState;
+  report: LoadReport;
+} {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw === null) return { state: defaultPersisted(), report: { kind: "fresh" } };
+    if (raw === null)
+      return { state: defaultPersisted(), report: { kind: "fresh" } };
     let parsed: unknown;
     try {
       parsed = JSON.parse(raw);
@@ -305,7 +329,11 @@ export function loadStateWithReport(): { state: PersistedState; report: LoadRepo
         report: { kind: "discarded", reason: "json" },
       };
     }
-    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    if (
+      parsed === null ||
+      typeof parsed !== "object" ||
+      Array.isArray(parsed)
+    ) {
       return {
         state: defaultPersisted(),
         report: { kind: "discarded", reason: "non-object" },
@@ -354,6 +382,7 @@ export function saveState(state: PersistedState): void {
       categories: state.categories,
       looseBricks: state.looseBricks,
       deletions: state.deletions, // M5
+      freezes: state.freezes ?? {}, // Streak-freeze — empty object when never used
       firstBrickShown: state.firstBrickShown ?? false, // M7e — ?? false: undefined coerces to false
     };
     if (process.env.NODE_ENV !== "production") {
@@ -361,7 +390,10 @@ export function saveState(state: PersistedState): void {
       if (!result.success) {
         // Surface in dev only — production swallows to avoid white-screening
         // a user whose in-memory state somehow drifted out of contract.
-        console.error("[persist] save payload failed v3 schema:", result.issues);
+        console.error(
+          "[persist] save payload failed v3 schema:",
+          result.issues,
+        );
       }
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));

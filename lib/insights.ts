@@ -33,6 +33,10 @@ function* eachDay(fromIso: string, toIso: string): Generator<string> {
 /**
  * Longest run of consecutive days with score > 0 within [fromIso, toIso].
  * Returns 0 when no day in range has score > 0.
+ *
+ * Streak-freeze: a day in state.freezes counts as "in the streak" even
+ * when its score is null/0. The user spent a freeze to protect that day;
+ * honoring it is the entire point of the mechanic.
  */
 export function longestStreak(
   state: AppState,
@@ -41,9 +45,11 @@ export function longestStreak(
 ): number {
   let best = 0;
   let cur = 0;
+  const freezes = state.freezes ?? {};
   for (const iso of eachDay(fromIso, toIso)) {
     const s = dayScore(state, iso);
-    if (s !== null && s > 0) {
+    const counts = (s !== null && s > 0) || freezes[iso] === true;
+    if (counts) {
       cur += 1;
       if (cur > best) best = cur;
     } else {
@@ -88,6 +94,27 @@ export function daysCompleted(
     if (s !== null && s >= 100) n += 1;
   }
   return n;
+}
+
+/**
+ * Streak-freeze: count of freezes used in the same calendar month as
+ * `isoDate`. Caller passes today's ISO; we filter state.freezes for
+ * matching YYYY-MM prefix. Used by the UI to gate the "Use freeze"
+ * affordance + display the remaining quota.
+ */
+export const FREEZES_PER_MONTH = 2;
+
+export function freezesUsedThisMonth(state: AppState, isoDate: string): number {
+  const prefix = isoDate.slice(0, 7);
+  const freezes = state.freezes ?? {};
+  return Object.keys(freezes).filter((k) => k.startsWith(prefix)).length;
+}
+
+export function freezesRemainingThisMonth(
+  state: AppState,
+  isoDate: string,
+): number {
+  return Math.max(0, FREEZES_PER_MONTH - freezesUsedThisMonth(state, isoDate));
 }
 
 /**

@@ -26,6 +26,7 @@ import { Sheet } from "@/components/ui/Sheet";
 import type { AppState } from "@/lib/types";
 import { STORAGE_KEY, migrate, saveState } from "@/lib/persist";
 import { haptics } from "@/lib/haptics";
+import { freezesUsedThisMonth, FREEZES_PER_MONTH } from "@/lib/insights";
 
 interface Props {
   open: boolean;
@@ -33,9 +34,17 @@ interface Props {
   onClose: () => void;
   /** Called after user confirms reset — parent clears storage + reloads. */
   onResetAll: () => void;
+  /** Called when user spends a freeze on today. Parent dispatches FREEZE_DAY. */
+  onFreezeToday?: () => void;
 }
 
-export function SettingsSheet({ open, state, onClose, onResetAll }: Props) {
+export function SettingsSheet({
+  open,
+  state,
+  onClose,
+  onResetAll,
+  onFreezeToday,
+}: Props) {
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [importStatus, setImportStatus] = useState<
     { kind: "idle" } | { kind: "error"; message: string }
@@ -229,6 +238,83 @@ export function SettingsSheet({ open, state, onClose, onResetAll }: Props) {
             </p>
           )}
         </section>
+
+        {/* ─── Streak freeze ────────────────────────────────────────── */}
+        {onFreezeToday && (
+          <section
+            style={{ display: "flex", flexDirection: "column", gap: "8px" }}
+          >
+            <h3
+              style={{
+                fontFamily: "var(--font-ui)",
+                fontSize: "var(--fs-10, 10px)",
+                color: "var(--ink-dim)",
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                margin: 0,
+              }}
+            >
+              Streak freeze
+            </h3>
+            {(() => {
+              const used = freezesUsedThisMonth(state, state.currentDate);
+              const remaining = FREEZES_PER_MONTH - used;
+              const todayFrozen =
+                (state.freezes ?? {})[state.currentDate] === true;
+              const disabled = todayFrozen || remaining <= 0;
+              return (
+                <button
+                  type="button"
+                  data-testid="settings-freeze-today"
+                  aria-disabled={disabled ? "true" : undefined}
+                  onClick={
+                    disabled
+                      ? undefined
+                      : () => {
+                          haptics.medium();
+                          onFreezeToday();
+                        }
+                  }
+                  className="tap"
+                  style={{
+                    width: "100%",
+                    minHeight: "52px",
+                    padding: "var(--sp-12, 12px) var(--sp-16, 16px)",
+                    borderRadius: "10px",
+                    border: "1px solid var(--surface-2)",
+                    background: "var(--surface-1)",
+                    color: "var(--ink)",
+                    fontFamily: "var(--font-ui)",
+                    fontSize: "var(--fs-14, 14px)",
+                    textAlign: "left",
+                    cursor: disabled ? "not-allowed" : "pointer",
+                    opacity: disabled ? 0.5 : 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "2px",
+                  }}
+                >
+                  <span>
+                    {todayFrozen
+                      ? "Today is frozen"
+                      : remaining <= 0
+                        ? "No freezes left this month"
+                        : "Use a freeze for today"}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "var(--fs-12, 12px)",
+                      color: "var(--ink-dim)",
+                    }}
+                  >
+                    {remaining} of {FREEZES_PER_MONTH} remaining this month
+                    {" · "}Freezing protects the streak when you miss a day.
+                  </span>
+                </button>
+              );
+            })()}
+          </section>
+        )}
 
         {/* ─── Reset ────────────────────────────────────────────────── */}
         <section
