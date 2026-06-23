@@ -198,6 +198,7 @@ export const persistedFieldNames = [
   "categories",
   "looseBricks",
   "deletions",
+  "freezes",
   "firstBrickShown",
 ] as const;
 export type PersistedFieldName = (typeof persistedFieldNames)[number];

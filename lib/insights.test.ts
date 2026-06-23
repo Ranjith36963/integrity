@@ -132,6 +132,7 @@ describe("insights — busiestHour", () => {
           end: "09:00",
           recurrence: { kind: "every-day" },
           categoryId: null,
+          bricks: [],
         },
         {
           id: "2",
@@ -140,6 +141,7 @@ describe("insights — busiestHour", () => {
           end: "10:00",
           recurrence: { kind: "every-day" },
           categoryId: null,
+          bricks: [],
         },
       ],
     };

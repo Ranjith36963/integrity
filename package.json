@@ -21,6 +21,8 @@
     "test:e2e": "playwright test",
     "test:a11y": "playwright test building.a11y",
     "test:e2e:install": "playwright install --with-deps",
+    "test:lifecycle": "playwright test _lifecycle.spec.ts _lifecycle-hostile.spec.ts _lifecycle-dimensions.spec.ts",
+    "test:audit": "playwright test _feature-audit.spec.ts",
     "check:docs": "node scripts/check-doc-refs.mjs",
     "test:mutation": "stryker run",
     "verify": "npm run lint && npm run typecheck && npm run test && npm run check:docs",
