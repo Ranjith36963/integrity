@@ -386,6 +386,66 @@ body::before {
     opacity: 0;
   }
 }
+
+/* Sci-fi Phase 2b — iris-in transition for Sheet entrance.
+   Clip-path circle grows from a 4% radius at the bottom-center to a
+   180% radius (well past any corner) over 320ms. The cubic-bezier is
+   custom — fast outward push, gentle settle — so the sheet feels like
+   it BLOOMS from the dock area rather than slides. Also fades opacity
+   so the very start frame isn't a hard-edged dot.
+   PRM users get an instant reveal (the @media block below cancels the
+   animation; the panel's final state is already 'clip-path: none'). */
+.scifi-iris-in {
+  animation: scifi-iris-in 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes scifi-iris-in {
+  from {
+    clip-path: circle(4% at 50% 100%);
+    opacity: 0.6;
+  }
+  to {
+    clip-path: circle(180% at 50% 100%);
+    opacity: 1;
+  }
+}
+
+/* Sci-fi Phase 2b — tab-switch ripple.
+   ViewSwitcher button gains a .scifi-tab-ripple::after that scales 0→2x
+   over 400ms when the data-rippling="true" attribute is set on click.
+   Caller toggles the attr via React state for one render cycle.
+   Pure CSS; safe to use anywhere; opt-in via the class. */
+.scifi-tab-ripple {
+  position: relative;
+  overflow: hidden;
+}
+.scifi-tab-ripple::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: var(--accent-glow);
+  transform: scale(0);
+  opacity: 0;
+  pointer-events: none;
+}
+.scifi-tab-ripple[data-rippling="true"]::after {
+  animation: scifi-tab-ripple 400ms ease-out;
+}
+@keyframes scifi-tab-ripple {
+  from {
+    transform: scale(0);
+    opacity: 0.6;
+  }
+  to {
+    transform: scale(30);
+    opacity: 0;
+  }
+}
 .scifi-orbital-mote {
   position: absolute;
   top: 50%;
@@ -598,7 +658,11 @@ body::before {
   .scifi-orbital,
   .scifi-orbital-mote,
   .scifi-orbital-dashes,
-  .scifi-data-mote {
+  .scifi-data-mote,
+  .scifi-iris-in {
+    animation: none !important;
+  }
+  .scifi-tab-ripple[data-rippling="true"]::after {
     animation: none !important;
   }
 

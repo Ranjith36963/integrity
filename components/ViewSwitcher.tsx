@@ -18,7 +18,7 @@
  * ADR-031: segments ≥ 44px tall.
  */
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 type ViewName = "day" | "month" | "week" | "year";
 
@@ -41,12 +41,21 @@ export function ViewSwitcher({ view, onSelect }: ViewSwitcherProps) {
   // Home/End jump to ends. Per WAI-ARIA tablist authoring guide.
   const buttonsRef = useRef<(HTMLButtonElement | null)[]>([]);
 
+  // Sci-fi Phase 2b — track which tab is currently rippling. The
+  // `data-rippling` attribute on the clicked button triggers the CSS
+  // animation; we clear it after ~400ms so a second click on the same
+  // tab still fires (CSS animations only restart on attribute flip).
+  const [ripplingIndex, setRipplingIndex] = useState<number | null>(null);
+  function fireRipple(idx: number) {
+    setRipplingIndex(idx);
+    window.setTimeout(() => setRipplingIndex(null), 420);
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     const currentIndex = SEGMENTS.findIndex((s) => s.value === view);
     let nextIndex = currentIndex;
     if (e.key === "ArrowLeft") {
-      nextIndex =
-        currentIndex === 0 ? SEGMENTS.length - 1 : currentIndex - 1;
+      nextIndex = currentIndex === 0 ? SEGMENTS.length - 1 : currentIndex - 1;
     } else if (e.key === "ArrowRight") {
       nextIndex = (currentIndex + 1) % SEGMENTS.length;
     } else if (e.key === "Home") {
@@ -87,8 +96,12 @@ export function ViewSwitcher({ view, onSelect }: ViewSwitcherProps) {
             aria-selected={isActive}
             tabIndex={isActive ? 0 : -1}
             type="button"
-            onClick={() => onSelect(seg.value)}
-            className="flex-1"
+            onClick={() => {
+              fireRipple(idx);
+              onSelect(seg.value);
+            }}
+            data-rippling={ripplingIndex === idx ? "true" : undefined}
+            className="scifi-tab-ripple flex-1"
             style={{
               minHeight: "44px",
               background: isActive ? "var(--accent)" : "transparent",

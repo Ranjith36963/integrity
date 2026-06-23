@@ -71,11 +71,16 @@ export function Sheet({
         onClick={onClose}
         aria-hidden="true"
       />
-      {/* Full-screen sheet ≤430px; slide-in from right at desktop */}
+      {/* Full-screen sheet ≤430px; slide-in from right at desktop.
+          Sci-fi Phase 2b — iris entrance: panel reveals via an expanding
+          circular clip-path on mount. 320ms ease-out makes it feel like
+          the sheet "blooms" from the bottom-center toward the corners.
+          PRM users skip the animation (.scifi-iris-in opts into the
+          existing PRM block in globals.css). */}
       <div
         data-variant="full"
         className={cn(
-          "relative z-10 ml-auto flex h-full w-full max-w-[430px] flex-col",
+          "scifi-iris-in relative z-10 ml-auto flex h-full w-full max-w-[430px] flex-col",
           "bg-[var(--bg-elev)]",
           className,
         )}
