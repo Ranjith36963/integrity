@@ -165,12 +165,66 @@ Foundation layer. Adds the ambient sci-fi feel without touching any feature logi
 9. Iris transition for Sheet open/close (replaces slide)
 10. Tab switch ripple
 
-### Phase 3 — Set pieces (~3h)
+### Phase 3 — Power-user surface (~3h, SHIPPED in commit `feat(scifi-phase-3-cmdk)`)
 
-11. Brick log particle scatter → coalesce
-12. Day-complete skyline sweep
-13. 100-day streak "Empire Glimpse" cinematic
-14. System chip + callsign formatting (with test updates)
+User dropped research (2026-06-23) synthesizing Apple Liquid Glass +
+Material 3 Expressive + expert UX + sci-fi/FUI patterns. The biggest
+gap identified: no command palette. Productivity power-users live on
+⌘K (Superhuman, Linear, Notion, VS Code, Raycast). Pivoted Phase 3.
+
+11. **⌘K command palette** — global ⌘K / Ctrl+K opens; fuzzy filter +
+    arrow-key navigation + recent commands surface first; liquid-glass
+    overlay (backdrop-blur with contrast fallback via prefers-reduced-
+    transparency); shortcuts shown inline. Sci-fi framing: the
+    "ship command line" — architect speaks intent to the construction
+    machine.
+12. Numeric shortcuts 1/2/3/4 → Day/Week/Month/Year (input-aware guard).
+13. Freeze-today as a palette command (uses shipped freeze infra).
+
+### Phase 4 — Set pieces (~3h, NEXT)
+
+14. Brick log particle scatter → coalesce
+15. Day-complete skyline sweep
+16. 100-day streak "Empire Glimpse" cinematic
+17. System chip + callsign formatting (with test updates)
+
+---
+
+## Research integration (2026-06-23 — Apple / Material / Sci-fi / UX)
+
+The user delivered a cross-domain synthesis. Patterns I'm BORROWING
+from each, with my rationale:
+
+**From Apple Liquid Glass (iOS 26)** — translucent layered surfaces
+ONLY on overlays (command palette + future sheets where it fits). The
+research flagged the readability trap: translucency makes text blend
+into busy backgrounds. Mitigation: contrast fallback via
+`@media (prefers-reduced-transparency: reduce)`, plus we already keep
+the panel `--bg-elev` opaque underneath the blur layer.
+
+**From Material 3 Expressive** — spring motion is on my radar for
+Phase 4 (Framer Motion spring presets replacing the cubic-beziers on
+the brick-log moment). Shape morphing (square → pill on state) is a
+candidate for the tab strip — already 50% there with the active-pill.
+
+**From Expert UX** — ⌘K command palette (Phase 3 ships this), inline
+shortcut hints (Phase 3 ships this on every palette row), confirm
+every command (toast already does this), recent-first ranking (Phase
+3 ships this with localStorage dharma:command-palette-recent). Not
+yet: command palette also covers Add Block / Brick / settings — easy
+follow-up.
+
+**From Sci-fi / FUI** — restrained palette (already 80% there),
+monospace accent (already JetBrains Mono on UI), tactile haptics
+(already wired). The pattern I AM NOT borrowing: cut-corner labels
+
+- targeting brackets — they read as "video game HUD," not "calm
+  command surface." The user's research itself flagged spectacle ≠
+  usability.
+
+**The synthesis my build now hits**: dark functional-futuristic base +
+spring-able motion + ⌘K command palette + Liquid Glass on overlays
+only.
 
 ---
 

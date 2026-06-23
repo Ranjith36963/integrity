@@ -18,15 +18,22 @@
  * No new ADR: AppShell is the spec's recommended in-app state pattern (SG-m9c-01).
  */
 
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { usePersistedState } from "@/lib/usePersistedState";
 import { ViewSwitcher } from "@/components/ViewSwitcher";
 import { WeekView } from "@/components/WeekView";
 import { YearView } from "@/components/YearView";
 import { BuildingClient } from "./BuildingClient";
 import { MonthView } from "@/components/MonthView";
-import { Toaster } from "@/components/Toaster";
+import { Toaster, toast } from "@/components/Toaster";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import {
+  CommandPalette,
+  useCommandPalette,
+  type Command,
+} from "@/components/CommandPalette";
+import { Calendar, CalendarDays, CalendarRange, Snowflake } from "lucide-react";
+import { freezesRemainingThisMonth } from "@/lib/insights";
 
 export function AppShell() {
   // Single usePersistedState() call — shared between Day, Week, Month, and Year views.
@@ -48,6 +55,10 @@ export function AppShell() {
     month: number;
   } | null>(null);
 
+  // Command palette — global ⌘K / Ctrl+K. The hook owns open/close state
+  // plus the global keyboard shortcut binding.
+  const palette = useCommandPalette();
+
   function handleSelectView(v: "day" | "month" | "week" | "year") {
     // Clear monthTarget on direct nav — MonthView initializes to today
     setMonthTarget(null);
@@ -66,6 +77,75 @@ export function AppShell() {
     setView("month");
   }
 
+  // Command palette command set — built from current state so freeze
+  // affordance can show remaining quota live. Memoized on state +
+  // current view so it doesn't rebuild every render.
+  const commands = useMemo<Command[]>(() => {
+    const freezesLeft = freezesRemainingThisMonth(state, state.currentDate);
+    return [
+      {
+        id: "view-day",
+        label: "Go to Day",
+        hint: "Today's timeline",
+        shortcut: "1",
+        icon: Calendar,
+        keywords: ["today", "now", "1"],
+        run: () => handleSelectView("day"),
+      },
+      {
+        id: "view-week",
+        label: "Go to Week",
+        hint: "7-day castle view",
+        shortcut: "2",
+        icon: CalendarRange,
+        keywords: ["week", "7", "castle", "2"],
+        run: () => handleSelectView("week"),
+      },
+      {
+        id: "view-month",
+        label: "Go to Month",
+        hint: "30-day kingdom grid",
+        shortcut: "3",
+        icon: CalendarDays,
+        keywords: ["month", "30", "kingdom", "3"],
+        run: () => handleSelectView("month"),
+      },
+      {
+        id: "view-year",
+        label: "Go to Year",
+        hint: "12-month empire view",
+        shortcut: "4",
+        icon: CalendarDays,
+        keywords: ["year", "12", "empire", "4"],
+        run: () => handleSelectView("year"),
+      },
+      {
+        id: "freeze-today",
+        label:
+          freezesLeft > 0
+            ? "Freeze today (protect streak)"
+            : "No freezes left this month",
+        hint: `${freezesLeft} of 2 remaining`,
+        icon: Snowflake,
+        keywords: ["freeze", "streak", "protect", "rest", "skip"],
+        run: () => {
+          if (freezesLeft > 0) {
+            dispatch({ type: "FREEZE_DAY", isoDate: state.currentDate });
+            toast("Day frozen", "success");
+          } else {
+            toast("No freezes left this month", "info");
+          }
+        },
+      },
+      // Numeric "view-N" shortcuts implemented elsewhere in a follow-up;
+      // for now the palette is the entry point.
+    ];
+  }, [state, dispatch]);
+
+  // Numeric view shortcuts (1/2/3/4) — registered separately because they're
+  // distinct from the palette open keystroke.
+  useNumericViewShortcuts(handleSelectView);
+
   // Derive a key for MonthView so that tapping different months forces remount
   const monthKey = monthTarget
     ? `${monthTarget.year}-${monthTarget.month}`
@@ -82,6 +162,13 @@ export function AppShell() {
            or browser doesn't support beforeinstallprompt. iOS Safari gets
            a how-to overlay because it has no programmatic install path. */}
       <InstallPrompt />
+      {/* Command palette — ⌘K / Ctrl+K opens; ESC closes. Liquid-glass
+           overlay on top of everything else (z-80 > z-50 sheets). */}
+      <CommandPalette
+        open={palette.open}
+        onClose={() => palette.setOpen(false)}
+        commands={commands}
+      />
 
       {view === "day" ? (
         <BuildingClient state={state} dispatch={dispatch} hydrated={hydrated} />
@@ -99,4 +186,37 @@ export function AppShell() {
       )}
     </div>
   );
+}
+
+/**
+ * Hook: numeric shortcuts 1/2/3/4 route to Day/Week/Month/Year. Lives
+ * outside the palette because the shortcuts work app-wide regardless
+ * of palette state. Guards against firing while typing in inputs.
+ */
+function useNumericViewShortcuts(
+  onSelect: (v: "day" | "month" | "week" | "year") => void,
+): void {
+  useEffect(() => {
+    function h(e: KeyboardEvent) {
+      // Only fire when no modifier is pressed and the target is not an
+      // input/textarea — otherwise typing "2" in the title field jumps
+      // to Week view, which would be infuriating.
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+      if (e.key === "1") onSelect("day");
+      else if (e.key === "2") onSelect("week");
+      else if (e.key === "3") onSelect("month");
+      else if (e.key === "4") onSelect("year");
+    }
+    document.addEventListener("keydown", h);
+    return () => document.removeEventListener("keydown", h);
+  }, [onSelect]);
 }
