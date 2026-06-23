@@ -70,25 +70,25 @@ describe("C-bld-039: BuildingClient shows live dateLabel and now pin", () => {
   });
 });
 
-// C-bld-040 (re-authored M2, updated M8): BuildingClient Hero day-number on May 6, 2026.
-// M8 change: day number is now programStart-relative (dayNumber(programStart, today))
-// instead of dayOfYear(new Date()). On first run (no dharma:v1), programStart = today,
-// so dayNumber(today, today) = 1 → Hero renders "Building 1 of 365", not "Building 126 of 365".
-// The prior assertion ("Building 126 of 365") is retired by M8's AC #13 wiring change.
-describe("C-bld-040 (re-authored M2, updated M8): BuildingClient Hero shows programStart-relative day", () => {
+// C-bld-040 (re-authored M2, updated M8, retro-fitted Phase 4d): BuildingClient Hero
+// day-number on May 6, 2026. M8 change: day number is now programStart-relative
+// (dayNumber(programStart, today)) instead of dayOfYear(new Date()). On first run
+// (no dharma:v1), programStart = today, so dayNumber(today, today) = 1 → Hero renders
+// the callsign "DAY ⌬ 001 / 365" (3-digit pad introduced Phase 4d).
+describe("C-bld-040 (re-authored M2, updated M8, Phase 4d): BuildingClient Hero shows programStart-relative day callsign", () => {
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it("Hero renders 'Building 1 of 365' on first run (programStart = today = May 6, 2026)", () => {
+  it("Hero renders 'DAY ⌬ 001 / 365' on first run (programStart = today = May 6, 2026)", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-06T08:30:00"));
     const { container } = render(<BuildingClientHarness />);
     const dayCounter = container.querySelector("section .mt-1");
     expect(dayCounter).not.toBeNull();
     const text = dayCounter?.textContent?.replace(/\s+/g, " ").trim();
-    // M8: dayNumber("2026-05-06", "2026-05-06") === 1 (day 1 of program)
-    expect(text).toBe("Building 1 of 365");
+    // M8: dayNumber("2026-05-06", "2026-05-06") === 1; Phase 4d: padded to "001"
+    expect(text).toBe("DAY ⌬ 001 / 365");
   });
 });
 
@@ -538,10 +538,11 @@ describe("C-m8-007: BuildingClient feeds dayNumber(programStart, todayIso) to He
     // dayNumber("2026-05-01", "2026-05-15") === 15 (day 15 of program)
     // totalDays = daysInYear(isoToLocalDate("2026-05-15")) = 365
     // (R3-P2-2: production switched from `new Date(iso)` to `isoToLocalDate`.)
-    expect(text).toBe("Building 15 of 365");
+    // Phase 4d: 15 → "015" padded.
+    expect(text).toBe("DAY ⌬ 015 / 365");
   });
 
-  it("Hero renders 'Building 1 of <daysInYear>' on first run (no dharma:v1, programStart = today)", async () => {
+  it("Hero renders 'DAY ⌬ 001 / <daysInYear>' on first run (no dharma:v1, programStart = today)", async () => {
     // No pre-seeded state — fresh first run, programStart stamped to today
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-15T08:30:00"));
@@ -552,8 +553,8 @@ describe("C-m8-007: BuildingClient feeds dayNumber(programStart, todayIso) to He
     const dayCounter = container.querySelector("section .mt-1");
     expect(dayCounter).not.toBeNull();
     const text = dayCounter?.textContent?.replace(/\s+/g, " ").trim();
-    // dayNumber("2026-05-15", "2026-05-15") === 1 (day 1 of program)
-    expect(text).toBe("Building 1 of 365");
+    // dayNumber("2026-05-15", "2026-05-15") === 1; Phase 4d: padded to "001"
+    expect(text).toBe("DAY ⌬ 001 / 365");
   });
 });
 

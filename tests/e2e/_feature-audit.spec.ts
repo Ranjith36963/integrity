@@ -105,7 +105,9 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
         await page.mouse.down();
         await page.waitForTimeout(700);
         await page.mouse.up();
-        const overlay = page.locator('[data-testid*="year-heatmap"], [aria-label*="year heatmap" i]');
+        const overlay = page.locator(
+          '[data-testid*="year-heatmap"], [aria-label*="year heatmap" i]',
+        );
         const overlayCount = await overlay.count();
         rec(
           "TopBar",
@@ -171,7 +173,10 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
       await gear.click();
       await page.waitForTimeout(300);
       sheetLabel =
-        (await page.locator('[role="dialog"]').first().getAttribute("aria-label")) ?? "";
+        (await page
+          .locator('[role="dialog"]')
+          .first()
+          .getAttribute("aria-label")) ?? "";
       await page.keyboard.press("Escape");
       await page.waitForTimeout(300);
     }
@@ -216,7 +221,7 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
     const pctTxt = (await safeText(numeral)).trim();
     rec(
       "Hero",
-      "Hero contents (date / Building N of 365 / pct ring)",
+      "Hero contents (date / DAY ⌬ NNN / 365 callsign / pct ring)",
       ["Read 3 testids"],
       `date: '${dateTxt}', day: '${dayTxt}', pct: '${pctTxt}'`,
       "All three render real values after hydration. Empty state: 0%.",
@@ -244,7 +249,7 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
   {
     const nowLine = page.getByTestId("now-line");
     const visible = await nowLine.isVisible().catch(() => false);
-    const style = visible ? (await nowLine.getAttribute("style")) ?? "" : "";
+    const style = visible ? ((await nowLine.getAttribute("style")) ?? "") : "";
     rec(
       "Timeline",
       "NowLine — amber horizontal rule at current time",
@@ -285,7 +290,10 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
       await quick.click();
       await page.waitForTimeout(300);
       sheetLabel =
-        (await page.locator('[role="dialog"]').first().getAttribute("aria-label")) ?? "";
+        (await page
+          .locator('[role="dialog"]')
+          .first()
+          .getAttribute("aria-label")) ?? "";
       await page.keyboard.press("Escape");
       await page.waitForTimeout(200);
     }
@@ -319,7 +327,7 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
       const count = await dialog.count();
       chooserAriaLabel =
         count > 0
-          ? (await dialog.first().getAttribute("aria-label")) ?? ""
+          ? ((await dialog.first().getAttribute("aria-label")) ?? "")
           : "<no dialog>";
     }
     rec(
@@ -381,9 +389,17 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
   // ── 12. AddBlockSheet — Start input (auto-filled from slot/now) ────────
   {
     const start = page.getByLabel(/Start/i);
-    const startVal = (await start.first().inputValue().catch(() => "")) ?? "";
+    const startVal =
+      (await start
+        .first()
+        .inputValue()
+        .catch(() => "")) ?? "";
     await start.first().fill("09:00");
-    const updated = (await start.first().inputValue().catch(() => "")) ?? "";
+    const updated =
+      (await start
+        .first()
+        .inputValue()
+        .catch(() => "")) ?? "";
     rec(
       "AddBlockSheet",
       "Start input — accepts HH:MM, auto-fills from slot or rounded-down hour",
@@ -401,7 +417,11 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
     const end = page.locator("#block-end");
     await end.first().fill("10:00");
     await page.keyboard.press("Tab");
-    const updated = (await end.first().inputValue().catch(() => "")) ?? "";
+    const updated =
+      (await end
+        .first()
+        .inputValue()
+        .catch(() => "")) ?? "";
     rec(
       "AddBlockSheet",
       "End input — accepts HH:MM, must be > Start",
@@ -477,17 +497,13 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
   {
     const switcher = page.getByRole("tablist", { name: /Calendar view/i });
     const present = (await switcher.count()) > 0;
-    const tabs = present
-      ? await switcher.first().getByRole("tab").all()
-      : [];
+    const tabs = present ? await switcher.first().getByRole("tab").all() : [];
     const labels = await Promise.all(tabs.map((t) => safeText(t)));
     rec(
       "ViewSwitcher",
       "Day · Week · Month · Year tablist",
       ["Locate role=tablist", "Read all 4 tab labels"],
-      present
-        ? `tabs found: ${labels.join(", ")}`
-        : "Tablist not found",
+      present ? `tabs found: ${labels.join(", ")}` : "Tablist not found",
       "4 tabs: Day, Week, Month, Year",
       present && tabs.length === 4 ? "✓ pass" : "✗ fail",
     );
@@ -543,7 +559,10 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
       );
       // Cancel the delete
       const cancel = page.getByRole("button", { name: /cancel/i });
-      await cancel.first().click().catch(() => {});
+      await cancel
+        .first()
+        .click()
+        .catch(() => {});
       await page.waitForTimeout(200);
     } else {
       rec(
@@ -592,13 +611,19 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
       await slot10.first().click({ force: true });
       await page.waitForTimeout(300);
       dialogLabel =
-        (await page.locator('[role="dialog"]').first().getAttribute("aria-label")) ?? "";
+        (await page
+          .locator('[role="dialog"]')
+          .first()
+          .getAttribute("aria-label")) ?? "";
       // Walk through chooser → AddBlockSheet → check Start is 10:00
       const blockBtn = page.getByTestId("chooser-add-block");
       if ((await blockBtn.count()) > 0) {
         await blockBtn.click();
         await page.waitForTimeout(300);
-        const startVal = await page.locator("#block-start").inputValue().catch(() => "");
+        const startVal = await page
+          .locator("#block-start")
+          .inputValue()
+          .catch(() => "");
         chooserStartPrefilled = startVal === "10:00";
         // Cancel out
         const cancel = page.getByTestId("sheet-close");
@@ -723,7 +748,10 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
       await newCatBtn.click();
       await page.waitForTimeout(300);
       viewLabel =
-        (await page.locator('[role="dialog"]').first().getAttribute("aria-label")) ?? "";
+        (await page
+          .locator('[role="dialog"]')
+          .first()
+          .getAttribute("aria-label")) ?? "";
     }
     rec(
       "AddBlockSheet",
@@ -743,9 +771,7 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
     // exact: true — "Color 1" substring also matches "Color 10/11/12".
     // Color radios don't have testids (they're a palette grid); keeping
     // the role+exact pattern here is acceptable.
-    await page
-      .getByRole("radio", { name: "Color 1", exact: true })
-      .click();
+    await page.getByRole("radio", { name: "Color 1", exact: true }).click();
     await page.waitForTimeout(150);
     const doneBtn = page.getByTestId("new-category-done");
     let dialogLabelAfter = "";
@@ -753,7 +779,10 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
       await doneBtn.click();
       await page.waitForTimeout(400);
       dialogLabelAfter =
-        (await page.locator('[role="dialog"]').first().getAttribute("aria-label")) ?? "";
+        (await page
+          .locator('[role="dialog"]')
+          .first()
+          .getAttribute("aria-label")) ?? "";
     }
     rec(
       "NewCategoryForm",
@@ -788,7 +817,10 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
     await page.waitForTimeout(300);
 
     const sheetLabel =
-      (await page.locator('[role="dialog"]').first().getAttribute("aria-label")) ?? "";
+      (await page
+        .locator('[role="dialog"]')
+        .first()
+        .getAttribute("aria-label")) ?? "";
     rec(
       "AddBrickSheet",
       "Sheet opens with aria-label='Add Brick'",
@@ -1088,7 +1120,9 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
   const text = lines.join("\n");
   writeFileSync(join("/tmp/feature-audit", "report.md"), text);
   // Also fail the test if any "✗ fail" so it's visible.
-  console.log(`\n\nFEATURE AUDIT — pass=${pass} fail=${fail} unclear=${unclear}\n`);
+  console.log(
+    `\n\nFEATURE AUDIT — pass=${pass} fail=${fail} unclear=${unclear}\n`,
+  );
   // Don't fail outright; this is exploratory. Print summary instead.
   expect(pass + fail + unclear).toBeGreaterThan(0);
 });

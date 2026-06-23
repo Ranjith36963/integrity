@@ -40,17 +40,17 @@ vi.mock("motion/react", async (importOriginal) => {
   };
 });
 
-// C-bld-004: Hero renders dateLabel, "Building X of Y", and "DAY COMPLETE"
+// C-bld-004: Hero renders dateLabel, "DAY ⌬ NNN / 365" callsign, and "DAY COMPLETE"
+// Sci-fi Phase 4d: "Building N of 365" → "DAY ⌬ 001 / 365" (3-digit padded numeral).
 describe("C-bld-004: Hero renders all required text", () => {
-  it("shows dateLabel, building label, and DAY COMPLETE caption", () => {
-    render(
+  it("shows dateLabel, DAY callsign, and DAY COMPLETE caption", () => {
+    const { container } = render(
       <Hero dateLabel="Wed, Apr 29" dayNumber={119} totalDays={365} pct={62} />,
     );
     expect(screen.getByText("Wed, Apr 29")).toBeInTheDocument();
-    expect(screen.getByText(/building/i)).toBeInTheDocument();
-    expect(screen.getByText("119")).toBeInTheDocument();
-    expect(screen.getByText(/of/i)).toBeInTheDocument();
-    expect(screen.getByText(/365/)).toBeInTheDocument();
+    expect(container.textContent).toContain("DAY");
+    expect(container.textContent).toContain("119");
+    expect(container.textContent).toContain("365");
     expect(screen.getByText(/day complete/i)).toBeInTheDocument();
   });
 });
@@ -94,9 +94,10 @@ describe("C-bld-037 (re-authored M1): Hero renders 0% immediately for pct=0 with
   });
 });
 
-// C-bld-038: Hero receives dayNumber={undefined} → "Building N of 365" is not in DOM
-describe("C-bld-038: Hero hides Building N of Y when dayNumber is undefined", () => {
-  it("does not render the building counter line when dayNumber is undefined", () => {
+// C-bld-038: Hero receives dayNumber={undefined} → "DAY ⌬ NNN / 365" is not in DOM
+// Sci-fi Phase 4d: callsign line is the entire `hero-day-number` row.
+describe("C-bld-038: Hero hides DAY callsign when dayNumber is undefined", () => {
+  it("does not render the day-number callsign line when dayNumber is undefined", () => {
     render(
       <Hero
         dateLabel="Wed, Apr 29"
@@ -105,8 +106,8 @@ describe("C-bld-038: Hero hides Building N of Y when dayNumber is undefined", ()
         pct={57}
       />,
     );
-    // "Building" text should NOT appear
-    expect(screen.queryByText(/building/i)).not.toBeInTheDocument();
+    // The hero-day-number row should NOT appear (hydrated=true default + dayNumber=undefined)
+    expect(screen.queryByTestId("hero-day-number")).not.toBeInTheDocument();
   });
 });
 
@@ -190,23 +191,24 @@ describe("C-m3-020: Hero wraps numeral in HeroRing", () => {
   });
 });
 
-// C-m1-006: Hero renders "Building N of 365|366"
-describe("C-m1-006: Hero renders Building N of 365 and 366", () => {
-  it("renders 'Building 126 of 365'", () => {
+// C-m1-006: Hero renders "DAY ⌬ NNN / 365|366" (Phase 4d callsign)
+describe("C-m1-006: Hero renders DAY callsign for 365 and 366", () => {
+  it("renders 'DAY ⌬ 126 / 365'", () => {
     const { container } = render(
       <Hero dateLabel="Wed, May 6" dayNumber={126} totalDays={365} pct={0} />,
     );
-    expect(container.textContent).toContain("Building");
+    expect(container.textContent).toContain("DAY");
+    expect(container.textContent).toContain("⌬");
     expect(container.textContent).toContain("126");
     expect(container.textContent).toContain("365");
   });
 
-  it("renders 'Building 60 of 366' for leap year", () => {
+  it("renders 'DAY ⌬ 060 / 366' for leap year (pads to 3 digits)", () => {
     const { container } = render(
       <Hero dateLabel="Sat, Feb 29" dayNumber={60} totalDays={366} pct={0} />,
     );
-    expect(container.textContent).toContain("Building");
-    expect(container.textContent).toContain("60");
+    expect(container.textContent).toContain("DAY");
+    expect(container.textContent).toContain("060"); // padded
     expect(container.textContent).toContain("366");
   });
 });
@@ -342,7 +344,9 @@ describe("R7-ROOT-5: Hero hides server-clock date until hydrated", () => {
         hydrated={false}
       />,
     );
-    const dateLabel = container.querySelector('[data-testid="hero-date-label"]');
+    const dateLabel = container.querySelector(
+      '[data-testid="hero-date-label"]',
+    );
     expect(dateLabel).not.toBeNull();
     expect(dateLabel?.textContent).not.toContain("Wed, May 20");
     expect(dateLabel?.textContent ?? "").toMatch(/—/); // em-dash placeholder
@@ -368,12 +372,7 @@ describe("R7-ROOT-5: Hero hides server-clock date until hydrated", () => {
 
   it("when hydrated=true (default): real dateLabel + dayNumber render", () => {
     const { container } = render(
-      <Hero
-        dateLabel="Wed, May 20"
-        dayNumber={126}
-        totalDays={365}
-        pct={42}
-      />,
+      <Hero dateLabel="Wed, May 20" dayNumber={126} totalDays={365} pct={42} />,
     );
     expect(container.textContent).toContain("Wed, May 20");
     expect(container.textContent).toContain("126");

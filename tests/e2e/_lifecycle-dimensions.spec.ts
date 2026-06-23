@@ -151,7 +151,7 @@ test("DIMENSIONS: Tokyo timezone (UTC+9, no DST)", async ({ browser }) => {
         .getByTestId("hero-day-number")
         .textContent()
         .catch(() => "");
-      if (!dayLabel?.match(/Building \d+ of (365|366)/)) {
+      if (!dayLabel?.match(/DAY.*\d{3}.*(365|366)/)) {
         flag(
           "tz-tokyo",
           "critical",
@@ -205,7 +205,7 @@ test("DIMENSIONS: Nepal timezone (UTC+5:45 — quarter-hour offset)", async ({
         .getByTestId("hero-day-number")
         .textContent()
         .catch(() => "");
-      if (!dayLabel?.match(/Building \d+ of (365|366)/)) {
+      if (!dayLabel?.match(/DAY.*\d{3}.*(365|366)/)) {
         flag(
           "tz-nepal",
           "critical",

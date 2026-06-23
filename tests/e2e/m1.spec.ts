@@ -21,8 +21,8 @@ test("E-m1-001: all seven M1 regions visible on first paint", async ({
   await expect(page.getByRole("button", { name: /edit/i })).toBeVisible();
   // Settings button
   await expect(page.getByRole("button", { name: /settings/i })).toBeVisible();
-  // Hero: date + "Building N of 365" + "0%"
-  await expect(page.getByText(/building/i)).toBeVisible();
+  // Hero: date + "DAY ⌬ NNN / 365" callsign + "0%" (Phase 4d copy)
+  await expect(page.getByTestId("hero-day-number")).toBeVisible();
   await expect(page.getByTestId("hero-numeral")).toBeVisible();
   // Day blueprint
   await expect(page.locator('[aria-label="Day blueprint"]')).toBeVisible();
@@ -221,9 +221,9 @@ test("E-m1-009: BlueprintBar visible with zero segments and NOW pin", async ({
 // component is verified correct via 4 R7 unit tests in Hero.test.tsx. Fixing
 // the SSR-side mock requires a separate effort (custom test fixtures injecting
 // the mock at the request layer, or a per-route mock-clock prop).
-test.fixme(
-  "E-m1-010: Hero shows correct date, day number, and 0% for 2026-05-06",
-  async ({ page }) => {
+test.fixme("E-m1-010: Hero shows correct date, day number, and 0% for 2026-05-06", async ({
+  page,
+}) => {
   await page.addInitScript(() => {
     const fixedTime = new Date("2026-05-06T08:30:00").getTime();
     Date.now = () => fixedTime;
@@ -234,31 +234,34 @@ test.fixme(
   // !hydrated SSR-clock-skew window (R7-ROOT-5). hero-day-number element
   // exists pre-hydration with placeholder, then text mutates to the real
   // value once hydrated=true.
+  // Phase 4d: callsign "DAY ⌬ NNN / 365" replaces "Building N of 365"
   await expect(page.getByTestId("hero-day-number")).toContainText(
-    /Building \d+ of \d+/,
+    /DAY.*\d{3}.*\d+/,
   );
 
   // Date label: "Wed, May 6" (comma-separated per SG-m1-01)
   await expect(page.getByText(/Wed, May 6/)).toBeVisible({ timeout: 10000 });
 
-  // Day number: May 6, 2026 = day 126 of 365
-  await expect(page.getByText(/Building 126 of 365/)).toBeVisible();
+  // Day number: May 6, 2026 = day 126 of 365 → "DAY ⌬ 126 / 365"
+  await expect(page.getByTestId("hero-day-number")).toContainText(/126/);
+  await expect(page.getByTestId("hero-day-number")).toContainText(/365/);
 
   // 0% visible
   await expect(page.getByTestId("hero-numeral")).toBeVisible();
 
-    // After 2 seconds wait, still 0% (no count-up)
-    await page.waitForTimeout(2000);
-    await expect(page.getByTestId("hero-numeral")).toBeVisible();
-  },
-);
+  // After 2 seconds wait, still 0% (no count-up)
+  await page.waitForTimeout(2000);
+  await expect(page.getByTestId("hero-numeral")).toBeVisible();
+});
 
 // E-m1-011: 24 hour labels + NowLine at 08:00
 // R7-ROOT-R2 known-issue: same Date.now SSR mock gap as E-m1-010 above —
 // NowLine renders at the real server time, not the mocked 08:00. The
 // NowLine math is verified by 8 lib/timeOffset and components/NowLine unit
 // tests; the e2e infrastructure for SSR-time mocking is the gap.
-test.fixme("E-m1-011: 24 hour labels and NowLine at 08:00", async ({ page }) => {
+test.fixme("E-m1-011: 24 hour labels and NowLine at 08:00", async ({
+  page,
+}) => {
   await page.addInitScript(() => {
     const fixedTime = new Date("2026-05-06T08:00:00").getTime();
     Date.now = () => fixedTime;

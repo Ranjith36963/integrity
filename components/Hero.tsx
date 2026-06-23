@@ -53,14 +53,22 @@ export function Hero({
         <div
           data-testid="hero-day-number"
           aria-busy={!hydrated || undefined}
-          className="mt-1 text-[12px] tracking-[0.04em]"
-          style={{ color: "var(--ink-dim)" }}
+          className="mt-1 text-[11px] tracking-[0.22em] uppercase"
+          style={{
+            color: "var(--ink-dim)",
+            fontVariantNumeric: "tabular-nums slashed-zero",
+          }}
         >
-          Building{" "}
-          <span style={{ color: "var(--amber)" }}>
-            {hydrated && dayNumber !== undefined ? dayNumber : "—"}
+          DAY{" "}
+          <span aria-hidden="true" style={{ color: "var(--accent)" }}>
+            ⌬
           </span>{" "}
-          of {totalDaysDisplay}
+          <span style={{ color: "var(--amber)" }}>
+            {hydrated && dayNumber !== undefined
+              ? String(dayNumber).padStart(3, "0")
+              : "———"}
+          </span>{" "}
+          / {totalDaysDisplay}
         </div>
       )}
       <div className="mt-3 flex items-center gap-4 leading-none">
