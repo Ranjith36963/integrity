@@ -148,6 +148,33 @@ export function HeroRing({ pct, firstPaintCountUp = false, children }: Props) {
           transform={`rotate(-90 ${R + 10} ${R + 10})`}
           style={{ transition: mounted ? transition : "none" }}
         />
+
+        {/* Sci-fi Phase 2 — orbital data dashes.
+            A SECOND ring sits OVER the filled arc with a small-dash pattern
+            (4px on / 14px off) and animates its rotation. To a passing
+            glance, the ring looks alive — like data flowing along the
+            arc. Stroke is a slightly lighter amber bloom so the dashes
+            feel like sparks running on the underlying stroke.
+            DOM order: AFTER the fill circle so dashes paint on top of it.
+            Excluded from PRM users via the scifi-orbital-dashes class
+            (.scifi-orbital-dashes is null-out in the @media (prefers-
+            reduced-motion: reduce) block in globals.css). */}
+        {/* aria-hidden NOT set here — parent <svg> already carries role="img"
+            + aria-label so screen readers treat the whole graphic as one
+            atomic element. Adding aria-hidden to a child would also break
+            the test contract that uses `[aria-hidden='true']` to find the
+            decorative numeral DIV outside the SVG. */}
+        <circle
+          className="scifi-orbital-dashes"
+          cx={R + 10}
+          cy={R + 10}
+          r={R}
+          fill="none"
+          stroke="var(--accent-glow)"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeDasharray="4 14"
+        />
       </svg>
 
       {/* Children (numeral) — centered absolutely, aria-hidden */}

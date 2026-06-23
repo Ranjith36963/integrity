@@ -325,6 +325,67 @@ body::before {
   transform-origin: 50% 50%;
   will-change: transform;
 }
+
+/* Sci-fi Phase 2 — orbital data dashes on the hero ring stroke.
+   A second <circle> in the SVG carries a small-dash pattern; this rule
+   rotates it. 9s loop so the dashes feel like a slow conveyor of data
+   flowing along the ring, not a frantic spinner. PRM users get this
+   reset to no rotation (animation: none) via the existing PRM media
+   block below — the dashes still render, just stationary. */
+.scifi-orbital-dashes {
+  animation: scifi-orbital-dashes-rot 9s linear infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+  will-change: transform;
+}
+@keyframes scifi-orbital-dashes-rot {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Sci-fi Phase 2 — data-stream motes on the NowLine.
+   The parent (.now-line) is a 1px high amber bar; these absolute-
+   positioned children fly left → right across it, then loop. The
+   8s period with staggered starts means at any moment there's
+   roughly one mote visible — never a parade, always a hint.
+   Shadow gives each mote a small amber bloom that "trails" via
+   the box-shadow spread, suggesting the data is moving fast. */
+.scifi-data-mote {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow:
+    0 0 4px var(--accent-glow),
+    -4px 0 8px var(--accent-bloom);
+  opacity: 0;
+  animation: scifi-data-stream 8s linear infinite;
+  pointer-events: none;
+}
+@keyframes scifi-data-stream {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.9;
+  }
+  92% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateX(100vw);
+    opacity: 0;
+  }
+}
 .scifi-orbital-mote {
   position: absolute;
   top: 50%;
@@ -528,13 +589,16 @@ body::before {
     transition-duration: 0s !important;
   }
 
-  /* Sci-fi Phase 1 ambient layers — zero motion for PRM users.
+  /* Sci-fi Phase 1+2 ambient layers — zero motion for PRM users.
      The scan-line stripe stays visible (it's static texture, not
      movement) but stops drifting. The orbital ring particles also
-     stop circulating — they just sit at their initial angle. */
+     stop circulating — they just sit at their initial angle.
+     scifi-data-mote stops streaming along the NowLine. */
   body::before,
   .scifi-orbital,
-  .scifi-orbital-mote {
+  .scifi-orbital-mote,
+  .scifi-orbital-dashes,
+  .scifi-data-mote {
     animation: none !important;
   }
 

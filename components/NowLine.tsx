@@ -39,6 +39,27 @@ export function NowLine({ now, "data-testid": testId = "now-line" }: Props) {
         // Under prefers-reduced-motion this halo is unchanged (box-shadow is not motion).
         boxShadow: "0 0 6px var(--accent), 0 0 12px rgba(251, 191, 36, 0.45)",
       }}
-    />
+    >
+      {/* Sci-fi Phase 2 — data-stream motes. Three amber dots traverse
+          the NowLine left → right on an 8s loop with staggered starts.
+          Conceptually: "now" isn't a static rule — it's the leading
+          edge of a stream of moments flowing through the user's day.
+          aria-hidden because the parent already announces 'Now HH:MM'. */}
+      <span
+        className="scifi-data-mote"
+        aria-hidden="true"
+        style={{ animationDelay: "0s" }}
+      />
+      <span
+        className="scifi-data-mote"
+        aria-hidden="true"
+        style={{ animationDelay: "2.6s" }}
+      />
+      <span
+        className="scifi-data-mote"
+        aria-hidden="true"
+        style={{ animationDelay: "5.2s" }}
+      />
+    </div>
   );
 }
