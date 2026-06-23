@@ -66,6 +66,7 @@ import { UnitsEntrySheet } from "@/components/UnitsEntrySheet";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import type { DeleteTarget } from "@/components/DeleteConfirmModal";
 import { Fireworks } from "@/components/Fireworks";
+import { SkylineSweep } from "@/components/SkylineSweep";
 import { DayCompleteCard } from "@/components/DayCompleteCard";
 import { Skeleton } from "@/components/Skeleton";
 import type { AppState, Action, Block, Brick, Category } from "@/lib/types";
@@ -732,6 +733,11 @@ export function BuildingClient({
             DayCompleteCard's frozen-PRM gate. Pre-R2 only the card was
             frozen — Fireworks read live PRM and could vanish mid-burst. */}
         <Fireworks active={fireworksActive} prmOverride={celebratingPrm} />
+        {/* Sci-fi Phase 4c — day-complete skyline scanner. Same active
+            gate as Fireworks; both run in parallel for the 1700ms
+            celebration window. PRM users see neither — they get the
+            DayCompleteCard text below. */}
+        <SkylineSweep active={fireworksActive && !celebratingPrm} />
         {/* M7d: DayCompleteCard — PRM-only "Day complete." text card.
             active predicate: fireworksActive && prefersReducedMotion.
             Under motion ON: prefersReducedMotion===false → card receives active={false} → renders null.

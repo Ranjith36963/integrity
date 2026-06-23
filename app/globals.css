@@ -497,6 +497,31 @@ body::before {
     opacity: 0;
   }
 }
+
+/* Sci-fi Phase 4c — day-complete skyline sweep beam.
+   180px-wide amber gradient bar with a soft glow sweeps from off-left
+   to off-right of the viewport. 1500ms duration matches the existing
+   1700ms day celebration window with a 200ms fade-out tail.
+   PRM users get instant pass-through (animation: none in PRM block). */
+.scifi-skyline-beam {
+  animation: scifi-skyline-sweep 1500ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes scifi-skyline-sweep {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.85;
+  }
+  85% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateX(calc(100vw + 180px));
+    opacity: 0;
+  }
+}
 .scifi-orbital-mote {
   position: absolute;
   top: 50%;
@@ -711,7 +736,8 @@ body::before {
   .scifi-orbital-dashes,
   .scifi-data-mote,
   .scifi-iris-in,
-  .scifi-burst-mote {
+  .scifi-burst-mote,
+  .scifi-skyline-beam {
     animation: none !important;
   }
   .scifi-tab-ripple[data-rippling="true"]::after {
