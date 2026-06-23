@@ -53,6 +53,7 @@ import { AddChooserSheet } from "@/components/AddChooserSheet";
 import { AddBlockSheet } from "@/components/AddBlockSheet";
 import { Welcome } from "@/components/Welcome";
 import { SettingsSheet } from "@/components/SettingsSheet";
+import { fireBurst } from "@/components/BurstOverlay";
 import {
   hasSeenOnboarding,
   markOnboardingShown,
@@ -517,6 +518,16 @@ export function BuildingClient({
     dispatch({ type: "ADD_BRICK", brick });
     toast("Brick added", "success"); // M7e: AC #10 brick-add toast
     closeBrickSheet();
+    // Sci-fi Phase 4b — celebratory particle scatter at the hero
+    // region (~30% from top) so the user's eye is drawn upward to
+    // the day-pct numeral they just incremented. fireBurst is a no-op
+    // server-side, and is a CSS-only animation client-side.
+    if (typeof window !== "undefined") {
+      fireBurst({
+        x: window.innerWidth / 2,
+        y: window.innerHeight * 0.3,
+      });
+    }
   }
 
   function handleCreateCategory(cat: Pick<Category, "id" | "name" | "color">) {

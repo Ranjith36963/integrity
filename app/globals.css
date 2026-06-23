@@ -446,6 +446,57 @@ body::before {
     opacity: 0;
   }
 }
+
+/* Sci-fi Phase 4b — brick-log particle scatter.
+   When a brick saves, this absolute-positioned overlay fires 12 motes
+   from a center point that scatter outward in radial directions and
+   coalesce into the new chip. Pure CSS — no Framer Motion dep — so it
+   can fire from anywhere in the tree. Each particle has its own
+   custom property --i (0..11) that determines its launch angle. The
+   --burst-x / --burst-y CSS vars on the parent set the centroid in
+   the viewport. */
+.scifi-burst {
+  position: fixed;
+  left: var(--burst-x, 50%);
+  top: var(--burst-y, 80%);
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 70;
+}
+.scifi-burst .scifi-burst-mote {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow:
+    0 0 4px var(--accent-glow),
+    0 0 10px var(--accent-bloom);
+  transform: translate(0, 0);
+  animation: scifi-burst-fly 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  /* Each mote receives --angle via inline style; we compute the
+     destination via cos/sin in the keyframe end state. */
+}
+@keyframes scifi-burst-fly {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.95;
+  }
+  60% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translate(
+        calc(cos(var(--angle, 0deg)) * 90px),
+        calc(sin(var(--angle, 0deg)) * 90px)
+      )
+      scale(0.4);
+    opacity: 0;
+  }
+}
 .scifi-orbital-mote {
   position: absolute;
   top: 50%;
@@ -659,7 +710,8 @@ body::before {
   .scifi-orbital-mote,
   .scifi-orbital-dashes,
   .scifi-data-mote,
-  .scifi-iris-in {
+  .scifi-iris-in,
+  .scifi-burst-mote {
     animation: none !important;
   }
   .scifi-tab-ripple[data-rippling="true"]::after {

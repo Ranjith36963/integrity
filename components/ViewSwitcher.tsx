@@ -110,7 +110,15 @@ export function ViewSwitcher({ view, onSelect }: ViewSwitcherProps) {
               cursor: "pointer",
               fontFamily: "inherit",
               fontSize: "inherit",
-              transition: "background var(--motion-tap, 100ms ease-out)",
+              // Sci-fi Phase 4a — shape morph. Inactive tabs are
+              // straight-edge boxes (HUD segmented control); the
+              // selected tab morphs to a rounded pill via a spring-
+              // physics-like cubic-bezier. Material 3 Expressive
+              // pattern: shape state-changes communicate selection.
+              borderRadius: isActive ? "999px" : "0",
+              margin: isActive ? "4px" : "0",
+              transition:
+                "background 180ms cubic-bezier(0.34, 1.56, 0.64, 1), color 180ms ease-out, border-radius 280ms cubic-bezier(0.34, 1.56, 0.64, 1), margin 280ms cubic-bezier(0.34, 1.56, 0.64, 1)",
             }}
           >
             {seg.label}

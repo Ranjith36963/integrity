@@ -27,6 +27,7 @@ import { BuildingClient } from "./BuildingClient";
 import { MonthView } from "@/components/MonthView";
 import { Toaster, toast } from "@/components/Toaster";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { BurstOverlay, fireBurst } from "@/components/BurstOverlay";
 import {
   CommandPalette,
   useCommandPalette,
@@ -132,6 +133,12 @@ export function AppShell() {
           if (freezesLeft > 0) {
             dispatch({ type: "FREEZE_DAY", isoDate: state.currentDate });
             toast("Day frozen", "success");
+            // Sci-fi Phase 4b — celebratory particle burst at the
+            // hero ring's approximate position (top-center, ~30%).
+            fireBurst({
+              x: window.innerWidth / 2,
+              y: window.innerHeight * 0.3,
+            });
           } else {
             toast("No freezes left this month", "info");
           }
@@ -169,6 +176,10 @@ export function AppShell() {
         onClose={() => palette.setOpen(false)}
         commands={commands}
       />
+      {/* Sci-fi Phase 4b — particle burst overlay. Mounted once; the
+           fireBurst() helper enqueues a 12-mote scatter at any viewport
+           coordinate. Used by the brick-save and freeze-today moments. */}
+      <BurstOverlay />
 
       {view === "day" ? (
         <BuildingClient state={state} dispatch={dispatch} hydrated={hydrated} />
