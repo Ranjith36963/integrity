@@ -15,6 +15,14 @@ export interface SheetProps {
   "aria-labelledby"?: string;
   children?: React.ReactNode;
   className?: string;
+  /**
+   * Layout variant. Default `"full"` covers the viewport (the right
+   * choice for form-heavy sheets). `"compact"` is a bottom-anchored
+   * auto-sized sheet — the right choice for short decision UIs like
+   * "Add block / Add brick / Cancel", which previously rendered the
+   * full-height layout and stranded the bottom 60% of the viewport.
+   */
+  variant?: "full" | "compact";
 }
 
 export function Sheet({
@@ -24,6 +32,7 @@ export function Sheet({
   "aria-labelledby": ariaLabelledBy,
   children,
   className,
+  variant = "full",
 }: SheetProps) {
   // Track whether the scrollable content region has scrolled — used to
   // toggle a subtle elevation/shadow under the sticky header, iOS-style.
@@ -57,13 +66,19 @@ export function Sheet({
 
   if (!open) return null;
 
+  const isCompact = variant === "compact";
+
   const content = (
     <div
       role="dialog"
       aria-modal="true"
       aria-label={title}
       aria-labelledby={ariaLabelledBy}
-      className="fixed inset-0 z-50 flex"
+      className={cn(
+        "fixed inset-0 z-50 flex",
+        // Compact = bottom-anchored, full = right-anchored (mobile = full-width).
+        isCompact ? "items-end justify-center" : undefined,
+      )}
     >
       {/* Backdrop */}
       <div
@@ -76,17 +91,24 @@ export function Sheet({
           circular clip-path on mount. 320ms ease-out makes it feel like
           the sheet "blooms" from the bottom-center toward the corners.
           PRM users skip the animation (.scifi-iris-in opts into the
-          existing PRM block in globals.css). */}
+          existing PRM block in globals.css).
+          Compact variant: auto-height, top-rounded corners, anchored to the
+          bottom edge — the iOS / Material bottom-sheet pattern. */}
       <div
-        data-variant="full"
+        data-variant={variant}
         className={cn(
-          "scifi-iris-in relative z-10 ml-auto flex h-full w-full max-w-[430px] flex-col",
+          "scifi-iris-in relative z-10 flex w-full max-w-[430px] flex-col",
+          isCompact ? "h-auto max-h-[90dvh] rounded-t-2xl" : "ml-auto h-full",
           "bg-[var(--bg-elev)]",
           className,
         )}
         style={{
-          paddingTop: "calc(var(--safe-top, 0px) + var(--sp-16))",
-          paddingBottom: "var(--safe-bottom, 0px)",
+          paddingTop: isCompact
+            ? "var(--sp-16)"
+            : "calc(var(--safe-top, 0px) + var(--sp-16))",
+          paddingBottom: isCompact
+            ? "calc(var(--safe-bottom, 0px) + var(--sp-16))"
+            : "var(--safe-bottom, 0px)",
         }}
       >
         {title && (
@@ -117,7 +139,13 @@ export function Sheet({
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto px-[var(--sp-16)] pt-[var(--sp-16)]"
+          className={cn(
+            "px-[var(--sp-16)] pt-[var(--sp-16)]",
+            // Full variant: scroll container fills remaining height so the
+            // primary action can pin to the bottom via mt-auto.
+            // Compact variant: no scroll, content sets its own height.
+            isCompact ? undefined : "flex flex-1 flex-col overflow-y-auto",
+          )}
         >
           {children}
         </div>

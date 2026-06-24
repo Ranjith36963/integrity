@@ -268,10 +268,18 @@ export function AddBlockSheet({
 
   return (
     <Sheet open={open} onClose={handleClose} title={sheetTitle}>
-      <div ref={sheetContentRef}>
+      <div
+        ref={sheetContentRef}
+        style={{ display: "flex", flexDirection: "column", flex: 1 }}
+      >
         {view === "block" ? (
           <div
-            style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "16px",
+              flex: 1,
+            }}
           >
             {/* Title */}
             <div
@@ -482,7 +490,13 @@ export function AddBlockSheet({
 
             {/* Save — full-width primary action. The Sheet header owns the
                 Close (×) affordance, so the action bar is single-purpose. */}
-            <div style={{ display: "flex", marginTop: "8px" }}>
+            <div
+              style={{
+                display: "flex",
+                marginTop: "auto",
+                paddingTop: "24px",
+              }}
+            >
               <button
                 type="button"
                 data-testid="add-block-save"

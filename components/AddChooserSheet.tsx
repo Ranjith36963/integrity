@@ -98,7 +98,7 @@ export function AddChooserSheet({ open, onPick, onCancel }: Props) {
   }
 
   return (
-    <Sheet open={open} onClose={handleClose} title="Add">
+    <Sheet open={open} onClose={handleClose} title="Add" variant="compact">
       <div ref={containerRef}>
         <div
           role="group"

@@ -335,10 +335,18 @@ export function AddBrickSheet({
 
   return (
     <Sheet open={open} onClose={handleClose} title={sheetTitle}>
-      <div ref={sheetContentRef}>
+      <div
+        ref={sheetContentRef}
+        style={{ display: "flex", flexDirection: "column", flex: 1 }}
+      >
         {view === "brick" ? (
           <div
-            style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "16px",
+              flex: 1,
+            }}
           >
             {/* Title */}
             <div
@@ -681,8 +689,40 @@ export function AddBrickSheet({
               onRequestNewCategory={() => setView("newCategory")}
             />
 
-            {/* Save + Cancel */}
-            <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+            {/* Cancel + Save — pinned to bottom of sheet via mt-auto so
+                the action bar sits in the thumb-reach zone, not floating
+                mid-screen. Cancel is text-only ghost; Save is the filled
+                primary action. */}
+            <div
+              style={{
+                display: "flex",
+                gap: "8px",
+                marginTop: "auto",
+                paddingTop: "24px",
+              }}
+            >
+              <button
+                type="button"
+                onClick={handleClose}
+                aria-label="Cancel"
+                style={{
+                  height: "48px",
+                  paddingLeft: "20px",
+                  paddingRight: "20px",
+                  borderRadius: "8px",
+                  border: "1px solid var(--ink-dim)",
+                  background: "transparent",
+                  color: "var(--ink-dim)",
+                  cursor: "pointer",
+                  fontFamily: "var(--font-ui)",
+                  fontSize: "var(--fs-14)",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  flexShrink: 0,
+                }}
+              >
+                Cancel
+              </button>
               <button
                 type="button"
                 aria-label="Save"
@@ -691,7 +731,7 @@ export function AddBrickSheet({
                 onClick={handleSave}
                 style={{
                   flex: 1,
-                  height: "44px",
+                  height: "48px",
                   borderRadius: "8px",
                   border: "none",
                   background: "var(--accent)",
@@ -711,26 +751,6 @@ export function AddBrickSheet({
                   Resolve the overlap to save.
                 </span>
               )}
-              <button
-                type="button"
-                onClick={handleClose}
-                aria-label="Cancel"
-                style={{
-                  height: "44px",
-                  width: "44px",
-                  borderRadius: "8px",
-                  border: "1px solid var(--ink-dim)",
-                  background: "transparent",
-                  color: "var(--ink-dim)",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                ×
-              </button>
             </div>
           </div>
         ) : (
