@@ -34,8 +34,10 @@ test("E-m1-001: all seven M1 regions visible on first paint", async ({
   await expect(
     page.getByText("Tap any slot to lay your first block."),
   ).toBeVisible();
-  // Voice and + buttons
-  await expect(page.getByRole("button", { name: /voice log/i })).toBeVisible();
+  // Dock buttons: Log brick pill + Add (M10 placeholder "Voice log" retired by
+  // 59dff6f; the migration touched BottomBar/a11y/feature-audit but missed
+  // m1.spec.ts. Caught by "Verify full lifecycle honestly" pass.)
+  await expect(page.getByRole("button", { name: /log brick/i })).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Add", exact: true }),
   ).toBeVisible();
@@ -286,8 +288,13 @@ test.fixme("E-m1-011: 24 hour labels and NowLine at 08:00", async ({
   expect(style).toContain("512px");
 });
 
-// E-m1-012: Voice disabled + Add enabled, both inert on click
-test("E-m1-012: Voice button disabled, Add enabled, both click without errors", async ({
+// E-m1-012 (re-authored "Verify full lifecycle honestly"): the M10 Voice Log
+// placeholder was retired by commit 59dff6f — replaced with a live "Log brick"
+// quick-capture pill. The original spec ("Voice disabled + Add enabled, both
+// inert on click") tested a contract that no longer exists. Re-authored to
+// lock the LIVE contract: Log brick opens AddBrickSheet directly (logging path);
+// Add opens AddChooserSheet (planning path). Both error-free.
+test("E-m1-012: Log brick opens AddBrickSheet, Add opens AddChooserSheet, no errors", async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -295,34 +302,38 @@ test("E-m1-012: Voice button disabled, Add enabled, both click without errors", 
     if (msg.type() === "error") errors.push(msg.text());
   });
 
+  // Bypass the Welcome onboarding overlay so it doesn't intercept clicks
+  // on the dock pills. The Welcome screen has its own coverage; this test
+  // is about the dock contract.
+  await page.addInitScript(() => {
+    localStorage.setItem("dharma:onboarding-shown", "true");
+  });
   await page.goto("/");
 
-  // Voice button has aria-disabled=true
-  const voiceBtn = page.getByRole("button", { name: /voice log/i });
-  await expect(voiceBtn).toHaveAttribute("aria-disabled", "true");
+  // Log brick pill is live (no aria-disabled) and opens AddBrickSheet directly.
+  const logBrickBtn = page.getByRole("button", { name: /log brick/i });
+  await expect(logBrickBtn).toBeVisible();
+  await expect(logBrickBtn).not.toHaveAttribute("aria-disabled");
+  await logBrickBtn.click();
+  const brickSheet = page.locator('[role="dialog"]');
+  await expect(brickSheet).toHaveCount(1);
+  // AddBrickSheet's aria-label is distinct from the chooser's "Add".
+  const brickLabel = await brickSheet.getAttribute("aria-label");
+  expect(brickLabel).toMatch(/brick|add/i);
 
-  // Click Voice button — no dialog, no error.
-  // R7-ROOT-R2: aria-disabled='true' makes Playwright's actionability check
-  // refuse the click. force:true bypasses the check; the button correctly
-  // does nothing (the R7-ROOT-M1-P1-3 fix dropped the dead preventDefault).
-  await voiceBtn.click({ force: true });
-  const dialogAfterVoice = page.locator('[role="dialog"]');
-  await expect(dialogAfterVoice).toHaveCount(0);
+  // Close the brick sheet before exercising the planning-path button.
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[role="dialog"]')).toHaveCount(0);
 
-  // Add button has no aria-disabled
+  // Add button (small circle) opens the M4d AddChooserSheet (planning path).
   const addBtn = page.getByRole("button", { name: "Add", exact: true });
   await expect(addBtn).not.toHaveAttribute("aria-disabled");
-
-  // Click Add button — opens the M4d AddChooserSheet (M1 spec ACs #1+#2
-  // superseded by M4d, per docs/milestones/m1/spec.md ### Supersessions).
-  // Pre-M4d this assertion was toHaveCount(0) for the M1-pure inert "+".
-  // Now we assert the chooser opens — the click is still error-free.
   await addBtn.click();
-  const dialogAfterAdd = page.locator('[role="dialog"]');
-  await expect(dialogAfterAdd).toHaveCount(1);
-  await expect(dialogAfterAdd).toHaveAttribute("aria-label", "Add");
+  const chooser = page.locator('[role="dialog"]');
+  await expect(chooser).toHaveCount(1);
+  await expect(chooser).toHaveAttribute("aria-label", "Add");
 
-  // No console errors
+  // No console errors across either path.
   expect(errors.length).toBe(0);
 });
 
