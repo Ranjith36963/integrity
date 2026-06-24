@@ -82,7 +82,12 @@ export function UnitsEntrySheet({ brick, open, onClose, onSave }: Props) {
   }
 
   return (
-    <Sheet open={open} onClose={onClose} aria-labelledby="units-entry-heading">
+    <Sheet
+      open={open}
+      onClose={onClose}
+      aria-labelledby="units-entry-heading"
+      variant="compact"
+    >
       <div
         style={{
           display: "flex",
@@ -130,7 +135,9 @@ export function UnitsEntrySheet({ brick, open, onClose, onSave }: Props) {
             min="0"
             step="1"
             aria-label={
-              brick.unit ? `Enter ${brick.unit} done today` : "Enter count done today"
+              brick.unit
+                ? `Enter ${brick.unit} done today`
+                : "Enter count done today"
             }
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
