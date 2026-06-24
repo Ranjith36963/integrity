@@ -78,6 +78,8 @@ export function AddBlockSheet({
   );
 
   const titleRef = useRef<HTMLInputElement>(null);
+  const startInputRef = useRef<HTMLInputElement>(null);
+  const endInputRef = useRef<HTMLInputElement>(null);
   const sheetContentRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
@@ -224,11 +226,24 @@ export function AddBlockSheet({
       haptics.medium();
       return;
     }
+    // Defense-in-depth: read the LIVE DOM values via ref and re-validate.
+    // React's value tracker can be bypassed by direct DOM mutation
+    // (`el.value = "25:99"` + dispatchEvent), leaving React state stale
+    // while the displayed value is invalid. Re-reading from the ref + the
+    // pure HH:MM validator catches that case before any block is created.
+    // Surfaced by the HOSTILE lifecycle audit's "invalid-time-25-99" probe.
+    const liveStart = startInputRef.current?.value ?? start;
+    const liveEndRaw = endInputRef.current?.value ?? end;
+    const liveEndForBlock = liveEndRaw === "" ? undefined : liveEndRaw;
+    if (!isValidStart(liveStart) || !isValidEnd(liveEndForBlock)) {
+      haptics.medium();
+      return;
+    }
     const block: Block = {
       id: uuid(),
       name: title.trim(),
-      start,
-      end: endEmpty ? undefined : end,
+      start: liveStart,
+      end: liveEndForBlock,
       recurrence,
       categoryId: selectedCategoryId,
       bricks: [],
@@ -319,6 +334,7 @@ export function AddBlockSheet({
                 </label>
                 <input
                   id="block-start"
+                  ref={startInputRef}
                   type="text"
                   inputMode="numeric"
                   placeholder="HH:MM"
@@ -357,6 +373,7 @@ export function AddBlockSheet({
                 </label>
                 <input
                   id="block-end"
+                  ref={endInputRef}
                   type="text"
                   inputMode="numeric"
                   placeholder="HH:MM"
