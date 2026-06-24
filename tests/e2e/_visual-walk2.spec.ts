@@ -108,8 +108,8 @@ test("walk2: units brick entry", async ({ page }) => {
   await page.waitForTimeout(400);
   await shot(page, "35-add-brick-default");
 
-  // Switch to Units kind
-  const unitsChip = page.getByRole("button", { name: /^units$/i }).first();
+  // Switch to Units kind (role=radio inside radiogroup)
+  const unitsChip = page.getByRole("radio", { name: /^units$/i }).first();
   if ((await unitsChip.count()) > 0) {
     await unitsChip.click();
     await page.waitForTimeout(200);
