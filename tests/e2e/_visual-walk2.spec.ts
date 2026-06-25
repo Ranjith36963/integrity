@@ -41,14 +41,25 @@ test("walk2: long-press brand mark opens year heatmap", async ({ page }) => {
   await page.goto("/");
   await page.waitForLoadState("networkidle");
   const brand = page.getByTestId("brand-mark-longpress");
-  // Use real mouse down+wait+up to trigger long-press
+  // Use real pointerdown via locator + dispatchEvent — Playwright's mouse.down
+  // emits mousedown but the component listens to pointerdown.
   const box = await brand.boundingBox();
   if (box) {
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await page.mouse.down();
-    await page.waitForTimeout(700);
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    await brand.dispatchEvent("pointerdown", {
+      clientX: cx,
+      clientY: cy,
+      pointerType: "mouse",
+      isPrimary: true,
+    });
+    await page.waitForTimeout(900); // exceed 600ms BRAND_HOLD_MS threshold
     await shot(page, "31-year-heatmap");
-    await page.mouse.up();
+    await brand.dispatchEvent("pointerup", {
+      clientX: cx,
+      clientY: cy,
+      pointerType: "mouse",
+    });
     await page.waitForTimeout(200);
   }
 });
@@ -129,7 +140,7 @@ test("walk2: AddBlockSheet custom range expands", async ({ page }) => {
   await page.waitForTimeout(400);
   await page.getByLabel(/Title/i).fill("Sprint week");
 
-  const customRange = page.getByRole("button", { name: /custom range/i });
+  const customRange = page.getByRole("radio", { name: /custom range/i });
   if ((await customRange.count()) > 0) {
     await customRange.click({ force: true });
     await page.waitForTimeout(300);
