@@ -14,6 +14,15 @@ export default defineConfig({
     baseURL,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
+    // Pre-stamp `dharma:onboarding-shown=true` for every test by default
+    // so the first-launch Welcome dialog doesn't intercept clicks. This
+    // matches the convention the lifecycle / feature-audit / visual-walk
+    // specs already use inline; centralising it here repairs ~40 older
+    // specs (m2.a11y, m3.a11y, m4*.a11y, etc.) that were authored before
+    // the Welcome screen shipped (b20c2f7). Tests that intentionally
+    // exercise the Welcome flow opt out with `test.use({ storageState:
+    // undefined })` (see _visual-walk.spec.ts "cold boot + welcome").
+    storageState: "./tests/e2e/.storage-state.json",
   },
   projects: [
     {

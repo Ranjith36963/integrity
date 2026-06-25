@@ -40,11 +40,17 @@ async function skipWelcome(page: Page) {
   });
 }
 
-test("walk: cold boot + welcome", async ({ page }) => {
-  await page.setViewportSize({ width: 430, height: 900 });
-  await page.goto("/");
-  await page.waitForLoadState("networkidle");
-  await shot(page, "01-cold-boot-welcome");
+// Opt out of the default storageState so the first-launch Welcome dialog
+// can render. The default config pre-stamps `dharma:onboarding-shown=true`
+// for every other spec so they aren't blocked by the overlay.
+test.describe("cold-boot welcome", () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+  test("walk: cold boot + welcome", async ({ page }) => {
+    await page.setViewportSize({ width: 430, height: 900 });
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+    await shot(page, "01-cold-boot-welcome");
+  });
 });
 
 test("walk: day → add block → add brick → done → edit", async ({ page }) => {

@@ -28,11 +28,14 @@ async function skipWelcome(page: Page) {
   });
 }
 
-test("walk2: welcome dialog full screen", async ({ page }) => {
-  await page.setViewportSize({ width: 430, height: 900 });
-  await page.goto("/");
-  await page.waitForLoadState("networkidle");
-  await shot(page, "30-welcome-full");
+test.describe("welcome full screen", () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+  test("walk2: welcome dialog full screen", async ({ page }) => {
+    await page.setViewportSize({ width: 430, height: 900 });
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+    await shot(page, "30-welcome-full");
+  });
 });
 
 test("walk2: long-press brand mark opens year heatmap", async ({ page }) => {

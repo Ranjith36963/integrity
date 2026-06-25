@@ -190,6 +190,10 @@ async function checkTapTargets(page: Page, stepName: string) {
   }
 }
 
+// Opt out of the default pre-stamped onboarding flag — this spec needs to
+// observe the Welcome dialog on a true first launch (step 01-cold-boot).
+test.use({ storageState: { cookies: [], origins: [] } });
+
 test("LIFECYCLE: full user journey with every observable logged", async ({
   page,
   browser,
