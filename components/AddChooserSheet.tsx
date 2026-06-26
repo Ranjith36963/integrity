@@ -22,11 +22,9 @@ export function AddChooserSheet({ open, onPick, onCancel }: Props) {
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
   // Store the element that triggered open so we can restore focus on close.
-  // R7-ROOT-M2-09: also autofocus the first focusable inside the chooser on
-  // open IF focus is currently outside the dialog. The "outside" check lets
-  // tests (and any future caller) pre-position focus on a specific button
-  // without being clobbered by the autofocus pass. setTimeout(10) ensures
-  // the focus call runs AFTER the Sheet portal mounts.
+  // Focus the container div itself (tabIndex=-1) so that the FIRST Tab press
+  // lands on "Add Block" (the first tabbable child). Focusing the first button
+  // directly would mean Tab skips to "Add Brick" instead of "Add Block".
   useEffect(() => {
     if (!open) return;
     returnFocusRef.current = document.activeElement as HTMLElement;
@@ -37,10 +35,7 @@ export function AddChooserSheet({ open, onPick, onCancel }: Props) {
         document.activeElement instanceof Node &&
         container.contains(document.activeElement);
       if (focusInside) return;
-      const firstButton = container.querySelector<HTMLElement>(
-        "button:not([disabled]):not([aria-disabled='true'])",
-      );
-      firstButton?.focus();
+      container.focus();
     }, 10);
     return () => clearTimeout(timer);
   }, [open]);
@@ -99,7 +94,7 @@ export function AddChooserSheet({ open, onPick, onCancel }: Props) {
 
   return (
     <Sheet open={open} onClose={handleClose} title="Add" variant="compact">
-      <div ref={containerRef}>
+      <div ref={containerRef} tabIndex={-1} style={{ outline: "none" }}>
         <div
           role="group"
           aria-label="Choose what to add"

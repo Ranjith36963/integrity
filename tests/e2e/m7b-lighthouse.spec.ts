@@ -50,7 +50,7 @@ test("E-m7b-004: Lighthouse Performance >= 90 on Day view with one active block 
   await page.clock.setFixedTime(new Date("2026-05-18T09:30:00"));
   await page.goto("/");
   await page.evaluate((state: string) => {
-    localStorage.setItem("dharma:v3", state);
+    localStorage.setItem("dharma:v1", state);
   }, STATE_FOUR_BLOCKS);
   await page.reload();
 

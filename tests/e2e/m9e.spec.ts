@@ -20,6 +20,7 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await page.evaluate(() => {
     localStorage.clear();
+    localStorage.setItem("dharma:onboarding-shown", "true");
   });
   await page.reload();
 });

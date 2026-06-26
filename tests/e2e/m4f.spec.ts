@@ -22,7 +22,7 @@ test("E-m4f-001: add units brick, tap chip, type 20 in UnitsEntrySheet, Save →
   const dockAdd = page.getByRole("button", { name: "Add" }).last();
   if ((await dockAdd.count()) > 0) {
     await dockAdd.click();
-    const chooser = page.getByRole("dialog", { name: "Add" });
+    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
     if ((await chooser.count()) > 0) {
       await chooser.getByRole("button", { name: "Add Brick" }).click();
     }
@@ -87,7 +87,7 @@ test("E-m4f-002: tap tick chip → no UnitsEntrySheet opens; done toggles (M4a r
   const dockAdd = page.getByRole("button", { name: "Add" }).last();
   if ((await dockAdd.count()) > 0) {
     await dockAdd.click();
-    const chooser = page.getByRole("dialog", { name: "Add" });
+    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
     if ((await chooser.count()) > 0) {
       await chooser.getByRole("button", { name: "Add Brick" }).click();
     }
@@ -133,7 +133,7 @@ test("E-m4f-003: AddBrickSheet kind selector shows exactly Tick and Units chips;
   const dockAdd = page.getByRole("button", { name: "Add" }).last();
   if ((await dockAdd.count()) > 0) {
     await dockAdd.click();
-    const chooser = page.getByRole("dialog", { name: "Add" });
+    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
     if ((await chooser.count()) > 0) {
       await chooser.getByRole("button", { name: "Add Brick" }).click();
     }
@@ -170,7 +170,7 @@ test("E-m4f-004: free-text unit parity — reps unit renders '50 / 100 reps' aft
   const dockAdd = page.getByRole("button", { name: "Add" }).last();
   if ((await dockAdd.count()) > 0) {
     await dockAdd.click();
-    const chooser = page.getByRole("dialog", { name: "Add" });
+    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
     if ((await chooser.count()) > 0) {
       await chooser.getByRole("button", { name: "Add Brick" }).click();
     }
@@ -219,7 +219,7 @@ test("E-m4f-005: no live timer observable; done only changes via UnitsEntrySheet
   const dockAdd = page.getByRole("button", { name: "Add" }).last();
   if ((await dockAdd.count()) > 0) {
     await dockAdd.click();
-    const chooser = page.getByRole("dialog", { name: "Add" });
+    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
     if ((await chooser.count()) > 0) {
       await chooser.getByRole("button", { name: "Add Brick" }).click();
     }

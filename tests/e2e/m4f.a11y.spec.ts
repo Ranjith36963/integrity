@@ -20,7 +20,7 @@ async function openUnitsEntrySheet(page: import("@playwright/test").Page) {
   if ((await dockAdd.count()) === 0) return false;
   await dockAdd.click();
 
-  const chooser = page.getByRole("dialog", { name: "Add" });
+  const chooser = page.getByRole("dialog", { name: "Add", exact: true });
   if ((await chooser.count()) === 0) return false;
   await chooser.getByRole("button", { name: "Add Brick" }).click();
 

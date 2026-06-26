@@ -95,14 +95,16 @@ test("E-m2-002: slot tap at 14:00 opens sheet with Start=14:00", async ({
   });
   await page.goto("/");
 
-  // Tap slot at 14:00
+  // Tap slot at 14:00 → chooser opens (M4d), then pick Add Block
   await page.getByRole("button", { name: "Add block at 14:00" }).click();
+  await page.getByTestId("chooser-add-block").click({ force: true });
 
-  // Sheet opens
+  // Sheet opens (AddBlockSheet with pre-filled start)
   const dialog = page.locator('[role="dialog"]');
   await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveAttribute("aria-label", "Add Block");
 
-  // Start = 14:00
+  // Start = 14:00 (captured from slot tap)
   await expect(page.getByLabel(/Start/i)).toHaveValue("14:00");
 
   // Type title and save
@@ -368,7 +370,7 @@ test("E-m2-010: creating new category inline persists and shows on re-open", asy
   await page.getByLabel(/Name/i).fill("Health");
 
   // Pick Color 1 swatch
-  await page.getByRole("radio", { name: "Color 1" }).click();
+  await page.getByRole("radio", { name: "Color 1", exact: true }).click();
 
   // Click Done
   await page.getByRole("button", { name: /Done/i }).click();
@@ -454,8 +456,8 @@ test("E-m2-011: prefers-reduced-motion: reduce — sheet and block appear withou
   await context.close();
 });
 
-// E-m2-012: Page refresh loses state (no persistence in M2)
-test("E-m2-012: page refresh loses blocks (no localStorage persistence)", async ({
+// E-m2-012: Page refresh preserves state (M8 persistence via dharma:v1)
+test("E-m2-012: page refresh preserves blocks (M8 localStorage persistence)", async ({
   page,
 }) => {
   await page.goto("/");
@@ -470,19 +472,14 @@ test("E-m2-012: page refresh loses blocks (no localStorage persistence)", async 
   await page.reload();
   await page.waitForLoadState("networkidle");
 
-  // Block gone
+  // Block survives reload (M8 persists to dharma:v1)
   await expect(page.locator('[data-component="timeline-block"]')).toHaveCount(
-    0,
+    1,
   );
 
-  // Empty state back
-  await expect(
-    page.getByText("Tap any slot to lay your first block."),
-  ).toBeVisible();
-
-  // No localStorage writes
-  const storageLength = await page.evaluate(() => localStorage.length);
-  expect(storageLength).toBe(0);
+  // dharma:v1 key is written
+  const stored = await page.evaluate(() => localStorage.getItem("dharma:v1"));
+  expect(stored).not.toBeNull();
 });
 
 // E-m2-013: No horizontal overflow when sheet is open

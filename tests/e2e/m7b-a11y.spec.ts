@@ -69,7 +69,7 @@ test("A-m7b-001: Day view with one active block is axe-clean — NOW badge contr
   await page.clock.setFixedTime(new Date("2026-05-18T09:30:00"));
   await page.goto("/");
   await page.evaluate((state: string) => {
-    localStorage.setItem("dharma:v3", state);
+    localStorage.setItem("dharma:v1", state);
   }, STATE_FOUR_BLOCKS);
   await page.reload();
 
@@ -106,7 +106,7 @@ test("A-m7b-002: NOW badge aria-label='Now' is announced by AT surface; visible 
   await page.clock.setFixedTime(new Date("2026-05-18T09:30:00"));
   await page.goto("/");
   await page.evaluate((state: string) => {
-    localStorage.setItem("dharma:v3", state);
+    localStorage.setItem("dharma:v1", state);
   }, STATE_FOUR_BLOCKS);
   await page.reload();
 
@@ -139,7 +139,7 @@ test("A-m7b-003: Under prefers-reduced-motion:reduce — is-active animation=non
   await page.clock.setFixedTime(new Date("2026-05-18T09:30:00"));
   await page.goto("/");
   await page.evaluate((state: string) => {
-    localStorage.setItem("dharma:v3", state);
+    localStorage.setItem("dharma:v1", state);
   }, STATE_FOUR_BLOCKS);
   await page.reload();
 

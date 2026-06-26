@@ -18,6 +18,7 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await page.evaluate(() => {
     localStorage.clear();
+    localStorage.setItem("dharma:onboarding-shown", "true");
   });
   await page.reload();
 });
@@ -85,7 +86,7 @@ test("E-m8-002: mutate → reload → block, brick, and brick done state survive
 
   // Add a block
   await dockAdd.click();
-  const chooser = page.getByRole("dialog", { name: "Add" });
+  const chooser = page.getByRole("dialog", { name: "Add", exact: true });
   if ((await chooser.count()) === 0) return;
   await chooser.getByRole("button", { name: "Add Block" }).click();
 

@@ -62,6 +62,7 @@ export function TopBar({ state, onOpenSettings }: TopBarProps = {}) {
     // overlapped the iPhone notch (and the existing E-m1-016 test was tautological
     // — it asserted box.y >= 0 which is true of any rendered element).
     <header
+      role="presentation"
       className="flex items-center justify-between px-5 pb-3"
       style={{ paddingTop: "calc(20px + var(--safe-top, 0px))" }}
     >
@@ -96,7 +97,9 @@ export function TopBar({ state, onOpenSettings }: TopBarProps = {}) {
         <button
           type="button"
           data-testid="settings-button"
-          aria-label={onOpenSettings ? "Settings" : "Settings (coming in a later release)"}
+          aria-label={
+            onOpenSettings ? "Settings" : "Settings (coming in a later release)"
+          }
           aria-disabled={onOpenSettings ? undefined : "true"}
           onClick={onOpenSettings ? handleSettings : undefined}
           className={

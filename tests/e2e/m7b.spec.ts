@@ -68,7 +68,7 @@ test("E-m7b-001: exactly one block carries is-active when now falls inside its [
   await page.clock.setFixedTime(new Date("2026-05-18T09:30:00"));
   await page.goto("/");
   await page.evaluate((state: string) => {
-    localStorage.setItem("dharma:v3", state);
+    localStorage.setItem("dharma:v1", state);
   }, STATE_FOUR_BLOCKS);
   await page.reload();
 
@@ -104,7 +104,7 @@ test("E-m7b-002: NOW badge + is-active migrate to next block after clock advance
   await page.clock.setFixedTime(new Date("2026-05-18T09:30:00"));
   await page.goto("/");
   await page.evaluate((state: string) => {
-    localStorage.setItem("dharma:v3", state);
+    localStorage.setItem("dharma:v1", state);
   }, STATE_FOUR_BLOCKS);
   await page.reload();
 
@@ -148,7 +148,7 @@ test("E-m7b-003: pulse animation runs >= 55 fps over a 5s trace; box-shadow is t
   await page.clock.setFixedTime(new Date("2026-05-18T09:30:00"));
   await page.goto("/");
   await page.evaluate((state: string) => {
-    localStorage.setItem("dharma:v3", state);
+    localStorage.setItem("dharma:v1", state);
   }, STATE_FOUR_BLOCKS);
   await page.reload();
 
@@ -193,7 +193,7 @@ test("E-m7b-005: now-line halo renders outer 12px halo; halo is byte-identical u
 }) => {
   await page.goto("/");
   await page.evaluate((state: string) => {
-    localStorage.setItem("dharma:v3", state);
+    localStorage.setItem("dharma:v1", state);
   }, STATE_FOUR_BLOCKS);
   await page.reload();
 

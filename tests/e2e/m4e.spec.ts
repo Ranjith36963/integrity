@@ -23,7 +23,7 @@ test("E-m4e-001: toggle ON → save timed brick → appears on timeline at corre
   const dockAdd = page.getByRole("button", { name: "Add" }).last();
   if ((await dockAdd.count()) > 0) {
     await dockAdd.click();
-    const chooser = page.getByRole("dialog", { name: "Add" });
+    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
     if ((await chooser.count()) > 0) {
       await chooser.getByRole("button", { name: "Add Brick" }).click();
     }
@@ -73,7 +73,7 @@ test("E-m4e-002: AddBrickSheet overlap warning visible + Save disabled + haptic 
   const dockAdd = page.getByRole("button", { name: "Add" }).last();
   if ((await dockAdd.count()) > 0) {
     await dockAdd.click();
-    const chooser = page.getByRole("dialog", { name: "Add" });
+    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
     if ((await chooser.count()) > 0) {
       await chooser.getByRole("button", { name: "Add Brick" }).click();
     }
@@ -113,7 +113,7 @@ test("E-m4e-003: adjusting Start/End to clear overlap removes warning and re-ena
   const dockAdd = page.getByRole("button", { name: "Add" }).last();
   if ((await dockAdd.count()) > 0) {
     await dockAdd.click();
-    const chooser = page.getByRole("dialog", { name: "Add" });
+    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
     if ((await chooser.count()) > 0) {
       await chooser.getByRole("button", { name: "Add Brick" }).click();
     }
@@ -162,7 +162,7 @@ test("E-m4e-004: AddBlockSheet shows overlap-warning when block overlaps timed l
   const dockAdd = page.getByRole("button", { name: "Add" }).last();
   if ((await dockAdd.count()) > 0) {
     await dockAdd.click();
-    const chooser = page.getByRole("dialog", { name: "Add" });
+    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
     if ((await chooser.count()) > 0) {
       await chooser.getByRole("button", { name: "Add Block" }).click();
     }
@@ -201,7 +201,7 @@ test("E-m4e-005: toggle OFF (default) → saved brick has no time-window badge; 
   const dockAdd = page.getByRole("button", { name: "Add" }).last();
   if ((await dockAdd.count()) > 0) {
     await dockAdd.click();
-    const chooser = page.getByRole("dialog", { name: "Add" });
+    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
     if ((await chooser.count()) > 0) {
       await chooser.getByRole("button", { name: "Add Brick" }).click();
     }

@@ -69,7 +69,7 @@ test("E-m3-001: add tick brick inside a block; chip renders at 0%", async ({
   expect(scrollWidth).toBeLessThanOrEqual(430);
 });
 
-// E-m3-002: add goal brick inside a block
+// E-m3-002: add units brick inside a block (M4f: Goal type removed, now Units)
 test("E-m3-002: add goal brick; chip renders with '0 / 100 reps' badge", async ({
   page,
 }) => {
@@ -88,17 +88,17 @@ test("E-m3-002: add goal brick; chip renders with '0 / 100 reps' badge", async (
     .click();
   await page.getByLabel(/Title/i).fill("brick B");
 
-  // Select Goal type
-  await page.getByRole("radio", { name: /Goal/i }).click();
+  // Select Units type (M4f: Goal type removed; Units is the equivalent)
+  await page.getByRole("radio", { name: /Units/i }).click();
 
   // Fill target and unit
   await page.getByLabel(/Target/i).fill("100");
-  await page.getByLabel(/Unit/i).fill("reps");
+  await page.getByLabel("Unit").fill("reps");
 
   await page.getByRole("button", { name: /Save/i }).click();
   await expect(page.locator('[role="dialog"]')).toHaveCount(0);
 
-  // Chip renders with goal badge
+  // Chip renders with units badge
   const chip = page.locator('[data-component="brick-chip"]').first();
   await expect(chip).toBeVisible();
   await expect(chip).toContainText("brick B");
@@ -107,7 +107,7 @@ test("E-m3-002: add goal brick; chip renders with '0 / 100 reps' badge", async (
   await expect(chip).toContainText("reps");
 });
 
-// E-m3-003: add time brick inside a block
+// E-m3-003: add units brick inside a block (M4f: Time type removed, now Units)
 test("E-m3-003: add time brick; chip renders with '0 / 30 m' badge", async ({
   page,
 }) => {
@@ -126,16 +126,17 @@ test("E-m3-003: add time brick; chip renders with '0 / 30 m' badge", async ({
     .click();
   await page.getByLabel(/Title/i).fill("brick C");
 
-  // Select Time type
-  await page.getByRole("radio", { name: /Time/i }).click();
+  // Select Units type (M4f: Time type removed; Units with "m" unit is equivalent)
+  await page.getByRole("radio", { name: /Units/i }).click();
 
-  // Fill duration
-  await page.getByLabel(/Duration in minutes/i).fill("30");
+  // Fill target=30, unit="m"
+  await page.getByLabel(/Target/i).fill("30");
+  await page.getByLabel("Unit").fill("m");
 
   await page.getByRole("button", { name: /Save/i }).click();
   await expect(page.locator('[role="dialog"]')).toHaveCount(0);
 
-  // Chip renders with time badge
+  // Chip renders with units badge
   const chip = page.locator('[data-component="brick-chip"]').first();
   await expect(chip).toBeVisible();
   await expect(chip).toContainText("brick C");
@@ -202,23 +203,14 @@ test("E-m3-005: Save disabled when Title empty; Goal target=0; Time duration=0",
   // Empty title → disabled
   await expect(saveBtn).toHaveAttribute("aria-disabled", "true");
 
-  // Goal with target=0 → disabled
+  // Units with target=0 → disabled (M4f: Goal type removed, Units is equivalent)
   await page.getByLabel(/Title/i).fill("brick A");
-  await page.getByRole("radio", { name: /Goal/i }).click();
+  await page.getByRole("radio", { name: /Units/i }).click();
   await page.getByLabel(/Target/i).fill("0");
   await expect(saveBtn).toHaveAttribute("aria-disabled", "true");
 
-  // Goal with target=1 → enabled
+  // Units with target=1 → enabled
   await page.getByLabel(/Target/i).fill("1");
-  await expect(saveBtn).toHaveAttribute("aria-disabled", "false");
-
-  // Time with duration=0 → disabled
-  await page.getByRole("radio", { name: /Time/i }).click();
-  await page.getByLabel(/Duration in minutes/i).fill("0");
-  await expect(saveBtn).toHaveAttribute("aria-disabled", "true");
-
-  // Time with duration=1 → enabled
-  await page.getByLabel(/Duration in minutes/i).fill("1");
   await expect(saveBtn).toHaveAttribute("aria-disabled", "false");
 });
 
@@ -416,11 +408,11 @@ test("E-m3-012: no horizontal overflow at 430px with AddBrickSheet open (Goal ty
     .first()
     .click();
 
-  // Select Goal type
-  await page.getByRole("radio", { name: /Goal/i }).click();
+  // Select Units type (M4f: Goal removed)
+  await page.getByRole("radio", { name: /Units/i }).click();
   await page.getByLabel(/Title/i).fill("brick A");
   await page.getByLabel(/Target/i).fill("100");
-  await page.getByLabel(/Unit/i).fill("reps");
+  await page.getByLabel("Unit").fill("reps");
 
   // No horizontal overflow
   const scrollWidth = await page.evaluate(
@@ -451,6 +443,7 @@ test("E-m3-013: HeroRing SVG visible; shows 0% on fresh load; stays 0% after emp
   const C = 2 * Math.PI * R;
   const dashoffset = await page
     .locator("circle[stroke-dasharray]")
+    .first()
     .getAttribute("stroke-dashoffset");
   expect(parseFloat(dashoffset ?? "0")).toBeCloseTo(C, 0);
 

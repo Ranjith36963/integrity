@@ -186,7 +186,7 @@ export function AppShell() {
     : "default";
 
   return (
-    <div className="mx-auto max-w-[430px]">
+    <div role="main" className="mx-auto max-w-[430px]">
       {/* Persistent ViewSwitcher — visible in all views */}
       <ViewSwitcher view={view} onSelect={handleSelectView} />
       {/* M7e: Toaster — mounted once as a ViewSwitcher sibling, outside the view branch.
