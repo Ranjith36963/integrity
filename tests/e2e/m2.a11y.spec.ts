@@ -36,8 +36,9 @@ test("A-m2-001: zero serious/critical axe violations on day view (empty and with
   }
   expect(seriousEmpty).toHaveLength(0);
 
-  // Add a block
+  // Add a block — M4d: walk chooser → Add Block to reach AddBlockSheet.
   await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByTestId("chooser-add-block").click({ force: true });
   await page.getByLabel(/Title/i).fill("Foo");
   await page.getByRole("button", { name: /Save/i }).click();
   await expect(page.locator('[role="dialog"]')).toHaveCount(0);
@@ -74,8 +75,9 @@ test("A-m2-002: zero serious/critical axe violations with sheet open (block + ne
 }) => {
   await page.goto("/");
 
-  // Open sheet
+  // Open sheet — M4d: walk chooser → Add Block to reach the block view.
   await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByTestId("chooser-add-block").click({ force: true });
   await expect(page.locator('[role="dialog"]')).toBeVisible();
 
   // Scan with sheet open (block view)
@@ -144,7 +146,7 @@ test("A-m2-003: dialog has role=dialog, aria-modal=true, dynamic aria-label", as
 
   // R7-ROOT-M2-02: walk through M4d chooser before asserting "Add Block" aria-label.
   await page.getByRole("button", { name: "Add", exact: true }).click();
-  await page.getByRole("button", { name: "Add Block" }).click();
+  await page.getByTestId("chooser-add-block").click({ force: true });
   const dialog = page.locator('[role="dialog"]');
   await expect(dialog).toBeVisible();
 
@@ -174,9 +176,9 @@ test("A-m2-004: focus trap inside dialog; restored to + button on close", async 
   await page.goto("/");
 
   // R7-ROOT-M2-02: walk through M4d chooser to the block sheet.
-  const addBtn = page.getByRole("button", { name: "Add" });
+  const addBtn = page.getByRole("button", { name: "Add", exact: true });
   await addBtn.click();
-  await page.getByRole("button", { name: "Add Block" }).click();
+  await page.getByTestId("chooser-add-block").click({ force: true });
 
   const dialog = page.locator('[role="dialog"]');
   await expect(dialog).toBeVisible();
@@ -228,7 +230,7 @@ test("A-m2-005: tab order inside dialog: Title → Start → End → recurrence 
   // focus-trap selector, so saveIdx returned -1 and the toBeGreaterThanOrEqual(0)
   // assertion would always fail once the chooser was traversed correctly.
   await page.getByRole("button", { name: "Add", exact: true }).click();
-  await page.getByRole("button", { name: "Add Block" }).click();
+  await page.getByTestId("chooser-add-block").click({ force: true });
   await expect(page.locator('[role="dialog"]')).toBeVisible();
   await page.getByLabel(/Title/i).fill("X"); // make Save enabled
 
@@ -291,7 +293,9 @@ test("A-m2-006: --cat-4 renders as #94a3b8 (not legacy #64748b), palette meets W
   await page.goto("/");
 
   // Open sheet and navigate to NewCategoryForm
+  // (M4d: walk chooser → Add Block → AddBlockSheet → "+ New" trigger.)
   await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByTestId("chooser-add-block").click({ force: true });
   await page.getByRole("button", { name: /\+ New/i }).click();
 
   // Verify 12 color swatches are present

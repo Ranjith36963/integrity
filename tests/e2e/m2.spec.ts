@@ -20,7 +20,7 @@ async function addBlock(
   opts?: { start?: string; end?: string },
 ) {
   await page.getByRole("button", { name: "Add", exact: true }).click();
-  await page.getByRole("button", { name: "Add Block" }).click();
+  await page.getByTestId("chooser-add-block").click({ force: true });
   await page.getByLabel(/Title/i).fill(title);
   if (opts?.start !== undefined) {
     await page.getByLabel(/Start/i).fill(opts.start);
@@ -46,7 +46,7 @@ test("E-m2-001: + opens sheet with rounded-down Start; Save adds block to timeli
   // R7-ROOT-M2-02: post-M4d the dialog's aria-label after dock + is "Add"
   // (the chooser). Asserting "Add Block" requires walking through the chooser.
   await page.getByRole("button", { name: "Add", exact: true }).click();
-  await page.getByRole("button", { name: "Add Block" }).click();
+  await page.getByTestId("chooser-add-block").click({ force: true });
 
   // Dialog should now be the AddBlockSheet with the right aria-label.
   const dialog = page.locator('[role="dialog"]');
@@ -127,8 +127,9 @@ test("E-m2-003: Cancel/X closes sheet without adding a block", async ({
 
   await page.goto("/");
 
-  // Open sheet
+  // Open sheet (M4d: walk chooser → Add Block).
   await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByTestId("chooser-add-block").click({ force: true });
   await expect(page.locator('[role="dialog"]')).toBeVisible();
 
   // Type some text
@@ -180,6 +181,7 @@ test("E-m2-005: Save is aria-disabled when Title is empty; enabled after typing"
 }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByTestId("chooser-add-block").click({ force: true });
 
   // Save should be aria-disabled before typing title
   const saveBtn = page.getByRole("button", { name: /Save/i });
@@ -211,6 +213,7 @@ test("E-m2-006: End before Start shows inline error and disables Save", async ({
   });
   await page.goto("/");
   await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByTestId("chooser-add-block").click({ force: true });
 
   await page.getByLabel(/Title/i).fill("Foo");
 
@@ -247,6 +250,7 @@ test("E-m2-007: End=24:00 shows 'before midnight' inline error", async ({
 }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByTestId("chooser-add-block").click({ force: true });
 
   await page.getByLabel(/Title/i).fill("Foo");
 
@@ -296,7 +300,7 @@ test("E-m2-008: overlapping block raises an alert and Save is disabled (M4e cont
 
   // Open chooser → AddBlockSheet again with overlapping range.
   await page.getByRole("button", { name: "Add", exact: true }).click();
-  await page.getByRole("button", { name: "Add Block" }).click();
+  await page.getByTestId("chooser-add-block").click({ force: true });
   await page.getByLabel(/Title/i).fill("Second");
   const startInput = page.getByLabel(/Start/i);
   await startInput.fill("09:30");
@@ -329,6 +333,7 @@ test("E-m2-009: Skip category → timeline block has no dot, blueprint has 0 seg
 }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByTestId("chooser-add-block").click({ force: true });
   await page.getByLabel(/Title/i).fill("Foo");
 
   // Click Skip
@@ -353,6 +358,7 @@ test("E-m2-010: creating new category inline persists and shows on re-open", asy
 }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByTestId("chooser-add-block").click({ force: true });
   await page.getByLabel(/Title/i).fill("Foo");
 
   // Navigate to New Category form
@@ -396,6 +402,7 @@ test("E-m2-010: creating new category inline persists and shows on re-open", asy
 
   // Re-open sheet — Health category chip visible
   await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByTestId("chooser-add-block").click({ force: true });
   await expect(page.getByRole("radio", { name: /Health/i })).toBeVisible();
 });
 
@@ -409,8 +416,9 @@ test("E-m2-011: prefers-reduced-motion: reduce — sheet and block appear withou
   const page = await context.newPage();
   await page.goto("/");
 
-  // Open sheet
+  // Open sheet (M4d: walk chooser → Add Block).
   await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByTestId("chooser-add-block").click({ force: true });
   const dialog = page.locator('[role="dialog"]');
   await expect(dialog).toBeVisible();
 
@@ -484,8 +492,9 @@ test("E-m2-013: no horizontal overflow with sheet open at 430px", async ({
   await page.setViewportSize({ width: 430, height: 900 });
   await page.goto("/");
 
-  // Open sheet
+  // Open sheet (M4d: walk chooser → Add Block).
   await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByTestId("chooser-add-block").click({ force: true });
   await expect(page.locator('[role="dialog"]')).toBeVisible();
 
   // No horizontal overflow
