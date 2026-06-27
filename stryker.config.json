@@ -4,7 +4,8 @@
   "packageManager": "npm",
   "testRunner": "vitest",
   "vitest": {
-    "configFile": "vitest.config.ts"
+    "configFile": "vitest.config.ts",
+    "related": false
   },
   "reporters": ["progress", "clear-text", "html"],
   "mutate": ["lib/dharma.ts", "lib/dayOfYear.ts", "lib/timeOffset.ts"],
