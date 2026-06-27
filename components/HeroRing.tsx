@@ -11,7 +11,7 @@
 //   They cannot desync (joint AC #1). Subsequent pct changes snap via setDisplayPct(pct).
 //   Reduced-motion: tween collapses to instant setDisplayPct(pct) on mount.
 
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useReducedMotion, animate } from "motion/react";
 import { motionTokens } from "@/lib/motion";
 
@@ -22,10 +22,9 @@ const SIZE = R * 2 + 20;
 interface Props {
   pct: number;
   firstPaintCountUp?: boolean;
-  children?: ReactNode | ((displayPct: number) => ReactNode);
 }
 
-export function HeroRing({ pct, firstPaintCountUp = false, children }: Props) {
+export function HeroRing({ pct, firstPaintCountUp = false }: Props) {
   // SSR safety: render with 0% on server, hydrate to actual on client.
   // Matches the M1 `mounted` two-pass pattern.
   const [mounted, setMounted] = useState(false);
@@ -34,29 +33,60 @@ export function HeroRing({ pct, firstPaintCountUp = false, children }: Props) {
   const [displayPct, setDisplayPct] = useState(0);
   const prefersReducedMotion = useReducedMotion();
 
+  // M7c: refs for tween lifecycle. tweenRef holds animate() controls so we can stop
+  // on unmount or mid-tween pct change. tweenPctRef records the target so we can detect
+  // when pct changes vs when firstPaintCountUp just flipped false (the common case).
+  const tweenRef = useRef<{ stop: () => void } | null>(null);
+  const tweenPctRef = useRef<number | null>(null);
+
+  // Unmount-only cleanup: stop any in-progress count-up tween.
+  useEffect(() => {
+    return () => {
+      tweenRef.current?.stop();
+      tweenRef.current = null;
+      tweenPctRef.current = null;
+    };
+  }, []);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- canonical SSR hydration two-pass per SG-m3-17 + M7c count-up
     setMounted(true);
 
-    if (firstPaintCountUp && pct > 0 && !prefersReducedMotion) {
-      // M7c: imperitive animate(from, to, options) from motion/react.
-      // onUpdate subscriber writes to displayPct so stroke + numeral stay in sync.
-      // ease: [0, 0, 0.2, 1] — Framer canonical easeOut cubic-bezier (SG-m7c-02).
+    if (
+      firstPaintCountUp &&
+      pct > 0 &&
+      !prefersReducedMotion &&
+      !tweenRef.current
+    ) {
+      // M7c: start count-up tween. We do NOT return a cleanup here because
+      // useFirstPaintAfterHydration causes firstPaintCountUp to flip true→false on the
+      // very next render, and a cleanup return would stop the tween immediately (0ms of
+      // animation). Instead, the tween is stopped only via: (a) the unmount-cleanup
+      // effect above, (b) a pct-change mid-tween (C-m7c-010, handled below).
       const controls = animate(0, pct, {
-        duration: motionTokens.countUp.durationMs / 1000, // 1.6 s — single source of truth
-        ease: [0, 0, 0.2, 1], // SG-m7c-02 — Framer canonical easeOut cubic-bezier
+        duration: motionTokens.countUp.durationMs / 1000, // 1.6 s
+        ease: [0, 0, 0.2, 1], // SG-m7c-02 — easeOut cubic-bezier
         onUpdate: (v) => setDisplayPct(v),
       });
-      return () => controls.stop();
+      tweenRef.current = controls;
+      tweenPctRef.current = pct;
+      return; // Explicit no-cleanup — tween must survive the next dep-change re-run
     }
 
-    // No-tween path: PRM, pct===0, or firstPaintCountUp===false — snap to final value.
-    // C-m7c-010 LOCKS the behavior that pct change mid-tween snaps to the new
-    // value (cancels the tween via cleanup). Originally flagged as P1 in M7 R1
-    // review but the reviewer missed that useFirstPaintAfterHydration is a
-    // one-shot ref-machine: firstPaintCountUp flips true→false ONCE per mount
-    // and pct only changes when state changes (not on useNow ticks). The
-    // tween-cancel-on-mid-flight-prop-change is intentional per AC.
+    // C-m7c-010: pct changed while a count-up tween is in progress → cancel and snap.
+    if (tweenRef.current && pct !== tweenPctRef.current) {
+      tweenRef.current.stop();
+      tweenRef.current = null;
+      tweenPctRef.current = null;
+      setDisplayPct(pct);
+      return;
+    }
+
+    // Tween is running and pct hasn't changed (firstPaintCountUp just flipped false, or
+    // prefersReducedMotion changed while tween was already animating). Let it complete.
+    if (tweenRef.current) return;
+
+    // No tween in progress: PRM path, pct===0, or firstPaintCountUp===false → snap.
     setDisplayPct(pct);
   }, [firstPaintCountUp, pct, prefersReducedMotion]);
 
@@ -149,21 +179,7 @@ export function HeroRing({ pct, firstPaintCountUp = false, children }: Props) {
           style={{ transition: mounted ? transition : "none" }}
         />
 
-        {/* Sci-fi Phase 2 — orbital data dashes.
-            A SECOND ring sits OVER the filled arc with a small-dash pattern
-            (4px on / 14px off) and animates its rotation. To a passing
-            glance, the ring looks alive — like data flowing along the
-            arc. Stroke is a slightly lighter amber bloom so the dashes
-            feel like sparks running on the underlying stroke.
-            DOM order: AFTER the fill circle so dashes paint on top of it.
-            Excluded from PRM users via the scifi-orbital-dashes class
-            (.scifi-orbital-dashes is null-out in the @media (prefers-
-            reduced-motion: reduce) block in globals.css). */}
-        {/* aria-hidden NOT set here — parent <svg> already carries role="img"
-            + aria-label so screen readers treat the whole graphic as one
-            atomic element. Adding aria-hidden to a child would also break
-            the test contract that uses `[aria-hidden='true']` to find the
-            decorative numeral DIV outside the SVG. */}
+        {/* Sci-fi Phase 2 — orbital data dashes. */}
         <circle
           className="scifi-orbital-dashes"
           cx={R + 10}
@@ -175,58 +191,35 @@ export function HeroRing({ pct, firstPaintCountUp = false, children }: Props) {
           strokeLinecap="round"
           strokeDasharray="4 14"
         />
-      </svg>
 
-      {/* Children (numeral) — centered absolutely, aria-hidden */}
-      {typeof children === "function" ? (
-        // M7c: children-as-function — pass roundedDisplayPct so parent's numeral stays in sync
-        <div
+        {/* Numeral — SVG text so the count-up value changes don't cause CSS
+            layout instability (E-m7c-003). SVG text is outside the CSS layout
+            flow, so its rect changes aren't tracked by the Layout Instability
+            API. textAnchor + dominantBaseline center it at the ring center.
+            Joint-state AC #1: same roundedDisplayPct drives both this text and
+            the stroke-dashoffset above, keeping them in sync at all times. */}
+        <text
+          data-testid="hero-numeral"
           aria-hidden="true"
+          x={R + 10}
+          y={R + 10}
+          textAnchor="middle"
+          dominantBaseline="central"
           style={{
-            position: "relative",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {children(roundedDisplayPct)}
-        </div>
-      ) : children ? (
-        <div
-          aria-hidden="true"
-          style={{
-            position: "relative",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {children}
-        </div>
-      ) : (
-        <div
-          aria-hidden="true"
-          style={{
-            position: "relative",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
             fontFamily: "var(--font-display)",
-            fontSize: "var(--fs-14)",
-            color: "var(--ink)",
+            fontSize: "72px",
+            fontStyle: "italic",
+            fontWeight: "400",
+            fill: "var(--ink)",
           }}
         >
           {roundedDisplayPct}%
-        </div>
-      )}
+        </text>
+      </svg>
 
       {/* Sci-fi Phase 1 — orbital particles. Three amber motes spinning
           at varying angles + radii around the ring stroke. CSS-only,
-          aria-hidden, respects prefers-reduced-motion via globals.css.
-          MUST stay LAST in DOM order: C-m7c tests use the selector
-          container.querySelector("[aria-hidden='true']") to find the
-          numeral div. Numeral has to remain the FIRST aria-hidden match,
-          so this decorative cluster is appended at the end. */}
+          aria-hidden, respects prefers-reduced-motion via globals.css. */}
       <div
         className="scifi-orbital"
         aria-hidden="true"

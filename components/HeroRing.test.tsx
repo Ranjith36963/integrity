@@ -2,7 +2,7 @@
 // Covers: C-m3-006, C-m3-007, C-m3-008, C-m7c-001..011
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, act } from "@testing-library/react";
+import { render, act } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { HeroRing } from "./HeroRing";
 
@@ -238,16 +238,22 @@ afterEach(() => {
 
 // ─── C-m7c-001: count-up fires 0 → 50 over 1.6 s with function child ─────────
 
-describe("C-m7c-001 — <HeroRing firstPaintCountUp={true} pct={50}> progresses 0→50 over 1.6s with function child", () => {
+describe("C-m7c-001 — <HeroRing firstPaintCountUp={true} pct={50}> progresses 0→50 over 1.6s with SVG numeral", () => {
   it("numeral progresses through monotonically non-decreasing integer values 0 → 50", async () => {
     const capturedFrames: number[] = [];
-    const { getByTestId } = render(
-      <HeroRing pct={50} firstPaintCountUp={true}>
-        {(rounded: number) => {
-          capturedFrames.push(rounded);
-          return <span data-testid="numeral">{rounded}%</span>;
-        }}
-      </HeroRing>,
+    const baseImpl = mockAnimateImpl;
+    mockAnimateImpl = (from, to, opts) => {
+      const origUpdate = opts.onUpdate;
+      return baseImpl(from, to, {
+        ...opts,
+        onUpdate: (v: number) => {
+          capturedFrames.push(Math.round(v));
+          origUpdate?.(v);
+        },
+      });
+    };
+    const { container } = render(
+      <HeroRing pct={50} firstPaintCountUp={true} />,
     );
 
     // Advance 800ms (half the tween)
@@ -270,7 +276,9 @@ describe("C-m7c-001 — <HeroRing firstPaintCountUp={true} pct={50}> progresses 
       expect(capturedFrames[i]).toBeGreaterThanOrEqual(capturedFrames[i - 1]);
     }
     // Final rendered numeral is "50%"
-    expect(getByTestId("numeral").textContent).toBe("50%");
+    expect(
+      container.querySelector("[data-testid='hero-numeral']")?.textContent,
+    ).toBe("50%");
     // All captured frames are integers (no half-percent display)
     for (const f of capturedFrames) {
       expect(Number.isInteger(f)).toBe(true);
@@ -349,13 +357,19 @@ describe("C-m7c-003 — <HeroRing firstPaintCountUp={true} pct={0}> — no anima
 describe("C-m7c-004 — <HeroRing firstPaintCountUp={true} pct={100}> animates 0→100 over 1.6s", () => {
   it("final frame is 100%, aria-label is 'Day score: 100%', no M7d artifacts", async () => {
     const capturedFrames: number[] = [];
+    const baseImpl = mockAnimateImpl;
+    mockAnimateImpl = (from, to, opts) => {
+      const origUpdate = opts.onUpdate;
+      return baseImpl(from, to, {
+        ...opts,
+        onUpdate: (v: number) => {
+          capturedFrames.push(Math.round(v));
+          origUpdate?.(v);
+        },
+      });
+    };
     const { container } = render(
-      <HeroRing pct={100} firstPaintCountUp={true}>
-        {(rounded: number) => {
-          capturedFrames.push(rounded);
-          return <span data-testid="numeral">{rounded}%</span>;
-        }}
-      </HeroRing>,
+      <HeroRing pct={100} firstPaintCountUp={true} />,
     );
 
     await act(async () => {
@@ -370,7 +384,7 @@ describe("C-m7c-004 — <HeroRing firstPaintCountUp={true} pct={100}> animates 0
     expect(capturedFrames[capturedFrames.length - 1]).toBe(100);
 
     // Final numeral is "100%"
-    const numeral = container.querySelector("[data-testid='numeral']");
+    const numeral = container.querySelector("[data-testid='hero-numeral']");
     expect(numeral?.textContent).toBe("100%");
 
     // aria-label at final frame
@@ -412,14 +426,8 @@ describe("C-m7c-005 — fire-once: pct change after tween settles does NOT re-fi
       return { stop: () => clearTimeout(handle) };
     };
 
-    const capturedFrames: number[] = [];
-    const { rerender } = render(
-      <HeroRing pct={50} firstPaintCountUp={true}>
-        {(rounded: number) => {
-          capturedFrames.push(rounded);
-          return <span data-testid="numeral">{rounded}%</span>;
-        }}
-      </HeroRing>,
+    const { rerender, container } = render(
+      <HeroRing pct={50} firstPaintCountUp={true} />,
     );
 
     // Let the tween complete
@@ -432,14 +440,7 @@ describe("C-m7c-005 — fire-once: pct change after tween settles does NOT re-fi
     const countBeforeRerender = animateCallCount;
 
     // Rerender with firstPaintCountUp=false and new pct (mimics M7a tri-state ref returning false)
-    rerender(
-      <HeroRing pct={80} firstPaintCountUp={false}>
-        {(rounded: number) => {
-          capturedFrames.push(rounded);
-          return <span data-testid="numeral">{rounded}%</span>;
-        }}
-      </HeroRing>,
-    );
+    rerender(<HeroRing pct={80} firstPaintCountUp={false} />);
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1600);
@@ -449,7 +450,9 @@ describe("C-m7c-005 — fire-once: pct change after tween settles does NOT re-fi
     expect(animateCallCount).toBe(countBeforeRerender);
 
     // Numeral snaps to 80% (no progressive interpolation from 50 to 80)
-    expect(screen.getByTestId("numeral").textContent).toBe("80%");
+    expect(
+      container.querySelector("[data-testid='hero-numeral']")?.textContent,
+    ).toBe("80%");
   });
 });
 
@@ -498,9 +501,7 @@ describe("C-m7c-006 — prefers-reduced-motion: reduce → no tween, numeral + s
 describe("C-m7c-007 — joint-state sync: numeral and stroke-dashoffset sourced from same displayPct", () => {
   it("at every sampled frame, parseInt(numeral) === Math.round(strokeProgress)", async () => {
     const { container } = render(
-      <HeroRing pct={67} firstPaintCountUp={true}>
-        {(rounded: number) => <span data-testid="numeral">{rounded}%</span>}
-      </HeroRing>,
+      <HeroRing pct={67} firstPaintCountUp={true} />,
     );
 
     const samplePoints = [200, 300, 500, 800, 1100];
@@ -512,7 +513,7 @@ describe("C-m7c-007 — joint-state sync: numeral and stroke-dashoffset sourced 
       });
       prevMs = ms;
 
-      const numeralEl = container.querySelector("[data-testid='numeral']");
+      const numeralEl = container.querySelector("[data-testid='hero-numeral']");
       const numeralValue = parseInt(
         (numeralEl?.textContent ?? "0%").replace(/%$/, ""),
         10,
@@ -546,16 +547,14 @@ describe("C-m7c-008 — Math.round(displayPct) NOT Math.floor at every numeral r
     };
 
     const { container } = render(
-      <HeroRing pct={50} firstPaintCountUp={true}>
-        {(rounded: number) => <span data-testid="numeral">{rounded}%</span>}
-      </HeroRing>,
+      <HeroRing pct={50} firstPaintCountUp={true} />,
     );
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(10);
     });
 
-    const numeral = container.querySelector("[data-testid='numeral']");
+    const numeral = container.querySelector("[data-testid='hero-numeral']");
     expect(numeral?.textContent).toBe("50%"); // Math.round(49.5) = 50, not Math.floor(49.5) = 49
 
     // aria-label also uses Math.round
@@ -572,16 +571,14 @@ describe("C-m7c-008 — Math.round(displayPct) NOT Math.floor at every numeral r
     };
 
     const { container } = render(
-      <HeroRing pct={50} firstPaintCountUp={true}>
-        {(rounded: number) => <span data-testid="numeral">{rounded}%</span>}
-      </HeroRing>,
+      <HeroRing pct={50} firstPaintCountUp={true} />,
     );
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(10);
     });
 
-    const numeral = container.querySelector("[data-testid='numeral']");
+    const numeral = container.querySelector("[data-testid='hero-numeral']");
     expect(numeral?.textContent).toBe("50%"); // Math.round(50.4) = 50, not Math.ceil(50.4) = 51
   });
 });
@@ -660,9 +657,7 @@ describe("C-m7c-010 — tween cancels on pct change mid-tween; new pct lands via
     };
 
     const { rerender, container } = render(
-      <HeroRing pct={50} firstPaintCountUp={true}>
-        {(rounded: number) => <span data-testid="numeral">{rounded}%</span>}
-      </HeroRing>,
+      <HeroRing pct={50} firstPaintCountUp={true} />,
     );
 
     // Advance 400ms (mid-tween)
@@ -671,11 +666,7 @@ describe("C-m7c-010 — tween cancels on pct change mid-tween; new pct lands via
     });
 
     // Rerender with firstPaintCountUp=false + new pct (mimics brick log)
-    rerender(
-      <HeroRing pct={80} firstPaintCountUp={false}>
-        {(rounded: number) => <span data-testid="numeral">{rounded}%</span>}
-      </HeroRing>,
-    );
+    rerender(<HeroRing pct={80} firstPaintCountUp={false} />);
 
     // stop() was called on the cleanup
     expect(mockAnimateStop).toHaveBeenCalledTimes(1);
@@ -689,7 +680,7 @@ describe("C-m7c-010 — tween cancels on pct change mid-tween; new pct lands via
     });
 
     // Numeral shows 80% (snap arm)
-    const numeral = container.querySelector("[data-testid='numeral']");
+    const numeral = container.querySelector("[data-testid='hero-numeral']");
     expect(numeral?.textContent).toBe("80%");
   });
 });

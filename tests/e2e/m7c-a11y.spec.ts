@@ -26,6 +26,7 @@ function makeState50() {
         id: "blk-a11y-50",
         name: "Morning",
         start: "09:00",
+        recurrence: { kind: "just-today", date: today },
         categoryId: null,
         bricks: [
           {
@@ -67,6 +68,7 @@ function makeState73() {
         id: "blk-a11y-73",
         name: "Morning",
         start: "09:00",
+        recurrence: { kind: "just-today", date: today },
         categoryId: null,
         bricks: [
           {

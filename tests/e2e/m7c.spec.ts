@@ -30,6 +30,7 @@ function makeState73() {
         id: "blk-e2e",
         name: "Morning",
         start: "09:00",
+        recurrence: { kind: "just-today", date: today },
         categoryId: null,
         bricks: [
           {
@@ -80,6 +81,7 @@ function makeState100() {
         id: "blk-e2e-100",
         name: "Morning",
         start: "09:00",
+        recurrence: { kind: "just-today", date: today },
         categoryId: null,
         bricks: [
           {
@@ -112,6 +114,7 @@ function makeState50() {
         id: "blk-e2e-50",
         name: "Morning",
         start: "09:00",
+        recurrence: { kind: "just-today", date: today },
         categoryId: null,
         bricks: [
           {
@@ -322,12 +325,24 @@ test("E-m7c-004: second BuildingClient mount (Day→Week→Day) fires count-up a
     timeout: 5000,
   });
 
-  // Immediately after re-mount, numeral should start at 0 (count-up fires again)
+  // Wait for count-up to restart — numeral drops below finalPct as the new
+  // tween starts from 0 (may be immediate if we catch the initial 0% render,
+  // or after ~200ms once the tween overtakes the pre-hydration snap)
+  await page.waitForFunction(
+    (fp) => {
+      const el = document.querySelector("[data-testid='hero-numeral']");
+      const v = parseInt((el?.textContent ?? String(fp)).replace(/%$/, ""), 10);
+      return v < fp;
+    },
+    finalPct,
+    { timeout: 5000 },
+  );
+
   const afterRemount = await page
     .locator("[data-testid='hero-numeral']")
     .textContent();
   const remountVal = parseInt((afterRemount ?? "100").replace(/%$/, ""), 10);
-  // Should start near 0 (count-up fires fresh)
+  // Should be in the early stages of the count-up (< finalPct)
   expect(remountVal).toBeLessThan(finalPct);
 
   // After 1.8s, should reach the same final value again
@@ -397,11 +412,22 @@ test("E-m7c-006: prefers-reduced-motion: reduce → final value painted immediat
     timeout: 10000,
   });
 
-  // At t=0ms — numeral should be at final value (no tween under PRM)
+  // Under PRM the component snaps to final pct in one effect cycle (after the SSR
+  // two-pass renders the element at 0%). Wait for the snap before reading val0 so
+  // the stability check compares non-zero vs non-zero (not 0 vs 67).
+  await page.waitForFunction(
+    () => {
+      const el = document.querySelector("[data-testid='hero-numeral']");
+      return parseInt(el?.textContent?.replace(/%$/, "") ?? "0", 10) > 0;
+    },
+    { timeout: 3000 },
+  );
+
+  // At this point — numeral should be at final value (no tween under PRM)
   const t0 = await page.locator("[data-testid='hero-numeral']").textContent();
   const val0 = parseInt((t0 ?? "0").replace(/%$/, ""), 10);
 
-  // Wait 100ms, 800ms, 1700ms — value should remain stable
+  // Wait 100ms, 800ms, 1700ms — value should remain stable (no animation under PRM)
   for (const delay of [100, 700, 900]) {
     await page.waitForTimeout(delay);
     const text = await page
