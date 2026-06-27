@@ -62,7 +62,7 @@ test("HOSTILE: input edge cases + recovery", async ({ page }) => {
   await gotoFresh(page);
   await page.getByTestId("dock-add").click();
   await page.waitForTimeout(200);
-  await page.getByTestId("chooser-add-block").click({ force: true });
+  await page.getByTestId("chooser-add-block").click();
   await page.waitForTimeout(200);
   await page.getByLabel(/Title/i).fill("<script>window.PWNED=true</script>");
   await page.locator("#block-start").fill("09:00");
@@ -92,7 +92,7 @@ test("HOSTILE: input edge cases + recovery", async ({ page }) => {
   await gotoFresh(page);
   await page.getByTestId("dock-add").click();
   await page.waitForTimeout(200);
-  await page.getByTestId("chooser-add-block").click({ force: true });
+  await page.getByTestId("chooser-add-block").click();
   await page.waitForTimeout(200);
   await page.getByLabel(/Title/i).fill(`'; DROP TABLE blocks; --`);
   await page.locator("#block-start").fill("09:00");
@@ -114,7 +114,7 @@ test("HOSTILE: input edge cases + recovery", async ({ page }) => {
   await gotoFresh(page);
   await page.getByTestId("dock-add").click();
   await page.waitForTimeout(200);
-  await page.getByTestId("chooser-add-block").click({ force: true });
+  await page.getByTestId("chooser-add-block").click();
   await page.waitForTimeout(200);
   await page.getByLabel(/Title/i).fill("Bad time");
   // type=time inputs typically reject invalid values, but force via JS
@@ -174,7 +174,7 @@ test("HOSTILE: input edge cases + recovery", async ({ page }) => {
   await gotoFresh(page);
   await page.getByTestId("dock-add").click();
   await page.waitForTimeout(200);
-  await page.getByTestId("chooser-add-block").click({ force: true });
+  await page.getByTestId("chooser-add-block").click();
   await page.waitForTimeout(200);
   await page.getByLabel(/Title/i).fill("Zero-length");
   await page.locator("#block-start").fill("09:00");
@@ -196,7 +196,7 @@ test("HOSTILE: input edge cases + recovery", async ({ page }) => {
   await gotoFresh(page);
   await page.getByTestId("dock-add").click();
   await page.waitForTimeout(200);
-  await page.getByTestId("chooser-add-block").click({ force: true });
+  await page.getByTestId("chooser-add-block").click();
   await page.waitForTimeout(200);
   await page.getByLabel(/Title/i).fill("Double tap");
   await page.locator("#block-start").fill("11:00");
@@ -228,7 +228,7 @@ test("HOSTILE: input edge cases + recovery", async ({ page }) => {
   // Seed valid state first
   await page.getByTestId("dock-add").click();
   await page.waitForTimeout(200);
-  await page.getByTestId("chooser-add-block").click({ force: true });
+  await page.getByTestId("chooser-add-block").click();
   await page.waitForTimeout(200);
   await page.getByLabel(/Title/i).fill("Before corrupt");
   await page.locator("#block-start").fill("06:00");
@@ -309,7 +309,7 @@ test("HOSTILE: input edge cases + recovery", async ({ page }) => {
   await gotoFresh(page);
   await page.getByTestId("dock-add").click();
   await page.waitForTimeout(200);
-  await page.getByTestId("chooser-add-block").click({ force: true });
+  await page.getByTestId("chooser-add-block").click();
   await page.waitForTimeout(200);
   await page.getByLabel(/Title/i).fill("Quota test");
   await page.locator("#block-start").fill("08:00");

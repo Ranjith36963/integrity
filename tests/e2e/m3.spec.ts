@@ -8,7 +8,7 @@ async function addBlock(page: Page, title: string) {
   // M4d migration: dock "+" opens AddChooserSheet first; user picks "Add Block"
   // to reach AddBlockSheet. Tests authored pre-M4d skipped this hop.
   await page.getByRole("button", { name: "Add", exact: true }).click();
-  await page.getByTestId("chooser-add-block").click({ force: true });
+  await page.getByTestId("chooser-add-block").click();
   await page.getByLabel(/Title/i).fill(title);
   await page.getByRole("button", { name: /Save/i }).click();
   await expect(page.locator('[role="dialog"]')).toHaveCount(0);

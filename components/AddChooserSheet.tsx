@@ -28,16 +28,10 @@ export function AddChooserSheet({ open, onPick, onCancel }: Props) {
   useEffect(() => {
     if (!open) return;
     returnFocusRef.current = document.activeElement as HTMLElement;
-    const timer = setTimeout(() => {
-      const container = containerRef.current;
-      if (!container) return;
-      const focusInside =
-        document.activeElement instanceof Node &&
-        container.contains(document.activeElement);
-      if (focusInside) return;
-      container.focus();
-    }, 10);
-    return () => clearTimeout(timer);
+    const container = containerRef.current;
+    if (!container) return;
+    if (container.contains(document.activeElement)) return;
+    container.focus();
   }, [open]);
 
   // Focus trap: Tab/Shift+Tab cycles within the chooser dialog

@@ -79,7 +79,7 @@ test("walk3: new-category sub-view inside AddBlockSheet", async ({ page }) => {
   await page.waitForLoadState("networkidle");
   await page.getByTestId("dock-add").click();
   await page.waitForTimeout(200);
-  await page.getByTestId("chooser-add-block").click({ force: true });
+  await page.getByTestId("chooser-add-block").click();
   await page.waitForTimeout(400);
   // Tap "+ New" category trigger
   const newCatBtn = page.getByRole("button", { name: /^\+\s*new$/i }).first();

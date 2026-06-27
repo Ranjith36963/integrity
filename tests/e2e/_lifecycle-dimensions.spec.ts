@@ -161,7 +161,7 @@ test("DIMENSIONS: Tokyo timezone (UTC+9, no DST)", async ({ browser }) => {
       // Adding a block should round-trip across reload
       await page.getByTestId("dock-add").click();
       await page.waitForTimeout(150);
-      await page.getByTestId("chooser-add-block").click({ force: true });
+      await page.getByTestId("chooser-add-block").click();
       await page.waitForTimeout(150);
       await page.getByLabel(/Title/i).fill("Tokyo block");
       await page.locator("#block-start").fill("07:00");
@@ -247,7 +247,7 @@ test("DIMENSIONS: offline navigation after first paint", async ({
       await page.getByRole("tab", { name: "Day" }).click();
       await page.getByTestId("dock-add").click();
       await page.waitForTimeout(150);
-      await page.getByTestId("chooser-add-block").click({ force: true });
+      await page.getByTestId("chooser-add-block").click();
       await page.waitForTimeout(150);
       await page.getByLabel(/Title/i).fill("Offline block");
       await page.locator("#block-start").fill("07:00");

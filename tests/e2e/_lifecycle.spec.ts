@@ -447,7 +447,7 @@ test("LIFECYCLE: full user journey with every observable logged", async ({
   await axeCheck(page, "06-chooser");
 
   step("07-pick-add-block");
-  await page.getByTestId("chooser-add-block").click({ force: true });
+  await page.getByTestId("chooser-add-block").click();
   await page.waitForTimeout(300);
   const blockSheet = await page
     .locator('[role="dialog"]')
@@ -668,7 +668,7 @@ test("LIFECYCLE: full user journey with every observable logged", async ({
   await page.waitForTimeout(200);
   await page.getByTestId("dock-add").click();
   await page.waitForTimeout(200);
-  await page.getByTestId("chooser-add-block").click({ force: true });
+  await page.getByTestId("chooser-add-block").click();
   await page.waitForTimeout(200);
   await page.getByLabel(/Title/i).fill("🌅 Morning 🧘‍♂️ Practice");
   await page.locator("#block-start").fill("06:00");
@@ -696,7 +696,7 @@ test("LIFECYCLE: full user journey with every observable logged", async ({
   step("19-very-long-name");
   await page.getByTestId("dock-add").click();
   await page.waitForTimeout(200);
-  await page.getByTestId("chooser-add-block").click({ force: true });
+  await page.getByTestId("chooser-add-block").click();
   await page.waitForTimeout(200);
   const longName = "x".repeat(500);
   await page.getByLabel(/Title/i).fill(longName);

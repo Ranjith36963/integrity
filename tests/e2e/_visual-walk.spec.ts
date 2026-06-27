@@ -65,7 +65,7 @@ test("walk: day → add block → add brick → done → edit", async ({ page })
   await shot(page, "03-chooser");
 
   // Add a block
-  await page.getByTestId("chooser-add-block").click({ force: true });
+  await page.getByTestId("chooser-add-block").click();
   await shot(page, "04-add-block-sheet-empty");
   await page.getByLabel(/Title/i).fill("Morning Pages");
   await page.locator("#block-start").fill("09:00");
