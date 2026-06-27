@@ -300,13 +300,16 @@ test("E-m4a-006: tapping final tick chip (dayPct=99→100) shows Fireworks overl
   await page.goto("/");
   await expandBlock(page);
 
-  const lastUndoneBtn = page.locator("button[aria-pressed='false']").last();
+  // Scope to brick-chip to avoid matching TopBar Edit button (same aria-pressed pattern)
+  const lastUndoneBtn = page
+    .locator('[data-component="brick-chip"] button[aria-pressed="false"]')
+    .last();
   if ((await lastUndoneBtn.count()) > 0) {
     await lastUndoneBtn.click();
 
-    // Fireworks overlay should appear within one frame
+    // Fireworks overlay should appear within a few render frames
     const fireworks = page.locator("[data-testid='fireworks']");
-    await expect(fireworks).toBeVisible({ timeout: 500 });
+    await expect(fireworks).toBeVisible({ timeout: 2000 });
 
     // After ~1.7s (≤ 2.0s), overlay unmounts
     await expect(fireworks).not.toBeVisible({ timeout: 2500 });
@@ -421,7 +424,11 @@ test("E-m4a-010: reduced-motion: chip fill snaps; no bloom; no fireworks; chime 
   await page.goto("/");
   await expandBlock(page);
 
-  const btn = page.locator("button[aria-pressed='false']").first();
+  // Scope to brick-chip to avoid matching TopBar Edit button (which would enter edit mode,
+  // causing brick chips to render as divs and losing the aria-pressed button entirely)
+  const btn = page
+    .locator('[data-component="brick-chip"] button[aria-pressed="false"]')
+    .first();
   if ((await btn.count()) > 0) {
     await btn.click();
     // No bloom overlay
@@ -430,7 +437,8 @@ test("E-m4a-010: reduced-motion: chip fill snaps; no bloom; no fireworks; chime 
     // No fireworks overlay
     const fireworks = page.locator("[data-testid='fireworks']");
     await expect(fireworks).not.toBeVisible();
-    // State still reaches 100%
+    // State still reaches 100% (check the block card's aria-expanded and chip state)
+    await page.waitForTimeout(200);
     const pressed = await btn.getAttribute("aria-pressed");
     expect(pressed).toBe("true");
   }

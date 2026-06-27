@@ -84,11 +84,15 @@ export function AddChooserSheet({ open, onPick, onCancel }: Props) {
 
   function handleBlock() {
     haptics.light();
+    // Restore focus to the original trigger before the chooser DOM is removed,
+    // so downstream sheets (AddBlockSheet) capture the correct returnFocusRef.
+    returnFocusRef.current?.focus();
     onPick("block");
   }
 
   function handleBrick() {
     haptics.light();
+    returnFocusRef.current?.focus();
     onPick("brick");
   }
 

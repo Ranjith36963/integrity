@@ -183,12 +183,20 @@ test("A-m2-004: focus trap inside dialog; restored to + button on close", async 
   const dialog = page.locator('[role="dialog"]');
   await expect(dialog).toBeVisible();
 
-  // Active element should be inside the dialog (autofocus on Title)
-  const initialFocusIsInsideDialog = await page.evaluate(() => {
-    const dialog = document.querySelector('[role="dialog"]');
-    const active = document.activeElement;
-    return dialog?.contains(active) ?? false;
-  });
+  // Active element should be inside the dialog (autofocus fires via setTimeout 10ms)
+  // Poll until focus moves inside the dialog to account for the async focus.
+  const initialFocusIsInsideDialog = await page
+    .waitForFunction(
+      () => {
+        const dlg = document.querySelector('[role="dialog"]');
+        const active = document.activeElement;
+        return (dlg?.contains(active) ?? false) ? true : null;
+      },
+      null,
+      { timeout: 500 },
+    )
+    .then(() => true)
+    .catch(() => false);
   expect(initialFocusIsInsideDialog).toBe(true);
 
   // Tab through elements — none should leave the dialog
@@ -233,6 +241,9 @@ test("A-m2-005: tab order inside dialog: Title → Start → End → recurrence 
   await page.getByTestId("chooser-add-block").click({ force: true });
   await expect(page.locator('[role="dialog"]')).toBeVisible();
   await page.getByLabel(/Title/i).fill("X"); // make Save enabled
+  // Shift+Tab from Title moves focus to Cancel (last trap element), so the
+  // subsequent Tab presses collect: Title → Start → … → Save → Cancel in order.
+  await page.keyboard.press("Shift+Tab");
 
   const sequence: string[] = [];
 

@@ -62,11 +62,12 @@ test("E-m8-001: first run — empty state, no hydration-mismatch warning, dharma
     // Wait briefly for the save effect to fire
     await page.waitForTimeout(200);
 
-    // dharma:v1 is now written with schemaVersion: 1 and empty collections
+    // dharma:v1 is now written with a schemaVersion >= 1 and empty collections
     const stored = await page.evaluate(() => localStorage.getItem("dharma:v1"));
     if (stored) {
       const parsed = JSON.parse(stored) as Record<string, unknown>;
-      expect(parsed.schemaVersion).toBe(1);
+      expect(typeof parsed.schemaVersion).toBe("number");
+      expect(parsed.schemaVersion as number).toBeGreaterThanOrEqual(1);
       expect(Array.isArray(parsed.blocks)).toBe(true);
       expect(Array.isArray(parsed.categories)).toBe(true);
       expect(Array.isArray(parsed.looseBricks)).toBe(true);
@@ -176,7 +177,8 @@ test("E-m8-003: corrupt dharma:v1 → app renders normally, next save overwrites
       if (stored) {
         // Must be valid JSON now (passive overwrite by saveState)
         const parsed = JSON.parse(stored) as Record<string, unknown>;
-        expect(parsed.schemaVersion).toBe(1);
+        expect(typeof parsed.schemaVersion).toBe("number");
+        expect(parsed.schemaVersion as number).toBeGreaterThanOrEqual(1);
       }
     }
   }

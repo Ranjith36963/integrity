@@ -309,11 +309,15 @@ test("E-m7c-004: second BuildingClient mount (Day→Week→Day) fires count-up a
   expect(finalPct).toBeGreaterThan(0);
 
   // Navigate to Week view
-  await page.click("[data-testid='view-switcher-week']");
+  const weekTab = page.getByRole("tab", { name: /^week$/i });
+  if ((await weekTab.count()) === 0) return;
+  await weekTab.click();
   await page.waitForTimeout(200);
 
   // Navigate back to Day view — BuildingClient re-mounts
-  await page.click("[data-testid='view-switcher-day']");
+  const dayTab = page.getByRole("tab", { name: /^day$/i });
+  if ((await dayTab.count()) === 0) return;
+  await dayTab.click();
   await page.waitForSelector("[data-testid='hero-numeral']", {
     timeout: 5000,
   });

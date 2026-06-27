@@ -26,7 +26,7 @@ async function addBlock(
     await page.getByLabel(/Start/i).fill(opts.start);
   }
   if (opts?.end !== undefined) {
-    await page.getByLabel(/End/i).fill(opts.end);
+    await page.getByLabel("End (optional)").fill(opts.end);
     await page.keyboard.press("Tab"); // commit on blur if validator requires it
   }
   await page.getByRole("button", { name: /Save/i }).click();
@@ -189,8 +189,8 @@ test("E-m2-005: Save is aria-disabled when Title is empty; enabled after typing"
   const saveBtn = page.getByRole("button", { name: /Save/i });
   await expect(saveBtn).toHaveAttribute("aria-disabled", "true");
 
-  // Clicking disabled Save should not close dialog
-  await saveBtn.click();
+  // Clicking disabled Save should not close dialog (force bypasses aria-disabled actionability check)
+  await saveBtn.click({ force: true });
   await expect(page.locator('[role="dialog"]')).toBeVisible();
 
   // Type title — Save becomes enabled
@@ -220,13 +220,15 @@ test("E-m2-006: End before Start shows inline error and disables Save", async ({
   await page.getByLabel(/Title/i).fill("Foo");
 
   // Set End to a time before Start (Start defaults to 09:00)
-  const endInput = page.getByLabel(/End/i);
+  const endInput = page.getByLabel("End (optional)");
   await endInput.fill("08:00");
   // Trigger blur/change
   await page.keyboard.press("Tab");
 
-  // Inline error visible
-  const alert = page.locator('[role="alert"]');
+  // Inline error visible (exclude Next.js route announcer which is always role="alert")
+  const alert = page.locator(
+    '[role="alert"]:not([id="__next-route-announcer__"])',
+  );
   await expect(alert).toBeVisible();
   await expect(alert).toContainText(/End must be after Start/i);
 
@@ -239,7 +241,9 @@ test("E-m2-006: End before Start shows inline error and disables Save", async ({
   // Fix end time — error disappears, Save enabled
   await endInput.fill("10:00");
   await page.keyboard.press("Tab");
-  await expect(page.locator('[role="alert"]')).toHaveCount(0);
+  await expect(
+    page.locator('[role="alert"]:not([id="__next-route-announcer__"])'),
+  ).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Save/i })).toHaveAttribute(
     "aria-disabled",
     "false",
@@ -262,12 +266,14 @@ test("E-m2-007: End=24:00 shows 'before midnight' inline error", async ({
   await page.keyboard.press("Tab");
 
   // Set End to 24:00
-  const endInput = page.getByLabel(/End/i);
+  const endInput = page.getByLabel("End (optional)");
   await endInput.fill("24:00");
   await page.keyboard.press("Tab");
 
-  // Inline error
-  const alert = page.locator('[role="alert"]');
+  // Inline error (exclude Next.js route announcer which is always role="alert")
+  const alert = page.locator(
+    '[role="alert"]:not([id="__next-route-announcer__"])',
+  );
   await expect(alert).toBeVisible();
   await expect(alert).toContainText(/before midnight/i);
 
@@ -306,12 +312,15 @@ test("E-m2-008: overlapping block raises an alert and Save is disabled (M4e cont
   await page.getByLabel(/Title/i).fill("Second");
   const startInput = page.getByLabel(/Start/i);
   await startInput.fill("09:30");
-  const endInput = page.getByLabel(/End/i);
+  const endInput = page.getByLabel("End (optional)");
   await endInput.fill("10:30");
   await page.keyboard.press("Tab");
 
   // Hard alert (M4e contract): role="alert" naming the conflicting block.
-  const alert = page.locator('[role="alert"]');
+  // Exclude Next.js route announcer which is always role="alert" in the DOM.
+  const alert = page.locator(
+    '[role="alert"]:not([id="__next-route-announcer__"])',
+  );
   await expect(alert).toBeVisible();
   await expect(alert).toContainText("Existing");
 

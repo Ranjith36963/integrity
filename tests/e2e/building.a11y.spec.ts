@@ -90,7 +90,7 @@ test("A-bld-004: Tab focus order passes through key interactive elements", async
   await page.keyboard.press("Tab");
 
   // Find Edit button and verify it gets focus
-  const editBtn = page.getByRole("button", { name: "Edit", exact: true });
+  const editBtn = page.getByRole("button", { name: /edit mode/i });
   await editBtn.focus();
   const editFocused = await editBtn.evaluate(
     (el) => document.activeElement === el,
@@ -141,7 +141,7 @@ test("A-bld-005: edit mode introduces no new axe violations", async ({
   const baselineIds = new Set(baselineResults.violations.map((v) => v.id));
 
   // Enable edit mode
-  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByRole("button", { name: /edit mode/i }).click();
 
   // Violations in edit mode
   const editResults = await new AxeBuilder({ page })

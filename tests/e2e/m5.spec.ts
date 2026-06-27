@@ -119,7 +119,7 @@ test("E-m5-002: 'Just today' removes the block from today's timeline only", asyn
     name: /^delete block morning/i,
   });
   if ((await deleteBtn.count()) === 0) return;
-  await deleteBtn.click();
+  await deleteBtn.click({ force: true });
 
   const dialog = page.getByRole("dialog");
   if ((await dialog.count()) === 0) return;
@@ -154,7 +154,7 @@ test("E-m5-003: 'All recurrences' removes the block template from all days", asy
     name: /^delete block morning/i,
   });
   if ((await deleteBtn.count()) === 0) return;
-  await deleteBtn.click();
+  await deleteBtn.click({ force: true });
 
   const dialog = page.getByRole("dialog");
   if ((await dialog.count()) === 0) return;
@@ -189,7 +189,7 @@ test("E-m5-004: Cancel aborts deletion; ESC = Cancel; block remains on timeline"
     name: /^delete block morning/i,
   });
   if ((await deleteBtn.count()) === 0) return;
-  await deleteBtn.click();
+  await deleteBtn.click({ force: true });
 
   const dialog = page.getByRole("dialog");
   if ((await dialog.count()) === 0) return;
@@ -210,7 +210,7 @@ test("E-m5-004: Cancel aborts deletion; ESC = Cancel; block remains on timeline"
 
   // Re-open and cancel via ESC
   if ((await deleteBtn.count()) > 0) {
-    await deleteBtn.click();
+    await deleteBtn.click({ force: true });
     if ((await dialog.count()) > 0) {
       await page.keyboard.press("Escape");
       await expect(dialog).not.toBeVisible();

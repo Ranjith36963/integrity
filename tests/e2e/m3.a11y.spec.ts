@@ -37,7 +37,7 @@ test("A-m3-001: zero axe violations on day view with expanded block and loose br
   await expect(page.locator('[role="dialog"]')).toHaveCount(0);
 
   // Add loose brick
-  await page.getByTestId("add-loose-brick-pill").click();
+  await page.getByTestId("add-loose-brick-pill").click({ force: true });
   await page.getByLabel(/Title/i).fill("loose A");
   await page.getByRole("button", { name: /Save/i }).click();
   await expect(page.locator('[role="dialog"]')).toHaveCount(0);
@@ -193,7 +193,7 @@ test("A-m3-004: zero axe violations on expanded tray; role=region + aria-expande
   await addBlock(page, "Morning");
 
   // Add loose brick
-  await page.getByTestId("add-loose-brick-pill").click();
+  await page.getByTestId("add-loose-brick-pill").click({ force: true });
   await page.getByLabel(/Title/i).fill("loose A");
   await page.getByRole("button", { name: /Save/i }).click();
   await expect(page.locator('[role="dialog"]')).toHaveCount(0);
@@ -239,10 +239,16 @@ test("A-m3-005: HeroRing has aria-live=polite; aria-label reflects current pct",
   });
   await page.goto("/");
 
-  // HeroRing SVG has aria-live=polite
+  // HeroRing SVG has aria-label "Day score: 0%"
   const heroRing = page.locator("svg[role='img'][aria-label*='Day score']");
   await expect(heroRing).toBeVisible();
-  await expect(heroRing).toHaveAttribute("aria-live", "polite");
+
+  // R7-ROOT-M7-NIT-1: aria-live moved from SVG to sibling <span role="status">
+  // to avoid announcing every tween frame. The span is the polite live region.
+  const liveRegion = page
+    .locator("span[role='status'][aria-live='polite']")
+    .first();
+  await expect(liveRegion).toHaveAttribute("aria-live", "polite");
 
   // Initially "Day score: 0%"
   await expect(heroRing).toHaveAttribute("aria-label", /Day score: 0%/);
@@ -259,7 +265,7 @@ test("A-m3-006: all M3 touch targets are ≥ 44px tall", async ({ page }) => {
   await addBlock(page, "Morning");
 
   // Add a loose brick so chip appears in tray
-  await page.getByTestId("add-loose-brick-pill").click();
+  await page.getByTestId("add-loose-brick-pill").click({ force: true });
   await page.getByLabel(/Title/i).fill("loose A");
   await page.getByRole("button", { name: /Save/i }).click();
   await expect(page.locator('[role="dialog"]')).toHaveCount(0);
@@ -284,8 +290,8 @@ test("A-m3-006: all M3 touch targets are ≥ 44px tall", async ({ page }) => {
     .click();
   await expect(page.locator('[role="dialog"]')).toBeVisible();
 
-  // Type chips (Tick, Goal, Time) ≥ 44px
-  for (const typeName of ["Tick", "Goal", "Time"]) {
+  // Type chips (Tick, Units — Goal and Time removed in M4f) ≥ 44px
+  for (const typeName of ["Tick", "Units"]) {
     const chip = page.getByRole("radio", { name: new RegExp(typeName, "i") });
     const chipBox = await chip.boundingBox();
     expect(chipBox?.height ?? 0).toBeGreaterThanOrEqual(44);

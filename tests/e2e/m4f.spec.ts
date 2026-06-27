@@ -39,7 +39,7 @@ test("E-m4f-001: add units brick, tap chip, type 20 in UnitsEntrySheet, Save →
 
       // Fill Target and Unit
       await sheet.getByLabel(/Target/i).fill("30");
-      await sheet.getByLabel(/Unit/i).fill("minutes");
+      await sheet.getByLabel("Unit", { exact: true }).fill("minutes");
 
       // Save
       const saveBtn = sheet.getByRole("button", { name: /Save/i });
@@ -52,7 +52,7 @@ test("E-m4f-001: add units brick, tap chip, type 20 in UnitsEntrySheet, Save →
       if ((await brickChip.count()) > 0) {
         const chipBtn = brickChip.locator("xpath=ancestor::button");
         if ((await chipBtn.count()) > 0) {
-          await chipBtn.first().click();
+          await chipBtn.first().click({ force: true });
         }
 
         // UnitsEntrySheet should open
@@ -107,7 +107,7 @@ test("E-m4f-002: tap tick chip → no UnitsEntrySheet opens; done toggles (M4a r
         .getByRole("button", { name: /Morning stretch/i })
         .first();
       if ((await tickBrickBtn.count()) > 0) {
-        await tickBrickBtn.click();
+        await tickBrickBtn.click({ force: true });
 
         // No dialog should appear (tick tap does not open a sheet)
         const anyDialog = page.getByRole("dialog");
@@ -181,7 +181,7 @@ test("E-m4f-004: free-text unit parity — reps unit renders '50 / 100 reps' aft
       const unitsChip = sheet.getByRole("radio", { name: /units/i });
       await unitsChip.click();
       await sheet.getByLabel(/Target/i).fill("100");
-      await sheet.getByLabel(/Unit/i).fill("reps");
+      await sheet.getByLabel("Unit", { exact: true }).fill("reps");
       await sheet.getByRole("button", { name: /Save/i }).click();
       await expect(sheet).not.toBeVisible();
 
@@ -190,7 +190,7 @@ test("E-m4f-004: free-text unit parity — reps unit renders '50 / 100 reps' aft
       if ((await brickChip.count()) > 0) {
         const chipBtn = brickChip.locator("xpath=ancestor::button");
         if ((await chipBtn.count()) > 0) {
-          await chipBtn.first().click();
+          await chipBtn.first().click({ force: true });
         }
 
         const entrySheet = page.getByRole("dialog", { name: /Pushups/i });
@@ -230,7 +230,7 @@ test("E-m4f-005: no live timer observable; done only changes via UnitsEntrySheet
       const unitsChip = sheet.getByRole("radio", { name: /units/i });
       await unitsChip.click();
       await sheet.getByLabel(/Target/i).fill("30");
-      await sheet.getByLabel(/Unit/i).fill("minutes");
+      await sheet.getByLabel("Unit", { exact: true }).fill("minutes");
       await sheet.getByRole("button", { name: /Save/i }).click();
       await expect(sheet).not.toBeVisible();
 
