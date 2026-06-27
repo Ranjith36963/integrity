@@ -148,7 +148,7 @@ test("A-m4f-004: zero axe violations in UnitsEntrySheet across valid / empty / o
         "wcag21a",
         "wcag21aa",
       ]);
-      const isSerious = (v: { impact?: string }) =>
+      const isSerious = (v: { impact?: string | null }) =>
         v.impact === "serious" || v.impact === "critical";
 
       // State (a): valid value — 20

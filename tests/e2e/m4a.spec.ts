@@ -9,12 +9,10 @@
  * Covers: E-m4a-001..010
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 // Seed localStorage with a state that has one undone tick brick inside a block.
-async function seedWithUndoneTick(
-  page: Parameters<Parameters<typeof test>[1]>[0],
-) {
+async function seedWithUndoneTick(page: Page) {
   await page.addInitScript(() => {
     const today = new Date().toLocaleDateString("sv-SE");
     localStorage.setItem(
@@ -53,9 +51,7 @@ async function seedWithUndoneTick(
 }
 
 // Seed with one DONE tick brick.
-async function seedWithDoneTick(
-  page: Parameters<Parameters<typeof test>[1]>[0],
-) {
+async function seedWithDoneTick(page: Page) {
   await page.addInitScript(() => {
     const today = new Date().toLocaleDateString("sv-SE");
     localStorage.setItem(
@@ -94,7 +90,7 @@ async function seedWithDoneTick(
 }
 
 // Expand the first timeline block so its brick chips are visible.
-async function expandBlock(page: Parameters<Parameters<typeof test>[1]>[0]) {
+async function expandBlock(page: Page) {
   const card = page.locator('[data-component="timeline-block"]').first();
   if ((await card.count()) > 0) {
     await card.click();
