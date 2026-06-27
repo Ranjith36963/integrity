@@ -4,24 +4,18 @@
   "packageManager": "npm",
   "testRunner": "vitest",
   "vitest": {
-    "configFile": "vitest.config.ts"
+    "configFile": "vitest.config.ts",
+    "related": false
   },
   "reporters": ["progress", "clear-text", "html"],
-  "mutate": [
-    "lib/dharma.ts",
-    "lib/dayOfYear.ts",
-    "lib/timeOffset.ts"
-  ],
-  "ignorePatterns": [
-    "**/*.test.ts",
-    "**/*.test.tsx",
-    "**/*.tz.test.ts"
-  ],
+  "mutate": ["lib/dharma.ts", "lib/dayOfYear.ts", "lib/timeOffset.ts"],
+  "ignorePatterns": [],
   "thresholds": {
     "high": 90,
     "low": 75,
     "break": 60
   },
+  "coverageAnalysis": "off",
   "timeoutMS": 30000,
   "concurrency": 4,
   "checkers": ["typescript"],

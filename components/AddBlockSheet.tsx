@@ -302,7 +302,6 @@ export function AddBlockSheet({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Morning pages, Workout, Stand-up…"
-                autoFocus
                 aria-describedby={
                   !titleValid && title !== "" ? "title-error" : undefined
                 }
@@ -488,11 +487,11 @@ export function AddBlockSheet({
               onRequestNewCategory={() => setView("newCategory")}
             />
 
-            {/* Save — full-width primary action. The Sheet header owns the
-                Close (×) affordance, so the action bar is single-purpose. */}
+            {/* Save + Cancel action row */}
             <div
               style={{
                 display: "flex",
+                gap: "8px",
                 marginTop: "auto",
                 paddingTop: "24px",
               }}
@@ -526,6 +525,28 @@ export function AddBlockSheet({
                   Resolve the overlap to save.
                 </span>
               )}
+              <button
+                type="button"
+                onClick={handleClose}
+                className="tap"
+                style={{
+                  flexShrink: 0,
+                  height: "48px",
+                  paddingLeft: "20px",
+                  paddingRight: "20px",
+                  borderRadius: "8px",
+                  border: "1px solid var(--card-edge)",
+                  background: "transparent",
+                  color: "var(--ink-dim)",
+                  fontFamily: "var(--font-ui)",
+                  fontSize: "var(--fs-14)",
+                  cursor: "pointer",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         ) : (

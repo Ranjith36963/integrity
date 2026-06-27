@@ -94,7 +94,7 @@ test("walk2: multi-block day + edit mode", async ({ page }) => {
   ] as const) {
     await page.getByTestId("dock-add").click();
     await page.waitForTimeout(200);
-    await page.getByTestId("chooser-add-block").click({ force: true });
+    await page.getByTestId("chooser-add-block").click();
     await page.waitForTimeout(400);
     await page.getByLabel(/Title/i).fill(title);
     await page.locator("#block-start").fill(start);
@@ -118,7 +118,7 @@ test("walk2: units brick entry", async ({ page }) => {
   // Open AddBrickSheet from chooser
   await page.getByTestId("dock-add").click();
   await page.waitForTimeout(200);
-  await page.getByTestId("chooser-add-brick").click({ force: true });
+  await page.getByTestId("chooser-add-brick").click();
   await page.waitForTimeout(400);
   await shot(page, "35-add-brick-default");
 
@@ -139,7 +139,7 @@ test("walk2: AddBlockSheet custom range expands", async ({ page }) => {
 
   await page.getByTestId("dock-add").click();
   await page.waitForTimeout(200);
-  await page.getByTestId("chooser-add-block").click({ force: true });
+  await page.getByTestId("chooser-add-block").click();
   await page.waitForTimeout(400);
   await page.getByLabel(/Title/i).fill("Sprint week");
 
@@ -160,7 +160,7 @@ test("walk2: 360x780 small android viewport", async ({ page }) => {
   await page.getByTestId("dock-add").click();
   await page.waitForTimeout(300);
   await shot(page, "39-android-chooser");
-  await page.getByTestId("chooser-add-block").click({ force: true });
+  await page.getByTestId("chooser-add-block").click();
   await page.waitForTimeout(400);
   await shot(page, "40-android-add-block");
 });

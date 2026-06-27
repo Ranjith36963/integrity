@@ -27,7 +27,7 @@ test("A-m4d-001: no axe violations when AddChooserSheet is open", async ({
   if ((await dockAdd.count()) > 0) {
     await dockAdd.click();
 
-    const chooser = page.getByRole("dialog", { name: "Add" });
+    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
     if ((await chooser.count()) > 0) {
       await expect(chooser).toBeVisible();
 
@@ -49,7 +49,7 @@ test("A-m4d-002: chooser has role=dialog aria-label='Add'; Tab cycles Add Block 
   if ((await dockAdd.count()) > 0) {
     await dockAdd.click();
 
-    const chooser = page.getByRole("dialog", { name: "Add" });
+    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
     if ((await chooser.count()) > 0) {
       await expect(chooser).toBeVisible();
 
@@ -106,7 +106,7 @@ test("A-m4d-003: Add Block, Add Brick, and Cancel buttons are ≥ 44px (ADR-031)
   if ((await dockAdd.count()) > 0) {
     await dockAdd.click();
 
-    const chooser = page.getByRole("dialog", { name: "Add" });
+    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
     if ((await chooser.count()) > 0) {
       const addBlockBtn = chooser.getByRole("button", { name: "Add Block" });
       const addBrickBtn = chooser.getByRole("button", { name: "Add Brick" });
@@ -147,7 +147,7 @@ test("A-m4d-004: pressing Escape closes the chooser without opening any downstre
   if ((await dockAdd.count()) > 0) {
     await dockAdd.click();
 
-    const chooser = page.getByRole("dialog", { name: "Add" });
+    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
     if ((await chooser.count()) > 0) {
       await expect(chooser).toBeVisible();
 

@@ -20,13 +20,14 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await page.evaluate(() => {
     localStorage.clear();
+    localStorage.setItem("dharma:onboarding-shown", "true");
   });
   await page.reload();
 });
 
 // ─── E-m9b-001: first run — empty v2 default, dharma:v1 written with v2 shape ─
 
-test("E-m9b-001: first run — empty state, dharma:v1 written with schemaVersion:2, history:{}, currentDate=today", async ({
+test("E-m9b-001: first run — empty state, dharma:v1 written with schemaVersion:3, history:{}, currentDate=today", async ({
   page,
 }) => {
   const consoleErrors: string[] = [];
@@ -58,8 +59,8 @@ test("E-m9b-001: first run — empty state, dharma:v1 written with schemaVersion
     const stored = await page.evaluate(() => localStorage.getItem("dharma:v1"));
     if (stored) {
       const parsed = JSON.parse(stored) as Record<string, unknown>;
-      // v2 shape: schemaVersion === 2
-      expect(parsed.schemaVersion).toBe(2);
+      // v3 shape: schemaVersion === 3
+      expect(parsed.schemaVersion).toBe(3);
       // history is an empty object
       expect(parsed.history).toEqual({});
       // currentDate equals today's ISO date
@@ -85,7 +86,7 @@ test("E-m9b-002: same-day reload — currentDate === today → no rollover, hist
   if ((await dockAdd.count()) === 0) return;
 
   await dockAdd.click();
-  const chooser = page.getByRole("dialog", { name: "Add" });
+  const chooser = page.getByRole("dialog", { name: "Add", exact: true });
   if ((await chooser.count()) === 0) return;
   await chooser.getByRole("button", { name: "Add Block" }).click();
 

@@ -72,22 +72,10 @@ export function Hero({
         </div>
       )}
       <div className="mt-3 flex items-center gap-4 leading-none">
-        {/* HeroRing wraps the numeral. The ring's aria-label is the canonical reading.
-            M7c: children-as-function so the 72-px numeral receives the live tween value
-            (roundedDisplayPct) from HeroRing, keeping stroke-dashoffset + numeral in sync
-            (joint-state AC #1). */}
-        <HeroRing pct={pct} firstPaintCountUp={firstPaintCountUp}>
-          {(rounded) => (
-            <span
-              aria-hidden="true"
-              data-testid="hero-numeral"
-              className="font-serif-italic text-[72px] leading-[0.85]"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              {rounded}%
-            </span>
-          )}
-        </HeroRing>
+        {/* HeroRing renders the numeral as SVG text internally (E-m7c-003: SVG text
+            is outside the CSS layout flow, preventing count-up CLS). The ring's
+            aria-label is the canonical accessible reading; the numeral is aria-hidden. */}
+        <HeroRing pct={pct} firstPaintCountUp={firstPaintCountUp} />
       </div>
       <div
         className="mt-2 text-[10px] tracking-[0.18em] uppercase"

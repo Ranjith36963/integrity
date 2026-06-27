@@ -22,7 +22,7 @@ test("A-m4e-001: Duration toggle has role=switch, aria-checked toggles, ≥44px 
   const dockAdd = page.getByRole("button", { name: "Add" }).last();
   if ((await dockAdd.count()) > 0) {
     await dockAdd.click();
-    const chooser = page.getByRole("dialog", { name: "Add" });
+    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
     if ((await chooser.count()) > 0) {
       await chooser.getByRole("button", { name: "Add Brick" }).click();
     }
@@ -62,7 +62,7 @@ test("A-m4e-002: overlap-warning has role=alert; disappears when overlap clears"
   const dockAdd = page.getByRole("button", { name: "Add" }).last();
   if ((await dockAdd.count()) > 0) {
     await dockAdd.click();
-    const chooser = page.getByRole("dialog", { name: "Add" });
+    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
     if ((await chooser.count()) > 0) {
       await chooser.getByRole("button", { name: "Add Brick" }).click();
     }
@@ -106,7 +106,7 @@ test("A-m4e-003: disabled Save has aria-disabled=true; re-enables when overlap c
   const dockAdd = page.getByRole("button", { name: "Add" }).last();
   if ((await dockAdd.count()) > 0) {
     await dockAdd.click();
-    const chooser = page.getByRole("dialog", { name: "Add" });
+    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
     if ((await chooser.count()) > 0) {
       await chooser.getByRole("button", { name: "Add Brick" }).click();
     }
@@ -155,7 +155,7 @@ test("A-m4e-004: zero axe violations with AddBrickSheet open and overlap warning
   const dockAdd = page.getByRole("button", { name: "Add" }).last();
   if ((await dockAdd.count()) > 0) {
     await dockAdd.click();
-    const chooser = page.getByRole("dialog", { name: "Add" });
+    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
     if ((await chooser.count()) > 0) {
       await chooser.getByRole("button", { name: "Add Brick" }).click();
     }

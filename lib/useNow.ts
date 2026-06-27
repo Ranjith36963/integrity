@@ -19,11 +19,13 @@ function formatHHMM(d: Date): string {
  * avoids a CLS flash; bounded skew is acceptable for informational time).
  */
 export function useNow(): string {
-  const [now, setNow] = useState<string>(() => formatHHMM(new Date()));
+  const [now, setNow] = useState<string>(() =>
+    formatHHMM(new Date(Date.now())),
+  );
 
   useEffect(() => {
     const id = setInterval(() => {
-      setNow(formatHHMM(new Date()));
+      setNow(formatHHMM(new Date(Date.now())));
     }, 60_000);
     return () => clearInterval(id);
   }, []);

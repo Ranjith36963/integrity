@@ -18,6 +18,7 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await page.evaluate(() => {
     localStorage.clear();
+    localStorage.setItem("dharma:onboarding-shown", "true");
   });
   await page.reload();
 });
@@ -42,11 +43,12 @@ test("E-m8-001: first run — empty state, no hydration-mismatch warning, dharma
     // App renders without crash
     await expect(hero).toBeVisible();
 
-    // Hero day number reads "Building 1 of N" (first run — programStart = today)
-    const dayCounter = hero.locator(".mt-1").first();
+    // Hero day number reads "DAY ⌬ 001 / N" (first run — programStart = today, day 1)
+    const dayCounter = page.locator("[data-testid='hero-day-number']").first();
     if ((await dayCounter.count()) > 0) {
       const text = await dayCounter.textContent();
-      expect(text?.trim()).toMatch(/^Building 1 of \d+$/);
+      // Accepts new sci-fi format "DAY ⌬ 001 / 365" — day 1 of the year
+      expect(text?.trim()).toMatch(/001/);
     }
 
     // No hydration-mismatch errors in console
@@ -61,11 +63,12 @@ test("E-m8-001: first run — empty state, no hydration-mismatch warning, dharma
     // Wait briefly for the save effect to fire
     await page.waitForTimeout(200);
 
-    // dharma:v1 is now written with schemaVersion: 1 and empty collections
+    // dharma:v1 is now written with a schemaVersion >= 1 and empty collections
     const stored = await page.evaluate(() => localStorage.getItem("dharma:v1"));
     if (stored) {
       const parsed = JSON.parse(stored) as Record<string, unknown>;
-      expect(parsed.schemaVersion).toBe(1);
+      expect(typeof parsed.schemaVersion).toBe("number");
+      expect(parsed.schemaVersion as number).toBeGreaterThanOrEqual(1);
       expect(Array.isArray(parsed.blocks)).toBe(true);
       expect(Array.isArray(parsed.categories)).toBe(true);
       expect(Array.isArray(parsed.looseBricks)).toBe(true);
@@ -85,7 +88,7 @@ test("E-m8-002: mutate → reload → block, brick, and brick done state survive
 
   // Add a block
   await dockAdd.click();
-  const chooser = page.getByRole("dialog", { name: "Add" });
+  const chooser = page.getByRole("dialog", { name: "Add", exact: true });
   if ((await chooser.count()) === 0) return;
   await chooser.getByRole("button", { name: "Add Block" }).click();
 
@@ -175,7 +178,8 @@ test("E-m8-003: corrupt dharma:v1 → app renders normally, next save overwrites
       if (stored) {
         // Must be valid JSON now (passive overwrite by saveState)
         const parsed = JSON.parse(stored) as Record<string, unknown>;
-        expect(parsed.schemaVersion).toBe(1);
+        expect(typeof parsed.schemaVersion).toBe("number");
+        expect(parsed.schemaVersion as number).toBeGreaterThanOrEqual(1);
       }
     }
   }

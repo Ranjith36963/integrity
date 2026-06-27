@@ -10,6 +10,14 @@ const baseConfig: NextConfig = {
   // Disable the Next.js dev toolbar so Playwright button-count tests
   // are not affected by framework-injected UI (E-m0-003).
   devIndicators: false,
+  // useFirstPaintAfterHydration (lib/firstPaint.ts) mutates a ref during
+  // render to drive a tri-state phase machine. React Strict Mode double-invokes
+  // function component bodies in development, advancing the ref twice per
+  // committed render — stagger is always false, so the count-up tween never
+  // fires (E-m7c-001, E-m7c-004). Strict Mode is a dev-only check; production
+  // builds are unaffected. Disabling here restores single-invoke semantics so
+  // the phase machine works as designed.
+  reactStrictMode: false,
 };
 
 const capacitorOverrides: Partial<NextConfig> = {

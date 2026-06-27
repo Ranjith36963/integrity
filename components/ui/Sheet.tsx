@@ -113,6 +113,7 @@ export function Sheet({
       >
         {title && (
           <header
+            role="presentation"
             data-scrolled={scrolled ? "true" : undefined}
             className="flex items-center justify-between gap-[var(--sp-12)] border-b border-white/5 px-[var(--sp-16)] pb-[var(--sp-12)] transition-shadow duration-150"
             style={{

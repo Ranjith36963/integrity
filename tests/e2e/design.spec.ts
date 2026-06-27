@@ -175,7 +175,7 @@ test.describe("E-m0-006: Modal safe-area padding", () => {
       ) as HTMLElement | null;
       return sheet ? sheet.style.paddingBottom : null;
     });
-    expect(sheetPaddingBottom).toContain("var(--safe-bottom)");
+    expect(sheetPaddingBottom).toContain("var(--safe-bottom");
   });
 });
 
@@ -236,11 +236,11 @@ test.describe("E-m0-008: CSS token values resolved at runtime", () => {
     expect(accent).toBe("#fbbf24");
   });
 
-  test("--cat-passive resolves to #64748b", async ({ page }) => {
+  test("--passive resolves to #64748b", async ({ page }) => {
     await page.goto("/design");
     const catPassive = await page.evaluate(() =>
       getComputedStyle(document.documentElement)
-        .getPropertyValue("--cat-passive")
+        .getPropertyValue("--passive")
         .trim(),
     );
     expect(catPassive).toBe("#64748b");

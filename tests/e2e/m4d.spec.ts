@@ -25,7 +25,7 @@ test("E-m4d-001: tapping dock + opens AddChooserSheet; tapping Add Block opens A
     await dockAdd.click();
 
     // AddChooserSheet should be visible (role=dialog aria-label="Add")
-    const chooser = page.getByRole("dialog", { name: "Add" });
+    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
     await expect(chooser).toBeVisible();
 
     // Tap "Add Block" inside the chooser
@@ -52,7 +52,7 @@ test("E-m4d-002: tapping dock + → Add Brick shows AddBrickSheet with three mea
   if ((await dockAdd.count()) > 0) {
     await dockAdd.click();
 
-    const chooser = page.getByRole("dialog", { name: "Add" });
+    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
     await expect(chooser).toBeVisible();
 
     await chooser.getByRole("button", { name: "Add Brick" }).click();
@@ -84,7 +84,7 @@ test("E-m4d-003: tapping an empty hour slot opens chooser; Add Block pre-fills s
     await slot.click();
 
     // Chooser opens
-    const chooser = page.getByRole("dialog", { name: "Add" });
+    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
     await expect(chooser).toBeVisible();
 
     await chooser.getByRole("button", { name: "Add Block" }).click();
@@ -113,7 +113,7 @@ test("E-m4d-004: slot tap → Add Brick opens AddBrickSheet with no start/time i
   if ((await slot.count()) > 0) {
     await slot.click();
 
-    const chooser = page.getByRole("dialog", { name: "Add" });
+    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
     if ((await chooser.count()) > 0) {
       await chooser.getByRole("button", { name: "Add Brick" }).click();
 
@@ -139,7 +139,7 @@ test("E-m4d-005: at mobile 430px viewport chooser buttons are ≥ 44px; no horiz
   if ((await dockAdd.count()) > 0) {
     await dockAdd.click();
 
-    const chooser = page.getByRole("dialog", { name: "Add" });
+    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
     if ((await chooser.count()) > 0) {
       // Check no horizontal overflow
       const scrollWidth = await page.evaluate(
@@ -194,7 +194,10 @@ test("E-m4d-006: with prefers-reduced-motion:reduce the chooser is visible immed
     const before = Date.now();
     await dockAdd.click();
 
-    const chooser = reducedPage.getByRole("dialog", { name: "Add" });
+    const chooser = reducedPage.getByRole("dialog", {
+      name: "Add",
+      exact: true,
+    });
     if ((await chooser.count()) > 0) {
       await expect(chooser).toBeVisible();
       const elapsed = Date.now() - before;

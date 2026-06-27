@@ -170,7 +170,7 @@ jobs:
     steps:
       - name: Verify all upstream jobs succeeded
         run: |
-          # ${{ toJson(needs) }} is a JSON map of needs → result. If any
+          # needs is a JSON map of job-name → {result, outputs}. If any
           # result is not 'success', fail the gate so branch protection
           # blocks merge.
           ALL_RESULTS='${{ toJson(needs) }}'

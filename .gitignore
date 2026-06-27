@@ -47,3 +47,6 @@ next-env.d.ts
 .stryker-tmp/
 reports/
 stryker.log
+
+# e2e test screenshots (debug artifacts)
+/e2e-screenshots/

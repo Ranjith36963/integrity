@@ -225,26 +225,88 @@ test("E-m4b-008: 430x932 viewport — no horizontal scroll; − and + buttons pr
   }
 });
 
-// ─── E-m4b-009: tick + time chip regression — goal taps don't bleed into them ─
+// ─── E-m4b-009: tick toggle regression — units count unaffected by tick taps ──
 
 test("E-m4b-009: tick toggles, time inert, goal count unaffected by tick/time taps", async ({
   page,
 }) => {
+  // Seed: block with 1 tick brick (undone) + 1 units brick (M4f: goal→units)
+  await page.addInitScript(() => {
+    const today = new Date().toLocaleDateString("sv-SE");
+    localStorage.setItem(
+      "dharma:v1",
+      JSON.stringify({
+        schemaVersion: 3,
+        programStart: today,
+        currentDate: today,
+        blocks: [
+          {
+            id: "blk-1",
+            name: "Morning",
+            start: "09:00",
+            end: "10:00",
+            recurrence: { kind: "just-today", date: today },
+            categoryId: null,
+            bricks: [
+              {
+                id: "brk-tick",
+                name: "Tick Brick",
+                categoryId: null,
+                parentBlockId: "blk-1",
+                hasDuration: false,
+                kind: "tick",
+                done: false,
+              },
+              {
+                id: "brk-units",
+                name: "Units Brick",
+                categoryId: null,
+                parentBlockId: "blk-1",
+                hasDuration: false,
+                kind: "units",
+                target: 10,
+                unit: "reps",
+                done: 0,
+              },
+            ],
+          },
+        ],
+        looseBricks: [],
+        categories: [],
+        deletions: {},
+      }),
+    );
+  });
   await page.goto("/");
 
-  // Requires seeded state with one tick + one goal + one time brick — deferred to preview.
-  const tickBtn = page.locator("button[aria-pressed='false']").first();
-  if ((await tickBtn.count()) > 0) {
-    const initialGoal = await page
-      .locator('[role="group"]')
-      .first()
-      .textContent();
-    await tickBtn.click();
-    await page.waitForTimeout(100);
-    expect(await tickBtn.getAttribute("aria-pressed")).toBe("true");
-    // Goal chip badge unchanged
-    const after = await page.locator('[role="group"]').first().textContent();
-    expect(after).toBe(initialGoal);
+  // Expand block so chips are visible
+  const card = page.locator('[data-component="timeline-block"]').first();
+  if ((await card.count()) > 0) {
+    await card.click();
+    await expect(card).toHaveAttribute("aria-expanded", "true");
+
+    // Scope tick button to brick chips only (avoids TopBar edit button)
+    const tickBtn = card
+      .locator('[data-component="brick-chip"] button[aria-pressed="false"]')
+      .first();
+    if ((await tickBtn.count()) > 0) {
+      // Capture initial units chip text
+      const unitsChip = card
+        .locator('[data-component="brick-chip"]')
+        .filter({ hasText: "/" })
+        .first();
+      const initialUnits = await unitsChip.textContent();
+
+      await tickBtn.click();
+      await page.waitForTimeout(100);
+      expect(await tickBtn.getAttribute("aria-pressed")).toBe("true");
+
+      // Units chip badge unchanged after tick toggle
+      if ((await unitsChip.count()) > 0) {
+        const after = await unitsChip.textContent();
+        expect(after).toBe(initialUnits);
+      }
+    }
   }
 });
 
