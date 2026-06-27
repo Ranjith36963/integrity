@@ -9,7 +9,7 @@
   },
   "reporters": ["progress", "clear-text", "html"],
   "mutate": ["lib/dharma.ts", "lib/dayOfYear.ts", "lib/timeOffset.ts"],
-  "ignorePatterns": ["**/*.test.ts", "**/*.test.tsx", "**/*.tz.test.ts"],
+  "ignorePatterns": [],
   "thresholds": {
     "high": 90,
     "low": 75,
