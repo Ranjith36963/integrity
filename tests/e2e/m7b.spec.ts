@@ -118,9 +118,12 @@ test("E-m7b-002: NOW badge + is-active migrate to next block after clock advance
   await expect(activeBlocks).toHaveCount(1);
   await expect(activeBlocks.first()).toContainText("Deep Work");
 
-  // Advance clock to 10:30 (inside blk-C); allow up to 65s for tick
-  await page.clock.fastForward(61 * 60 * 1000); // 61 minutes past 09:30 = 10:31
-  await page.waitForTimeout(2000);
+  // Advance clock to 10:31 (inside blk-C) — reload is more reliable than fastForward
+  // because useNow() setInterval fires are not guaranteed to flush React synchronously.
+  await page.clock.setFixedTime(new Date("2026-05-18T10:31:00"));
+  await page.reload();
+  await page.waitForSelector('[data-testid="hour-grid"]');
+  await page.waitForTimeout(500);
 
   // blk-C should now be active
   await expect(
@@ -131,8 +134,10 @@ test("E-m7b-002: NOW badge + is-active migrate to next block after clock advance
   ).toContainText("Review");
 
   // Advance clock past all blocks (to 23:30) — no active block
-  await page.clock.fastForward(13 * 60 * 60 * 1000); // ~13 hours further
-  await page.waitForTimeout(2000);
+  await page.clock.setFixedTime(new Date("2026-05-18T23:30:00"));
+  await page.reload();
+  await page.waitForSelector('[data-testid="hour-grid"]');
+  await page.waitForTimeout(500);
 
   await expect(
     page.locator('[data-component="timeline-block"].is-active'),

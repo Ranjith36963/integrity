@@ -123,8 +123,8 @@ test("A-m9d-001: week view is axe-clean, role=list/listitem semantics, keyboard-
   // role="list" aria-label="Week days" present
   await expect(weekList).toHaveAttribute("aria-label", "Week days");
 
-  // Seven listitem rows
-  const listItems = page.getByRole("listitem");
+  // Seven listitem rows within the week list (scope to avoid other page listitems)
+  const listItems = weekList.getByRole("listitem");
   expect(await listItems.count()).toBe(7);
 
   // Scored rows are keyboard-reachable buttons with descriptive aria-labels

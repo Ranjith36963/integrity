@@ -368,13 +368,17 @@ test("E-m9e-003: tapping a MonthCell opens MonthView at that month; returning to
   await monthTab.click();
   await page.waitForTimeout(200);
 
-  // MonthView via switcher should show today's month (May 2026) — not stale December
+  // MonthView via switcher should show today's month — not stale December
   const grid3 = page.getByRole("grid");
   if ((await grid3.count()) > 0) {
     await expect(grid3).toBeVisible();
     if ((await monthHeading.count()) > 0) {
-      // Today is 2026-05-18 → May 2026
-      await expect(monthHeading).toHaveText(/May 2026/i);
+      // Use today's actual month/year (dynamic — not hardcoded)
+      const todayMonthYear = new Date().toLocaleString("en-US", {
+        month: "long",
+        year: "numeric",
+      });
+      await expect(monthHeading).toHaveText(new RegExp(todayMonthYear, "i"));
     }
   }
 });

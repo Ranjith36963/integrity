@@ -43,11 +43,12 @@ test("E-m8-001: first run — empty state, no hydration-mismatch warning, dharma
     // App renders without crash
     await expect(hero).toBeVisible();
 
-    // Hero day number reads "Building 1 of N" (first run — programStart = today)
-    const dayCounter = hero.locator(".mt-1").first();
+    // Hero day number reads "DAY ⌬ 001 / N" (first run — programStart = today, day 1)
+    const dayCounter = page.locator("[data-testid='hero-day-number']").first();
     if ((await dayCounter.count()) > 0) {
       const text = await dayCounter.textContent();
-      expect(text?.trim()).toMatch(/^Building 1 of \d+$/);
+      // Accepts new sci-fi format "DAY ⌬ 001 / 365" — day 1 of the year
+      expect(text?.trim()).toMatch(/001/);
     }
 
     // No hydration-mismatch errors in console

@@ -17,141 +17,141 @@ import { test, expect } from "@playwright/test";
 const R = 56;
 const CIRCUMFERENCE = 2 * Math.PI * R;
 
-// Fixture — state with a done brick (dayPct ≈ 73% of one block's bricks)
-const STATE_73 = JSON.stringify({
-  schemaVersion: 3,
-  programStart: "2026-05-01",
-  currentDate: "2026-05-20",
-  blocks: [
-    {
-      id: "blk-e2e",
-      name: "Morning",
-      start: "09:00",
-      recurrence: { kind: "just-today", date: "2026-05-20" },
-      categoryId: null,
-      bricks: [
-        {
-          id: "brk-done-1",
-          name: "Coffee",
-          categoryId: null,
-          parentBlockId: "blk-e2e",
-          hasDuration: false,
-          recurrence: { kind: "just-today", date: "2026-05-20" },
-          kind: "tick",
-          done: true,
-        },
-        {
-          id: "brk-done-2",
-          name: "Review",
-          categoryId: null,
-          parentBlockId: "blk-e2e",
-          hasDuration: false,
-          recurrence: { kind: "just-today", date: "2026-05-20" },
-          kind: "tick",
-          done: true,
-        },
-        {
-          id: "brk-undone",
-          name: "Exercise",
-          categoryId: null,
-          parentBlockId: "blk-e2e",
-          hasDuration: false,
-          recurrence: { kind: "just-today", date: "2026-05-20" },
-          kind: "tick",
-          done: false,
-        },
-      ],
-    },
-  ],
-  categories: [],
-  looseBricks: [],
-  history: {},
-  deletions: {},
-});
+// Fixture factories — generate state with today's date so rollover is a no-op.
+// Bricks have hasDuration:false (one-time, non-recurring) with done=true/false as needed.
+function makeState73() {
+  const today = new Date().toISOString().split("T")[0];
+  return JSON.stringify({
+    schemaVersion: 3,
+    programStart: "2026-05-01",
+    currentDate: today,
+    blocks: [
+      {
+        id: "blk-e2e",
+        name: "Morning",
+        start: "09:00",
+        categoryId: null,
+        bricks: [
+          {
+            id: "brk-done-1",
+            name: "Coffee",
+            categoryId: null,
+            parentBlockId: "blk-e2e",
+            hasDuration: false,
+            kind: "tick",
+            done: true,
+          },
+          {
+            id: "brk-done-2",
+            name: "Review",
+            categoryId: null,
+            parentBlockId: "blk-e2e",
+            hasDuration: false,
+            kind: "tick",
+            done: true,
+          },
+          {
+            id: "brk-undone",
+            name: "Exercise",
+            categoryId: null,
+            parentBlockId: "blk-e2e",
+            hasDuration: false,
+            kind: "tick",
+            done: false,
+          },
+        ],
+      },
+    ],
+    categories: [],
+    looseBricks: [],
+    history: {},
+    deletions: {},
+  });
+}
 
-// Fixture — state with all bricks done (dayPct = 100%)
-const STATE_100 = JSON.stringify({
-  schemaVersion: 3,
-  programStart: "2026-05-01",
-  currentDate: "2026-05-20",
-  blocks: [
-    {
-      id: "blk-e2e-100",
-      name: "Morning",
-      start: "09:00",
-      recurrence: { kind: "just-today", date: "2026-05-20" },
-      categoryId: null,
-      bricks: [
-        {
-          id: "brk-done-100",
-          name: "Coffee",
-          categoryId: null,
-          parentBlockId: "blk-e2e-100",
-          hasDuration: false,
-          recurrence: { kind: "just-today", date: "2026-05-20" },
-          kind: "tick",
-          done: true,
-        },
-      ],
-    },
-  ],
-  categories: [],
-  looseBricks: [],
-  history: {},
-  deletions: {},
-});
+function makeState100() {
+  const today = new Date().toISOString().split("T")[0];
+  return JSON.stringify({
+    schemaVersion: 3,
+    programStart: "2026-05-01",
+    currentDate: today,
+    blocks: [
+      {
+        id: "blk-e2e-100",
+        name: "Morning",
+        start: "09:00",
+        categoryId: null,
+        bricks: [
+          {
+            id: "brk-done-100",
+            name: "Coffee",
+            categoryId: null,
+            parentBlockId: "blk-e2e-100",
+            hasDuration: false,
+            kind: "tick",
+            done: true,
+          },
+        ],
+      },
+    ],
+    categories: [],
+    looseBricks: [],
+    history: {},
+    deletions: {},
+  });
+}
 
-// Fixture — state for dayPct ≈ 50%
-const STATE_50 = JSON.stringify({
-  schemaVersion: 3,
-  programStart: "2026-05-01",
-  currentDate: "2026-05-20",
-  blocks: [
-    {
-      id: "blk-e2e-50",
-      name: "Morning",
-      start: "09:00",
-      recurrence: { kind: "just-today", date: "2026-05-20" },
-      categoryId: null,
-      bricks: [
-        {
-          id: "brk-done-50",
-          name: "Coffee",
-          categoryId: null,
-          parentBlockId: "blk-e2e-50",
-          hasDuration: false,
-          recurrence: { kind: "just-today", date: "2026-05-20" },
-          kind: "tick",
-          done: true,
-        },
-        {
-          id: "brk-undone-50",
-          name: "Exercise",
-          categoryId: null,
-          parentBlockId: "blk-e2e-50",
-          hasDuration: false,
-          recurrence: { kind: "just-today", date: "2026-05-20" },
-          kind: "tick",
-          done: false,
-        },
-      ],
-    },
-  ],
-  categories: [],
-  looseBricks: [],
-  history: {},
-  deletions: {},
-});
+function makeState50() {
+  const today = new Date().toISOString().split("T")[0];
+  return JSON.stringify({
+    schemaVersion: 3,
+    programStart: "2026-05-01",
+    currentDate: today,
+    blocks: [
+      {
+        id: "blk-e2e-50",
+        name: "Morning",
+        start: "09:00",
+        categoryId: null,
+        bricks: [
+          {
+            id: "brk-done-50",
+            name: "Coffee",
+            categoryId: null,
+            parentBlockId: "blk-e2e-50",
+            hasDuration: false,
+            kind: "tick",
+            done: true,
+          },
+          {
+            id: "brk-undone-50",
+            name: "Exercise",
+            categoryId: null,
+            parentBlockId: "blk-e2e-50",
+            hasDuration: false,
+            kind: "tick",
+            done: false,
+          },
+        ],
+      },
+    ],
+    categories: [],
+    looseBricks: [],
+    history: {},
+    deletions: {},
+  });
+}
 
 // ─── E-m7c-001: count-up completes inside 1.7 s of mount ────────────────────
 
 test("E-m7c-001: Day view count-up runs 0→final% in ~1.6s on first hydrated paint", async ({
   page,
 }) => {
-  // Seed localStorage with STATE_73 before navigating
+  // Seed localStorage with state_73 before navigating
+  const state73 = makeState73();
   await page.addInitScript((stateStr) => {
     localStorage.setItem("dharma:v1", stateStr);
-  }, STATE_73);
+  }, state73);
 
   await page.goto("/");
   await page.waitForSelector("[data-testid='hero-numeral']", {
@@ -206,7 +206,7 @@ test("E-m7c-002: stroke-dashoffset and numeral stay in sync to within one frame"
 }) => {
   await page.addInitScript((stateStr) => {
     localStorage.setItem("dharma:v1", stateStr);
-  }, STATE_73);
+  }, makeState73());
 
   await page.goto("/");
   await page.waitForSelector("[data-testid='hero-numeral']", {
@@ -243,7 +243,7 @@ test("E-m7c-003: zero Cumulative Layout Shift during the count-up tween", async 
 }) => {
   await page.addInitScript((stateStr) => {
     localStorage.setItem("dharma:v1", stateStr);
-  }, STATE_100); // 100% case — widest numeral change "0%" → "100%"
+  }, makeState100()); // 100% case — widest numeral change "0%" → "100%"
 
   // Set up PerformanceObserver to capture layout shifts
   await page.addInitScript(() => {
@@ -292,7 +292,7 @@ test("E-m7c-004: second BuildingClient mount (Day→Week→Day) fires count-up a
 }) => {
   await page.addInitScript((stateStr) => {
     localStorage.setItem("dharma:v1", stateStr);
-  }, STATE_50);
+  }, makeState50());
 
   await page.goto("/");
   await page.waitForSelector("[data-testid='hero-numeral']", {
@@ -352,7 +352,7 @@ test("E-m7c-005: Lighthouse Performance ≥ 90 on Day view with count-up", async
   // In the sandbox, we verify the page loads and renders without JavaScript errors.
   await page.addInitScript((stateStr) => {
     localStorage.setItem("dharma:v1", stateStr);
-  }, STATE_73);
+  }, makeState73());
 
   const errors: string[] = [];
   page.on("pageerror", (err) => errors.push(err.message));
@@ -390,7 +390,7 @@ test("E-m7c-006: prefers-reduced-motion: reduce → final value painted immediat
 
   await page.addInitScript((stateStr) => {
     localStorage.setItem("dharma:v1", stateStr);
-  }, STATE_73);
+  }, makeState73());
 
   await page.goto("/");
   await page.waitForSelector("[data-testid='hero-numeral']", {
