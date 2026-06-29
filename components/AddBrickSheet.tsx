@@ -60,6 +60,8 @@ interface Props {
   open: boolean;
   parentBlockId: string | null;
   defaultCategoryId: string | null;
+  /** M10: optional voice-transcript pre-fill (AC #9). Trimmed on seed. */
+  defaultTitle?: string;
   categories: Category[];
   state: AppState;
   onSave: (brick: Brick) => void;
@@ -74,6 +76,7 @@ export function AddBrickSheet({
   open,
   parentBlockId,
   defaultCategoryId,
+  defaultTitle,
   categories,
   state,
   onSave,
@@ -110,8 +113,8 @@ export function AddBrickSheet({
   // so it doesn't fire on a same-default reopen.
   useEffect(() => {
     if (!open) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- R7-ROOT-M4-P1-1: reset on open per AC "Cancel discards sheet state".
-    setTitle("");
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- R7-ROOT-M4-P1-1: reset on open per AC "Cancel discards sheet state"; M10: defaultTitle pre-fills brick name (AC #9).
+    setTitle((defaultTitle ?? "").trim());
     setKind("tick");
     setTargetStr("");
     setUnit("");
@@ -121,7 +124,7 @@ export function AddBrickSheet({
     setRecurrence({ kind: "just-today", date: todayISO() });
     setView("brick");
     setSelectedCategoryId(defaultCategoryId);
-  }, [open, defaultCategoryId]);
+  }, [open, defaultCategoryId, defaultTitle]);
 
   // Sync pre-fill when defaultCategoryId prop changes (SG-m3-04).
   // R7-ROOT-M3-P2-2: dropped `open` from the dep array. Pre-R7 the effect
