@@ -1,92 +1,16 @@
 /**
- * tests/e2e/m9d.spec.ts — Milestone 9d E2E tests (Playwright, deferred to preview).
- *
- * Execution is deferred to Vercel preview — this sandbox cannot launch chromium
- * (binary missing, confirmed by M4a–M4g EVALUATOR reports and status.md).
- * Tests are authored here as real test() blocks; run them against the deployed preview URL.
- * Guards: `if ((await x.count()) > 0)` per ADR-039 + ADR-022.
- *
- * Per AC #13: each case clears localStorage in a beforeEach (ADR-018).
+ * tests/e2e/m9d.spec.ts — Milestone 9d E2E tests (Playwright).
  *
  * Covers: E-m9d-001..003
- * Note: E-m9d-002 and E-m9d-003 use page.evaluate to hand-build a dharma:v1 payload
- * (deterministic seed for the week view that does not depend on a brick-creation UI flow).
+ *
+ * State seeding strategy: addInitScript seeds state before navigation so the
+ * app always hydrates correctly. E-m9d-002 and E-m9d-003 seed a deterministic
+ * payload with yesterday + today for the week view.
+ *
+ * Per AC #13: each case uses a fresh page with clean state (ADR-018).
  */
 
 import { test, expect } from "@playwright/test";
-
-// AC #13: clear localStorage before each E2E case (ADR-018)
-test.beforeEach(async ({ page }) => {
-  await page.goto("/");
-  await page.evaluate(() => {
-    localStorage.clear();
-    localStorage.setItem("dharma:onboarding-shown", "true");
-  });
-  await page.reload();
-});
-
-// Helper: build a seeded v2 payload with a known week structure
-function buildWeekPayload(
-  todayISO: string,
-  yesterdayISO: string,
-  programStart: string,
-) {
-  return {
-    schemaVersion: 2,
-    programStart,
-    currentDate: todayISO,
-    history: {
-      [yesterdayISO]: {
-        blocks: [
-          {
-            id: "blk1",
-            name: "Morning",
-            start: "07:00",
-            end: "08:00",
-            recurrence: { kind: "just-today", date: yesterdayISO },
-            categoryId: null,
-            bricks: [
-              {
-                id: "br1",
-                name: "Stretch",
-                kind: "tick",
-                done: true,
-                hasDuration: false,
-                categoryId: null,
-                parentBlockId: "blk1",
-              },
-            ],
-          },
-        ],
-        categories: [],
-        looseBricks: [],
-      },
-    },
-    blocks: [
-      {
-        id: "blk-live",
-        name: "Morning Live",
-        start: "07:00",
-        end: "08:00",
-        recurrence: { kind: "just-today", date: todayISO },
-        categoryId: null,
-        bricks: [
-          {
-            id: "br-live",
-            name: "Meditate",
-            kind: "tick",
-            done: false,
-            hasDuration: false,
-            categoryId: null,
-            parentBlockId: "blk-live",
-          },
-        ],
-      },
-    ],
-    categories: [],
-    looseBricks: [],
-  };
-}
 
 // ─── E-m9d-001: switch to Week — Castle view renders ─────────────────────────
 
@@ -98,14 +22,18 @@ test("E-m9d-001: switching to Week view shows Castle layout; Day returns; Month 
     if (msg.type() === "error") consoleErrors.push(msg.text());
   });
 
+  await page.addInitScript(() => {
+    localStorage.clear();
+    localStorage.setItem("dharma:onboarding-shown", "true");
+  });
+
   await page.goto("/");
+  await page.waitForLoadState("networkidle");
   await page.waitForTimeout(300);
 
-  // Guard: ViewSwitcher must exist
-  const weekTab = page.getByRole("tab", { name: /^week$/i });
-  if ((await weekTab.count()) === 0) return;
-
   // Switch to Week view
+  const weekTab = page.getByRole("tab", { name: /^week$/i });
+  await expect(weekTab).toBeVisible();
   await weekTab.click();
 
   // Castle week view appears
@@ -171,83 +99,82 @@ test("E-m9d-002: per-day scores + week aggregate render correctly from seeded pa
     if (msg.type() === "error") consoleErrors.push(msg.text());
   });
 
-  await page.goto("/");
-  await page.waitForTimeout(300);
+  const todayISO = new Date().toLocaleDateString("sv-SE");
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayISO = yesterday.toLocaleDateString("sv-SE");
 
   // Seed dharma:v1 with a hand-built v2 payload
-  await page.evaluate(() => {
-    const today = new Date();
-    const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayISO = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
-
-    const state = {
-      schemaVersion: 2,
-      programStart: yesterdayISO,
-      currentDate: todayISO,
-      history: {
-        [yesterdayISO]: {
-          blocks: [
-            {
-              id: "blk1",
-              name: "Morning",
-              start: "07:00",
-              end: "08:00",
-              recurrence: { kind: "just-today", date: yesterdayISO },
-              categoryId: null,
-              bricks: [
-                {
-                  id: "br1",
-                  name: "Stretch",
-                  kind: "tick",
-                  done: true,
-                  hasDuration: false,
-                  categoryId: null,
-                  parentBlockId: "blk1",
-                },
-              ],
-            },
-          ],
-          categories: [],
-          looseBricks: [],
+  await page.addInitScript(
+    ({ today, yest }: { today: string; yest: string }) => {
+      localStorage.setItem("dharma:onboarding-shown", "true");
+      const state = {
+        schemaVersion: 2,
+        programStart: yest,
+        currentDate: today,
+        history: {
+          [yest]: {
+            blocks: [
+              {
+                id: "blk1",
+                name: "Morning",
+                start: "07:00",
+                end: "08:00",
+                recurrence: { kind: "just-today", date: yest },
+                categoryId: null,
+                bricks: [
+                  {
+                    id: "br1",
+                    name: "Stretch",
+                    kind: "tick",
+                    done: true,
+                    hasDuration: false,
+                    categoryId: null,
+                    parentBlockId: "blk1",
+                  },
+                ],
+              },
+            ],
+            categories: [],
+            looseBricks: [],
+          },
         },
-      },
-      blocks: [
-        {
-          id: "blk-live",
-          name: "Morning Live",
-          start: "07:00",
-          end: "08:00",
-          recurrence: { kind: "just-today", date: todayISO },
-          categoryId: null,
-          bricks: [
-            {
-              id: "br-live",
-              name: "Meditate",
-              kind: "tick",
-              done: false,
-              hasDuration: false,
-              categoryId: null,
-              parentBlockId: "blk-live",
-            },
-          ],
-        },
-      ],
-      categories: [],
-      looseBricks: [],
-    };
-    localStorage.setItem("dharma:v1", JSON.stringify(state));
-  });
+        blocks: [
+          {
+            id: "blk-live",
+            name: "Morning Live",
+            start: "07:00",
+            end: "08:00",
+            recurrence: { kind: "just-today", date: today },
+            categoryId: null,
+            bricks: [
+              {
+                id: "br-live",
+                name: "Meditate",
+                kind: "tick",
+                done: false,
+                hasDuration: false,
+                categoryId: null,
+                parentBlockId: "blk-live",
+              },
+            ],
+          },
+        ],
+        categories: [],
+        looseBricks: [],
+      };
+      localStorage.setItem("dharma:v1", JSON.stringify(state));
+    },
+    { today: todayISO, yest: yesterdayISO },
+  );
 
-  await page.reload();
+  await page.goto("/");
+  await page.waitForLoadState("networkidle");
   await page.waitForTimeout(500);
 
-  // Guard: ViewSwitcher must exist
-  const weekTab = page.getByRole("tab", { name: /^week$/i });
-  if ((await weekTab.count()) === 0) return;
-
   // Switch to Week view
+  const weekTab = page.getByRole("tab", { name: /^week$/i });
+  await expect(weekTab).toBeVisible();
   await weekTab.click();
   await page.waitForTimeout(300);
 
@@ -285,62 +212,62 @@ test("E-m9d-003: open past-day read-only from Week view; tap today → Building;
     if (msg.type() === "error") consoleErrors.push(msg.text());
   });
 
-  await page.goto("/");
-  await page.waitForTimeout(300);
+  const todayISO = new Date().toLocaleDateString("sv-SE");
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayISO = yesterday.toLocaleDateString("sv-SE");
 
   // Seed with yesterday + today payload
-  await page.evaluate(() => {
-    const today = new Date();
-    const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayISO = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
-
-    const state = {
-      schemaVersion: 2,
-      programStart: yesterdayISO,
-      currentDate: todayISO,
-      history: {
-        [yesterdayISO]: {
-          blocks: [
-            {
-              id: "blk1",
-              name: "Morning",
-              start: "07:00",
-              end: "08:00",
-              recurrence: { kind: "just-today", date: yesterdayISO },
-              categoryId: null,
-              bricks: [
-                {
-                  id: "br1",
-                  name: "Stretch",
-                  kind: "tick",
-                  done: true,
-                  hasDuration: false,
-                  categoryId: null,
-                  parentBlockId: "blk1",
-                },
-              ],
-            },
-          ],
-          categories: [],
-          looseBricks: [],
+  await page.addInitScript(
+    ({ today, yest }: { today: string; yest: string }) => {
+      localStorage.setItem("dharma:onboarding-shown", "true");
+      const state = {
+        schemaVersion: 2,
+        programStart: yest,
+        currentDate: today,
+        history: {
+          [yest]: {
+            blocks: [
+              {
+                id: "blk1",
+                name: "Morning",
+                start: "07:00",
+                end: "08:00",
+                recurrence: { kind: "just-today", date: yest },
+                categoryId: null,
+                bricks: [
+                  {
+                    id: "br1",
+                    name: "Stretch",
+                    kind: "tick",
+                    done: true,
+                    hasDuration: false,
+                    categoryId: null,
+                    parentBlockId: "blk1",
+                  },
+                ],
+              },
+            ],
+            categories: [],
+            looseBricks: [],
+          },
         },
-      },
-      blocks: [],
-      categories: [],
-      looseBricks: [],
-    };
-    localStorage.setItem("dharma:v1", JSON.stringify(state));
-  });
+        blocks: [],
+        categories: [],
+        looseBricks: [],
+      };
+      localStorage.setItem("dharma:v1", JSON.stringify(state));
+    },
+    { today: todayISO, yest: yesterdayISO },
+  );
 
-  await page.reload();
+  await page.goto("/");
+  await page.waitForLoadState("networkidle");
   await page.waitForTimeout(500);
 
-  // Guard: ViewSwitcher must exist
+  // Switch to Week view
   const weekTab = page.getByRole("tab", { name: /^week$/i });
-  if ((await weekTab.count()) === 0) return;
-
+  await expect(weekTab).toBeVisible();
   await weekTab.click();
   await page.waitForTimeout(300);
 
@@ -349,10 +276,6 @@ test("E-m9d-003: open past-day read-only from Week view; tap today → Building;
   if ((await weekList.count()) === 0) return;
 
   // Tap the archived past-day row (has "score" in aria-label, not "today")
-  const archivedButtons = page.getByRole("button").filter({
-    has: page.locator("[aria-label*='score'][aria-label*='percent']"),
-  });
-  // Or find button without "today" in aria-label but with "score"
   const allScoredBtns = page.getByRole("button", { name: /score.*percent/i });
   if ((await allScoredBtns.count()) > 0) {
     // Find one that is NOT "today"
@@ -429,6 +352,3 @@ test("E-m9d-003: open past-day read-only from Week view; tap today → Building;
 
   expect(consoleErrors.filter((e) => !e.includes("Warning:"))).toHaveLength(0);
 });
-
-// Suppress unused import warning for buildWeekPayload
-void buildWeekPayload;

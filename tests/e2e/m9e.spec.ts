@@ -1,29 +1,16 @@
 /**
- * tests/e2e/m9e.spec.ts — Milestone 9e E2E tests (Playwright, deferred to preview).
- *
- * Execution is deferred to Vercel preview — this sandbox cannot launch chromium
- * (binary missing, confirmed by M4a–M4g EVALUATOR reports and status.md).
- * Tests are authored here as real test() blocks; run them against the deployed preview URL.
- * Guards: `if ((await x.count()) > 0)` per ADR-039 + ADR-022.
- *
- * Per AC #12: each case clears localStorage in a beforeEach (ADR-018).
+ * tests/e2e/m9e.spec.ts — Milestone 9e E2E tests (Playwright).
  *
  * Covers: E-m9e-001..003
- * Note: E-m9e-002 and E-m9e-003 use page.evaluate to hand-build a dharma:v1 payload
- * (deterministic seed for the year view that does not depend on a brick-creation UI flow).
+ *
+ * State seeding strategy: addInitScript seeds state before navigation so the
+ * app always hydrates correctly. E-m9e-002 and E-m9e-003 seed a known year
+ * payload (fixed dates 2026-01-01 → 2026-05-18).
+ *
+ * Per AC #12: each case uses a fresh page with clean state (ADR-018).
  */
 
 import { test, expect } from "@playwright/test";
-
-// AC #12: clear localStorage before each E2E case (ADR-018)
-test.beforeEach(async ({ page }) => {
-  await page.goto("/");
-  await page.evaluate(() => {
-    localStorage.clear();
-    localStorage.setItem("dharma:onboarding-shown", "true");
-  });
-  await page.reload();
-});
 
 /**
  * Build a seeded v2 payload with a known year structure.
@@ -144,16 +131,21 @@ function buildYearPayload(todayISO: string, programStart: string) {
 test("E-m9e-001: switching to Year renders Empire view with 12-month list; all four switcher segments are live and round-trip with no crash", async ({
   page,
 }) => {
+  await page.addInitScript(() => {
+    localStorage.clear();
+    localStorage.setItem("dharma:onboarding-shown", "true");
+  });
+
   await page.setViewportSize({ width: 430, height: 932 });
   await page.goto("/");
+  await page.waitForLoadState("networkidle");
   await page.waitForTimeout(300);
 
-  // ViewSwitcher must be present — sandbox guard
-  const yearTab = page.getByRole("tab", { name: /^year$/i });
-  if ((await yearTab.count()) === 0) return;
-
   // Click Year — Empire view appears
+  const yearTab = page.getByRole("tab", { name: /^year$/i });
+  await expect(yearTab).toBeVisible();
   await yearTab.click();
+
   const monthsList = page.getByRole("list", { name: /months of/i });
   if ((await monthsList.count()) === 0) return;
   await expect(monthsList).toBeVisible();
@@ -210,24 +202,23 @@ test("E-m9e-001: switching to Year renders Empire view with 12-month list; all f
 test("E-m9e-002: month score indicators render with correct heat-fill/no-data treatment; YearAggregate ring shows yearScore; prev/next year nav works", async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 430, height: 932 });
-  await page.goto("/");
-  await page.waitForTimeout(300);
-
-  // Seed dharma:v1 with the known year payload
-  await page.evaluate(
+  // Seed the known year payload via addInitScript
+  await page.addInitScript(
     (payload) => {
+      localStorage.setItem("dharma:onboarding-shown", "true");
       localStorage.setItem("dharma:v1", JSON.stringify(payload));
     },
     buildYearPayload("2026-05-18", "2026-01-01"),
   );
 
-  await page.reload();
+  await page.setViewportSize({ width: 430, height: 932 });
+  await page.goto("/");
+  await page.waitForLoadState("networkidle");
   await page.waitForTimeout(300);
 
   // Switch to Year view
   const yearTab = page.getByRole("tab", { name: /^year$/i });
-  if ((await yearTab.count()) === 0) return;
+  await expect(yearTab).toBeVisible();
   await yearTab.click();
 
   const monthsList = page.getByRole("list", { name: /months of 2026/i });
@@ -302,24 +293,23 @@ test("E-m9e-002: month score indicators render with correct heat-fill/no-data tr
 test("E-m9e-003: tapping a MonthCell opens MonthView at that month; returning to Year and using ViewSwitcher Month resets to today's month", async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 430, height: 932 });
-  await page.goto("/");
-  await page.waitForTimeout(300);
-
   // Seed same payload as E-m9e-002
-  await page.evaluate(
+  await page.addInitScript(
     (payload) => {
+      localStorage.setItem("dharma:onboarding-shown", "true");
       localStorage.setItem("dharma:v1", JSON.stringify(payload));
     },
     buildYearPayload("2026-05-18", "2026-01-01"),
   );
 
-  await page.reload();
+  await page.setViewportSize({ width: 430, height: 932 });
+  await page.goto("/");
+  await page.waitForLoadState("networkidle");
   await page.waitForTimeout(300);
 
   // Switch to Year view
   const yearTab = page.getByRole("tab", { name: /^year$/i });
-  if ((await yearTab.count()) === 0) return;
+  await expect(yearTab).toBeVisible();
   await yearTab.click();
 
   const monthsList = page.getByRole("list", { name: /months of 2026/i });

@@ -1,27 +1,15 @@
 /**
  * tests/e2e/m8.spec.ts — Milestone 8 E2E tests (Playwright).
  *
- * Execution is deferred to Vercel preview — this sandbox cannot launch chromium
- * (binary missing, confirmed by M4a–M4g EVALUATOR reports and status.md).
- * Tests are authored here as real test() blocks; run them against the deployed preview URL.
- * Guards: `if ((await x.count()) > 0)` per ADR-039 + ADR-022 (no deterministic seeding).
- *
- * Per AC #15: each case clears localStorage in a beforeEach (ADR-018).
- *
  * Covers: E-m8-001..003
+ *
+ * State seeding strategy: addInitScript seeds minimal state before navigation
+ * so the app always renders and top-level assertions are unconditional.
+ *
+ * Per AC #15: each case uses a fresh page with clean state (ADR-018).
  */
 
 import { test, expect } from "@playwright/test";
-
-// AC #15: clear localStorage before each E2E case (ADR-018)
-test.beforeEach(async ({ page }) => {
-  await page.goto("/");
-  await page.evaluate(() => {
-    localStorage.clear();
-    localStorage.setItem("dharma:onboarding-shown", "true");
-  });
-  await page.reload();
-});
 
 // ─── E-m8-001: first-run empty — no hydration-mismatch, dharma:v1 written ─────
 
@@ -36,43 +24,48 @@ test("E-m8-001: first run — empty state, no hydration-mismatch warning, dharma
     }
   });
 
+  // Start with clean state — no dharma:v1, only onboarding-shown
+  await page.addInitScript(() => {
+    localStorage.clear();
+    localStorage.setItem("dharma:onboarding-shown", "true");
+  });
+
   await page.goto("/");
+  await page.waitForLoadState("networkidle");
 
+  // App renders without crash
   const hero = page.locator("section").first();
-  if ((await hero.count()) > 0) {
-    // App renders without crash
-    await expect(hero).toBeVisible();
+  await expect(hero).toBeVisible();
 
-    // Hero day number reads "DAY ⌬ 001 / N" (first run — programStart = today, day 1)
-    const dayCounter = page.locator("[data-testid='hero-day-number']").first();
-    if ((await dayCounter.count()) > 0) {
-      const text = await dayCounter.textContent();
-      // Accepts new sci-fi format "DAY ⌬ 001 / 365" — day 1 of the year
-      expect(text?.trim()).toMatch(/001/);
-    }
+  // Hero day number reads "DAY ⌬ 001 / N" (first run — programStart = today, day 1)
+  const dayCounter = page.locator("[data-testid='hero-day-number']").first();
+  if ((await dayCounter.count()) > 0) {
+    const text = await dayCounter.textContent();
+    // Accepts new sci-fi format "DAY ⌬ 001 / 365" — day 1 of the year
+    expect(text?.trim()).toMatch(/001/);
+  }
 
-    // No hydration-mismatch errors in console
-    const hydrationErrors = consoleErrors.filter(
-      (e) =>
-        e.includes("Hydration") ||
-        e.includes("hydration") ||
-        e.includes("did not match"),
-    );
-    expect(hydrationErrors).toHaveLength(0);
+  // No hydration-mismatch errors in console
+  const hydrationErrors = consoleErrors.filter(
+    (e) =>
+      e.includes("Hydration") ||
+      e.includes("hydration") ||
+      e.includes("did not match"),
+  );
+  expect(hydrationErrors).toHaveLength(0);
 
-    // Wait briefly for the save effect to fire
-    await page.waitForTimeout(200);
+  // Wait briefly for the save effect to fire
+  await page.waitForTimeout(200);
 
-    // dharma:v1 is now written with a schemaVersion >= 1 and empty collections
-    const stored = await page.evaluate(() => localStorage.getItem("dharma:v1"));
-    if (stored) {
-      const parsed = JSON.parse(stored) as Record<string, unknown>;
-      expect(typeof parsed.schemaVersion).toBe("number");
-      expect(parsed.schemaVersion as number).toBeGreaterThanOrEqual(1);
-      expect(Array.isArray(parsed.blocks)).toBe(true);
-      expect(Array.isArray(parsed.categories)).toBe(true);
-      expect(Array.isArray(parsed.looseBricks)).toBe(true);
-    }
+  // dharma:v1 is now written with a schemaVersion >= 1 and empty collections
+  const stored = await page.evaluate(() => localStorage.getItem("dharma:v1"));
+  if (stored) {
+    const parsed = JSON.parse(stored) as Record<string, unknown>;
+    expect(typeof parsed.schemaVersion).toBe("number");
+    expect(parsed.schemaVersion as number).toBeGreaterThanOrEqual(1);
+    expect(Array.isArray(parsed.blocks)).toBe(true);
+    expect(Array.isArray(parsed.categories)).toBe(true);
+    expect(Array.isArray(parsed.looseBricks)).toBe(true);
   }
 });
 
@@ -81,35 +74,41 @@ test("E-m8-001: first run — empty state, no hydration-mismatch warning, dharma
 test("E-m8-002: mutate → reload → block, brick, and brick done state survive the reload", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.addInitScript(() => {
+    localStorage.clear();
+    localStorage.setItem("dharma:onboarding-shown", "true");
+  });
 
-  const dockAdd = page.getByRole("button", { name: "Add" }).last();
-  if ((await dockAdd.count()) === 0) return;
+  await page.goto("/");
+  await page.waitForLoadState("networkidle");
 
   // Add a block
+  const dockAdd = page.getByRole("button", { name: "Add" }).last();
+  await expect(dockAdd).toBeVisible();
   await dockAdd.click();
+
   const chooser = page.getByRole("dialog", { name: "Add", exact: true });
-  if ((await chooser.count()) === 0) return;
+  await expect(chooser).toBeVisible();
   await chooser.getByRole("button", { name: "Add Block" }).click();
 
   const blockSheet = page.getByRole("dialog", { name: /Add Block/i });
-  if ((await blockSheet.count()) === 0) return;
+  await expect(blockSheet).toBeVisible();
   await blockSheet.getByLabel(/Title/i).fill("Persist Test");
   await blockSheet.getByRole("button", { name: /Save/i }).click();
   await expect(blockSheet).not.toBeVisible();
 
   // Add a tick brick to the block
   const tlBlock = page.locator('[data-component="timeline-block"]').first();
-  if ((await tlBlock.count()) === 0) return;
-
-  const addBrickBtn = tlBlock.getByRole("button", { name: /add brick/i });
-  if ((await addBrickBtn.count()) > 0) {
-    await addBrickBtn.click();
-    const brickSheet = page.getByRole("dialog", { name: /Add Brick/i });
-    if ((await brickSheet.count()) > 0) {
-      await brickSheet.getByLabel(/Title/i).fill("Persist Brick");
-      await brickSheet.getByRole("button", { name: /Save/i }).click();
-      await expect(brickSheet).not.toBeVisible();
+  if ((await tlBlock.count()) > 0) {
+    const addBrickBtn = tlBlock.getByRole("button", { name: /add brick/i });
+    if ((await addBrickBtn.count()) > 0) {
+      await addBrickBtn.click();
+      const brickSheet = page.getByRole("dialog", { name: /Add Brick/i });
+      if ((await brickSheet.count()) > 0) {
+        await brickSheet.getByLabel(/Title/i).fill("Persist Brick");
+        await brickSheet.getByRole("button", { name: /Save/i }).click();
+        await expect(brickSheet).not.toBeVisible();
+      }
     }
   }
 
@@ -123,7 +122,7 @@ test("E-m8-002: mutate → reload → block, brick, and brick done state survive
   await page.reload();
   await page.waitForTimeout(300); // let hydration effect run
 
-  // After reload: block and brick still present (under guard)
+  // After reload: block and brick still present
   const blockAfterReload = page
     .locator('[data-component="timeline-block"]')
     .first();
@@ -144,43 +143,36 @@ test("E-m8-002: mutate → reload → block, brick, and brick done state survive
 test("E-m8-003: corrupt dharma:v1 → app renders normally, next save overwrites corrupt key", async ({
   page,
 }) => {
-  // Set a corrupt key before loading the app
-  await page.goto("/");
-  await page.evaluate(() => {
+  // Seed a corrupt key before loading the app
+  await page.addInitScript(() => {
+    localStorage.setItem("dharma:onboarding-shown", "true");
     localStorage.setItem("dharma:v1", "{not json");
   });
 
-  // Reload with the corrupt key
-  await page.reload();
+  await page.goto("/");
+  await page.waitForLoadState("networkidle");
   await page.waitForTimeout(300); // let hydration effect run
 
-  const body = page.locator("body");
-  if ((await body.count()) > 0) {
-    // App renders without uncaught exception or error overlay
-    const errorOverlay = page.locator("[data-nextjs-dialog]");
-    expect(await errorOverlay.count()).toBe(0);
+  // App renders without uncaught exception or error overlay
+  const errorOverlay = page.locator("[data-nextjs-dialog]");
+  expect(await errorOverlay.count()).toBe(0);
 
-    // Building view is visible
-    const hero = page.locator("section").first();
-    if ((await hero.count()) > 0) {
-      await expect(hero).toBeVisible();
-    }
+  // Building view is visible
+  const hero = page.locator("section").first();
+  await expect(hero).toBeVisible();
 
-    // After an add action, the corrupt key is overwritten with valid JSON
-    const dockAdd = page.getByRole("button", { name: "Add" }).last();
-    if ((await dockAdd.count()) > 0) {
-      // First, check that dharma:v1 is now valid JSON (the hydration effect's first save
-      // after mount fires with the defaultPersisted() state, overwriting the corrupt key)
-      await page.waitForTimeout(200);
-      const stored = await page.evaluate(() =>
-        localStorage.getItem("dharma:v1"),
-      );
-      if (stored) {
-        // Must be valid JSON now (passive overwrite by saveState)
-        const parsed = JSON.parse(stored) as Record<string, unknown>;
-        expect(typeof parsed.schemaVersion).toBe("number");
-        expect(parsed.schemaVersion as number).toBeGreaterThanOrEqual(1);
-      }
-    }
+  // After hydration, the corrupt key is overwritten with valid JSON
+  const dockAdd = page.getByRole("button", { name: "Add" }).last();
+  await expect(dockAdd).toBeVisible();
+
+  // Check that dharma:v1 is now valid JSON (the hydration effect's first save
+  // after mount fires with the defaultPersisted() state, overwriting the corrupt key)
+  await page.waitForTimeout(200);
+  const stored = await page.evaluate(() => localStorage.getItem("dharma:v1"));
+  if (stored) {
+    // Must be valid JSON now (passive overwrite by saveState)
+    const parsed = JSON.parse(stored) as Record<string, unknown>;
+    expect(typeof parsed.schemaVersion).toBe("number");
+    expect(parsed.schemaVersion as number).toBeGreaterThanOrEqual(1);
   }
 });

@@ -1,29 +1,16 @@
 /**
- * tests/e2e/m9b.spec.ts — Milestone 9b E2E tests (Playwright, deferred to preview).
- *
- * Execution is deferred to Vercel preview — this sandbox cannot launch chromium
- * (binary missing, confirmed by M4a–M4g EVALUATOR reports and status.md).
- * Tests are authored here as real test() blocks; run them against the deployed preview URL.
- * Guards: `if ((await x.count()) > 0)` per ADR-039 + ADR-022 (no deterministic seeding).
- *
- * Per AC #15: each case clears localStorage in a beforeEach (ADR-018).
+ * tests/e2e/m9b.spec.ts — Milestone 9b E2E tests (Playwright).
  *
  * Covers: E-m9b-001..003
- * Note: E-m9b-003 uses page.evaluate to hand-build a dharma:v1 payload (deterministic seed
- * for the rollover path — does not need a brick-creation UI flow per the tests.md spec).
+ *
+ * State seeding strategy: addInitScript seeds state before navigation so the
+ * app always hydrates correctly. E-m9b-003 uses a yesterday-dated payload to
+ * trigger day rollover on load.
+ *
+ * Per AC #15: each case uses a fresh page with clean state (ADR-018).
  */
 
 import { test, expect } from "@playwright/test";
-
-// AC #15: clear localStorage before each E2E case (ADR-018)
-test.beforeEach(async ({ page }) => {
-  await page.goto("/");
-  await page.evaluate(() => {
-    localStorage.clear();
-    localStorage.setItem("dharma:onboarding-shown", "true");
-  });
-  await page.reload();
-});
 
 // ─── E-m9b-001: first run — empty v2 default, dharma:v1 written with v2 shape ─
 
@@ -37,40 +24,46 @@ test("E-m9b-001: first run — empty state, dharma:v1 written with schemaVersion
     }
   });
 
+  // Start with clean state
+  await page.addInitScript(() => {
+    localStorage.clear();
+    localStorage.setItem("dharma:onboarding-shown", "true");
+  });
+
   await page.goto("/");
+  await page.waitForLoadState("networkidle");
 
+  // App renders without crash
   const hero = page.locator("section").first();
-  if ((await hero.count()) > 0) {
-    await expect(hero).toBeVisible();
+  await expect(hero).toBeVisible();
 
-    // No hydration-mismatch errors
-    const hydrationErrors = consoleErrors.filter(
-      (e) =>
-        e.includes("Hydration") ||
-        e.includes("hydration") ||
-        e.includes("did not match"),
-    );
-    expect(hydrationErrors).toHaveLength(0);
+  // No hydration-mismatch errors
+  const hydrationErrors = consoleErrors.filter(
+    (e) =>
+      e.includes("Hydration") ||
+      e.includes("hydration") ||
+      e.includes("did not match"),
+  );
+  expect(hydrationErrors).toHaveLength(0);
 
-    // Wait for the save effect to fire
-    await page.waitForTimeout(300);
+  // Wait for the save effect to fire
+  await page.waitForTimeout(300);
 
-    // dharma:v1 is written with the v2 shape
-    const stored = await page.evaluate(() => localStorage.getItem("dharma:v1"));
-    if (stored) {
-      const parsed = JSON.parse(stored) as Record<string, unknown>;
-      // v3 shape: schemaVersion === 3
-      expect(parsed.schemaVersion).toBe(3);
-      // history is an empty object
-      expect(parsed.history).toEqual({});
-      // currentDate equals today's ISO date
-      const todayISO = new Date().toLocaleDateString("sv-SE").split("T")[0]!;
-      expect(parsed.currentDate).toBe(todayISO);
-      // Collections are empty arrays
-      expect(Array.isArray(parsed.blocks)).toBe(true);
-      expect(Array.isArray(parsed.categories)).toBe(true);
-      expect(Array.isArray(parsed.looseBricks)).toBe(true);
-    }
+  // dharma:v1 is written with the v3 shape
+  const stored = await page.evaluate(() => localStorage.getItem("dharma:v1"));
+  if (stored) {
+    const parsed = JSON.parse(stored) as Record<string, unknown>;
+    // v3 shape: schemaVersion === 3
+    expect(parsed.schemaVersion).toBe(3);
+    // history is an empty object
+    expect(parsed.history).toEqual({});
+    // currentDate equals today's ISO date
+    const todayISO = new Date().toLocaleDateString("sv-SE").split("T")[0]!;
+    expect(parsed.currentDate).toBe(todayISO);
+    // Collections are empty arrays
+    expect(Array.isArray(parsed.blocks)).toBe(true);
+    expect(Array.isArray(parsed.categories)).toBe(true);
+    expect(Array.isArray(parsed.looseBricks)).toBe(true);
   }
 });
 
@@ -79,19 +72,25 @@ test("E-m9b-001: first run — empty state, dharma:v1 written with schemaVersion
 test("E-m9b-002: same-day reload — currentDate === today → no rollover, history stays empty", async ({
   page,
 }) => {
+  await page.addInitScript(() => {
+    localStorage.clear();
+    localStorage.setItem("dharma:onboarding-shown", "true");
+  });
+
   await page.goto("/");
+  await page.waitForLoadState("networkidle");
 
   // Add a block via UI so dharma:v1 has a non-empty in-progress day
   const dockAdd = page.getByRole("button", { name: "Add" }).last();
-  if ((await dockAdd.count()) === 0) return;
-
+  await expect(dockAdd).toBeVisible();
   await dockAdd.click();
+
   const chooser = page.getByRole("dialog", { name: "Add", exact: true });
-  if ((await chooser.count()) === 0) return;
+  await expect(chooser).toBeVisible();
   await chooser.getByRole("button", { name: "Add Block" }).click();
 
   const blockSheet = page.getByRole("dialog", { name: /Add Block/i });
-  if ((await blockSheet.count()) === 0) return;
+  await expect(blockSheet).toBeVisible();
   await blockSheet.getByLabel(/Title/i).fill("SameDay Block");
   await blockSheet.getByRole("button", { name: /Save/i }).click();
   await expect(blockSheet).not.toBeVisible();
@@ -133,35 +132,26 @@ test("E-m9b-002: same-day reload — currentDate === today → no rollover, hist
 test("E-m9b-003: next-day rollover — yesterday's day archived, every-day brick re-seeded unchecked, just-today dropped", async ({
   page,
 }) => {
-  // Deterministic seed: hand-build a dharma:v1 payload via page.evaluate.
-  // currentDate is set to yesterday's ISO date — rollover fires on load.
-  await page.goto("/");
-
-  const todayISO = await page.evaluate((): string => {
-    const d = new Date();
-    const y = String(d.getFullYear());
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-  });
-
-  // Compute yesterday's ISO date in the browser
-  const yesterdayISO = await page.evaluate((): string => {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    const y = String(d.getFullYear());
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-  });
+  // Deterministic seed: set currentDate to yesterday so rollover fires on load.
+  const todayISO = new Date().toLocaleDateString("sv-SE");
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayISO = yesterday.toLocaleDateString("sv-SE");
 
   // Build a v2 payload with currentDate = yesterday
-  await page.evaluate(
-    ({ yesterday, today: _today }: { yesterday: string; today: string }) => {
+  await page.addInitScript(
+    ({
+      yesterday: yest,
+      today: _today,
+    }: {
+      yesterday: string;
+      today: string;
+    }) => {
+      localStorage.setItem("dharma:onboarding-shown", "true");
       const payload = {
         schemaVersion: 2,
-        programStart: yesterday,
-        currentDate: yesterday,
+        programStart: yest,
+        currentDate: yest,
         history: {},
         blocks: [
           {
@@ -192,7 +182,7 @@ test("E-m9b-003: next-day rollover — yesterday's day archived, every-day brick
                 hasDuration: true,
                 start: "09:30",
                 end: "10:00",
-                recurrence: { kind: "just-today", date: yesterday },
+                recurrence: { kind: "just-today", date: yest },
                 kind: "tick",
                 done: false,
               },
@@ -236,7 +226,7 @@ test("E-m9b-003: next-day rollover — yesterday's day archived, every-day brick
       expect(Object.keys(parsed.history)).toContain(yesterdayISO);
       const archived = parsed.history[yesterdayISO];
       if (archived) {
-        // The archived day holds the original 2 bricks (including the ticked one)
+        // The archived day holds the original block
         expect(Array.isArray(archived.blocks)).toBe(true);
         expect(archived.blocks).toHaveLength(1);
       }

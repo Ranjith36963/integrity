@@ -1,29 +1,16 @@
 /**
- * tests/e2e/m9c.spec.ts — Milestone 9c E2E tests (Playwright, deferred to preview).
- *
- * Execution is deferred to Vercel preview — this sandbox cannot launch chromium
- * (binary missing, confirmed by M4a–M4g EVALUATOR reports and status.md).
- * Tests are authored here as real test() blocks; run them against the deployed preview URL.
- * Guards: `if ((await x.count()) > 0)` per ADR-039 + ADR-022 (no deterministic seeding).
- *
- * Per AC #15: each case clears localStorage in a beforeEach (ADR-018).
+ * tests/e2e/m9c.spec.ts — Milestone 9c E2E tests (Playwright).
  *
  * Covers: E-m9c-001..003
- * Note: E-m9c-002 and E-m9c-003 use page.evaluate to hand-build a dharma:v1 payload
- * (deterministic seed for the month grid that does not depend on a brick-creation UI flow).
+ *
+ * State seeding strategy: addInitScript seeds state before navigation so the
+ * app always hydrates correctly. E-m9c-002 and E-m9c-003 use addInitScript
+ * to seed a deterministic payload (month grid does not depend on a UI flow).
+ *
+ * Per AC #15: each case uses a fresh page with clean state (ADR-018).
  */
 
 import { test, expect } from "@playwright/test";
-
-// AC #15: clear localStorage before each E2E case (ADR-018)
-test.beforeEach(async ({ page }) => {
-  await page.goto("/");
-  await page.evaluate(() => {
-    localStorage.clear();
-    localStorage.setItem("dharma:onboarding-shown", "true");
-  });
-  await page.reload();
-});
 
 // ─── E-m9c-001: switch to Month — Kingdom grid renders ───────────────────────
 
@@ -35,14 +22,18 @@ test("E-m9c-001: switching to Month view shows Kingdom grid; Day returns to Buil
     if (msg.type() === "error") consoleErrors.push(msg.text());
   });
 
+  await page.addInitScript(() => {
+    localStorage.clear();
+    localStorage.setItem("dharma:onboarding-shown", "true");
+  });
+
   await page.goto("/");
+  await page.waitForLoadState("networkidle");
   await page.waitForTimeout(300);
 
-  // Guard: ViewSwitcher must exist
-  const monthTab = page.getByRole("tab", { name: /^month$/i });
-  if ((await monthTab.count()) === 0) return;
-
   // Switch to Month view
+  const monthTab = page.getByRole("tab", { name: /^month$/i });
+  await expect(monthTab).toBeVisible();
   await monthTab.click();
 
   // Kingdom month grid appears
@@ -111,36 +102,21 @@ test("E-m9c-002: month grid shows archived day score, today cell, missed indicat
     if (msg.type() === "error") consoleErrors.push(msg.text());
   });
 
-  // Deterministic seed: hand-build a v2 payload via page.evaluate.
-  // We set currentDate to today and add one archived history day (yesterday) at 60%.
-  await page.goto("/");
-
-  const todayISO = await page.evaluate((): string => {
-    const d = new Date();
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  });
-
-  const yesterdayISO = await page.evaluate((): string => {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  });
+  const todayISO = new Date().toLocaleDateString("sv-SE");
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayISO = yesterday.toLocaleDateString("sv-SE");
 
   // Seed: yesterday archived with 3/5 bricks done (60%); today has 0 bricks (live, 0%)
-  await page.evaluate(
-    ([today, yesterday]) => {
+  await page.addInitScript(
+    ({ today, yest }: { today: string; yest: string }) => {
+      localStorage.setItem("dharma:onboarding-shown", "true");
       const state = {
         schemaVersion: 2,
-        programStart: yesterday, // program started yesterday
+        programStart: yest, // program started yesterday
         currentDate: today,
         history: {
-          [yesterday!]: {
+          [yest]: {
             blocks: [],
             looseBricks: [
               {
@@ -198,15 +174,16 @@ test("E-m9c-002: month grid shows archived day score, today cell, missed indicat
       };
       localStorage.setItem("dharma:v1", JSON.stringify(state));
     },
-    [todayISO, yesterdayISO],
+    { today: todayISO, yest: yesterdayISO },
   );
 
-  await page.reload();
+  await page.goto("/");
+  await page.waitForLoadState("networkidle");
   await page.waitForTimeout(300);
 
   // Switch to Month view
   const monthTab = page.getByRole("tab", { name: /^month$/i });
-  if ((await monthTab.count()) === 0) return;
+  await expect(monthTab).toBeVisible();
   await monthTab.click();
 
   const grid = page.getByRole("grid");
@@ -238,41 +215,27 @@ test("E-m9c-002: month grid shows archived day score, today cell, missed indicat
 test("E-m9c-003: tapping archived day opens read-only PastDayDetail; tapping today switches to Building view", async ({
   page,
 }) => {
-  // Reuse same deterministic seed as E-m9c-002
-  await page.goto("/");
+  const todayISO = new Date().toLocaleDateString("sv-SE");
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayISO = yesterday.toLocaleDateString("sv-SE");
 
-  const todayISO = await page.evaluate((): string => {
-    const d = new Date();
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  });
-
-  const yesterdayISO = await page.evaluate((): string => {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  });
-
-  await page.evaluate(
-    ([today, yesterday]) => {
+  await page.addInitScript(
+    ({ today, yest }: { today: string; yest: string }) => {
+      localStorage.setItem("dharma:onboarding-shown", "true");
       const state = {
         schemaVersion: 2,
-        programStart: yesterday,
+        programStart: yest,
         currentDate: today,
         history: {
-          [yesterday!]: {
+          [yest]: {
             blocks: [
               {
                 id: "blk1",
                 name: "Morning run",
                 start: "07:00",
                 end: "08:00",
-                recurrence: { kind: "just-today", date: yesterday },
+                recurrence: { kind: "just-today", date: yest },
                 categoryId: null,
                 bricks: [
                   {
@@ -297,15 +260,16 @@ test("E-m9c-003: tapping archived day opens read-only PastDayDetail; tapping tod
       };
       localStorage.setItem("dharma:v1", JSON.stringify(state));
     },
-    [todayISO, yesterdayISO],
+    { today: todayISO, yest: yesterdayISO },
   );
 
-  await page.reload();
+  await page.goto("/");
+  await page.waitForLoadState("networkidle");
   await page.waitForTimeout(300);
 
   // Switch to Month view
   const monthTab = page.getByRole("tab", { name: /^month$/i });
-  if ((await monthTab.count()) === 0) return;
+  await expect(monthTab).toBeVisible();
   await monthTab.click();
 
   const grid = page.getByRole("grid");
