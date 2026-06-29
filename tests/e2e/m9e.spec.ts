@@ -147,7 +147,6 @@ test("E-m9e-001: switching to Year renders Empire view with 12-month list; all f
   await yearTab.click();
 
   const monthsList = page.getByRole("list", { name: /months of/i });
-  if ((await monthsList.count()) === 0) return;
   await expect(monthsList).toBeVisible();
 
   // Building view (no grid) and Week view (no "Week days" list) are not shown
@@ -222,20 +221,15 @@ test("E-m9e-002: month score indicators render with correct heat-fill/no-data tr
   await yearTab.click();
 
   const monthsList = page.getByRole("list", { name: /months of 2026/i });
-  if ((await monthsList.count()) === 0) return;
   await expect(monthsList).toBeVisible();
 
   // January — should show a score (100% → numeral "100") — fully past month with scored day
   const janBtn = page.getByRole("button", { name: /^January 2026.*score/i });
-  if ((await janBtn.count()) > 0) {
-    await expect(janBtn).toBeVisible();
-  }
+  await expect(janBtn).toBeVisible();
 
   // December — should show no-data (fully future month in 2026 from May-18 perspective)
   const decBtn = page.getByRole("button", { name: /^December 2026.*no data/i });
-  if ((await decBtn.count()) > 0) {
-    await expect(decBtn).toBeVisible();
-  }
+  await expect(decBtn).toBeVisible();
 
   // May — current month (should carry aria-label "current month")
   const mayBtn = page.getByRole("button", {
@@ -313,17 +307,16 @@ test("E-m9e-003: tapping a MonthCell opens MonthView at that month; returning to
   await yearTab.click();
 
   const monthsList = page.getByRole("list", { name: /months of 2026/i });
-  if ((await monthsList.count()) === 0) return;
+  await expect(monthsList).toBeVisible();
 
   // Tap January 2026 (fully past, pre-start or in-range)
   const janBtn = page.getByRole("button", { name: /^January 2026/i });
-  if ((await janBtn.count()) === 0) return;
+  await expect(janBtn).toBeVisible();
   await janBtn.click();
   await page.waitForTimeout(200);
 
   // Now in Month view showing January 2026
   const grid = page.getByRole("grid");
-  if ((await grid.count()) === 0) return;
   await expect(grid).toBeVisible();
   const monthHeading = page.getByRole("heading", { level: 2 });
   if ((await monthHeading.count()) > 0) {
@@ -334,10 +327,10 @@ test("E-m9e-003: tapping a MonthCell opens MonthView at that month; returning to
   await yearTab.click();
   await page.waitForTimeout(100);
   const monthsListAgain = page.getByRole("list", { name: /months of 2026/i });
-  if ((await monthsListAgain.count()) === 0) return;
+  await expect(monthsListAgain).toBeVisible();
 
   const decBtn = page.getByRole("button", { name: /^December 2026/i });
-  if ((await decBtn.count()) === 0) return;
+  await expect(decBtn).toBeVisible();
   await decBtn.click();
   await page.waitForTimeout(200);
 
@@ -354,7 +347,7 @@ test("E-m9e-003: tapping a MonthCell opens MonthView at that month; returning to
   await yearTab.click();
   await page.waitForTimeout(100);
   const monthTab = page.getByRole("tab", { name: /^month$/i });
-  if ((await monthTab.count()) === 0) return;
+  await expect(monthTab).toBeVisible();
   await monthTab.click();
   await page.waitForTimeout(200);
 

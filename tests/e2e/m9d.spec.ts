@@ -180,7 +180,7 @@ test("E-m9d-002: per-day scores + week aggregate render correctly from seeded pa
 
   // Week list should be visible
   const weekList = page.getByRole("list", { name: /week days/i });
-  if ((await weekList.count()) === 0) return;
+  await expect(weekList).toBeVisible();
 
   // Aggregate ring should be present with a score
   const aggregateRing = page.getByRole("img");
@@ -273,7 +273,7 @@ test("E-m9d-003: open past-day read-only from Week view; tap today → Building;
 
   // Week list should be visible
   const weekList = page.getByRole("list", { name: /week days/i });
-  if ((await weekList.count()) === 0) return;
+  await expect(weekList).toBeVisible();
 
   // Tap the archived past-day row (has "score" in aria-label, not "today")
   const allScoredBtns = page.getByRole("button", { name: /score.*percent/i });

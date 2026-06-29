@@ -313,13 +313,13 @@ test("E-m7c-004: second BuildingClient mount (Day→Week→Day) fires count-up a
 
   // Navigate to Week view
   const weekTab = page.getByRole("tab", { name: /^week$/i });
-  if ((await weekTab.count()) === 0) return;
+  await expect(weekTab).toBeVisible();
   await weekTab.click();
   await page.waitForTimeout(200);
 
   // Navigate back to Day view — BuildingClient re-mounts
   const dayTab = page.getByRole("tab", { name: /^day$/i });
-  if ((await dayTab.count()) === 0) return;
+  await expect(dayTab).toBeVisible();
   await dayTab.click();
   await page.waitForSelector("[data-testid='hero-numeral']", {
     timeout: 5000,

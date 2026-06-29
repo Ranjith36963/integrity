@@ -1,15 +1,10 @@
 /**
  * tests/e2e/m7d.spec.ts — Milestone 7d E2E + Accessibility tests (Playwright, deferred to preview).
  *
- * Execution is deferred to Vercel preview — this sandbox cannot launch chromium
- * (binary missing, confirmed by M4a–M7c EVALUATOR reports and status.md).
- * Tests are authored here as real test() blocks; run them against the deployed preview URL.
- * Guards: `if ((await x.count()) > 0)` per ADR-039 + ADR-022.
- *
  * Covers: E-m7d-001..006, A-m7d-001..003
  *
  * Fixture approach:
- * - Seed state via page.evaluate/localStorage so the day is in a known % state
+ * - Seed state via addInitScript/localStorage so the day is in a known % state
  *   before the test action fires.
  * - E-m7d-001..003: seed block at 75% (3/4 ticked), day at 60%; then tap fourth brick.
  * - E-m7d-002/004/007/008: seed day at 99% (one block at 99%, others at 100%).
@@ -20,14 +15,10 @@
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-// ── Seed helpers ──────────────────────────────────────────────────────────────
+const TODAY_ISO = new Date().toISOString().split("T")[0]!;
 
-/** Seed a minimal AppState with a single block at the given completion ratio. */
-async function seedDayAtPct(
-  page: Page,
-  doneBricks: number,
-  totalBricks: number,
-) {
+/** Build a minimal AppState payload with a single block at the given completion ratio. */
+function buildDayPayload(doneBricks: number, totalBricks: number) {
   const bricks = Array.from({ length: totalBricks }, (_, i) => ({
     id: `brk-e2e-${i}`,
     name: `Brick ${i + 1}`,
@@ -36,22 +27,21 @@ async function seedDayAtPct(
     done: i < doneBricks,
     categoryId: null,
     parentBlockId: "blk-e2e",
-    recurrence: { kind: "just-today", date: "2026-05-20" },
   }));
 
-  const state = {
+  return {
     schemaVersion: 3,
-    programStart: "2026-05-01",
-    currentDate: "2026-05-20",
+    programStart: TODAY_ISO,
+    currentDate: TODAY_ISO,
     history: {},
     deletions: {},
     blocks: [
       {
         id: "blk-e2e",
         name: "Morning Routine",
-        start: "09:00",
-        end: "10:00",
-        recurrence: { kind: "just-today", date: "2026-05-20" },
+        start: "14:00",
+        end: "15:00",
+        recurrence: { kind: "every-day" },
         categoryId: null,
         bricks,
       },
@@ -59,11 +49,24 @@ async function seedDayAtPct(
     categories: [],
     looseBricks: [],
   };
+}
 
-  await page.evaluate((s) => {
-    localStorage.setItem("dharma:v1", JSON.stringify(s));
-  }, state);
-  await page.reload();
+/** Seed a minimal AppState with a single block at the given completion ratio. */
+async function seedDayAtPct(
+  page: Page,
+  doneBricks: number,
+  totalBricks: number,
+) {
+  await page.addInitScript(
+    (payload: unknown) => {
+      localStorage.setItem("dharma:onboarding-shown", "true");
+      localStorage.setItem("dharma:v1", JSON.stringify(payload));
+    },
+    buildDayPayload(doneBricks, totalBricks),
+  );
+  await page.goto("/");
+  await page.waitForLoadState("networkidle");
+  await page.waitForTimeout(300);
 }
 
 // ── E-m7d-001: bloom-overlay appears and fades on last-brick tap ──────────────
@@ -71,13 +74,11 @@ async function seedDayAtPct(
 test("E-m7d-001: toggling last brick of a block causes bloom-overlay to appear then fade", async ({
   page,
 }) => {
-  await page.goto("/");
-  // Seed 3/4 bricks done in a single block (block at 75%)
   await seedDayAtPct(page, 3, 4);
 
   // Expand the block to reveal bricks
   const block = page.locator('[data-component="timeline-block"]').first();
-  if ((await block.count()) === 0) return; // guard for preview
+  await expect(block).toBeVisible();
   await block.click();
 
   // Find the fourth (undone) brick chip and tap it
@@ -85,7 +86,7 @@ test("E-m7d-001: toggling last brick of a block causes bloom-overlay to appear t
     .locator('[data-component="brick-chip"]')
     .filter({ hasText: "Brick 4" })
     .first();
-  if ((await undoneChip.count()) === 0) return;
+  await expect(undoneChip).toBeVisible();
 
   // Track console errors
   const consoleErrors: string[] = [];
@@ -113,8 +114,6 @@ test("E-m7d-001: toggling last brick of a block causes bloom-overlay to appear t
 test("E-m7d-002: tapping final brick fires fireworks overlay which fades within ~2s", async ({
   page,
 }) => {
-  await page.goto("/");
-  // Seed 3/4 bricks done — block at 75%, day at 75%; one tap completes the day
   await seedDayAtPct(page, 3, 4);
 
   // Track console errors
@@ -125,14 +124,14 @@ test("E-m7d-002: tapping final brick fires fireworks overlay which fades within 
 
   // Expand block and tap the undone brick
   const block = page.locator('[data-component="timeline-block"]').first();
-  if ((await block.count()) === 0) return;
+  await expect(block).toBeVisible();
   await block.click();
 
   const undoneChip = page
     .locator('[data-component="brick-chip"]')
     .filter({ hasText: "Brick 4" })
     .first();
-  if ((await undoneChip.count()) === 0) return;
+  await expect(undoneChip).toBeVisible();
 
   await undoneChip.click();
 
@@ -156,7 +155,6 @@ test("E-m7d-003: under PRM, DayCompleteCard appears on day completion; Fireworks
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/");
   await seedDayAtPct(page, 3, 4);
 
   // Track console errors
@@ -167,14 +165,14 @@ test("E-m7d-003: under PRM, DayCompleteCard appears on day completion; Fireworks
 
   // Expand block and tap the undone brick
   const block = page.locator('[data-component="timeline-block"]').first();
-  if ((await block.count()) === 0) return;
+  await expect(block).toBeVisible();
   await block.click();
 
   const undoneChip = page
     .locator('[data-component="brick-chip"]')
     .filter({ hasText: "Brick 4" })
     .first();
-  if ((await undoneChip.count()) === 0) return;
+  await expect(undoneChip).toBeVisible();
 
   await undoneChip.click();
 
@@ -220,7 +218,6 @@ test("E-m7d-003: under PRM, DayCompleteCard appears on day completion; Fireworks
 test("E-m7d-004: Lighthouse Performance ≥ 90 on Day view during celebration path", async ({
   page,
 }) => {
-  await page.goto("/");
   await seedDayAtPct(page, 3, 4);
 
   // Proxy: measure FCP via PerformancePaintTiming (full Lighthouse runs in preview)
@@ -248,7 +245,6 @@ test("E-m7d-004: Lighthouse Performance ≥ 90 on Day view during celebration pa
 test("E-m7d-005: hydrating directly into a 100% day fires neither fireworks nor bloom-overlay", async ({
   page,
 }) => {
-  await page.goto("/");
   // Seed ALL bricks done — day at 100% from first paint
   await seedDayAtPct(page, 4, 4);
 
@@ -282,7 +278,6 @@ test("E-m7d-005: hydrating directly into a 100% day fires neither fireworks nor 
 test("E-m7d-006: re-mounting Day view via ViewSwitcher with 100% day fires no celebration on remount", async ({
   page,
 }) => {
-  await page.goto("/");
   // Seed ALL bricks done — day at 100%
   await seedDayAtPct(page, 4, 4);
 
@@ -318,20 +313,19 @@ test("E-m7d-006: re-mounting Day view via ViewSwitcher with 100% day fires no ce
 test("A-m7d-001: bloom-overlay + fireworks visible → axe reports zero violations (motion ON)", async ({
   page,
 }) => {
-  await page.goto("/");
   await seedDayAtPct(page, 3, 4);
 
   // Inject axe-core (only if @axe-core/playwright is available in preview)
   // Full axe run requires the real Chromium browser + preview bundle
   const block = page.locator('[data-component="timeline-block"]').first();
-  if ((await block.count()) === 0) return;
+  await expect(block).toBeVisible();
   await block.click();
 
   const undoneChip = page
     .locator('[data-component="brick-chip"]')
     .filter({ hasText: "Brick 4" })
     .first();
-  if ((await undoneChip.count()) === 0) return;
+  await expect(undoneChip).toBeVisible();
 
   await undoneChip.click();
 
@@ -358,18 +352,17 @@ test("A-m7d-002: DayCompleteCard visible under PRM → role='status' aria-live='
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/");
   await seedDayAtPct(page, 3, 4);
 
   const block = page.locator('[data-component="timeline-block"]').first();
-  if ((await block.count()) === 0) return;
+  await expect(block).toBeVisible();
   await block.click();
 
   const undoneChip = page
     .locator('[data-component="brick-chip"]')
     .filter({ hasText: "Brick 4" })
     .first();
-  if ((await undoneChip.count()) === 0) return;
+  await expect(undoneChip).toBeVisible();
 
   await undoneChip.click();
 
@@ -387,18 +380,17 @@ test("A-m7d-002: DayCompleteCard visible under PRM → role='status' aria-live='
 test("A-m7d-003: bloom-overlay and fireworks are aria-hidden — absent from AT focus order", async ({
   page,
 }) => {
-  await page.goto("/");
   await seedDayAtPct(page, 3, 4);
 
   const block = page.locator('[data-component="timeline-block"]').first();
-  if ((await block.count()) === 0) return;
+  await expect(block).toBeVisible();
   await block.click();
 
   const undoneChip = page
     .locator('[data-component="brick-chip"]')
     .filter({ hasText: "Brick 4" })
     .first();
-  if ((await undoneChip.count()) === 0) return;
+  await expect(undoneChip).toBeVisible();
 
   await undoneChip.click();
 

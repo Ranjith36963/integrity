@@ -1,12 +1,7 @@
 /**
  * tests/e2e/m9d.a11y.spec.ts — Milestone 9d accessibility tests (axe-core via Playwright).
  *
- * Execution is deferred to Vercel preview — this sandbox cannot launch chromium
- * (binary missing, confirmed by M4a–M4g EVALUATOR reports and status.md).
- * Tests are authored here as real test() blocks; run them against the deployed preview URL.
- * Guards: `if ((await x.count()) > 0)` per ADR-039 + ADR-022.
- *
- * Per AC #12: localStorage cleared in beforeEach (ADR-018).
+ * Per AC #12: localStorage seeded via addInitScript before each navigation (ADR-018).
  *
  * Covers: A-m9d-001..003
  */
@@ -14,77 +9,53 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-// AC #12: clear localStorage before each case (ADR-018)
-test.beforeEach(async ({ page }) => {
-  await page.goto("/");
-  await page.evaluate(() => {
-    localStorage.clear();
-    localStorage.setItem("dharma:onboarding-shown", "true");
-  });
-  await page.reload();
-});
-
-/** Helper: switch to Week view. Returns false if ViewSwitcher is absent (sandbox guard). */
-async function switchToWeekView(
-  page: import("@playwright/test").Page,
-): Promise<boolean> {
-  const weekTab = page.getByRole("tab", { name: /^week$/i });
-  if ((await weekTab.count()) === 0) return false;
-  await weekTab.click();
-  return true;
-}
-
-/** Helper: seed dharma:v1 with an archived yesterday (100% score) and reload. */
-async function seedWithArchivedDay(
-  page: import("@playwright/test").Page,
-): Promise<void> {
-  await page.evaluate((): void => {
-    const today = new Date();
-    const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayISO = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
-
-    const state = {
-      schemaVersion: 2,
-      programStart: yesterdayISO,
-      currentDate: todayISO,
-      history: {
-        [yesterdayISO]: {
-          blocks: [
+/** State with an archived yesterday (100% score) for week view testing. */
+const BASE_STATE = {
+  schemaVersion: 3,
+  programStart: "2026-06-28",
+  currentDate: "2026-06-29",
+  blocks: [],
+  looseBricks: [],
+  categories: [],
+  deletions: {},
+  history: {
+    "2026-06-28": {
+      blocks: [
+        {
+          id: "blk1",
+          name: "Morning",
+          start: "07:00",
+          end: "08:00",
+          recurrence: { kind: "just-today", date: "2026-06-28" },
+          categoryId: null,
+          bricks: [
             {
-              id: "blk1",
-              name: "Morning",
-              start: "07:00",
-              end: "08:00",
-              recurrence: { kind: "just-today", date: yesterdayISO },
+              id: "br1",
+              name: "Stretch",
+              kind: "tick",
+              done: true,
+              hasDuration: false,
               categoryId: null,
-              bricks: [
-                {
-                  id: "br1",
-                  name: "Stretch",
-                  kind: "tick",
-                  done: true,
-                  hasDuration: false,
-                  categoryId: null,
-                  parentBlockId: "blk1",
-                },
-              ],
+              parentBlockId: "blk1",
             },
           ],
-          looseBricks: [],
-          categories: [],
         },
-      },
-      blocks: [],
+      ],
       looseBricks: [],
       categories: [],
-    };
-    localStorage.setItem("dharma:v1", JSON.stringify(state));
-  });
-  await page.reload();
+    },
+  },
+};
+
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript((payload: unknown) => {
+    localStorage.setItem("dharma:onboarding-shown", "true");
+    localStorage.setItem("dharma:v1", JSON.stringify(payload));
+  }, BASE_STATE);
+  await page.goto("/");
+  await page.waitForLoadState("networkidle");
   await page.waitForTimeout(300);
-}
+});
 
 // ─── A-m9d-001: Week view — axe clean, list semantics, keyboard, 430px ────────
 
@@ -92,14 +63,13 @@ test("A-m9d-001: week view is axe-clean, role=list/listitem semantics, keyboard-
   page,
 }) => {
   await page.setViewportSize({ width: 430, height: 932 });
-  await page.goto("/");
-  await seedWithArchivedDay(page);
 
-  const switched = await switchToWeekView(page);
-  if (!switched) return;
+  // Switch to Week view
+  const weekTab = page.getByRole("tab", { name: /^week$/i });
+  await expect(weekTab).toBeVisible();
+  await weekTab.click();
 
   const weekList = page.getByRole("list", { name: /week days/i });
-  if ((await weekList.count()) === 0) return;
   await expect(weekList).toBeVisible();
 
   // axe scan against the week view
@@ -182,14 +152,14 @@ test("A-m9d-002: WeekAggregate ring and ViewSwitcher are axe-clean; ring is role
   page,
 }) => {
   await page.setViewportSize({ width: 430, height: 932 });
-  await page.goto("/");
-  await seedWithArchivedDay(page);
 
-  const switched = await switchToWeekView(page);
-  if (!switched) return;
+  // Switch to Week view
+  const weekTab = page.getByRole("tab", { name: /^week$/i });
+  await expect(weekTab).toBeVisible();
+  await weekTab.click();
 
   const weekList = page.getByRole("list", { name: /week days/i });
-  if ((await weekList.count()) === 0) return;
+  await expect(weekList).toBeVisible();
 
   // axe scan with colour-contrast rules enabled (default)
   const results = await new AxeBuilder({ page })
@@ -225,7 +195,6 @@ test("A-m9d-002: WeekAggregate ring and ViewSwitcher are axe-clean; ring is role
 
   // ViewSwitcher is role="tablist"
   const tablist = page.getByRole("tablist");
-  if ((await tablist.count()) === 0) return;
   await expect(tablist).toBeVisible();
   await expect(tablist).toHaveAttribute("aria-label", "Calendar view");
 
@@ -234,11 +203,11 @@ test("A-m9d-002: WeekAggregate ring and ViewSwitcher are axe-clean; ring is role
   expect(await tabs.count()).toBe(4);
 
   // Week tab is aria-selected (current view)
-  const weekTab = page.getByRole("tab", { name: /^week$/i });
-  if ((await weekTab.count()) > 0) {
-    await expect(weekTab).toHaveAttribute("aria-selected", "true");
+  const weekTabSel = page.getByRole("tab", { name: /^week$/i });
+  if ((await weekTabSel.count()) > 0) {
+    await expect(weekTabSel).toHaveAttribute("aria-selected", "true");
     // Week is NOT aria-disabled (it's a live tab now — ADR-013 M9d)
-    const disabledAttr = await weekTab.getAttribute("aria-disabled");
+    const disabledAttr = await weekTabSel.getAttribute("aria-disabled");
     expect(disabledAttr).toBeNull();
   }
 
@@ -259,8 +228,8 @@ test("A-m9d-002: WeekAggregate ring and ViewSwitcher are axe-clean; ring is role
   }
 
   // Hit areas ≥ 44px tall (ADR-031)
-  if ((await weekTab.count()) > 0) {
-    const box = await weekTab.boundingBox();
+  if ((await weekTabSel.count()) > 0) {
+    const box = await weekTabSel.boundingBox();
     if (box) {
       expect(box.height).toBeGreaterThanOrEqual(44);
     }
@@ -281,18 +250,18 @@ test("A-m9d-003: PastDayDetail panel opened from Week view is axe-clean, role=re
   page,
 }) => {
   await page.setViewportSize({ width: 430, height: 932 });
-  await page.goto("/");
-  await seedWithArchivedDay(page);
 
-  const switched = await switchToWeekView(page);
-  if (!switched) return;
+  // Switch to Week view
+  const weekTab = page.getByRole("tab", { name: /^week$/i });
+  await expect(weekTab).toBeVisible();
+  await weekTab.click();
 
   const weekList = page.getByRole("list", { name: /week days/i });
-  if ((await weekList.count()) === 0) return;
+  await expect(weekList).toBeVisible();
 
   // Tap the archived past-day row (has "score" in aria-label, does NOT include "today")
   const allScoredBtns = page.getByRole("button", { name: /score.*percent/i });
-  if ((await allScoredBtns.count()) === 0) return;
+  await expect(allScoredBtns.first()).toBeVisible();
 
   const count = await allScoredBtns.count();
   let pastDayBtn: import("@playwright/test").Locator | null = null;
@@ -311,7 +280,6 @@ test("A-m9d-003: PastDayDetail panel opened from Week view is axe-clean, role=re
   await page.waitForTimeout(200);
 
   const detailPanel = page.getByRole("region", { name: /day detail/i });
-  if ((await detailPanel.count()) === 0) return;
   await expect(detailPanel).toBeVisible();
 
   // axe scan with the panel open

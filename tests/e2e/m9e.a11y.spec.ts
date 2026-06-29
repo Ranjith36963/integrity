@@ -1,12 +1,7 @@
 /**
  * tests/e2e/m9e.a11y.spec.ts — Milestone 9e accessibility tests (axe-core via Playwright).
  *
- * Execution is deferred to Vercel preview — this sandbox cannot launch chromium
- * (binary missing, confirmed by M4a–M4g EVALUATOR reports and status.md).
- * Tests are authored here as real test() blocks; run them against the deployed preview URL.
- * Guards: `if ((await x.count()) > 0)` per ADR-039 + ADR-022.
- *
- * Per AC #11: localStorage cleared in beforeEach (ADR-018).
+ * Per AC #11: localStorage seeded via addInitScript before each navigation (ADR-018).
  *
  * Covers: A-m9e-001..002
  */
@@ -14,25 +9,42 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-// AC #11: clear localStorage before each case (ADR-018)
-test.beforeEach(async ({ page }) => {
-  await page.goto("/");
-  await page.evaluate(() => {
-    localStorage.clear();
-    localStorage.setItem("dharma:onboarding-shown", "true");
-  });
-  await page.reload();
-});
+const BASE_STATE = {
+  schemaVersion: 3,
+  programStart: "2026-01-01",
+  currentDate: "2026-06-29",
+  blocks: [],
+  looseBricks: [],
+  categories: [],
+  deletions: {},
+  history: {
+    "2026-06-28": {
+      blocks: [],
+      looseBricks: [
+        {
+          id: "brk-h1",
+          name: "Done",
+          kind: "tick",
+          done: true,
+          hasDuration: false,
+          categoryId: null,
+          parentBlockId: null,
+        },
+      ],
+      categories: [],
+    },
+  },
+};
 
-/** Helper: switch to Year view. Returns false if ViewSwitcher or Year tab is absent. */
-async function switchToYearView(
-  page: import("@playwright/test").Page,
-): Promise<boolean> {
-  const yearTab = page.getByRole("tab", { name: /^year$/i });
-  if ((await yearTab.count()) === 0) return false;
-  await yearTab.click();
-  return true;
-}
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript((payload: unknown) => {
+    localStorage.setItem("dharma:onboarding-shown", "true");
+    localStorage.setItem("dharma:v1", JSON.stringify(payload));
+  }, BASE_STATE);
+  await page.goto("/");
+  await page.waitForLoadState("networkidle");
+  await page.waitForTimeout(300);
+});
 
 // ─── A-m9e-001: Year view — axe clean, list semantics, keyboard, 430px ─────
 
@@ -40,14 +52,13 @@ test("A-m9e-001: year view is axe-clean, role=list 'Months of <year>', MonthCell
   page,
 }) => {
   await page.setViewportSize({ width: 430, height: 932 });
-  await page.goto("/");
-  await page.waitForTimeout(300);
 
-  const switched = await switchToYearView(page);
-  if (!switched) return;
+  // Switch to Year view
+  const yearTab = page.getByRole("tab", { name: /^year$/i });
+  await expect(yearTab).toBeVisible();
+  await yearTab.click();
 
   const monthsList = page.getByRole("list", { name: /months of/i });
-  if ((await monthsList.count()) === 0) return;
   await expect(monthsList).toBeVisible();
 
   // axe scan against the year view
@@ -121,14 +132,14 @@ test("A-m9e-002: YearAggregate ring is role=img with valid aria-label; all four 
   page,
 }) => {
   await page.setViewportSize({ width: 430, height: 932 });
-  await page.goto("/");
-  await page.waitForTimeout(300);
 
-  const switched = await switchToYearView(page);
-  if (!switched) return;
+  // Switch to Year view
+  const yearTab = page.getByRole("tab", { name: /^year$/i });
+  await expect(yearTab).toBeVisible();
+  await yearTab.click();
 
   const monthsList = page.getByRole("list", { name: /months of/i });
-  if ((await monthsList.count()) === 0) return;
+  await expect(monthsList).toBeVisible();
 
   // axe scan with colour-contrast rules enabled (default)
   const results = await new AxeBuilder({ page })
@@ -171,7 +182,6 @@ test("A-m9e-002: YearAggregate ring is role=img with valid aria-label; all four 
 
   // ViewSwitcher is role="tablist"
   const tablist = page.getByRole("tablist");
-  if ((await tablist.count()) === 0) return;
   await expect(tablist).toBeVisible();
   await expect(tablist).toHaveAttribute("aria-label", "Calendar view");
 
@@ -180,11 +190,11 @@ test("A-m9e-002: YearAggregate ring is role=img with valid aria-label; all four 
   expect(await tabs.count()).toBe(4);
 
   // Year tab is aria-selected (current view)
-  const yearTab = page.getByRole("tab", { name: /^year$/i });
-  if ((await yearTab.count()) > 0) {
-    await expect(yearTab).toHaveAttribute("aria-selected", "true");
+  const yearTabSel = page.getByRole("tab", { name: /^year$/i });
+  if ((await yearTabSel.count()) > 0) {
+    await expect(yearTabSel).toHaveAttribute("aria-selected", "true");
     // Year is NOT aria-disabled (M9e: all four tabs live)
-    expect(await yearTab.getAttribute("aria-disabled")).toBeNull();
+    expect(await yearTabSel.getAttribute("aria-disabled")).toBeNull();
   }
 
   // All other tabs are live — no aria-disabled
@@ -202,8 +212,8 @@ test("A-m9e-002: YearAggregate ring is role=img with valid aria-label; all four 
   }
 
   // Hit areas >= 44px tall (ADR-031)
-  if ((await yearTab.count()) > 0) {
-    const box = await yearTab.boundingBox();
+  if ((await yearTabSel.count()) > 0) {
+    const box = await yearTabSel.boundingBox();
     if (box) {
       expect(box.height).toBeGreaterThanOrEqual(44);
     }

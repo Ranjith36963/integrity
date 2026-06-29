@@ -1,31 +1,33 @@
 /**
  * tests/e2e/m4f.a11y.spec.ts — Milestone 4f accessibility tests (axe-core via Playwright).
  *
- * Execution is deferred to Vercel preview per the M0–M4e sandbox bind-failure
- * pattern (e2e server fails to bind in this sandbox environment).
- * Tests are authored here; run them against the deployed preview URL.
- * Guards: `if ((await x.count()) > 0)` for elements requiring the live app.
- *
  * Covers: A-m4f-001..004
  */
 
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("dharma:onboarding-shown", "true");
+  });
+  await page.goto("/");
+  await page.waitForLoadState("networkidle");
+  await page.waitForTimeout(300);
+});
+
 // Helper: open AddBrickSheet, add a units brick, then tap it to open UnitsEntrySheet
 async function openUnitsEntrySheet(page: import("@playwright/test").Page) {
-  await page.goto("/");
-
   const dockAdd = page.getByRole("button", { name: "Add" }).last();
-  if ((await dockAdd.count()) === 0) return false;
+  await expect(dockAdd).toBeVisible();
   await dockAdd.click();
 
   const chooser = page.getByRole("dialog", { name: "Add", exact: true });
-  if ((await chooser.count()) === 0) return false;
+  await expect(chooser).toBeVisible();
   await chooser.getByRole("button", { name: "Add Brick" }).click();
 
   const addSheet = page.getByRole("dialog", { name: /Add Brick/i });
-  if ((await addSheet.count()) === 0) return false;
+  await expect(addSheet).toBeVisible();
   await addSheet.getByLabel(/Title/i).fill("Meditate");
   const unitsChip = addSheet.getByRole("radio", { name: /units/i });
   await unitsChip.click();
@@ -36,12 +38,10 @@ async function openUnitsEntrySheet(page: import("@playwright/test").Page) {
 
   // Tap the chip to open UnitsEntrySheet
   const brickText = page.getByText("Meditate").first();
-  if ((await brickText.count()) === 0) return false;
+  await expect(brickText).toBeVisible();
   const chipBtn = brickText.locator("xpath=ancestor::button");
-  if ((await chipBtn.count()) === 0) return false;
+  await expect(chipBtn.first()).toBeVisible();
   await chipBtn.first().click({ force: true });
-
-  return true;
 }
 
 // ─── A-m4f-001: UnitsEntrySheet dialog role + aria-labelledby → heading ─────
@@ -49,8 +49,7 @@ async function openUnitsEntrySheet(page: import("@playwright/test").Page) {
 test("A-m4f-001: UnitsEntrySheet has role=dialog + aria-labelledby pointing at heading containing brick name", async ({
   page,
 }) => {
-  const opened = await openUnitsEntrySheet(page);
-  if (!opened) return;
+  await openUnitsEntrySheet(page);
 
   const entrySheet = page.getByRole("dialog", { name: /Meditate/i });
   if ((await entrySheet.count()) > 0) {
@@ -76,8 +75,7 @@ test("A-m4f-001: UnitsEntrySheet has role=dialog + aria-labelledby pointing at h
 test("A-m4f-002: UnitsEntrySheet number input has accessible name 'Enter minutes done today'", async ({
   page,
 }) => {
-  const opened = await openUnitsEntrySheet(page);
-  if (!opened) return;
+  await openUnitsEntrySheet(page);
 
   const entrySheet = page.getByRole("dialog", { name: /Meditate/i });
   if ((await entrySheet.count()) > 0) {
@@ -97,8 +95,7 @@ test("A-m4f-002: UnitsEntrySheet number input has accessible name 'Enter minutes
 test("A-m4f-003: empty input → Save aria-disabled=true + aria-describedby sr-only hint 'Enter a number to save.'", async ({
   page,
 }) => {
-  const opened = await openUnitsEntrySheet(page);
-  if (!opened) return;
+  await openUnitsEntrySheet(page);
 
   const entrySheet = page.getByRole("dialog", { name: /Meditate/i });
   if ((await entrySheet.count()) > 0) {
@@ -135,8 +132,7 @@ test("A-m4f-003: empty input → Save aria-disabled=true + aria-describedby sr-o
 test("A-m4f-004: zero axe violations in UnitsEntrySheet across valid / empty / over-target states", async ({
   page,
 }) => {
-  const opened = await openUnitsEntrySheet(page);
-  if (!opened) return;
+  await openUnitsEntrySheet(page);
 
   const entrySheet = page.getByRole("dialog", { name: /Meditate/i });
   if ((await entrySheet.count()) > 0) {

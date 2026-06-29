@@ -2,95 +2,85 @@
  * tests/e2e/m6.spec.ts — Milestone 6 E2E tests (Playwright).
  *
  * Real Playwright drag assertions using mouse.move + mouse.down + mouse.up.
- * No vacuous-pass guards on assertions — if elements don't exist, the test fails.
- * Element-existence guards (early return) apply only to the Edit Mode button itself
- * since the test seeding + page structure guarantees blocks and handles are present
- * once Edit Mode is unlocked.
  *
  * Covers: E-m6-001..004
  */
 
 import { test, expect } from "@playwright/test";
 
-test.beforeEach(async ({ page }) => {
-  await page.goto("/");
-  await page.evaluate(() => {
-    localStorage.clear();
-    localStorage.setItem("dharma:onboarding-shown", "true");
-  });
-  await page.reload();
-});
-
-/**
- * Seed a v3 fixture with blk-A at 08:00–09:00 and blk-B at 14:00–15:00.
- * blk-A has two bricks for brick-reorder testing.
- */
-async function seedFixture(page: import("@playwright/test").Page) {
-  const todayISO = await page.evaluate(() => {
-    const d = new Date();
-    return d.toISOString().slice(0, 10);
-  });
-  await page.evaluate((today) => {
-    const payload = {
-      schemaVersion: 3,
-      programStart: today,
-      currentDate: today,
-      history: {},
-      deletions: {},
-      blocks: [
+const FIXTURE = {
+  schemaVersion: 3,
+  programStart: "2026-06-29",
+  currentDate: "2026-06-29",
+  history: {},
+  deletions: {},
+  blocks: [
+    {
+      id: "blk-A",
+      name: "Morning",
+      start: "08:00",
+      end: "09:00",
+      recurrence: { kind: "every-day" },
+      categoryId: null,
+      bricks: [
         {
-          id: "blk-A",
-          name: "Morning",
-          start: "08:00",
-          end: "09:00",
-          recurrence: { kind: "every-day" },
+          id: "brk-1",
+          name: "Meditate",
+          kind: "tick",
+          done: false,
+          hasDuration: false,
           categoryId: null,
-          bricks: [
-            {
-              id: "brk-1",
-              name: "Meditate",
-              kind: "tick",
-              done: false,
-              hasDuration: false,
-              categoryId: null,
-              parentBlockId: "blk-A",
-            },
-            {
-              id: "brk-2",
-              name: "Stretch",
-              kind: "tick",
-              done: false,
-              hasDuration: false,
-              categoryId: null,
-              parentBlockId: "blk-A",
-            },
-          ],
+          parentBlockId: "blk-A",
         },
         {
-          id: "blk-B",
-          name: "Workout",
-          start: "14:00",
-          end: "15:00",
-          recurrence: { kind: "every-day" },
+          id: "brk-2",
+          name: "Stretch",
+          kind: "tick",
+          done: false,
+          hasDuration: false,
           categoryId: null,
-          bricks: [],
+          parentBlockId: "blk-A",
         },
       ],
-      looseBricks: [],
-      categories: [],
-    };
-    localStorage.setItem("dharma:v1", JSON.stringify(payload));
-  }, todayISO);
-  await page.reload();
-}
+    },
+    {
+      id: "blk-B",
+      name: "Workout",
+      start: "14:00",
+      end: "15:00",
+      recurrence: { kind: "every-day" },
+      categoryId: null,
+      bricks: [],
+    },
+  ],
+  looseBricks: [],
+  categories: [],
+};
 
-/** Toggle into Edit Mode (Unlocked). Returns false if the button doesn't exist. */
+test.beforeEach(async ({ page }) => {
+  // Use addInitScript only for onboarding flag (runs on every navigation incl. reload).
+  // The dharma:v1 fixture is seeded via page.evaluate after navigation so that
+  // page.reload() within a test does NOT overwrite the mutated state — enabling
+  // drag-persistence assertions (E-m6-001).
+  await page.addInitScript(() => {
+    localStorage.setItem("dharma:onboarding-shown", "true");
+  });
+  await page.goto("/");
+  await page.waitForLoadState("networkidle");
+  await page.evaluate((payload: unknown) => {
+    localStorage.setItem("dharma:v1", JSON.stringify(payload));
+  }, FIXTURE);
+  await page.reload();
+  await page.waitForLoadState("networkidle");
+  await page.waitForTimeout(300);
+});
+
+/** Toggle into Edit Mode (Unlocked). */
 async function enableEditMode(page: import("@playwright/test").Page) {
   const pencil = page.getByRole("button", { name: /edit mode/i });
-  if ((await pencil.count()) === 0) return false;
+  await expect(pencil).toBeVisible();
   await pencil.click();
   await page.waitForTimeout(200);
-  return true;
 }
 
 // ─── E-m6-001: block re-time — drag → snap → persist; new times survive reload ─
@@ -99,16 +89,13 @@ test("E-m6-001: block drag → snaps to 11:00; new slot persists after reload", 
   page,
 }) => {
   await page.setViewportSize({ width: 430, height: 932 });
-  await seedFixture(page);
-
-  const unlocked = await enableEditMode(page);
-  if (!unlocked) return;
+  await enableEditMode(page);
 
   // Find blk-A's drag handle
   const blockHandle = page.getByRole("button", {
     name: "Reorder block Morning",
   });
-  if ((await blockHandle.count()) === 0) return;
+  await expect(blockHandle).toBeVisible();
 
   // Scroll the timeline container directly — NOT the window.
   // scrollIntoView() scrolls window too, making window.scrollY > 0.
@@ -132,7 +119,7 @@ test("E-m6-001: block drag → snaps to 11:00; new slot persists after reload", 
   // which the handleDragEnd formula (info.point.y - containerTop + scrollOffset) converts
   // back to N * HOUR_HEIGHT_PX regardless of the current scroll position.
   const hourGrid = page.getByTestId("hour-grid");
-  if ((await hourGrid.count()) === 0) return;
+  await expect(hourGrid).toBeVisible();
   const gridBox = await hourGrid.boundingBox();
   if (!gridBox) return;
 
@@ -149,7 +136,6 @@ test("E-m6-001: block drag → snaps to 11:00; new slot persists after reload", 
   await page.waitForTimeout(500);
 
   // Block should now have moved — verify by checking persisted localStorage state.
-  // These assertions must NOT be guarded — if drag worked, localStorage will have state.
   const newState = await page.evaluate(() => {
     const raw = localStorage.getItem("dharma:v1");
     if (!raw) return null;
@@ -167,7 +153,9 @@ test("E-m6-001: block drag → snaps to 11:00; new slot persists after reload", 
   // Start should have moved from 08:00 (drag target was 11:00)
   expect(blkA!.start).not.toBe("08:00");
 
-  // Reload and verify persistence: the new start must survive a page reload
+  // Reload and verify persistence: the new start must survive a page reload.
+  // Note: addInitScript only sets onboarding-shown; dharma:v1 was seeded via
+  // page.evaluate so reload does NOT overwrite the drag-mutated state.
   await page.reload();
   await page.waitForTimeout(300);
 
@@ -194,15 +182,12 @@ test("E-m6-002: overlap-rejected drop snap-back; blk-A start unchanged; aria-liv
   page,
 }) => {
   await page.setViewportSize({ width: 430, height: 932 });
-  await seedFixture(page);
-
-  const unlocked = await enableEditMode(page);
-  if (!unlocked) return;
+  await enableEditMode(page);
 
   const blockHandle = page.getByRole("button", {
     name: "Reorder block Morning",
   });
-  if ((await blockHandle.count()) === 0) return;
+  await expect(blockHandle).toBeVisible();
 
   // scrollTop=400 keeps window.scrollY=0 and puts 08:00 (~112px) and 14:00 (~496px) in view.
   await page.evaluate(() => {
@@ -216,12 +201,9 @@ test("E-m6-002: overlap-rejected drop snap-back; blk-A start unchanged; aria-liv
   const handleBox = await blockHandle.boundingBox();
   if (!handleBox) return;
 
-  // Attempt to drag blk-A to 14:00 — overlaps blk-B.
-  // Use gridBox.y + 14*HOUR_HEIGHT_PX as the target viewport Y so the drag
-  // computes correctly regardless of container scroll offset.
   const HOUR_HEIGHT_PX = 64;
   const hourGrid2 = page.getByTestId("hour-grid");
-  if ((await hourGrid2.count()) === 0) return;
+  await expect(hourGrid2).toBeVisible();
   const gridBox2 = await hourGrid2.boundingBox();
   if (!gridBox2) return;
   const targetY2 = gridBox2.y + 14 * HOUR_HEIGHT_PX;
@@ -237,8 +219,6 @@ test("E-m6-002: overlap-rejected drop snap-back; blk-A start unchanged; aria-liv
   await page.mouse.up();
   await page.waitForTimeout(500);
 
-  // blk-A should still be at 08:00 (rejected — no overlap allowed).
-  // This assertion must NOT be guarded — the fixture guarantees state was seeded.
   const state = await page.evaluate(() => {
     const raw = localStorage.getItem("dharma:v1");
     if (!raw) return null;
@@ -252,7 +232,6 @@ test("E-m6-002: overlap-rejected drop snap-back; blk-A start unchanged; aria-liv
   expect(blkA).toBeDefined();
   expect(blkA!.start).toBe("08:00");
 
-  // aria-live region should show rejection message (if present — implementation detail)
   const liveRegion = page.locator("[aria-live='polite'][aria-atomic='true']");
   if ((await liveRegion.count()) > 0) {
     const text = await liveRegion.first().textContent();
@@ -268,22 +247,33 @@ test("E-m6-003: brick reorder inside blk-A; new order persists in localStorage",
   page,
 }) => {
   await page.setViewportSize({ width: 430, height: 932 });
-  await seedFixture(page);
-
-  const unlocked = await enableEditMode(page);
-  if (!unlocked) return;
-
-  // Expand blk-A card to see bricks (force:true — card jiggles in edit mode)
-  const blkACard = page.getByRole("article").first();
-  if ((await blkACard.count()) === 0) return;
-  await blkACard.click({ force: true });
+  // Scroll to 08:00 so the Morning block is in view before clicking
+  await page.evaluate(() => {
+    const scrollRef = document.querySelector(
+      '[role="region"][aria-label="Timeline"]',
+    ) as HTMLElement;
+    if (scrollRef) scrollRef.scrollTop = 200;
+  });
   await page.waitForTimeout(200);
+
+  // Expand blk-A card BEFORE entering edit mode.
+  // SG-m5-05: tap-to-expand is suppressed in edit mode, so we must expand first.
+  const blkACard = page
+    .locator('[data-component="timeline-block"]')
+    .filter({ hasText: "Morning" })
+    .first();
+  await expect(blkACard).toBeVisible();
+  await blkACard.click();
+  await page.waitForTimeout(300);
+
+  // Now enter edit mode — brick handles should be visible inside the expanded block
+  await enableEditMode(page);
 
   // Find first brick handle
   const brickHandle = page.getByRole("button", {
     name: "Reorder brick Meditate",
   });
-  if ((await brickHandle.count()) === 0) return;
+  await expect(brickHandle).toBeVisible();
 
   const handleBox = await brickHandle.boundingBox();
   if (!handleBox) return;
@@ -302,8 +292,6 @@ test("E-m6-003: brick reorder inside blk-A; new order persists in localStorage",
   await page.mouse.up();
   await page.waitForTimeout(500);
 
-  // Verify brick order in localStorage — brk-1 should now appear after brk-2
-  // (or at minimum, the bricks array has been modified by the drag)
   const stateAfterDrag = await page.evaluate(() => {
     const raw = localStorage.getItem("dharma:v1");
     if (!raw) return null;
@@ -317,13 +305,10 @@ test("E-m6-003: brick reorder inside blk-A; new order persists in localStorage",
     (b: { id: string }) => b.id === "blk-A",
   );
   expect(blkA).toBeDefined();
-  // After drag, bricks array must still have both bricks (no data loss)
   expect(blkA!.bricks).toHaveLength(2);
-  // brk-1 dragged past brk-2 — new order should be [brk-2, brk-1]
   expect(blkA!.bricks[0].id).toBe("brk-2");
   expect(blkA!.bricks[1].id).toBe("brk-1");
 
-  // Verify aria-live announce for brick reorder (implementation detail — optional check)
   const liveRegion = page.locator("[aria-live='polite'][aria-atomic='true']");
   if ((await liveRegion.count()) > 0) {
     const text = await liveRegion.first().textContent();
@@ -339,10 +324,9 @@ test("E-m6-004: toggle Edit Mode Locked mid-drag; no orphan pointer state; handl
   page,
 }) => {
   await page.setViewportSize({ width: 430, height: 932 });
-  await seedFixture(page);
 
   const pencil = page.getByRole("button", { name: /edit mode/i });
-  if ((await pencil.count()) === 0) return;
+  await expect(pencil).toBeVisible();
 
   // Start in Locked mode — no handles visible
   const handlesBeforeUnlock = page.getByRole("button", {
@@ -358,7 +342,7 @@ test("E-m6-004: toggle Edit Mode Locked mid-drag; no orphan pointer state; handl
   const handlesAfterUnlock = page.getByRole("button", {
     name: /^reorder block/i,
   });
-  if ((await handlesAfterUnlock.count()) === 0) return;
+  await expect(handlesAfterUnlock.first()).toBeVisible();
 
   // Lock again (toggle off)
   await pencil.click();
@@ -371,11 +355,9 @@ test("E-m6-004: toggle Edit Mode Locked mid-drag; no orphan pointer state; handl
   expect(await handlesAfterRelock.count()).toBe(0);
 
   // Page is still interactive — click a block to expand it.
-  // Use force:true in case the exit-jiggle animation hasn't fully settled.
   const blockCard = page.getByRole("article").first();
   if ((await blockCard.count()) > 0) {
     await blockCard.click({ force: true });
     await page.waitForTimeout(100);
-    // No console errors
   }
 });
