@@ -13,6 +13,26 @@ import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 test.beforeEach(async ({ page }) => {
+  // Stub SpeechRecognition before any navigation so the browser looks "supported"
+  // (mic button appears) but recognition sessions never fire any events — the overlay
+  // stays open indefinitely, making assertions stable and avoiding the no-speech race.
+  await page.addInitScript(() => {
+    class StubSpeechRecognition {
+      continuous = false;
+      interimResults = false;
+      lang = "";
+      onresult: null = null;
+      onerror: null = null;
+      onend: null = null;
+      start() {}
+      stop() {}
+      abort() {}
+    }
+    (window as unknown as Record<string, unknown>).SpeechRecognition =
+      StubSpeechRecognition;
+    (window as unknown as Record<string, unknown>).webkitSpeechRecognition =
+      StubSpeechRecognition;
+  });
   await page.goto("/");
   await page.evaluate(() => {
     localStorage.clear();
@@ -131,8 +151,12 @@ test("A-m10-003: overlay with prefers-reduced-motion:reduce is axe-clean and no 
 }) => {
   await page.setViewportSize({ width: 430, height: 932 });
 
-  // Emulate prefers-reduced-motion: reduce
+  // Set PRM before reload so the media query is active from the first render.
+  // emulateMedia persists across navigations; reload ensures React reads the
+  // correct value during hydration (avoids racy data-prm read after open/close).
   await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.reload();
+  await page.waitForTimeout(300);
 
   const micBtn = page.getByRole("button", { name: /start voice log/i });
   if ((await micBtn.count()) === 0) return; // AC #19 sandbox guard

@@ -11,6 +11,26 @@
 import { test, expect } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
+  // Stub SpeechRecognition before any navigation so the browser looks "supported"
+  // (mic button appears) but recognition sessions never fire any events — the overlay
+  // stays open indefinitely, making assertions stable and avoiding the no-speech race.
+  await page.addInitScript(() => {
+    class StubSpeechRecognition {
+      continuous = false;
+      interimResults = false;
+      lang = "";
+      onresult: null = null;
+      onerror: null = null;
+      onend: null = null;
+      start() {}
+      stop() {}
+      abort() {}
+    }
+    (window as unknown as Record<string, unknown>).SpeechRecognition =
+      StubSpeechRecognition;
+    (window as unknown as Record<string, unknown>).webkitSpeechRecognition =
+      StubSpeechRecognition;
+  });
   await page.goto("/");
   await page.evaluate(() => {
     localStorage.clear();
@@ -97,14 +117,16 @@ test("E-m10-005: second mic tap closes overlay, no AddBrickSheet (guarded)", asy
   await micBtn.click();
   const dialog = page.getByRole("dialog", { name: "Listening" });
   if ((await dialog.count()) === 0) return;
-  // Second tap — mic button now says "Stop voice log"
+  // Second-tap: the VoiceCaptureOverlay backdrop (zIndex 50) covers the BottomBar, so we
+  // cannot reach the MicButton by pointer. Playwright dispatches the click via
+  // dispatchEvent to bypass the interception check, which fires React's onClick.
   const stopBtn = page.getByRole("button", { name: /stop voice log/i });
   if ((await stopBtn.count()) === 0) return;
-  await stopBtn.click();
-  // Overlay gone
-  expect(await page.getByRole("dialog", { name: "Listening" }).count()).toBe(0);
+  await stopBtn.dispatchEvent("click");
+  // Overlay gone — use auto-retrying toHaveCount so we wait for React state to settle
+  await expect(page.getByRole("dialog", { name: "Listening" })).toHaveCount(0);
   // No AddBrickSheet
-  expect(await page.getByRole("dialog", { name: "Add Brick" }).count()).toBe(0);
+  await expect(page.getByRole("dialog", { name: "Add Brick" })).toHaveCount(0);
 });
 
 // ─── E-m10-006: Cancel button closes overlay, no sheet ───────────────────────
