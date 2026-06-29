@@ -382,15 +382,14 @@ describe("C-m4a-010: TimelineBlock threads onTickToggle down to BrickChip", () =
   });
 });
 
-// ─── C-m4a-011: block 100% cross-up fires haptics.success (M7d: playChime=0) ──
-// M7d: playChime is no longer called directly from TimelineBlock. The celebrate()
-// shim routes the block celebration through haptics.success (audio deferred to M7f).
+// ─── C-m4a-011: block 100% cross-up fires haptics.success + playChime (M7f: audio enabled) ──
+// M7f: celebrate("block", { withAudio: true }) now routes audio via playChime("block").
 // The bloom signal fires via useEffect, so the rerender must be wrapped in act().
 
-describe("C-m4a-011: block cross-up to 100% fires haptics.success (M7d: playChime deferred)", () => {
+describe("C-m4a-011: block cross-up to 100% fires haptics.success (M7f: playChime enabled)", () => {
   const cat1: Category = { id: "c1", name: "category 1", color: "#34d399" };
 
-  it("haptics.success called once, playChime NOT called (M7d: audio deferred via celebrate shim)", async () => {
+  it("haptics.success called once, playChime called once (M7f: audio enabled via celebrate shim)", async () => {
     const { haptics } = await import("@/lib/haptics");
     const { playChime } = await import("@/lib/audio");
     vi.clearAllMocks();
@@ -450,10 +449,10 @@ describe("C-m4a-011: block cross-up to 100% fires haptics.success (M7d: playChim
       );
     });
 
-    // M7d: haptics.success fires via celebrate("block", {withAudio:false})
+    // M7f: haptics.success fires via celebrate("block", {withAudio:true})
     expect(haptics.success).toHaveBeenCalledTimes(1);
-    // M7d: playChime is deferred to M7f — zero calls with withAudio:false default
-    expect(playChime).toHaveBeenCalledTimes(0);
+    // M7f: playChime is now enabled — called once with kind "block"
+    expect(playChime).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -467,10 +466,10 @@ vi.mock("motion/react", async (importOriginal) => {
   };
 });
 
-describe("C-m4a-012: reduced-motion does not suppress haptics on block 100% (M7d: audio deferred)", () => {
+describe("C-m4a-012: reduced-motion does not suppress haptics on block 100% (M7f: audio enabled)", () => {
   const cat1: Category = { id: "c1", name: "category 1", color: "#34d399" };
 
-  it("haptics.success fires under PRM; playChime NOT called (M7d: audio deferred)", async () => {
+  it("haptics.success fires under PRM; playChime called once (M7f: audio enabled)", async () => {
     const { useReducedMotion } = await import("motion/react");
     vi.mocked(useReducedMotion).mockReturnValue(true);
 
@@ -533,10 +532,10 @@ describe("C-m4a-012: reduced-motion does not suppress haptics on block 100% (M7d
       );
     });
 
-    // M7d: haptics.success fires via celebrate("block", {withAudio:false})
+    // M7f: haptics.success fires via celebrate("block", {withAudio:true})
     expect(haptics.success).toHaveBeenCalledTimes(1);
-    // M7d: playChime deferred — zero calls under PRM as well
-    expect(playChime).toHaveBeenCalledTimes(0);
+    // M7f: playChime enabled — called once under PRM as well (haptic + audio unaffected by PRM)
+    expect(playChime).toHaveBeenCalledTimes(1);
   });
 });
 

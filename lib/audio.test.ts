@@ -22,20 +22,16 @@ type GainMock = {
   connect: ReturnType<typeof vi.fn>;
 };
 
-type AudioContextMock = {
-  currentTime: number;
-  destination: object;
+type AudioContextState = {
+  oscillators: OscillatorMock[];
   createOscillator: ReturnType<typeof vi.fn>;
   createGain: ReturnType<typeof vi.fn>;
-  oscillators: OscillatorMock[];
 };
 
-function makeAudioContextMock(): AudioContextMock {
+function makeAudioContextState(): AudioContextState {
   const oscillators: OscillatorMock[] = [];
-
-  const ctx: AudioContextMock = {
-    currentTime: 0,
-    destination: {},
+  return {
+    oscillators,
     createOscillator: vi.fn(() => {
       const osc: OscillatorMock = {
         type: "sine",
@@ -47,20 +43,16 @@ function makeAudioContextMock(): AudioContextMock {
       oscillators.push(osc);
       return osc;
     }),
-    createGain: vi.fn(() => {
-      const gain: GainMock = {
+    createGain: vi.fn(
+      (): GainMock => ({
         gain: {
           setValueAtTime: vi.fn(),
           exponentialRampToValueAtTime: vi.fn(),
         },
         connect: vi.fn(),
-      };
-      return gain;
-    }),
-    oscillators,
+      }),
+    ),
   };
-
-  return ctx;
 }
 
 // ─── U-audio-001: SSR guard — no-op when window.AudioContext is undefined ─────
@@ -68,18 +60,20 @@ function makeAudioContextMock(): AudioContextMock {
 describe("U-audio-001: playChime is a no-op when window.AudioContext is undefined (SSR/no-gesture)", () => {
   beforeEach(() => {
     vi.resetModules();
-    // Simulate SSR or pre-gesture environment: no AudioContext on window
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test-only global manipulation
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test-only: simulate SSR/pre-gesture where AudioContext is absent
     delete (globalThis as any).AudioContext;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test-only global manipulation
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test-only: clear webkitAudioContext fallback as well
     delete (globalThis as any).webkitAudioContext;
-    // Ensure window is defined (jsdom) but has no AudioContext
     if (typeof window !== "undefined") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test-only global manipulation
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test-only: clear window.AudioContext
       delete (window as any).AudioContext;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test-only global manipulation
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test-only: clear window.webkitAudioContext
       delete (window as any).webkitAudioContext;
     }
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it("GIVEN window.AudioContext is undefined THEN playChime('block') returns without throwing", async () => {
@@ -105,7 +99,7 @@ describe("U-audio-002: playChime catches and returns silently when AudioContext 
     }
     vi.stubGlobal("AudioContext", ThrowingAudioContext);
     if (typeof window !== "undefined") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test-only global manipulation
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test-only: set window.AudioContext to a throwing constructor
       (window as any).AudioContext = ThrowingAudioContext;
     }
   });
@@ -123,17 +117,22 @@ describe("U-audio-002: playChime catches and returns silently when AudioContext 
 // ─── U-audio-003: oscillator node counts ─────────────────────────────────────
 
 describe("U-audio-003: playChime creates correct number of oscillator nodes", () => {
-  let ctxMock: AudioContextMock;
+  let state: AudioContextState;
 
   beforeEach(() => {
     vi.resetModules();
-    ctxMock = makeAudioContextMock();
-    // Stub AudioContext as a constructor that returns the mock
-    const CtxClass = vi.fn(() => ctxMock);
-    vi.stubGlobal("AudioContext", CtxClass);
+    state = makeAudioContextState();
+    // Must use a real class (not arrow fn) because playChime calls `new AudioCtx()`
+    class MockAudioContext {
+      createOscillator = state.createOscillator;
+      createGain = state.createGain;
+      destination = {};
+      currentTime = 0;
+    }
+    vi.stubGlobal("AudioContext", MockAudioContext);
     if (typeof window !== "undefined") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test-only global manipulation
-      (window as any).AudioContext = CtxClass;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test-only: set window.AudioContext to the mock class
+      (window as any).AudioContext = MockAudioContext;
     }
   });
 
@@ -144,14 +143,14 @@ describe("U-audio-003: playChime creates correct number of oscillator nodes", ()
   it("GIVEN a working AudioContext mock WHEN playChime('block') is called THEN exactly 1 oscillator is created", async () => {
     const { playChime } = await import("./audio");
     playChime("block");
-    expect(ctxMock.createOscillator).toHaveBeenCalledTimes(1);
-    expect(ctxMock.oscillators).toHaveLength(1);
+    expect(state.createOscillator).toHaveBeenCalledTimes(1);
+    expect(state.oscillators).toHaveLength(1);
   });
 
   it("GIVEN a working AudioContext mock WHEN playChime('day') is called THEN exactly 4 oscillators are created", async () => {
     const { playChime } = await import("./audio");
     playChime("day");
-    expect(ctxMock.createOscillator).toHaveBeenCalledTimes(4);
-    expect(ctxMock.oscillators).toHaveLength(4);
+    expect(state.createOscillator).toHaveBeenCalledTimes(4);
+    expect(state.oscillators).toHaveLength(4);
   });
 });

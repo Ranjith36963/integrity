@@ -96,7 +96,7 @@ export function TimelineBlock({
   // Fireworks.tsx's eslint-disable for setParticles inside useEffect, M4a precedent).
   useEffect(() => {
     if (!shouldBloom) return;
-    celebrate("block", { withAudio: false });
+    celebrate("block", { withAudio: true });
     /* eslint-disable-next-line react-hooks/set-state-in-effect -- M7d plan.md SG-m7d-02: one-shot shouldBloom signal, no cascade — same precedent as Fireworks.tsx (M4a). */
     setBloomKey((k) => k + 1);
   }, [shouldBloom]);

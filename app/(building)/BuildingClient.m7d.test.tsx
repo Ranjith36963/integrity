@@ -105,7 +105,7 @@ describe("C-m7d-006: <BuildingClient> with dayPct===100 at hydration does NOT ac
     vi.useFakeTimers();
     vi.clearAllMocks();
     localStorage.clear();
-  localStorage.setItem("dharma:onboarding-shown", "true");
+    localStorage.setItem("dharma:onboarding-shown", "true");
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -149,7 +149,7 @@ describe("C-m7d-007: <BuildingClient> activates fireworks on <100→100 transiti
     vi.useFakeTimers();
     vi.clearAllMocks();
     localStorage.clear();
-  localStorage.setItem("dharma:onboarding-shown", "true");
+    localStorage.setItem("dharma:onboarding-shown", "true");
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -230,7 +230,7 @@ describe("C-m7d-008: under PRM, <BuildingClient> mounts <DayCompleteCard> on <10
     vi.useFakeTimers();
     vi.clearAllMocks();
     localStorage.clear();
-  localStorage.setItem("dharma:onboarding-shown", "true");
+    localStorage.setItem("dharma:onboarding-shown", "true");
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -295,7 +295,7 @@ describe("C-m7d-009: under motion ON, <BuildingClient> does NOT mount <DayComple
     vi.useFakeTimers();
     vi.clearAllMocks();
     localStorage.clear();
-  localStorage.setItem("dharma:onboarding-shown", "true");
+    localStorage.setItem("dharma:onboarding-shown", "true");
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -361,20 +361,20 @@ describe("C-m7d-009: under motion ON, <BuildingClient> does NOT mount <DayComple
   });
 });
 
-// ── C-m7d-010: 0→100 fires haptics.notification once; zero playChime; source inspection ──
+// ── C-m7d-010: 0→100 fires haptics.notification once + playChime once (M7f: audio enabled) ──
 
-describe("C-m7d-010: <BuildingClient> on <100→100 invokes haptics.notification once; zero playChime", () => {
+describe("C-m7d-010: <BuildingClient> on <100→100 invokes haptics.notification once; playChime once (M7f)", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
     localStorage.clear();
-  localStorage.setItem("dharma:onboarding-shown", "true");
+    localStorage.setItem("dharma:onboarding-shown", "true");
   });
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it("haptics.notification called once; playChime zero times on 0→100 transition", async () => {
+  it("haptics.notification called once; playChime called once on 0→100 transition", async () => {
     const { haptics } = await import("@/lib/haptics");
     const { playChime } = await import("@/lib/audio");
 
@@ -399,7 +399,8 @@ describe("C-m7d-010: <BuildingClient> on <100→100 invokes haptics.notification
     });
 
     expect(haptics.notification).toHaveBeenCalledTimes(1);
-    expect(playChime).toHaveBeenCalledTimes(0);
+    // M7f: withAudio:true — playChime is now called once per day celebration
+    expect(playChime).toHaveBeenCalledTimes(1);
     // haptics.success is for block-level; day-level uses notification
     expect(haptics.success).toHaveBeenCalledTimes(0);
   });
@@ -409,8 +410,8 @@ describe("C-m7d-010: <BuildingClient> on <100→100 invokes haptics.notification
     expect(/import.*playChime.*from.*audio/.test(src)).toBe(false);
   });
 
-  it("BuildingClient source contains celebrate('day', { withAudio: false }) call site", () => {
+  it("BuildingClient source contains celebrate('day', { withAudio: true }) call site (M7f)", () => {
     const src = readFileSync(join(__dirname, "./BuildingClient.tsx"), "utf-8");
-    expect(src).toContain('celebrate("day", { withAudio: false })');
+    expect(src).toContain('celebrate("day", { withAudio: true })');
   });
 });

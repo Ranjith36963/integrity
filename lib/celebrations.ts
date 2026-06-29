@@ -195,6 +195,6 @@ export function celebrate(
   }
 
   if (withAudio) {
-    playChime();
+    playChime(kind);
   }
 }
