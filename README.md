@@ -49,36 +49,37 @@ npm run test:e2e:install
 
 ## Status
 
-| Milestone                                                | State                                                                    |
-| -------------------------------------------------------- | ------------------------------------------------------------------------ |
-| M0 — Design System                                       | Shipped + tap-tested                                                     |
-| M1 — Empty Building Shell                                | Shipped + tap-tested                                                     |
-| M2 — Add Block Flow                                      | Shipped + tap-tested                                                     |
-| M3 — Add Brick + Live Scoring                            | Shipped + tap-tested                                                     |
-| M4a — Tick Brick Logging                                 | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M4b — Goal Brick Stepper                                 | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M4d — Add Chooser Sheet                                  | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M4c — Time Brick Timer                                   | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M4e — Brick Duration + Overlap                           | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M4f — Two Brick Kinds; Rip Timer                         | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M4g — Timer-era Dead-code Sweep                          | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M8 — Persistence                                         | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M9a — appliesOn recurrence resolver                      | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M9b — Day rollover + history store                       | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M9c — Month view (Kingdom) + view switcher               | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M9d — Week view (Castle) + period scoring                | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M9e — Year view (Empire) + complete calendar             | Shipped to preview — awaiting Gate #2 tap-test                           |
-| **M9 — Calendar Nav**                                    | **COMPLETE** — all four switcher segments (Day/Week/Month/Year) now live |
-| M5 — Edit Mode + Delete                                  | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M6 — Drag Reorder                                        | Shipped to preview — awaiting Gate #2 tap-test                           |
-| M7a — Stagger Fade-in + Skeleton Shimmer                 | Shipped to preview — M7 chunk 1 of 5                                     |
-| M7b — Now-line Glow + Active-block Pulse + NOW Tag       | Shipped to preview — M7 chunk 2 of 5                                     |
-| M7c — Hero % Count-up on First Load                      | Shipped to preview — M7 chunk 3 of 5                                     |
-| M7d — Block-100% Bloom + Day-100% Fireworks              | Shipped to preview — M7 chunk 4 of 5                                     |
-| M7e — Polish Layer (FirstBrickCard, Toaster, Easter Egg) | Shipped to preview — AWAITING GATE #2                                    |
-| **M7 — Polish Layer**                                    | **COMPLETE** — all 5 chunks shipped (M7a–M7e); 1552 tests; 19 warnings   |
+| Milestone                                                | State                                                                                                                                                                                             |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0 — Design System                                       | Shipped + tap-tested                                                                                                                                                                              |
+| M1 — Empty Building Shell                                | Shipped + tap-tested                                                                                                                                                                              |
+| M2 — Add Block Flow                                      | Shipped + tap-tested                                                                                                                                                                              |
+| M3 — Add Brick + Live Scoring                            | Shipped + tap-tested                                                                                                                                                                              |
+| M4a — Tick Brick Logging                                 | Shipped to preview — awaiting Gate #2 tap-test                                                                                                                                                    |
+| M4b — Goal Brick Stepper                                 | Shipped to preview — awaiting Gate #2 tap-test                                                                                                                                                    |
+| M4d — Add Chooser Sheet                                  | Shipped to preview — awaiting Gate #2 tap-test                                                                                                                                                    |
+| M4c — Time Brick Timer                                   | Shipped to preview — awaiting Gate #2 tap-test                                                                                                                                                    |
+| M4e — Brick Duration + Overlap                           | Shipped to preview — awaiting Gate #2 tap-test                                                                                                                                                    |
+| M4f — Two Brick Kinds; Rip Timer                         | Shipped to preview — awaiting Gate #2 tap-test                                                                                                                                                    |
+| M4g — Timer-era Dead-code Sweep                          | Shipped to preview — awaiting Gate #2 tap-test                                                                                                                                                    |
+| M8 — Persistence                                         | Shipped to preview — awaiting Gate #2 tap-test                                                                                                                                                    |
+| M9a — appliesOn recurrence resolver                      | Shipped to preview — awaiting Gate #2 tap-test                                                                                                                                                    |
+| M9b — Day rollover + history store                       | Shipped to preview — awaiting Gate #2 tap-test                                                                                                                                                    |
+| M9c — Month view (Kingdom) + view switcher               | Shipped to preview — awaiting Gate #2 tap-test                                                                                                                                                    |
+| M9d — Week view (Castle) + period scoring                | Shipped to preview — awaiting Gate #2 tap-test                                                                                                                                                    |
+| M9e — Year view (Empire) + complete calendar             | Shipped to preview — awaiting Gate #2 tap-test                                                                                                                                                    |
+| **M9 — Calendar Nav**                                    | **COMPLETE** — all four switcher segments (Day/Week/Month/Year) now live                                                                                                                          |
+| M5 — Edit Mode + Delete                                  | Shipped to preview — awaiting Gate #2 tap-test                                                                                                                                                    |
+| M6 — Drag Reorder                                        | Shipped to preview — awaiting Gate #2 tap-test                                                                                                                                                    |
+| M7a — Stagger Fade-in + Skeleton Shimmer                 | Shipped to preview — M7 chunk 1 of 5                                                                                                                                                              |
+| M7b — Now-line Glow + Active-block Pulse + NOW Tag       | Shipped to preview — M7 chunk 2 of 5                                                                                                                                                              |
+| M7c — Hero % Count-up on First Load                      | Shipped to preview — M7 chunk 3 of 5                                                                                                                                                              |
+| M7d — Block-100% Bloom + Day-100% Fireworks              | Shipped to preview — M7 chunk 4 of 5                                                                                                                                                              |
+| M7e — Polish Layer (FirstBrickCard, Toaster, Easter Egg) | Shipped to preview — AWAITING GATE #2                                                                                                                                                             |
+| **M7 — Polish Layer**                                    | **COMPLETE** — all 5 chunks shipped (M7a–M7e); 1552 tests; 19 warnings                                                                                                                            |
+| **M10 — Voice Log**                                      | **Shipped to preview — awaiting Gate #2 tap-test. FINAL PHASE 1 MILESTONE.** Web Speech API (zero cost, no keys). Mic button in dock, VoiceCaptureOverlay, useVoiceCapture hook. 1722/1722 tests. |
 
-Latest preview: `https://integrity-git-claude-veri-e4542d-rahulranjith369-5644s-projects.vercel.app` (branch alias; auto-tracks `claude/verify-m0-deployment-s4XRy`). Vercel Deployment Protection active — open in browser while signed in to Vercel.
+Production alias: `https://integrity-pink.vercel.app/` (main-branch auto-deploy). Vercel Deployment Protection active — open in browser while signed in to Vercel.
 
 ## Project layout
 
@@ -121,6 +122,8 @@ components/          Shared UI components + unit tests
   BrandMarkLongPress.tsx Easter egg: 600 ms long-press on DHARMA brand mark opens YearHeatmapPreview overlay (M7e)
   YearHeatmapPreview.tsx Year heatmap overlay (z-40); composes MonthCell in 3x4 grid; PRM-safe; tap scrim or x to close (M7e)
   Toaster.tsx         Module-level toast(msg, kind) emitter; kind-discriminated ARIA; last-write-wins; auto-dismiss 2 s; z-30 singleton (M7e)
+  MicButton.tsx       Icon-only mic button rendered in the dock's right slot; hidden when Web Speech API unsupported; animated pulse ring while listening (M10)
+  VoiceCaptureOverlay.tsx Full-screen overlay shown during voice capture; live transcript display; confirms to pre-populate AddBrickSheet title (M10)
 lib/                 Domain logic: types, data, scoring, utilities
   celebrations.ts    useBlockCelebrationOnce (Set<string> mount-scoped dedup) + useDayCelebrationOnce (boolean ref) + celebrate(kind, opts) shim; useCrossUpEffect retained for compat (M7d)
   audio.ts           playChime() — lazy HTMLAudioElement for /sounds/chime.mp3; SSR + iOS guard
@@ -141,6 +144,8 @@ lib/                 Domain logic: types, data, scoring, utilities
   firstPaint.ts       Reserved placeholder for first-paint timing utilities (M7a)
   activeBlock.ts      Pure activeBlockId(items, nowMinutes) helper — identifies the block whose half-open window straddles the current minute (M7b)
   persist.ts          localStorage adapter (loadState/saveState/usePersistedState); exports hasAnyBrick() @internal helper for firstBrickShown back-fill (M7e)
+  speechRecognition.ts Thin facade over browser SpeechRecognition / webkitSpeechRecognition; exports isSpeechSupported() + createRecognition(); injected by tests (M10)
+  useVoiceCapture.ts  React hook: idle → listening → processing → done/error state machine; useSyncExternalStore for SSR-safe supported flag (M10)
 tests/
   e2e/               Playwright specs (e2e + a11y)
 docs/
