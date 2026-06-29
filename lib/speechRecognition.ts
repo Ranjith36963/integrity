@@ -8,6 +8,44 @@
  * Resolves SG-m10-04.
  */
 
+// Web Speech API is not in the default TypeScript lib. Declare a local interface
+// for the shape we use so tsc does not complain, without merging with any global.
+// These are structurally accurate to the W3C Web Speech API spec.
+interface SpeechRecognitionResultAlternativeLocal {
+  readonly transcript: string;
+  readonly confidence: number;
+}
+interface SpeechRecognitionResultLocal {
+  readonly isFinal: boolean;
+  readonly length: number;
+  item(index: number): SpeechRecognitionResultAlternativeLocal;
+  [index: number]: SpeechRecognitionResultAlternativeLocal;
+}
+interface SpeechRecognitionResultListLocal {
+  readonly length: number;
+  item(index: number): SpeechRecognitionResultLocal;
+  [index: number]: SpeechRecognitionResultLocal;
+}
+export interface SpeechRecognitionEventLocal extends Event {
+  readonly resultIndex: number;
+  readonly results: SpeechRecognitionResultListLocal;
+}
+export interface SpeechRecognitionErrorEventLocal extends Event {
+  readonly error: string;
+  readonly message: string;
+}
+interface SpeechRecognitionInstance {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((ev: SpeechRecognitionEventLocal) => void) | null;
+  onerror: ((ev: SpeechRecognitionErrorEventLocal) => void) | null;
+  onend: ((ev: Event) => void) | null;
+  abort(): void;
+  start(): void;
+  stop(): void;
+}
+
 export type SpeechErrorKind =
   | "not-allowed"
   | "no-speech"
@@ -35,16 +73,20 @@ export interface SpeechSession {
 
 export type SpeechSessionFactory = (handlers: SpeechHandlers) => SpeechSession;
 
+type WindowWithSpeech = Window &
+  typeof globalThis & {
+    SpeechRecognition?: new () => SpeechRecognitionInstance;
+    webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
+  };
+
 /**
  * Returns true when the browser supports the Web Speech API.
  * Safe to call in SSR — returns false when window is undefined.
  */
 export function isSpeechSupported(): boolean {
   if (typeof window === "undefined") return false;
-  return Boolean(
-    (window as Record<string, unknown>).SpeechRecognition ||
-    (window as Record<string, unknown>).webkitSpeechRecognition,
-  );
+  const w = window as WindowWithSpeech;
+  return Boolean(w.SpeechRecognition || w.webkitSpeechRecognition);
 }
 
 /**
@@ -53,19 +95,23 @@ export function isSpeechSupported(): boolean {
  * Maps browser events to the SpeechHandlers interface.
  */
 export function createSpeechSession(handlers: SpeechHandlers): SpeechSession {
+  const w = window as WindowWithSpeech;
   const SpeechRecognitionCtor =
-    (window as Record<string, unknown>).SpeechRecognition ||
-    (window as Record<string, unknown>).webkitSpeechRecognition;
+    w.SpeechRecognition || w.webkitSpeechRecognition;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- SpeechRecognition is not in the standard TS lib; cast via any to construct it
-  const recognition = new (SpeechRecognitionCtor as any)() as SpeechRecognition;
+  if (!SpeechRecognitionCtor) {
+    // Should not be called when unsupported, but guard defensively
+    throw new Error("SpeechRecognition not supported");
+  }
+
+  const recognition = new SpeechRecognitionCtor();
 
   recognition.continuous = false;
   recognition.interimResults = true;
   recognition.lang =
     (typeof navigator !== "undefined" && navigator.language) || "en-US";
 
-  recognition.onresult = (event: SpeechRecognitionEvent) => {
+  recognition.onresult = (event: SpeechRecognitionEventLocal) => {
     const result = event.results[event.results.length - 1];
     const transcript = result[0].transcript;
     if (result.isFinal) {
@@ -75,7 +121,7 @@ export function createSpeechSession(handlers: SpeechHandlers): SpeechSession {
     }
   };
 
-  recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+  recognition.onerror = (event: SpeechRecognitionErrorEventLocal) => {
     const error = event.error;
     if (error === "not-allowed") {
       handlers.onError("not-allowed");
