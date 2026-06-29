@@ -516,3 +516,25 @@ At a future schema bump (v3→v4):
 - R7-ROOT-M8/M9-P0's per-day recovery flow still catches corrupted individual days; this ADR catches the broader "live shape evolved" case.
 
 ---
+
+## ADR-056 — Web Audio API chimes for celebrations (M7f)
+
+**Status:** Accepted · 2026-06-29 · resolves audio deferral from M7d/SG-m7d-01
+
+**Context.** M7d shipped the `celebrate(kind, { withAudio })` shim with `withAudio: false` at all call sites, deferring real audio to M7f. The original plan referenced a `public/sounds/chime.mp3` asset (SG-m4a-04, >30 KB target), but synthesising the sound programmatically via Web Audio API avoids the asset-management overhead entirely and works without network round-trips.
+
+**Decision.** `lib/audio.ts` implements `playChime(kind: "block" | "day")` using the `AudioContext` API (no mp3 asset). Two tones:
+
+- **block** — single 880 Hz sine wave, 0.3 s fade-out (marks a block reaching 100%).
+- **day** — 4-note ascending arpeggio [523, 659, 784, 1047 Hz], each note 0.18 s, staggered 0.15 s apart (marks the full day reaching 100%).
+
+SSR guard: `AudioContext` is only constructed inside `playChime()`, never at module import time; the call is wrapped in a `typeof window !== "undefined"` check. No-op on `AudioContext` construction failure (e.g., browser with autoplay policy blocking audio context creation). All `celebrate()` call sites in `TimelineBlock.tsx` and `BuildingClient.tsx` now pass `withAudio: true`. The `public/sounds/chime.mp3` placeholder (431 bytes) can be removed in a future housekeeping pass.
+
+**Consequences.**
+
+- Zero new npm deps. Zero new assets in `public/`. Bundle impact is the `lib/audio.ts` module only (~1 KB).
+- Web Audio API is supported in all target browsers (Chrome, Safari, Firefox) including mobile.
+- Autoplay policies in some browsers require a prior user gesture before `AudioContext` can produce sound; celebrations are always triggered by a user action (logging a brick), so this is satisfied in normal use.
+- `playChime` is unit-tested via a jsdom `AudioContext` mock (`lib/audio.test.ts`).
+
+---

@@ -6,8 +6,8 @@
 
 ## Snapshot
 
-- **Branch:** `main` at `da1ea04`
-- **Last ship:** M10 Voice Log (2026-06-29) — Web Speech API mic button + `VoiceCaptureOverlay` + `useVoiceCapture` hook. Zero new npm deps. Resolves SG-bld-19 (three toast failure paths). **PHASE 1 COMPLETE — M0..M10 all shipped.** Prior: Polish + native-prep pass (2026-06-22). Prior: R7 root-cause infrastructure pass — valibot schema + multi-TZ tests + CI gate.
+- **Branch:** `main` at `fc03b01`
+- **Last ship:** Open-loop hardening (2026-06-29): persist quota toast + audio chimes (M7f) + M6 drag E2E. Key fixes: `saveState` QuotaExceededError now emits error toast; `playChime` Web AudioContext live (block=880 Hz, day=4-note arpeggio); E-m6-001..004 drag E2E upgraded from guard-skip to real Playwright assertions. Prior: M10 Voice Log (2026-06-29) — Phase 1 complete. Prior: Polish + native-prep pass (2026-06-22).
 - **Last preview URL:** `https://integrity-pink.vercel.app/` (main-branch production alias). Sandbox `curl -I` returns 403 `x-deny-reason: host_not_allowed` (Vercel Deployment Protection); loads normally in signed-in browser sessions.
 - **Persisted schema: v3** (ADR-045 + M5). `AppState`/`PersistedState` now carry `deletions: Record<string,true>`. Additive lossless v2→v3 migrator. `loadState` migrates v1→v2→v3 with no data loss.
 - **ADR-047 (M5):** `currentDayBlocks.ts` resolves `deletions` only; `appliesOn` Day-view wiring is deferred to a dedicated spec entry.
@@ -65,18 +65,13 @@
 
 ## Open loops
 
-- **M7e open loops (new):**
-  - **AC #11 "rolled-back action → error toast" not actively wired.** The toast rail is structurally present, but no M7e-scoped event currently triggers a rollback in production. If the `saveState` localStorage quota-error path is ever activated, a `toast("Save failed", "error")` call needs to be added at that site.
-  - **Audio still deferred to M7f.** `celebrate(kind, { withAudio: false })` shim in place. M7f follow-up: flip `playChime` + `withAudio: true` at all celebrate call sites.
-
 - **M7d open loops (carried forward):**
   - **PRM toggle mid-celebration leaves in-flight timer with original delay.** Documented limitation; acceptable. A future polish pass may cancel + restart the timer on PRM change.
   - **C-m7d-002 mutation-catch is indirect.** Deduplication proven via sister C-m7d-003. Non-blocking; behavior correct.
   - **Lint ceiling re-anchor at ≤ 20 is currently only in status.md prose.** Recommend ADR-049 to formally codify the ≤ 20 warning ceiling as a SHIP-blocker.
 
 - **M6 open loops carried forward:**
-  - **Keyboard / screen-reader drag alternative deferred** (SG-m6-06). No keyboard drag path exists; aria-live snap-back announcement is the sole a11y fallback for rejected moves. Documented as a11y debt; follow-up in M7 or a dedicated accessibility sprint.
-  - **E2E + axe for M6 deferred-to-preview** (E-m6-001..004 + A-m6-001..002). Vacuous-pass in-sandbox (no Chromium). Verify drag-reorder behavior and axe scores on the Vercel preview at Gate #2.
+  - **Keyboard / screen-reader drag alternative deferred** (SG-m6-06). No keyboard drag path exists; aria-live snap-back announcement is the sole a11y fallback for rejected moves. Documented as a11y debt; follow-up in a dedicated accessibility sprint.
   - **Per-day "just today" time override (SG-m6-02) considered + deferred.** Reordering a recurring block updates its template for all future occurrences. A `deletions`-style "just today" time-override map is out of scope for M6; follow-up if prioritized.
   - **Cross-container brick move (SG-m6-03) and loose-tray reorder (SG-m6-04) are out of scope.** Follow-up if prioritized by user.
   - **One inline `eslint-disable-next-line react-hooks/exhaustive-deps`** at `DraggableTimelineBlock.tsx:102` — `dropSeq` effect intentionally tracks only the sequence number. Flagged for future audit.
@@ -91,10 +86,10 @@
 - **`harness.md` MCP rows still MISSING** for Vercel + Context7 + Playwright — wired in user's Claude account, not loaded into this session.
 - **`lib/dharma.ts:duration()` returns 0 for no-end blocks** — intentional design; documented in CHANGELOG.
 - **The Loop is now single-gate (ADR-041).** VERIFIER agent replaces Gate #1. Gate #2 (preview tap-test) is the only human gate.
-- **`public/sounds/chime.mp3` is a 431-byte placeholder (SG-m4f-05).** Replace with a real royalty-free chime before any M4a/M4b/M4d/M4f/M4g preview is user-facing. M7 concern.
+- **`public/sounds/chime.mp3` is a 431-byte placeholder (SG-m4f-05) — superseded.** Web Audio API chimes (ADR-056) now provide real synthesis; the mp3 asset is unused. Safe to delete in a future housekeeping pass.
 - **Eval debt (ADR-027 commit hygiene):** commit `f42d469` is subject-mislabeled "implement lib/weekGrid.ts" but actually batches `WeekView`/`WeekDayCell`/`AppShell` + their tests; `f871546` separately git-adds the orphaned-on-disk `lib/weekGrid.ts`; `88af719`/`33aa56e` are multi-ID batches. Per-test-group batching was plan-sanctioned (M9d plan § Commit strategy) — only the inaccurate `f42d469` subject is the defect. History-hygiene debt; no rebuild required.
 - **Lint warnings 20 + 1 (M9e adds 1).** All benign: M9d's 4 (vestigial `archivedButtons` + 3 unused imports) carry forward; M9e adds 1 cosmetic warning — `lib/history.test.ts:2083` `makeM9eDay40` unused fixture helper. Optional `chore` cleanup; non-blocking.
-- **Vacuous-pass debt (M5 + M6):** `A-m5-001..003` + `E-m5-001..004` + `E-m6-001..004` + `A-m6-001..002` are real `test()` blocks but execute against the Vercel preview only (sandbox has no Chromium) — vacuous-pass in-sandbox. Verify Edit Mode, DeleteConfirmModal, drag-reorder behavior, and a11y on the Vercel preview. (Prior M9e vacuous-pass items E-m9e-001..003 / A-m9e-001..002 carry forward too.)
+- **Vacuous-pass debt (M5 + M6 partial):** `A-m5-001..003` + `E-m5-001..004` + `A-m6-001..002` are real `test()` blocks but execute against the Vercel preview only (sandbox has no Chromium) — vacuous-pass in-sandbox. E-m6-001..004 drag E2E RESOLVED (real assertions passing). Verify Edit Mode, DeleteConfirmModal, and a11y on the Vercel preview. (Prior M9e vacuous-pass items E-m9e-001..003 / A-m9e-001..002 carry forward too.)
 - **Deferred gap (ADR-047):** `appliesOn` Day-view wiring is deferred — the Day view still renders every block regardless of recurrence; `lib/currentDayBlocks.ts` resolves `deletions` only. A dedicated spec entry will close this gap.
 - **M9e amended a fifth test ID beyond VERIFIER-sanctioned four.** `C-m9d-011` (`AppShell.test.tsx`) amended as legitimate mechanical inversion of a genuinely-stale "Year is inert" sub-test; EVALUATOR ruled it acceptable collateral of AC #8.
 - **SG-m9b-03 — mid-session midnight crossing (documented deferral).** Rollover fires on load only, not while the app sits open across midnight. A future polish milestone may add an interval/visibility-change check. Non-blocking.
@@ -125,19 +120,19 @@
 - `lib/blockValidation.ts:overlapsExistingBlock` dead production code — deleted in M4f.
 - M4f architectural rework open loop — shipped.
 
-## Quality gates (last full Evaluator PASS — M10 — 2026-06-29)
+## Quality gates (last full Evaluator PASS — open-loop hardening — 2026-06-29)
 
-| Gate                       | Result                                                                                                                                            |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ESLint                     | 0 errors; warnings at ceiling of ≤ 20 (all carryover; net-zero change vs prior ship)                                                              |
-| `tsc --noEmit`             | clean — 0 errors                                                                                                                                  |
-| Vitest (default)           | 1722/1722 passed across 103 files (+170 tests / +8 files vs M7e's 1552/95)                                                                        |
-| Vitest (TZ-pinned)         | 11/11 passed (`npm run test:tz` — `TZ=America/Los_Angeles vitest run --config vitest.tz.config.ts`)                                               |
-| Playwright (mobile-chrome) | deferred to Vercel preview — sandbox `next dev` socket bind failure (M0–M10 pattern); E-m10-001..010 + A-m10-001..003 are vacuous-pass in-sandbox |
-| Playwright (mobile-safari) | not run — WebKit unavailable (ADR-010)                                                                                                            |
-| axe-core                   | deferred to Vercel preview                                                                                                                        |
-| Lighthouse                 | not measured — no prod URL reachable from sandbox; verify on Vercel preview (target: Perf >90 / A11y 100)                                         |
+| Gate                       | Result                                                                                                                                                                        |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ESLint                     | 0 errors; 19 warnings (at ceiling of ≤ 20; all pre-existing carryover)                                                                                                        |
+| `tsc --noEmit`             | clean — 0 errors                                                                                                                                                              |
+| Vitest (default)           | 1726/1726 passed (+4 tests: QuotaExceededError toast + playChime unit suite expansion)                                                                                        |
+| Vitest (TZ-pinned)         | 11/11 passed (`npm run test:tz`)                                                                                                                                              |
+| Playwright (mobile-chrome) | E-m6-001..004 drag E2E: 4/4 real-pass (real Playwright drag assertions, not guard-skip). Other deferred E2E still vacuous-pass in-sandbox (no Chromium for `next dev` socket) |
+| Playwright (mobile-safari) | not run — WebKit unavailable (ADR-010)                                                                                                                                        |
+| axe-core                   | deferred to Vercel preview                                                                                                                                                    |
+| Lighthouse                 | not measured — verify on Vercel preview (target: Perf >90 / A11y 100)                                                                                                         |
 
 ## Next intended action
 
-**AWAITING GATE #2 — PHASE 1 COMPLETE.** M10 shipped (Voice Log — final Phase 1 milestone). Vercel auto-deploys preview on push to main. User opens the preview at `https://integrity-pink.vercel.app/`, taps the mic button in the dock, exercises the voice-capture overlay, and reacts. That reaction feeds the Phase 2 roadmap or any follow-up feature invocation.
+**AWAITING GATE #2 — PHASE 1 COMPLETE.** Open-loop hardening shipped (persist quota toast + M7f chimes + M6 drag E2E). Vercel auto-deploys preview on push to main. User opens the preview at `https://integrity-pink.vercel.app/`, taps the live app, and reacts. That reaction feeds the Phase 2 roadmap or any follow-up feature invocation.

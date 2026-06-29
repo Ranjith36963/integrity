@@ -330,7 +330,7 @@ export function BuildingClient({
 
   // M7d: replace useCrossUpEffect+playChime with useDayCelebrationOnce+celebrate.
   // shouldCelebrate is true for exactly one render on the FIRST 0→100 crossing per mount.
-  // celebrate("day", { withAudio: false }) routes haptics via the shim (audio deferred to M7f).
+  // celebrate("day", { withAudio: true }) routes haptics + Web Audio chime via the shim (M7f live).
   // PRM-conditional timer: 2000ms under PRM (DayCompleteCard), 1700ms under motion ON (Fireworks).
   // R7-ROOT-M7-P1-2: capture PRM at celebration START so a mid-window OS toggle
   // doesn't desync the in-flight timer from DayCompleteCard's active gate.

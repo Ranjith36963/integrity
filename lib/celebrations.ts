@@ -23,8 +23,8 @@
  *
  * celebrate(kind, opts):
  *   - Pure synchronous shim routing haptics + (gated) audio for a celebration.
- *   - "wire when a real chime.mp3 lands (>30 KB target per SG-m4a-04)"
- *   - withAudio defaults to false; M7d wires it false everywhere.
+ *   - M7f: Web AudioContext chimes live. No mp3 asset needed.
+ *   - withAudio defaults to false; all call sites now pass withAudio: true (M7f).
  *   - When withAudio === true, calls playChime() from lib/audio.ts.
  */
 
@@ -171,17 +171,17 @@ export function useDayCelebrationOnce(pct: number): boolean {
 /**
  * Celebration shim — synchronously dispatches haptics + (gated) audio for a celebration.
  *
- * M7d invariants:
- * 1. Default withAudio === false. No M7d call site passes withAudio: true.
- *    The playChime import is reachable in this module but unexecuted on every M7d path.
- * 2. This shim is the SINGLE audio gate. The M7f follow-up that lands a real chime
- *    asset is a one-line change at the call sites (withAudio: true or flip the default).
+ * M7f: audio now live.
+ * 1. All call sites pass withAudio: true (block: TimelineBlock, day: BuildingClient).
+ *    playChime fires on every celebration — block-100% = single 880 Hz tone,
+ *    day-100% = 4-note ascending arpeggio [523, 659, 784, 1047 Hz].
+ * 2. This shim remains the SINGLE audio gate. SSR-guarded; no-op on AudioContext failure.
  */
 export function celebrate(
   kind: "block" | "day",
   opts?: {
     /**
-     * When true, fires the chime audio. M7d default: false (audio deferred per SG-m7d-01).
+     * When true, fires the chime audio via playChime(). M7f: all call sites pass true.
      */
     withAudio?: boolean;
   },

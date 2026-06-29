@@ -45,6 +45,14 @@
   `BuildingClient`) down to `<DraggableTimelineBlock>` so M5's delete-confirmation modal
   suppresses drag while it is open. Tests: C-m6-010.
 
+### Fixed (M6) — open-loop hardening (2026-06-29)
+
+- **E-m6-001..004 drag E2E upgraded from guard-skip to real Playwright drag assertions.**
+  `tests/e2e/m6.spec.ts` previously exited early via an `isDragSupported()` guard, making all
+  four E2E specs vacuous passes in CI. Replaced with genuine Playwright `dragAndDrop` /
+  `dispatchEvent` drag sequences; specs now exercise the actual drag affordance and verify
+  block retime + brick reorder in-browser. 4/4 passing on real Chromium. (commit `a394223`)
+
 ### Notes (M6)
 
 - **One inline `eslint-disable-next-line react-hooks/exhaustive-deps`** at
@@ -52,10 +60,8 @@
   (the incrementing sequence number), not `block.start`/`block.end`, because the effect reads
   the snapped position from a ref captured at drag-end time (not from React state). Flagged for
   future audit. Non-blocking.
-- **Deferred-to-preview:** E-m6-001..004 (Playwright E2E) and A-m6-001..002 (axe a11y) are
-  real `test()` blocks but execute against the Vercel preview only — vacuous-pass in-sandbox
-  (same pattern as all prior milestones). Verify drag-reorder behavior and axe scores on the
-  Vercel preview at Gate #2.
+- **E-m6-001..004 RESOLVED (see Fixed above).** A-m6-001..002 (axe a11y) still deferred to
+  Vercel preview — verify axe scores on the preview at Gate #2.
 - **Decisions honored:** ADR-006 (half-open intervals in overlap check), ADR-008 (always-visible
   drag handle affordance, no swipe-only), ADR-018 (no new `localStorage` overrides namespace),
   ADR-031 (≥ 44px touch target on drag handle), ADR-045 (`state.history` immutable — past days

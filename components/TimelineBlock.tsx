@@ -84,8 +84,8 @@ export function TimelineBlock({
 
   // M7d: replace useCrossUpEffect with useBlockCelebrationOnce (once per block per mount,
   // never re-fires on 100→99→100 oscillations — resolves SG-m7d-02).
-  // celebrate("block", { withAudio: false }) routes haptics through the shim (audio deferred
-  // to M7f per plan.md § M7d invariants). Direct playChime import removed.
+  // celebrate("block", { withAudio: true }) routes haptics + Web Audio chime through the shim.
+  // M7f: playChime now live (Web AudioContext, 880 Hz single tone). Direct playChime import removed.
   const shouldBloom = useBlockCelebrationOnce(block.id, pct);
 
   // Consume the shouldBloom signal: celebrate + bump bloomKey when the first crossing fires.
