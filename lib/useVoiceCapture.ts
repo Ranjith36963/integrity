@@ -7,7 +7,13 @@
  * No-speech timer (default 5 s) arms on start, resets on each interim result.
  */
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import {
+  useState,
+  useRef,
+  useCallback,
+  useEffect,
+  useSyncExternalStore,
+} from "react";
 import {
   isSpeechSupported,
   createSpeechSession,
@@ -51,7 +57,15 @@ export function useVoiceCapture(opts: {
     onError,
   } = opts;
 
-  const supported = isSpeechSupported();
+  // useSyncExternalStore with a server-snapshot of false ensures SSR and first client
+  // render both emit supported=false (no MicButton), preventing React hydration
+  // mismatches. The client snapshot is read each time the store "changes" — because
+  // speech support is static we subscribe to a no-op and read once on client.
+  const supported = useSyncExternalStore(
+    () => () => {}, // subscribe: no-op (speech support never changes at runtime)
+    () => isSpeechSupported(), // client snapshot
+    () => false, // server snapshot — always false on SSR / first render
+  );
   const [status, setStatus] = useState<VoiceStatus>("idle");
   const [interim, setInterim] = useState("");
 
