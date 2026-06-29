@@ -14,15 +14,28 @@
 // - Outer wrapper: paddingBottom calc(20px + var(--safe-bottom)) for iOS home-indicator.
 
 import { Plus, Zap } from "lucide-react";
+import { MicButton } from "./MicButton";
 
 interface Props {
   /** Opens the AddChooserSheet (Block / Brick / Cancel). */
   onAddPress?: () => void;
   /** Opens the AddBrickSheet directly — the daily-habit fast path. */
   onQuickBrick?: () => void;
+  /** M10: mic trigger — calls voice.toggle(). Rendered only when micSupported===true. */
+  onMicPress?: () => void;
+  /** M10: whether the browser supports Web Speech API (AC #3). */
+  micSupported?: boolean;
+  /** M10: whether voice capture is active — drives MicButton aria-pressed. */
+  listening?: boolean;
 }
 
-export function BottomBar({ onAddPress, onQuickBrick }: Props) {
+export function BottomBar({
+  onAddPress,
+  onQuickBrick,
+  onMicPress,
+  micSupported,
+  listening,
+}: Props) {
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20">
       <div
@@ -55,6 +68,15 @@ export function BottomBar({ onAddPress, onQuickBrick }: Props) {
             <Zap size={16} />
             Log Brick
           </button>
+          {/* M10: Mic button — self-hides when micSupported !== true (AC #3).
+              Layout: [Log Brick pill flex-1] [Mic h-12 w-12] [+ h-12 w-12] */}
+          {micSupported === true && onMicPress && (
+            <MicButton
+              supported={true}
+              listening={listening ?? false}
+              onPress={onMicPress}
+            />
+          )}
           {/* + button: opens the chooser (Block / Brick / Cancel). */}
           <button
             type="button"
