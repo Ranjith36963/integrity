@@ -269,9 +269,9 @@ describe("C-m7d-004: under PRM, bloom-overlay-reduced mounts on 99→100; bloom-
   });
 });
 
-// ── C-m7d-005: 99→100 fires haptics.success once, no playChime ──────────────
+// ── C-m7d-005: 99→100 fires haptics.success once + playChime once (M7f: audio enabled) ──
 
-describe("C-m7d-005: <TimelineBlock> 99→100 fires haptics.success once; zero playChime calls", () => {
+describe("C-m7d-005: <TimelineBlock> 99→100 fires haptics.success once; playChime called once (M7f)", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
@@ -280,7 +280,7 @@ describe("C-m7d-005: <TimelineBlock> 99→100 fires haptics.success once; zero p
     vi.useRealTimers();
   });
 
-  it("haptics.success called once, playChime called zero times on 0%→100%", async () => {
+  it("haptics.success called once, playChime called once on 0%→100%", async () => {
     const { haptics } = await import("@/lib/haptics");
     const { playChime } = await import("@/lib/audio");
 
@@ -293,7 +293,8 @@ describe("C-m7d-005: <TimelineBlock> 99→100 fires haptics.success once; zero p
     });
 
     expect(haptics.success).toHaveBeenCalledTimes(1);
-    expect(playChime).toHaveBeenCalledTimes(0);
+    // M7f: withAudio:true — playChime is now called once per block celebration
+    expect(playChime).toHaveBeenCalledTimes(1);
     expect(haptics.notification).toHaveBeenCalledTimes(0);
   });
 

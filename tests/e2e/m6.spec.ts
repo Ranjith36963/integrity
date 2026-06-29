@@ -1,10 +1,11 @@
 /**
- * tests/e2e/m6.spec.ts — Milestone 6 E2E tests (Playwright, deferred to preview).
+ * tests/e2e/m6.spec.ts — Milestone 6 E2E tests (Playwright).
  *
- * Execution is deferred to Vercel preview — this sandbox cannot launch chromium
- * (binary missing, confirmed by M4a–M9e EVALUATOR reports and status.md).
- * Tests are authored here as real test() blocks; run them against the deployed preview URL.
- * Guards: `if ((await x.count()) > 0)` per ADR-039 + ADR-022.
+ * Real Playwright drag assertions using mouse.move + mouse.down + mouse.up.
+ * No vacuous-pass guards on assertions — if elements don't exist, the test fails.
+ * Element-existence guards (early return) apply only to the Edit Mode button itself
+ * since the test seeding + page structure guarantees blocks and handles are present
+ * once Edit Mode is unlocked.
  *
  * Covers: E-m6-001..004
  */
@@ -83,7 +84,7 @@ async function seedFixture(page: import("@playwright/test").Page) {
   await page.reload();
 }
 
-/** Toggle into Edit Mode (Unlocked). */
+/** Toggle into Edit Mode (Unlocked). Returns false if the button doesn't exist. */
 async function enableEditMode(page: import("@playwright/test").Page) {
   const pencil = page.getByRole("button", { name: /edit mode/i });
   if ((await pencil.count()) === 0) return false;
@@ -147,46 +148,44 @@ test("E-m6-001: block drag → snaps to 11:00; new slot persists after reload", 
   await page.mouse.up();
   await page.waitForTimeout(500);
 
-  // Block should now be at 11:00 (or nearest 30-min snap)
-  // Verify by checking the persisted state in localStorage
+  // Block should now have moved — verify by checking persisted localStorage state.
+  // These assertions must NOT be guarded — if drag worked, localStorage will have state.
   const newState = await page.evaluate(() => {
     const raw = localStorage.getItem("dharma:v1");
     if (!raw) return null;
-    return JSON.parse(raw);
+    return JSON.parse(raw) as {
+      blocks: Array<{ id: string; start: string }>;
+    };
   });
 
-  if (newState) {
-    const blkA = newState.blocks?.find((b: { id: string }) => b.id === "blk-A");
-    if (blkA) {
-      // Start should be on a 30-min grid boundary (minutes divisible by 30)
-      const minutes = Number((blkA.start as string).split(":")[1]);
-      expect(minutes % 30).toBe(0);
-      // Start should have moved from 08:00
-      expect(blkA.start).not.toBe("08:00");
-    }
-  }
+  expect(newState).not.toBeNull();
+  const blkA = newState!.blocks?.find((b: { id: string }) => b.id === "blk-A");
+  expect(blkA).toBeDefined();
+  // After drag, start should be on a 30-min grid boundary
+  const minutes = Number((blkA!.start as string).split(":")[1]);
+  expect(minutes % 30).toBe(0);
+  // Start should have moved from 08:00 (drag target was 11:00)
+  expect(blkA!.start).not.toBe("08:00");
 
-  // Reload and verify persistence
+  // Reload and verify persistence: the new start must survive a page reload
   await page.reload();
   await page.waitForTimeout(300);
 
   const reloadedState = await page.evaluate(() => {
     const raw = localStorage.getItem("dharma:v1");
     if (!raw) return null;
-    return JSON.parse(raw);
+    return JSON.parse(raw) as {
+      blocks: Array<{ id: string; start: string }>;
+    };
   });
 
-  if (reloadedState && newState) {
-    const blkAReloaded = reloadedState.blocks?.find(
-      (b: { id: string }) => b.id === "blk-A",
-    );
-    const blkAOriginal = newState.blocks?.find(
-      (b: { id: string }) => b.id === "blk-A",
-    );
-    if (blkAReloaded && blkAOriginal) {
-      expect(blkAReloaded.start).toBe(blkAOriginal.start);
-    }
-  }
+  expect(reloadedState).not.toBeNull();
+  const blkAReloaded = reloadedState!.blocks?.find(
+    (b: { id: string }) => b.id === "blk-A",
+  );
+  expect(blkAReloaded).toBeDefined();
+  // The reloaded start must match what was saved (persistence check)
+  expect(blkAReloaded!.start).toBe(blkA!.start);
 });
 
 // ─── E-m6-002: overlap-rejected drop — snap-back; no persistence; medium haptic + announce ─
@@ -238,21 +237,22 @@ test("E-m6-002: overlap-rejected drop snap-back; blk-A start unchanged; aria-liv
   await page.mouse.up();
   await page.waitForTimeout(500);
 
-  // blk-A should still be at 08:00 (rejected)
+  // blk-A should still be at 08:00 (rejected — no overlap allowed).
+  // This assertion must NOT be guarded — the fixture guarantees state was seeded.
   const state = await page.evaluate(() => {
     const raw = localStorage.getItem("dharma:v1");
     if (!raw) return null;
-    return JSON.parse(raw);
+    return JSON.parse(raw) as {
+      blocks: Array<{ id: string; start: string }>;
+    };
   });
 
-  if (state) {
-    const blkA = state.blocks?.find((b: { id: string }) => b.id === "blk-A");
-    if (blkA) {
-      expect(blkA.start).toBe("08:00");
-    }
-  }
+  expect(state).not.toBeNull();
+  const blkA = state!.blocks?.find((b: { id: string }) => b.id === "blk-A");
+  expect(blkA).toBeDefined();
+  expect(blkA!.start).toBe("08:00");
 
-  // aria-live region should show rejection message
+  // aria-live region should show rejection message (if present — implementation detail)
   const liveRegion = page.locator("[aria-live='polite'][aria-atomic='true']");
   if ((await liveRegion.count()) > 0) {
     const text = await liveRegion.first().textContent();
@@ -300,9 +300,30 @@ test("E-m6-003: brick reorder inside blk-A; new order persists in localStorage",
     { steps: 5 },
   );
   await page.mouse.up();
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(500);
 
-  // Verify aria-live announce for brick reorder
+  // Verify brick order in localStorage — brk-1 should now appear after brk-2
+  // (or at minimum, the bricks array has been modified by the drag)
+  const stateAfterDrag = await page.evaluate(() => {
+    const raw = localStorage.getItem("dharma:v1");
+    if (!raw) return null;
+    return JSON.parse(raw) as {
+      blocks: Array<{ id: string; bricks: Array<{ id: string }> }>;
+    };
+  });
+
+  expect(stateAfterDrag).not.toBeNull();
+  const blkA = stateAfterDrag!.blocks?.find(
+    (b: { id: string }) => b.id === "blk-A",
+  );
+  expect(blkA).toBeDefined();
+  // After drag, bricks array must still have both bricks (no data loss)
+  expect(blkA!.bricks).toHaveLength(2);
+  // brk-1 dragged past brk-2 — new order should be [brk-2, brk-1]
+  expect(blkA!.bricks[0].id).toBe("brk-2");
+  expect(blkA!.bricks[1].id).toBe("brk-1");
+
+  // Verify aria-live announce for brick reorder (implementation detail — optional check)
   const liveRegion = page.locator("[aria-live='polite'][aria-atomic='true']");
   if ((await liveRegion.count()) > 0) {
     const text = await liveRegion.first().textContent();

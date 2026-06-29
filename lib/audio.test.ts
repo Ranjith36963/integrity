@@ -1,81 +1,156 @@
-// lib/audio.test.ts — M4a audio helper tests
-// Covers: U-m4a-008..010
+// lib/audio.test.ts — Web Audio API chime tests (M7f)
+// Covers: U-audio-001..003
+// Supersedes U-m4a-008..010 (HTMLAudioElement approach replaced by Web Audio API)
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// We must re-import playChime each time so the module cache is reset.
-// Use vi.resetModules() before each test group to isolate the singleton.
+// ─── Test helpers: minimal Web Audio API mock ─────────────────────────────────
 
-// ─── U-m4a-008: lazy construct + cache (Audio called once for two plays) ───────
+type OscillatorMock = {
+  type: string;
+  frequency: { value: number };
+  connect: ReturnType<typeof vi.fn>;
+  start: ReturnType<typeof vi.fn>;
+  stop: ReturnType<typeof vi.fn>;
+};
 
-describe("U-m4a-008: playChime lazily constructs one Audio element and calls .play() twice", () => {
-  let mockPlay: ReturnType<typeof vi.fn>;
+type GainMock = {
+  gain: {
+    setValueAtTime: ReturnType<typeof vi.fn>;
+    exponentialRampToValueAtTime: ReturnType<typeof vi.fn>;
+  };
+  connect: ReturnType<typeof vi.fn>;
+};
 
+type AudioContextState = {
+  oscillators: OscillatorMock[];
+  createOscillator: ReturnType<typeof vi.fn>;
+  createGain: ReturnType<typeof vi.fn>;
+};
+
+function makeAudioContextState(): AudioContextState {
+  const oscillators: OscillatorMock[] = [];
+  return {
+    oscillators,
+    createOscillator: vi.fn(() => {
+      const osc: OscillatorMock = {
+        type: "sine",
+        frequency: { value: 0 },
+        connect: vi.fn(),
+        start: vi.fn(),
+        stop: vi.fn(),
+      };
+      oscillators.push(osc);
+      return osc;
+    }),
+    createGain: vi.fn(
+      (): GainMock => ({
+        gain: {
+          setValueAtTime: vi.fn(),
+          exponentialRampToValueAtTime: vi.fn(),
+        },
+        connect: vi.fn(),
+      }),
+    ),
+  };
+}
+
+// ─── U-audio-001: SSR guard — no-op when window.AudioContext is undefined ─────
+
+describe("U-audio-001: playChime is a no-op when window.AudioContext is undefined (SSR/no-gesture)", () => {
   beforeEach(() => {
     vi.resetModules();
-    mockPlay = vi.fn().mockResolvedValue(undefined);
-    // Use a class-style constructor spy so `new Audio(...)` works
-    class MockAudioClass {
-      play = mockPlay;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test-only: simulate SSR/pre-gesture where AudioContext is absent
+    delete (globalThis as any).AudioContext;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test-only: clear webkitAudioContext fallback as well
+    delete (globalThis as any).webkitAudioContext;
+    if (typeof window !== "undefined") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test-only: clear window.AudioContext
+      delete (window as any).AudioContext;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test-only: clear window.webkitAudioContext
+      delete (window as any).webkitAudioContext;
     }
-    globalThis.Audio = MockAudioClass as unknown as typeof Audio;
   });
 
   afterEach(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- restoring test-modified global
-    delete (globalThis as any).Audio;
+    vi.unstubAllGlobals();
   });
 
-  it("Audio constructor called once; .play() called twice when playChime is invoked twice", async () => {
-    const constructorSpy = vi.spyOn(globalThis, "Audio");
+  it("GIVEN window.AudioContext is undefined THEN playChime('block') returns without throwing", async () => {
     const { playChime } = await import("./audio");
-    playChime();
-    playChime();
-    expect(constructorSpy).toHaveBeenCalledTimes(1);
-    expect(constructorSpy).toHaveBeenCalledWith("/sounds/chime.mp3");
-    expect(mockPlay).toHaveBeenCalledTimes(2);
-    constructorSpy.mockRestore();
+    expect(() => playChime("block")).not.toThrow();
+  });
+
+  it("GIVEN window.AudioContext is undefined THEN playChime('day') returns without throwing", async () => {
+    const { playChime } = await import("./audio");
+    expect(() => playChime("day")).not.toThrow();
   });
 });
 
-// ─── U-m4a-009: try/catch swallows play() rejection ─────────────────────────
+// ─── U-audio-002: AudioContext constructor throws → silent catch ───────────────
 
-describe("U-m4a-009: playChime swallows play() rejection silently", () => {
+describe("U-audio-002: playChime catches and returns silently when AudioContext throws on construction", () => {
   beforeEach(() => {
     vi.resetModules();
-    const mockPlay = vi
-      .fn()
-      .mockRejectedValue(new DOMException("blocked", "NotAllowedError"));
-    class MockAudioClass {
-      play = mockPlay;
+    class ThrowingAudioContext {
+      constructor() {
+        throw new DOMException("NotAllowedError", "NotAllowedError");
+      }
     }
-    globalThis.Audio = MockAudioClass as unknown as typeof Audio;
+    vi.stubGlobal("AudioContext", ThrowingAudioContext);
+    if (typeof window !== "undefined") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test-only: set window.AudioContext to a throwing constructor
+      (window as any).AudioContext = ThrowingAudioContext;
+    }
   });
 
   afterEach(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- restoring test-modified global
-    delete (globalThis as any).Audio;
+    vi.unstubAllGlobals();
   });
 
-  it("playChime does not throw even when .play() rejects", async () => {
+  it("GIVEN AudioContext throws on construction THEN playChime('block') does not throw or reject", async () => {
     const { playChime } = await import("./audio");
-    // Should not throw; promise rejection is swallowed by try/catch
-    expect(() => playChime()).not.toThrow();
+    expect(() => playChime("block")).not.toThrow();
   });
 });
 
-// ─── U-m4a-010: SSR guard — no-op when Audio is undefined ────────────────────
+// ─── U-audio-003: oscillator node counts ─────────────────────────────────────
 
-describe("U-m4a-010: playChime is a no-op when globalThis.Audio is undefined (SSR)", () => {
+describe("U-audio-003: playChime creates correct number of oscillator nodes", () => {
+  let state: AudioContextState;
+
   beforeEach(() => {
     vi.resetModules();
-    // Simulate SSR: Audio is not defined
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- simulating SSR environment
-    delete (globalThis as any).Audio;
+    state = makeAudioContextState();
+    // Must use a real class (not arrow fn) because playChime calls `new AudioCtx()`
+    class MockAudioContext {
+      createOscillator = state.createOscillator;
+      createGain = state.createGain;
+      destination = {};
+      currentTime = 0;
+    }
+    vi.stubGlobal("AudioContext", MockAudioContext);
+    if (typeof window !== "undefined") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test-only: set window.AudioContext to the mock class
+      (window as any).AudioContext = MockAudioContext;
+    }
   });
 
-  it("playChime returns without throwing when Audio is undefined", async () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("GIVEN a working AudioContext mock WHEN playChime('block') is called THEN exactly 1 oscillator is created", async () => {
     const { playChime } = await import("./audio");
-    expect(() => playChime()).not.toThrow();
+    playChime("block");
+    expect(state.createOscillator).toHaveBeenCalledTimes(1);
+    expect(state.oscillators).toHaveLength(1);
+  });
+
+  it("GIVEN a working AudioContext mock WHEN playChime('day') is called THEN exactly 4 oscillators are created", async () => {
+    const { playChime } = await import("./audio");
+    playChime("day");
+    expect(state.createOscillator).toHaveBeenCalledTimes(4);
+    expect(state.oscillators).toHaveLength(4);
   });
 });

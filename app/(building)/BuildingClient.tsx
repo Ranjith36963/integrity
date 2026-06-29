@@ -344,7 +344,7 @@ export function BuildingClient({
 
   useEffect(() => {
     if (!shouldCelebrate) return;
-    celebrate("day", { withAudio: false });
+    celebrate("day", { withAudio: true });
     /* eslint-disable-next-line react-hooks/set-state-in-effect -- M7d plan.md: setFireworksActive(true) is gated by one-shot shouldCelebrate from useDayCelebrationOnce; no cascade. Same precedent as Fireworks.tsx (M4a). */
     setFireworksActive(true);
     // R7-ROOT-M7-P1-2: capture PRM at the moment the celebration starts.
