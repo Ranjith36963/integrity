@@ -140,13 +140,7 @@ test("E-m9b-003: next-day rollover — yesterday's day archived, every-day brick
 
   // Build a v2 payload with currentDate = yesterday
   await page.addInitScript(
-    ({
-      yesterday: yest,
-      today: _today,
-    }: {
-      yesterday: string;
-      today: string;
-    }) => {
+    ({ yesterday: yest }: { yesterday: string; today: string }) => {
       localStorage.setItem("dharma:onboarding-shown", "true");
       const payload = {
         schemaVersion: 2,
