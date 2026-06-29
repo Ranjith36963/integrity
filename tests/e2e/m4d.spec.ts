@@ -1,44 +1,57 @@
 /**
  * tests/e2e/m4d.spec.ts — Milestone 4d E2E tests (Playwright).
  *
- * Execution is deferred to Vercel preview per the M0–M4b sandbox bind-failure
- * pattern (e2e server fails to bind in this sandbox environment).
- * Tests are authored here; run them against the deployed preview URL.
- * Guards: `if ((await x.count()) > 0)` are used for elements that require
- * the live app to be running.
- *
  * Covers: E-m4d-001..006
+ *
+ * State seeding strategy: addInitScript seeds minimal state before navigation
+ * so the dock Add button always renders and assertions are unconditional.
  */
 
 import { test, expect } from "@playwright/test";
+
+const MINIMAL_PAYLOAD = {
+  schemaVersion: 3,
+  programStart: "2026-01-01",
+  currentDate: "2026-06-29",
+  blocks: [],
+  looseBricks: [],
+  categories: [],
+  history: {},
+  deletions: {},
+};
 
 // ─── E-m4d-001: dock + → chooser → Add Block → AddBlockSheet visible ─────────
 
 test("E-m4d-001: tapping dock + opens AddChooserSheet; tapping Add Block opens AddBlockSheet", async ({
   page,
 }) => {
+  await page.addInitScript((payload) => {
+    localStorage.setItem("dharma:onboarding-shown", "true");
+    localStorage.setItem("dharma:v1", JSON.stringify(payload));
+  }, MINIMAL_PAYLOAD);
+
   await page.goto("/");
+  await page.waitForLoadState("networkidle");
 
   // Tap the dock + button (aria-label="Add")
   const dockAdd = page.getByRole("button", { name: "Add" }).last();
-  if ((await dockAdd.count()) > 0) {
-    await dockAdd.click();
+  await expect(dockAdd).toBeVisible();
+  await dockAdd.click();
 
-    // AddChooserSheet should be visible (role=dialog aria-label="Add")
-    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
-    await expect(chooser).toBeVisible();
+  // AddChooserSheet should be visible (role=dialog aria-label="Add")
+  const chooser = page.getByRole("dialog", { name: "Add", exact: true });
+  await expect(chooser).toBeVisible();
 
-    // Tap "Add Block" inside the chooser
-    const addBlockBtn = chooser.getByRole("button", { name: "Add Block" });
-    await addBlockBtn.click();
+  // Tap "Add Block" inside the chooser
+  const addBlockBtn = chooser.getByRole("button", { name: "Add Block" });
+  await addBlockBtn.click();
 
-    // Chooser should close; AddBlockSheet should open
-    await expect(chooser).not.toBeVisible();
-    const addBlockSheet = page.getByRole("dialog", { name: "Add Block" });
-    await expect(addBlockSheet).toBeVisible();
-    // Title input is visible (brick form surface)
-    await expect(addBlockSheet.getByLabel(/Title/i)).toBeVisible();
-  }
+  // Chooser should close; AddBlockSheet should open
+  await expect(chooser).not.toBeVisible();
+  const addBlockSheet = page.getByRole("dialog", { name: "Add Block" });
+  await expect(addBlockSheet).toBeVisible();
+  // Title input is visible (brick form surface)
+  await expect(addBlockSheet.getByLabel(/Title/i)).toBeVisible();
 });
 
 // ─── E-m4d-002: dock + → chooser → Add Brick → AddBrickSheet visible ─────────
@@ -46,22 +59,27 @@ test("E-m4d-001: tapping dock + opens AddChooserSheet; tapping Add Block opens A
 test("E-m4d-002: tapping dock + → Add Brick shows AddBrickSheet with three measurement types", async ({
   page,
 }) => {
+  await page.addInitScript((payload) => {
+    localStorage.setItem("dharma:onboarding-shown", "true");
+    localStorage.setItem("dharma:v1", JSON.stringify(payload));
+  }, MINIMAL_PAYLOAD);
+
   await page.goto("/");
+  await page.waitForLoadState("networkidle");
 
   const dockAdd = page.getByRole("button", { name: "Add" }).last();
-  if ((await dockAdd.count()) > 0) {
-    await dockAdd.click();
+  await expect(dockAdd).toBeVisible();
+  await dockAdd.click();
 
-    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
-    await expect(chooser).toBeVisible();
+  const chooser = page.getByRole("dialog", { name: "Add", exact: true });
+  await expect(chooser).toBeVisible();
 
-    await chooser.getByRole("button", { name: "Add Brick" }).click();
+  await chooser.getByRole("button", { name: "Add Brick" }).click();
 
-    // Chooser closes; AddBrickSheet opens
-    await expect(chooser).not.toBeVisible();
-    const addBrickSheet = page.getByRole("dialog", { name: "Add Brick" });
-    await expect(addBrickSheet).toBeVisible();
-  }
+  // Chooser closes; AddBrickSheet opens
+  await expect(chooser).not.toBeVisible();
+  const addBrickSheet = page.getByRole("dialog", { name: "Add Brick" });
+  await expect(addBrickSheet).toBeVisible();
 });
 
 // ─── E-m4d-003: slot tap → chooser → Add Block → AddBlockSheet pre-filled ────
@@ -69,7 +87,13 @@ test("E-m4d-002: tapping dock + → Add Brick shows AddBrickSheet with three mea
 test("E-m4d-003: tapping an empty hour slot opens chooser; Add Block pre-fills start time", async ({
   page,
 }) => {
+  await page.addInitScript((payload) => {
+    localStorage.setItem("dharma:onboarding-shown", "true");
+    localStorage.setItem("dharma:v1", JSON.stringify(payload));
+  }, MINIMAL_PAYLOAD);
+
   await page.goto("/");
+  await page.waitForLoadState("networkidle");
 
   // Find a slot tap target for a specific hour
   const slot = page
@@ -105,7 +129,13 @@ test("E-m4d-003: tapping an empty hour slot opens chooser; Add Block pre-fills s
 test("E-m4d-004: slot tap → Add Brick opens AddBrickSheet with no start/time input (hour discarded)", async ({
   page,
 }) => {
+  await page.addInitScript((payload) => {
+    localStorage.setItem("dharma:onboarding-shown", "true");
+    localStorage.setItem("dharma:v1", JSON.stringify(payload));
+  }, MINIMAL_PAYLOAD);
+
   await page.goto("/");
+  await page.waitForLoadState("networkidle");
 
   const slot = page
     .getByRole("button", { name: /Add block at \d{2}:00/i })
@@ -114,16 +144,15 @@ test("E-m4d-004: slot tap → Add Brick opens AddBrickSheet with no start/time i
     await slot.click();
 
     const chooser = page.getByRole("dialog", { name: "Add", exact: true });
-    if ((await chooser.count()) > 0) {
-      await chooser.getByRole("button", { name: "Add Brick" }).click();
+    await expect(chooser).toBeVisible();
+    await chooser.getByRole("button", { name: "Add Brick" }).click();
 
-      const addBrickSheet = page.getByRole("dialog", { name: "Add Brick" });
-      await expect(addBrickSheet).toBeVisible();
+    const addBrickSheet = page.getByRole("dialog", { name: "Add Brick" });
+    await expect(addBrickSheet).toBeVisible();
 
-      // Brick form has no Start/time input (bricks are time-agnostic)
-      const startInput = addBrickSheet.getByLabel(/Start/i);
-      await expect(startInput).not.toBeVisible();
-    }
+    // Brick form has no Start/time input (bricks are time-agnostic)
+    const startInput = addBrickSheet.getByLabel(/Start/i);
+    await expect(startInput).not.toBeVisible();
   }
 });
 
@@ -132,48 +161,53 @@ test("E-m4d-004: slot tap → Add Brick opens AddBrickSheet with no start/time i
 test("E-m4d-005: at mobile 430px viewport chooser buttons are ≥ 44px; no horizontal overflow", async ({
   page,
 }) => {
+  await page.addInitScript((payload) => {
+    localStorage.setItem("dharma:onboarding-shown", "true");
+    localStorage.setItem("dharma:v1", JSON.stringify(payload));
+  }, MINIMAL_PAYLOAD);
+
   await page.setViewportSize({ width: 430, height: 932 });
   await page.goto("/");
+  await page.waitForLoadState("networkidle");
 
   const dockAdd = page.getByRole("button", { name: "Add" }).last();
-  if ((await dockAdd.count()) > 0) {
-    await dockAdd.click();
+  await expect(dockAdd).toBeVisible();
+  await dockAdd.click();
 
-    const chooser = page.getByRole("dialog", { name: "Add", exact: true });
-    if ((await chooser.count()) > 0) {
-      // Check no horizontal overflow
-      const scrollWidth = await page.evaluate(
-        () => document.documentElement.scrollWidth,
-      );
-      const clientWidth = await page.evaluate(
-        () => document.documentElement.clientWidth,
-      );
-      expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+  const chooser = page.getByRole("dialog", { name: "Add", exact: true });
+  await expect(chooser).toBeVisible();
 
-      // Check Add Block button size ≥ 44px
-      const addBlockBtn = chooser.getByRole("button", { name: "Add Block" });
-      const addBlockBox = await addBlockBtn.boundingBox();
-      if (addBlockBox) {
-        expect(addBlockBox.height).toBeGreaterThanOrEqual(44);
-        expect(addBlockBox.width).toBeGreaterThanOrEqual(44);
-      }
+  // Check no horizontal overflow
+  const scrollWidth = await page.evaluate(
+    () => document.documentElement.scrollWidth,
+  );
+  const clientWidth = await page.evaluate(
+    () => document.documentElement.clientWidth,
+  );
+  expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
 
-      // Check Add Brick button size ≥ 44px
-      const addBrickBtn = chooser.getByRole("button", { name: "Add Brick" });
-      const addBrickBox = await addBrickBtn.boundingBox();
-      if (addBrickBox) {
-        expect(addBrickBox.height).toBeGreaterThanOrEqual(44);
-        expect(addBrickBox.width).toBeGreaterThanOrEqual(44);
-      }
+  // Check Add Block button size ≥ 44px
+  const addBlockBtn = chooser.getByRole("button", { name: "Add Block" });
+  const addBlockBox = await addBlockBtn.boundingBox();
+  if (addBlockBox) {
+    expect(addBlockBox.height).toBeGreaterThanOrEqual(44);
+    expect(addBlockBox.width).toBeGreaterThanOrEqual(44);
+  }
 
-      // Check Cancel button size ≥ 44px
-      const cancelBtn = chooser.getByRole("button", { name: /Cancel/i });
-      const cancelBox = await cancelBtn.boundingBox();
-      if (cancelBox) {
-        expect(cancelBox.height).toBeGreaterThanOrEqual(44);
-        expect(cancelBox.width).toBeGreaterThanOrEqual(44);
-      }
-    }
+  // Check Add Brick button size ≥ 44px
+  const addBrickBtn = chooser.getByRole("button", { name: "Add Brick" });
+  const addBrickBox = await addBrickBtn.boundingBox();
+  if (addBrickBox) {
+    expect(addBrickBox.height).toBeGreaterThanOrEqual(44);
+    expect(addBrickBox.width).toBeGreaterThanOrEqual(44);
+  }
+
+  // Check Cancel button size ≥ 44px
+  const cancelBtn = chooser.getByRole("button", { name: /Cancel/i });
+  const cancelBox = await cancelBtn.boundingBox();
+  if (cancelBox) {
+    expect(cancelBox.height).toBeGreaterThanOrEqual(44);
+    expect(cancelBox.width).toBeGreaterThanOrEqual(44);
   }
 });
 
@@ -185,26 +219,40 @@ test("E-m4d-006: with prefers-reduced-motion:reduce the chooser is visible immed
   // Create context with reduced motion emulation
   const context = await browser.newContext({
     reducedMotion: "reduce",
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: "http://localhost:3000",
+          localStorage: [
+            { name: "dharma:onboarding-shown", value: "true" },
+            {
+              name: "dharma:v1",
+              value: JSON.stringify(MINIMAL_PAYLOAD),
+            },
+          ],
+        },
+      ],
+    },
   });
   const reducedPage = await context.newPage();
   await reducedPage.goto("/");
+  await reducedPage.waitForLoadState("networkidle");
 
   const dockAdd = reducedPage.getByRole("button", { name: "Add" }).last();
-  if ((await dockAdd.count()) > 0) {
-    const before = Date.now();
-    await dockAdd.click();
+  await expect(dockAdd).toBeVisible();
 
-    const chooser = reducedPage.getByRole("dialog", {
-      name: "Add",
-      exact: true,
-    });
-    if ((await chooser.count()) > 0) {
-      await expect(chooser).toBeVisible();
-      const elapsed = Date.now() - before;
-      // With reduced motion, chooser appears within 50ms (no animation duration)
-      expect(elapsed).toBeLessThan(1000); // generous bound for CI latency
-    }
-  }
+  const before = Date.now();
+  await dockAdd.click();
+
+  const chooser = reducedPage.getByRole("dialog", {
+    name: "Add",
+    exact: true,
+  });
+  await expect(chooser).toBeVisible();
+  const elapsed = Date.now() - before;
+  // With reduced motion, chooser appears within 50ms (no animation duration)
+  expect(elapsed).toBeLessThan(1000); // generous bound for CI latency
 
   await context.close();
 });

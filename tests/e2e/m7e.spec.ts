@@ -1,9 +1,5 @@
 /**
- * tests/e2e/m7e.spec.ts — M7e E2E + Accessibility tests (Playwright, deferred to preview).
- *
- * Execution is deferred to Vercel preview — this sandbox cannot launch chromium
- * (binary missing, confirmed by M4a–M4g EVALUATOR reports and status.md).
- * Tests are authored here as real test() blocks; run them against the deployed preview URL.
+ * tests/e2e/m7e.spec.ts — M7e E2E + Accessibility tests (Playwright).
  *
  * Covers:
  *   E-m7e-001: real touch on brand mark for ≥600 ms opens year-heatmap overlay; release closes
@@ -87,12 +83,9 @@ async function seedStateWithBlock(page: import("@playwright/test").Page) {
 
 // Clear localStorage before each test (ADR-018)
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
-  await page.evaluate(() => {
-    localStorage.clear();
+  await page.addInitScript(() => {
     localStorage.setItem("dharma:onboarding-shown", "true");
   });
-  await page.reload();
 });
 
 // ─── E-m7e-001: Brand-mark long-press opens year-heatmap overlay ────────────
@@ -104,10 +97,7 @@ test("E-m7e-001: real touch ≥600 ms on brand mark opens year-heatmap overlay; 
   await page.waitForLoadState("networkidle");
 
   const brandBtn = page.locator('[data-testid="brand-mark-longpress"]');
-  if ((await brandBtn.count()) === 0) {
-    test.skip();
-    return;
-  }
+  await expect(brandBtn).toBeVisible();
 
   const box = await brandBtn.boundingBox();
   if (!box) {
@@ -155,21 +145,15 @@ test("E-m7e-002: first real ADD_BRICK mounts FirstBrickCard which slides in + au
   await seedFreshState(page);
   await page.waitForLoadState("networkidle");
 
-  // Tap + (dock Add button), pick "Add Brick", fill name, save
-  const addBtn = page.locator('[data-testid="add-block-btn"]');
-  if ((await addBtn.count()) === 0) {
-    test.skip();
-    return;
-  }
+  // Tap the dock + button (data-testid="dock-add")
+  const addBtn = page.locator('[data-testid="dock-add"]');
+  await expect(addBtn).toBeVisible();
 
   await addBtn.click();
 
   // Pick brick from chooser
   const addBrickBtn = page.getByRole("button", { name: "Add Brick" });
-  if ((await addBrickBtn.count()) === 0) {
-    test.skip();
-    return;
-  }
+  await expect(addBrickBtn).toBeVisible();
   await addBrickBtn.click();
 
   // Fill name and save
@@ -197,19 +181,14 @@ test("E-m7e-003: real ADD_BRICK AND real DELETE_BRICK each fire a toast", async 
   await seedStateWithBlock(page);
   await page.waitForLoadState("networkidle");
 
-  const addBtn = page.locator('[data-testid="add-block-btn"]');
-  if ((await addBtn.count()) === 0) {
-    test.skip();
-    return;
-  }
+  // Tap the dock + button (data-testid="dock-add")
+  const addBtn = page.locator('[data-testid="dock-add"]');
+  await expect(addBtn).toBeVisible();
 
   // Add a brick → should fire "Brick added" toast
   await addBtn.click();
   const addBrickChoice = page.getByRole("button", { name: "Add Brick" });
-  if ((await addBrickChoice.count()) === 0) {
-    test.skip();
-    return;
-  }
+  await expect(addBrickChoice).toBeVisible();
   await addBrickChoice.click();
   await page.getByLabel(/Title/i).fill("E2E brick");
   await page.getByRole("button", { name: /Save/i }).click();
@@ -234,18 +213,13 @@ test("E-m7e-004: under PRM, FirstBrickCard opacity-fades and toast renders insta
   await seedFreshState(page);
   await page.waitForLoadState("networkidle");
 
-  const addBtn = page.locator('[data-testid="add-block-btn"]');
-  if ((await addBtn.count()) === 0) {
-    test.skip();
-    return;
-  }
+  // Tap the dock + button (data-testid="dock-add")
+  const addBtn = page.locator('[data-testid="dock-add"]');
+  await expect(addBtn).toBeVisible();
   await addBtn.click();
 
   const addBrickChoice = page.getByRole("button", { name: "Add Brick" });
-  if ((await addBrickChoice.count()) === 0) {
-    test.skip();
-    return;
-  }
+  await expect(addBrickChoice).toBeVisible();
   await addBrickChoice.click();
   await page.getByLabel(/Title/i).fill("PRM brick");
   await page.getByRole("button", { name: /Save/i }).click();
@@ -335,18 +309,12 @@ test("E-m7e-007: second ADD_BRICK after reload does NOT re-fire FirstBrickCard",
   await page.waitForLoadState("networkidle");
 
   // Add a second brick (firstBrickShown is already true)
-  const addBtn = page.locator('[data-testid="add-block-btn"]');
-  if ((await addBtn.count()) === 0) {
-    test.skip();
-    return;
-  }
+  const addBtn = page.locator('[data-testid="dock-add"]');
+  await expect(addBtn).toBeVisible();
   await addBtn.click();
 
   const addBrickChoice = page.getByRole("button", { name: "Add Brick" });
-  if ((await addBrickChoice.count()) === 0) {
-    test.skip();
-    return;
-  }
+  await expect(addBrickChoice).toBeVisible();
   await addBrickChoice.click();
   await page.getByLabel(/Title/i).fill("Second brick");
   await page.getByRole("button", { name: /Save/i }).click();
@@ -368,17 +336,11 @@ test("A-m7e-001: page with FirstBrickCard visible is axe-clean", async ({
   await page.waitForLoadState("networkidle");
 
   // Add first brick to trigger FirstBrickCard
-  const addBtn = page.locator('[data-testid="add-block-btn"]');
-  if ((await addBtn.count()) === 0) {
-    test.skip();
-    return;
-  }
+  const addBtn = page.locator('[data-testid="dock-add"]');
+  await expect(addBtn).toBeVisible();
   await addBtn.click();
   const addBrickChoice = page.getByRole("button", { name: "Add Brick" });
-  if ((await addBrickChoice.count()) === 0) {
-    test.skip();
-    return;
-  }
+  await expect(addBrickChoice).toBeVisible();
   await addBrickChoice.click();
   await page.getByLabel(/Title/i).fill("Axe brick");
   await page.getByRole("button", { name: /Save/i }).click();
@@ -414,10 +376,7 @@ test("A-m7e-002: page with YearHeatmapPreview overlay mounted is axe-clean", asy
   await page.waitForLoadState("networkidle");
 
   const brandBtn = page.locator('[data-testid="brand-mark-longpress"]');
-  if ((await brandBtn.count()) === 0) {
-    test.skip();
-    return;
-  }
+  await expect(brandBtn).toBeVisible();
 
   const box = await brandBtn.boundingBox();
   if (!box) {
@@ -470,17 +429,11 @@ test("A-m7e-003: page with each Toaster kind variant (success / info / error) is
   await page.waitForLoadState("networkidle");
 
   // Trigger a success toast via ADD_BRICK
-  const addBtn = page.locator('[data-testid="add-block-btn"]');
-  if ((await addBtn.count()) === 0) {
-    test.skip();
-    return;
-  }
+  const addBtn = page.locator('[data-testid="dock-add"]');
+  await expect(addBtn).toBeVisible();
   await addBtn.click();
   const addBrickChoice = page.getByRole("button", { name: "Add Brick" });
-  if ((await addBrickChoice.count()) === 0) {
-    test.skip();
-    return;
-  }
+  await expect(addBrickChoice).toBeVisible();
   await addBrickChoice.click();
   await page.getByLabel(/Title/i).fill("A11y brick");
   await page.getByRole("button", { name: /Save/i }).click();
@@ -519,10 +472,7 @@ test("A-m7e-004: BrandMarkLongPress wrapper is keyboard-focusable with accessibl
   await page.waitForLoadState("networkidle");
 
   const brandBtn = page.locator('[data-testid="brand-mark-longpress"]');
-  if ((await brandBtn.count()) === 0) {
-    test.skip();
-    return;
-  }
+  await expect(brandBtn).toBeVisible();
 
   // Tab-navigate to the brand mark button
   await brandBtn.focus();
