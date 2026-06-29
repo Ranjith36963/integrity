@@ -187,7 +187,7 @@ test("E-m9c-002: month grid shows archived day score, today cell, missed indicat
   await monthTab.click();
 
   const grid = page.getByRole("grid");
-  if ((await grid.count()) === 0) return;
+  await expect(grid).toBeVisible();
 
   // Archived day cell: has data-kind="scored" and data-score
   const archivedCell = page.locator(`[data-score][data-kind="scored"]`).first();
@@ -273,7 +273,7 @@ test("E-m9c-003: tapping archived day opens read-only PastDayDetail; tapping tod
   await monthTab.click();
 
   const grid = page.getByRole("grid");
-  if ((await grid.count()) === 0) return;
+  await expect(grid).toBeVisible();
 
   // Tap the archived (scored) past-day cell
   const archivedCell = page.locator(`[data-kind="scored"]`).first();

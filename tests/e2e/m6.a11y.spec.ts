@@ -1,89 +1,71 @@
 /**
  * tests/e2e/m6.a11y.spec.ts — Milestone 6 accessibility tests (axe-core via Playwright).
  *
- * Execution is deferred to Vercel preview — this sandbox cannot launch chromium
- * (binary missing, confirmed by M4a–M9e EVALUATOR reports and status.md).
- * Tests are authored here as real test() blocks; run them against the deployed preview URL.
- * Guards: `if ((await x.count()) > 0)` per ADR-039 + ADR-022.
- *
  * Covers: A-m6-001..002
  */
 
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-test.beforeEach(async ({ page }) => {
-  await page.goto("/");
-  await page.evaluate(() => {
-    localStorage.clear();
-    localStorage.setItem("dharma:onboarding-shown", "true");
-  });
-  await page.reload();
-});
-
-/**
- * Seed a fixture with one block (blk-A) holding multiple bricks + one loose brick.
- * Used by A-m6-001..002 to have drag handles to inspect.
- */
-async function seedFixture(page: import("@playwright/test").Page) {
-  const todayISO = await page.evaluate(() => {
-    const d = new Date();
-    return d.toISOString().slice(0, 10);
-  });
-  await page.evaluate((today) => {
-    const payload = {
-      schemaVersion: 3,
-      programStart: today,
-      currentDate: today,
-      history: {},
-      deletions: {},
-      blocks: [
+const M6_FIXTURE = {
+  schemaVersion: 3,
+  programStart: "2026-06-29",
+  currentDate: "2026-06-29",
+  history: {},
+  deletions: {},
+  blocks: [
+    {
+      id: "blk-A",
+      name: "Morning",
+      start: "08:00",
+      end: "09:00",
+      recurrence: { kind: "every-day" },
+      categoryId: null,
+      bricks: [
         {
-          id: "blk-A",
-          name: "Morning",
-          start: "08:00",
-          end: "09:00",
-          recurrence: { kind: "every-day" },
-          categoryId: null,
-          bricks: [
-            {
-              id: "brk-1",
-              name: "Meditate",
-              kind: "tick",
-              done: false,
-              hasDuration: false,
-              categoryId: null,
-              parentBlockId: "blk-A",
-            },
-            {
-              id: "brk-2",
-              name: "Stretch",
-              kind: "tick",
-              done: false,
-              hasDuration: false,
-              categoryId: null,
-              parentBlockId: "blk-A",
-            },
-          ],
-        },
-      ],
-      looseBricks: [
-        {
-          id: "brk-loose",
-          name: "Walk",
+          id: "brk-1",
+          name: "Meditate",
           kind: "tick",
           done: false,
           hasDuration: false,
           categoryId: null,
-          parentBlockId: null,
+          parentBlockId: "blk-A",
+        },
+        {
+          id: "brk-2",
+          name: "Stretch",
+          kind: "tick",
+          done: false,
+          hasDuration: false,
+          categoryId: null,
+          parentBlockId: "blk-A",
         },
       ],
-      categories: [],
-    };
+    },
+  ],
+  looseBricks: [
+    {
+      id: "brk-loose",
+      name: "Walk",
+      kind: "tick",
+      done: false,
+      hasDuration: false,
+      categoryId: null,
+      parentBlockId: null,
+    },
+  ],
+  categories: [],
+};
+
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript((payload: unknown) => {
+    localStorage.setItem("dharma:onboarding-shown", "true");
     localStorage.setItem("dharma:v1", JSON.stringify(payload));
-  }, todayISO);
-  await page.reload();
-}
+  }, M6_FIXTURE);
+  await page.goto("/");
+  await page.waitForLoadState("networkidle");
+  await page.waitForTimeout(300);
+});
 
 // ─── A-m6-001: Edit Mode — axe clean; handles keyboard-focusable + SR-labeled ─
 
@@ -91,10 +73,9 @@ test("A-m6-001: Unlocked Day view axe-clean; block + brick handles keyboard-focu
   page,
 }) => {
   await page.setViewportSize({ width: 430, height: 932 });
-  await seedFixture(page);
 
   const pencil = page.getByRole("button", { name: /edit mode/i });
-  if ((await pencil.count()) === 0) return;
+  await expect(pencil).toBeVisible();
 
   // Toggle into Edit Mode (Unlocked)
   await pencil.click();
@@ -183,10 +164,9 @@ test("A-m6-002: Reduced-motion: axe clean; handles present + labeled; aria-live 
 }) => {
   await page.setViewportSize({ width: 430, height: 932 });
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await seedFixture(page);
 
   const pencil = page.getByRole("button", { name: /edit mode/i });
-  if ((await pencil.count()) === 0) return;
+  await expect(pencil).toBeVisible();
 
   await pencil.click();
   await page.waitForTimeout(200);

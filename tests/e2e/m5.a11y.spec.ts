@@ -1,11 +1,6 @@
 /**
  * tests/e2e/m5.a11y.spec.ts — Milestone 5 accessibility tests (axe-core via Playwright).
  *
- * Execution is deferred to Vercel preview — this sandbox cannot launch chromium
- * (binary missing, confirmed by M4a–M9e EVALUATOR reports and status.md).
- * Tests are authored here as real test() blocks; run them against the deployed preview URL.
- * Guards: `if ((await x.count()) > 0)` per ADR-039 + ADR-022.
- *
  * Covers: A-m5-001..003
  */
 
@@ -13,12 +8,54 @@ import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 test.beforeEach(async ({ page }) => {
+  await page.addInitScript(
+    (payload: unknown) => {
+      localStorage.setItem("dharma:onboarding-shown", "true");
+      localStorage.setItem("dharma:v1", JSON.stringify(payload));
+    },
+    {
+      schemaVersion: 3,
+      programStart: "2026-01-01",
+      currentDate: "2026-06-29",
+      blocks: [
+        {
+          id: "blk-1",
+          name: "Afternoon",
+          start: "14:00",
+          end: "15:00",
+          recurrence: { kind: "every-day" },
+          categoryId: null,
+          bricks: [
+            {
+              id: "brk-1",
+              name: "Meditate",
+              kind: "tick",
+              done: false,
+              hasDuration: false,
+              categoryId: null,
+              parentBlockId: "blk-1",
+            },
+            {
+              id: "brk-2",
+              name: "Journal",
+              kind: "tick",
+              done: false,
+              hasDuration: false,
+              categoryId: null,
+              parentBlockId: "blk-1",
+            },
+          ],
+        },
+      ],
+      looseBricks: [],
+      categories: [],
+      history: {},
+      deletions: {},
+    },
+  );
   await page.goto("/");
-  await page.evaluate(() => {
-    localStorage.clear();
-    localStorage.setItem("dharma:onboarding-shown", "true");
-  });
-  await page.reload();
+  await page.waitForLoadState("networkidle");
+  await page.waitForTimeout(300);
 });
 
 // ─── A-m5-001: Edit Mode — axe clean; pencil + × keyboard-operable; 430px no overflow ──
@@ -27,12 +64,10 @@ test("A-m5-001: Unlocked Day view is axe-clean; pencil + every × keyboard-opera
   page,
 }) => {
   await page.setViewportSize({ width: 430, height: 932 });
-  await page.goto("/");
-  await page.waitForTimeout(300);
 
   // Find the pencil Edit Mode toggle
   const pencil = page.getByRole("button", { name: /edit mode/i });
-  if ((await pencil.count()) === 0) return;
+  await expect(pencil).toBeVisible();
 
   // Toggle into Edit Mode (Unlocked)
   await pencil.click();
@@ -98,23 +133,20 @@ test("A-m5-002: DeleteConfirmModal is axe-clean; role=dialog aria-modal; buttons
   page,
 }) => {
   await page.setViewportSize({ width: 430, height: 932 });
-  await page.goto("/");
-  await page.waitForTimeout(300);
 
   const pencil = page.getByRole("button", { name: /edit mode/i });
-  if ((await pencil.count()) === 0) return;
+  await expect(pencil).toBeVisible();
 
   await pencil.click();
 
   // Find a × delete button for a block
   const deleteBlockBtn = page.getByRole("button", { name: /^delete block/i });
-  if ((await deleteBlockBtn.count()) === 0) return;
+  await expect(deleteBlockBtn.first()).toBeVisible();
 
   await deleteBlockBtn.first().click({ force: true });
 
   // Modal must be present
   const dialog = page.getByRole("dialog");
-  if ((await dialog.count()) === 0) return;
   await expect(dialog).toBeVisible();
   await expect(dialog).toHaveAttribute("aria-modal", "true");
 
@@ -156,11 +188,9 @@ test("A-m5-003: jiggle in Edit Mode causes no axe violations; 430px layout stabl
   page,
 }) => {
   await page.setViewportSize({ width: 430, height: 932 });
-  await page.goto("/");
-  await page.waitForTimeout(300);
 
   const pencil = page.getByRole("button", { name: /edit mode/i });
-  if ((await pencil.count()) === 0) return;
+  await expect(pencil).toBeVisible();
 
   await pencil.click();
   // Wait for jiggle animation to start
