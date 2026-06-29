@@ -6,8 +6,8 @@
 
 ## Snapshot
 
-- **Branch:** `main` at `2cd975a`
-- **Last ship:** E2E sci-fi → real conversion — final batch (2026-06-29): remaining a11y + m9c guard-skip tests in m5.a11y.spec.ts, m6.a11y.spec.ts, m9c.a11y.spec.ts, m9c.spec.ts converted to real addInitScript-seeded assertions. Commit: 2cd975a. Prior: 45 guard-skip tests replaced with real assertions via addInitScript seeding; Playwright suite 282/282 real (was 169 vacuous + 45 sci-fi). Commits: bd3822f, 592c824, 286ece9, abbae82. Prior: Open-loop hardening (2026-06-29): persist quota toast + audio chimes (M7f) + M6 drag E2E. Prior: M10 Voice Log (2026-06-29) — Phase 1 complete.
+- **Branch:** `main` at `f739bd1`
+- **Last ship:** E2E sci-fi → real conversion COMPLETE (2026-06-29): ALL guard-skip tests across all milestones converted to real addInitScript-seeded assertions. Only intentional M10 SpeechRecognition feature-detection guards remain. Final commit: f739bd1 (m4f/m6/m7c/m7d/m9d/m9e). Prior batches: 2cd975a (m5.a11y/m6.a11y/m9c.a11y/m9c), 592c824+bd3822f+286ece9+abbae82 (m4b/m4d/m4e/m4f/m5/m7e/m8/m9b/m9c/m9d/m9e + selector fixes). Prior: Open-loop hardening (2026-06-29): persist quota toast + audio chimes (M7f) + M6 drag E2E. Prior: M10 Voice Log (2026-06-29) — Phase 1 complete.
 - **Last preview URL:** `https://integrity-pink.vercel.app/` (main-branch production alias). Sandbox `curl -I` returns 403 `x-deny-reason: host_not_allowed` (Vercel Deployment Protection); loads normally in signed-in browser sessions.
 - **Persisted schema: v3** (ADR-045 + M5). `AppState`/`PersistedState` now carry `deletions: Record<string,true>`. Additive lossless v2→v3 migrator. `loadState` migrates v1→v2→v3 with no data loss.
 - **ADR-047 (M5):** `currentDayBlocks.ts` resolves `deletions` only; `appliesOn` Day-view wiring is deferred to a dedicated spec entry.
