@@ -4,7 +4,11 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { isSpeechSupported, createSpeechSession } from "./speechRecognition";
-import type { SpeechHandlers } from "./speechRecognition";
+import type {
+  SpeechHandlers,
+  SpeechRecognitionEventLocal,
+  SpeechRecognitionErrorEventLocal,
+} from "./speechRecognition";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -14,8 +18,8 @@ function makeFakeSpeechRecognitionClass() {
     continuous = true;
     interimResults = false;
     lang = "";
-    onresult: ((e: SpeechRecognitionEvent) => void) | null = null;
-    onerror: ((e: SpeechRecognitionErrorEvent) => void) | null = null;
+    onresult: ((e: SpeechRecognitionEventLocal) => void) | null = null;
+    onerror: ((e: SpeechRecognitionErrorEventLocal) => void) | null = null;
     onend: (() => void) | null = null;
     start = vi.fn();
     stop = vi.fn();
@@ -28,15 +32,16 @@ function makeFakeSpeechRecognitionClass() {
 describe("U-m10-001: isSpeechSupported — SpeechRecognition defined", () => {
   let original: unknown;
   beforeEach(() => {
-    original = (window as Record<string, unknown>).SpeechRecognition;
-    (window as Record<string, unknown>).SpeechRecognition =
+    original = (window as unknown as Record<string, unknown>).SpeechRecognition;
+    (window as unknown as Record<string, unknown>).SpeechRecognition =
       makeFakeSpeechRecognitionClass();
   });
   afterEach(() => {
     if (original === undefined) {
-      delete (window as Record<string, unknown>).SpeechRecognition;
+      delete (window as unknown as Record<string, unknown>).SpeechRecognition;
     } else {
-      (window as Record<string, unknown>).SpeechRecognition = original;
+      (window as unknown as Record<string, unknown>).SpeechRecognition =
+        original;
     }
   });
 
@@ -51,17 +56,22 @@ describe("U-m10-002: isSpeechSupported — neither SpeechRecognition nor webkitS
   let origSpeech: unknown;
   let origWebkit: unknown;
   beforeEach(() => {
-    origSpeech = (window as Record<string, unknown>).SpeechRecognition;
-    origWebkit = (window as Record<string, unknown>).webkitSpeechRecognition;
-    delete (window as Record<string, unknown>).SpeechRecognition;
-    delete (window as Record<string, unknown>).webkitSpeechRecognition;
+    origSpeech = (window as unknown as Record<string, unknown>)
+      .SpeechRecognition;
+    origWebkit = (window as unknown as Record<string, unknown>)
+      .webkitSpeechRecognition;
+    delete (window as unknown as Record<string, unknown>).SpeechRecognition;
+    delete (window as unknown as Record<string, unknown>)
+      .webkitSpeechRecognition;
   });
   afterEach(() => {
     if (origSpeech !== undefined) {
-      (window as Record<string, unknown>).SpeechRecognition = origSpeech;
+      (window as unknown as Record<string, unknown>).SpeechRecognition =
+        origSpeech;
     }
     if (origWebkit !== undefined) {
-      (window as Record<string, unknown>).webkitSpeechRecognition = origWebkit;
+      (window as unknown as Record<string, unknown>).webkitSpeechRecognition =
+        origWebkit;
     }
   });
 
@@ -77,22 +87,27 @@ describe("U-m10-003: isSpeechSupported — webkitSpeechRecognition only", () => 
   let origSpeech: unknown;
   let origWebkit: unknown;
   beforeEach(() => {
-    origSpeech = (window as Record<string, unknown>).SpeechRecognition;
-    origWebkit = (window as Record<string, unknown>).webkitSpeechRecognition;
-    delete (window as Record<string, unknown>).SpeechRecognition;
-    (window as Record<string, unknown>).webkitSpeechRecognition =
+    origSpeech = (window as unknown as Record<string, unknown>)
+      .SpeechRecognition;
+    origWebkit = (window as unknown as Record<string, unknown>)
+      .webkitSpeechRecognition;
+    delete (window as unknown as Record<string, unknown>).SpeechRecognition;
+    (window as unknown as Record<string, unknown>).webkitSpeechRecognition =
       makeFakeSpeechRecognitionClass();
   });
   afterEach(() => {
     if (origSpeech !== undefined) {
-      (window as Record<string, unknown>).SpeechRecognition = origSpeech;
+      (window as unknown as Record<string, unknown>).SpeechRecognition =
+        origSpeech;
     } else {
-      delete (window as Record<string, unknown>).SpeechRecognition;
+      delete (window as unknown as Record<string, unknown>).SpeechRecognition;
     }
     if (origWebkit !== undefined) {
-      (window as Record<string, unknown>).webkitSpeechRecognition = origWebkit;
+      (window as unknown as Record<string, unknown>).webkitSpeechRecognition =
+        origWebkit;
     } else {
-      delete (window as Record<string, unknown>).webkitSpeechRecognition;
+      delete (window as unknown as Record<string, unknown>)
+        .webkitSpeechRecognition;
     }
   });
 
@@ -107,17 +122,21 @@ describe("U-m10-004: isSpeechSupported — SSR (window undefined)", () => {
   it("returns false without throwing when window APIs are absent", () => {
     // In JSDOM, window always exists. We test the guard by deleting both APIs —
     // the function must guard typeof window !== 'undefined' and Boolean(...) safely.
-    const origSpeech = (window as Record<string, unknown>).SpeechRecognition;
-    const origWebkit = (window as Record<string, unknown>)
+    const origSpeech = (window as unknown as Record<string, unknown>)
+      .SpeechRecognition;
+    const origWebkit = (window as unknown as Record<string, unknown>)
       .webkitSpeechRecognition;
-    delete (window as Record<string, unknown>).SpeechRecognition;
-    delete (window as Record<string, unknown>).webkitSpeechRecognition;
+    delete (window as unknown as Record<string, unknown>).SpeechRecognition;
+    delete (window as unknown as Record<string, unknown>)
+      .webkitSpeechRecognition;
     expect(() => isSpeechSupported()).not.toThrow();
     expect(isSpeechSupported()).toBe(false);
     if (origSpeech !== undefined)
-      (window as Record<string, unknown>).SpeechRecognition = origSpeech;
+      (window as unknown as Record<string, unknown>).SpeechRecognition =
+        origSpeech;
     if (origWebkit !== undefined)
-      (window as Record<string, unknown>).webkitSpeechRecognition = origWebkit;
+      (window as unknown as Record<string, unknown>).webkitSpeechRecognition =
+        origWebkit;
   });
 });
 
@@ -137,11 +156,11 @@ function installFakeSR() {
       lastInstance = this;
     }
   }
-  (window as Record<string, unknown>).SpeechRecognition = Capturing;
+  (window as unknown as Record<string, unknown>).SpeechRecognition = Capturing;
   return {
     getLastInstance: () => lastInstance,
     restore: () => {
-      delete (window as Record<string, unknown>).SpeechRecognition;
+      delete (window as unknown as Record<string, unknown>).SpeechRecognition;
     },
   };
 }
@@ -169,22 +188,27 @@ function makeHandlers(): SpeechHandlers & {
 }
 
 /** Build a minimal SpeechRecognitionEvent-like object */
-function makeSpeechResultEvent(text: string, isFinal: boolean) {
+function makeSpeechResultEvent(
+  text: string,
+  isFinal: boolean,
+): SpeechRecognitionEventLocal {
   const result = {
     isFinal,
-    0: { transcript: text },
+    0: { transcript: text, confidence: 1 },
     length: 1,
+    item: () => ({ transcript: text, confidence: 1 }),
   };
   const results = {
     0: result,
     length: 1,
+    item: () => result,
   };
-  return { results } as unknown as SpeechRecognitionEvent;
+  return { results, resultIndex: 0 } as unknown as SpeechRecognitionEventLocal;
 }
 
 /** Build a minimal SpeechRecognitionErrorEvent-like object */
-function makeSpeechErrorEvent(error: string) {
-  return { error } as unknown as SpeechRecognitionErrorEvent;
+function makeSpeechErrorEvent(error: string): SpeechRecognitionErrorEventLocal {
+  return { error, message: "" } as unknown as SpeechRecognitionErrorEventLocal;
 }
 
 describe("U-m10-005: createSpeechSession configuration", () => {

@@ -66,7 +66,7 @@ beforeAll(() => {
     onerror: null = null;
     onend: null = null;
   }
-  (window as Record<string, unknown>).SpeechRecognition = FakeSR;
+  (window as unknown as Record<string, unknown>).SpeechRecognition = FakeSR;
 });
 
 // ─── U-m10-013: initial render state ─────────────────────────────────────────
@@ -336,13 +336,16 @@ describe("U-m10-025: useVoiceCapture — unsupported speech API", () => {
   let origSpeech: unknown;
 
   beforeEach(() => {
-    origSpeech = (window as Record<string, unknown>).SpeechRecognition;
-    delete (window as Record<string, unknown>).SpeechRecognition;
-    delete (window as Record<string, unknown>).webkitSpeechRecognition;
+    origSpeech = (window as unknown as Record<string, unknown>)
+      .SpeechRecognition;
+    delete (window as unknown as Record<string, unknown>).SpeechRecognition;
+    delete (window as unknown as Record<string, unknown>)
+      .webkitSpeechRecognition;
   });
   afterEach(() => {
     if (origSpeech !== undefined) {
-      (window as Record<string, unknown>).SpeechRecognition = origSpeech;
+      (window as unknown as Record<string, unknown>).SpeechRecognition =
+        origSpeech;
     }
   });
 

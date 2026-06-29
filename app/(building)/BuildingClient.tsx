@@ -23,6 +23,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { Dispatch } from "react";
 import { toast } from "@/components/Toaster";
+import { useVoiceCapture } from "@/lib/useVoiceCapture";
+import { VoiceCaptureOverlay } from "@/components/VoiceCaptureOverlay";
 import { FirstBrickCard } from "@/components/FirstBrickCard";
 import {
   today,
@@ -93,6 +95,8 @@ interface BrickSheetState {
   open: boolean;
   parentBlockId: string | null;
   defaultCategoryId: string | null;
+  /** M10: optional voice-transcript pre-fill for the brick name (AC #9) */
+  defaultTitle?: string;
 }
 
 interface ChooserState {
@@ -245,6 +249,36 @@ export function BuildingClient({
 
   // M6: aria-live announcement for reorder events (polite; screen-reader-discoverable).
   const [announcement, setAnnouncement] = useState("");
+
+  // M10: voice capture hook — owns the session lifecycle (idle → listening → resolved/error).
+  // onTranscript: trimmed final transcript pre-fills the brick name via openBrickSheet.
+  // onError: routes failure kinds to toast with the exact copy from plan.md Edge cases table.
+  // M10: onTranscript/onError are stable via useCallback (no outer deps); useVoiceCapture
+  // uses internal refs so re-created callbacks never retrigger hook effects.
+  const handleVoiceTranscript = useCallback((t: string) => {
+    openBrickSheet(null, null, t);
+  }, []); // empty deps: openBrickSheet only closes over setBrickSheetState (stable setter)
+
+  const handleVoiceError = useCallback(
+    (
+      kind: "not-allowed" | "no-speech" | "unsupported" | "other",
+      msg: string,
+    ) => {
+      toast(
+        msg,
+        kind === "not-allowed"
+          ? "error"
+          : kind === "no-speech"
+            ? "info"
+            : "error",
+      );
+    },
+    [],
+  );
+  const voice = useVoiceCapture({
+    onTranscript: handleVoiceTranscript,
+    onError: handleVoiceError,
+  });
 
   // M7e: FirstBrickCard — show on 0→1 brick transition when firstBrickShown was NOT true
   //      at the prior render (ADR-039 first-brick narrative payoff).
@@ -501,8 +535,14 @@ export function BuildingClient({
   function openBrickSheet(
     parentBlockId: string | null,
     defaultCategoryId: string | null,
+    defaultTitle?: string,
   ) {
-    setBrickSheetState({ open: true, parentBlockId, defaultCategoryId });
+    setBrickSheetState({
+      open: true,
+      parentBlockId,
+      defaultCategoryId,
+      defaultTitle,
+    });
   }
 
   function closeBrickSheet() {
@@ -684,6 +724,16 @@ export function BuildingClient({
         <BottomBar
           onAddPress={handleDockAdd}
           onQuickBrick={() => openBrickSheet(null, null)}
+          onMicPress={voice.toggle}
+          micSupported={voice.supported}
+          listening={voice.status === "listening"}
+        />
+        {/* M10: VoiceCaptureOverlay — listening modal (AC #4, #5, #6, #8) */}
+        <VoiceCaptureOverlay
+          open={voice.status === "listening"}
+          interim={voice.interim}
+          onCancel={voice.cancel}
+          prefersReducedMotion={Boolean(prefersReducedMotion)}
         />
         {/* AddChooserSheet: M4d routing surface — opens before AddBlockSheet or AddBrickSheet */}
         <AddChooserSheet
@@ -707,6 +757,7 @@ export function BuildingClient({
           open={brickSheetState.open}
           parentBlockId={brickSheetState.parentBlockId}
           defaultCategoryId={brickSheetState.defaultCategoryId}
+          defaultTitle={brickSheetState.defaultTitle}
           categories={state.categories}
           state={state}
           onSave={handleSaveBrick}
