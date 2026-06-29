@@ -697,6 +697,30 @@ body::before {
   animation: blockBloomReduced 600ms ease-in-out forwards;
 }
 
+/* ── M10: voice-capture listening ring pulse ─────────────────────────────────
+   Reuses the nowPulse cadence (--motion-now-pulse-duration = 1800ms).
+   Applied by <VoiceCaptureOverlay> when prefersReducedMotion=false. */
+@keyframes voiceListenPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 4px var(--accent-bloom),
+      0 0 12px var(--accent-glow);
+  }
+  50% {
+    box-shadow:
+      0 0 0 8px var(--accent-bloom),
+      0 0 28px var(--accent-glow);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .voice-ring-pulse {
+    animation: voiceListenPulse var(--motion-now-pulse-duration) ease-in-out
+      infinite;
+  }
+}
+
 /* ── M7d: day-complete card (PRM) — center-screen; pointer-events:none ─────── */
 /* .day-complete-card is used by <DayCompleteCard> outer wrapper.
    Inline styles in the component handle the fixed centering and z-index;
