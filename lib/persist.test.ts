@@ -1430,3 +1430,50 @@ describe("U-m7e-014: defensive — corrupted firstBrickShown (string or number) 
     expect(result!.firstBrickShown).toBe(false);
   });
 });
+
+// ─── U-persist-quota-001: QuotaExceededError → toast + no rethrow ─────────────
+
+// Mock the Toaster module before importing saveState for this test group.
+vi.mock("@/components/Toaster", () => ({
+  toast: vi.fn(),
+}));
+
+describe("U-persist-quota-001: saveState emits toast on QuotaExceededError", () => {
+  let toastMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    // Re-acquire the mock after vi.mock hoisting
+    const mod = await import("@/components/Toaster");
+    toastMock = mod.toast as ReturnType<typeof vi.fn>;
+    vi.clearAllMocks();
+    // Ensure setItem throws QuotaExceededError
+    mockStorage.setItem.mockImplementation(() => {
+      const err = new DOMException("QuotaExceededError", "QuotaExceededError");
+      throw err;
+    });
+  });
+
+  const validState: PersistedState = {
+    schemaVersion: 3,
+    programStart: "2026-05-01",
+    currentDate: "2026-05-01",
+    history: {},
+    blocks: [],
+    categories: [],
+    looseBricks: [],
+    deletions: {},
+  };
+
+  it("GIVEN setItem throws QuotaExceededError WHEN saveState is called THEN toast is emitted with error kind", () => {
+    expect(() => saveState(validState)).not.toThrow();
+    expect(toastMock).toHaveBeenCalledTimes(1);
+    expect(toastMock).toHaveBeenCalledWith(
+      "Couldn't save — storage full.",
+      "error",
+    );
+  });
+
+  it("GIVEN setItem throws QuotaExceededError WHEN saveState is called THEN the error does not propagate", () => {
+    expect(() => saveState(validState)).not.toThrow();
+  });
+});
