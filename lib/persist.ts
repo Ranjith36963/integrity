@@ -28,6 +28,7 @@ import {
   persistedStateV3Schema,
   type PersistedFieldName,
 } from "./persistSchemas";
+import { toast } from "@/components/Toaster";
 
 export const STORAGE_KEY = "dharma:v1";
 export const SCHEMA_VERSION = 3 as const;
@@ -396,8 +397,18 @@ export function saveState(state: PersistedState): void {
         );
       }
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch (e) {
+      if (
+        e instanceof DOMException &&
+        (e.name === "QuotaExceededError" || e.code === 22)
+      ) {
+        toast("Couldn't save — storage full.", "error");
+      }
+      // All other storage errors (disabled, private mode) are swallowed silently (SG-m8-05)
+    }
   } catch {
-    // Swallowed: quota exceeded, storage disabled, etc. (SG-m8-05)
+    // Outer try-catch: swallows schema-validation errors in dev (SG-m8-05)
   }
 }
