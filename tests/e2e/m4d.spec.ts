@@ -118,7 +118,7 @@ test("E-m4d-003: tapping an empty hour slot opens chooser; Add Block pre-fills s
     await expect(addBlockSheet).toBeVisible();
 
     if (expectedStart) {
-      const startInput = addBlockSheet.getByLabel(/Start/i);
+      const startInput = addBlockSheet.getByRole("textbox", { name: /Start/i });
       await expect(startInput).toHaveValue(expectedStart);
     }
   }
@@ -151,7 +151,7 @@ test("E-m4d-004: slot tap → Add Brick opens AddBrickSheet with no start/time i
     await expect(addBrickSheet).toBeVisible();
 
     // Brick form has no Start/time input (bricks are time-agnostic)
-    const startInput = addBrickSheet.getByLabel(/Start/i);
+    const startInput = addBrickSheet.getByRole("textbox", { name: /Start/i });
     await expect(startInput).not.toBeVisible();
   }
 });

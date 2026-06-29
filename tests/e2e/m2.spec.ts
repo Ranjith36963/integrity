@@ -23,7 +23,7 @@ async function addBlock(
   await page.getByTestId("chooser-add-block").click();
   await page.getByLabel(/Title/i).fill(title);
   if (opts?.start !== undefined) {
-    await page.getByLabel(/Start/i).fill(opts.start);
+    await page.getByRole("textbox", { name: /Start/i }).fill(opts.start);
   }
   if (opts?.end !== undefined) {
     await page.getByLabel("End (optional)").fill(opts.end);
@@ -54,7 +54,7 @@ test("E-m2-001: + opens sheet with rounded-down Start; Save adds block to timeli
   await expect(dialog).toHaveAttribute("aria-label", "Add Block");
 
   // Start input should be "09:00" (rounded DOWN from 09:47, SG-m2-04)
-  const startInput = page.getByLabel(/Start/i);
+  const startInput = page.getByRole("textbox", { name: /Start/i });
   await expect(startInput).toHaveValue("09:00");
 
   // Type title
@@ -105,7 +105,9 @@ test("E-m2-002: slot tap at 14:00 opens sheet with Start=14:00", async ({
   await expect(dialog).toHaveAttribute("aria-label", "Add Block");
 
   // Start = 14:00 (captured from slot tap)
-  await expect(page.getByLabel(/Start/i)).toHaveValue("14:00");
+  await expect(page.getByRole("textbox", { name: /Start/i })).toHaveValue(
+    "14:00",
+  );
 
   // Type title and save
   await page.getByLabel(/Title/i).fill("Bar");
@@ -261,7 +263,7 @@ test("E-m2-007: End=24:00 shows 'before midnight' inline error", async ({
   await page.getByLabel(/Title/i).fill("Foo");
 
   // Set Start to 22:00
-  const startInput = page.getByLabel(/Start/i);
+  const startInput = page.getByRole("textbox", { name: /Start/i });
   await startInput.fill("22:00");
   await page.keyboard.press("Tab");
 
@@ -310,7 +312,7 @@ test("E-m2-008: overlapping block raises an alert and Save is disabled (M4e cont
   await page.getByRole("button", { name: "Add", exact: true }).click();
   await page.getByTestId("chooser-add-block").click();
   await page.getByLabel(/Title/i).fill("Second");
-  const startInput = page.getByLabel(/Start/i);
+  const startInput = page.getByRole("textbox", { name: /Start/i });
   await startInput.fill("09:30");
   const endInput = page.getByLabel("End (optional)");
   await endInput.fill("10:30");

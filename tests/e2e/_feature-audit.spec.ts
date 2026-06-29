@@ -388,7 +388,7 @@ test("FEATURE AUDIT: every button, every feature", async ({ page }) => {
 
   // ── 12. AddBlockSheet — Start input (auto-filled from slot/now) ────────
   {
-    const start = page.getByLabel(/Start/i);
+    const start = page.getByRole("textbox", { name: /Start/i });
     const startVal =
       (await start
         .first()
