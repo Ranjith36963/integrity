@@ -907,3 +907,68 @@ describe("C-m4f-017: M4e overlap chip + aria-describedby + sr-only hint preserve
     expect(hint?.textContent).toBe("Resolve the overlap to save.");
   });
 });
+
+// ─── C-m10-016: defaultTitle pre-fills the brick name (trimmed) ──────────────
+
+describe("C-m10-016: AddBrickSheet defaultTitle pre-fills brick name trimmed", () => {
+  it("opens with trimmed defaultTitle in the title field", async () => {
+    render(
+      <AddBrickSheet
+        {...defaultProps({ defaultTitle: "  morning workout  " })}
+      />,
+    );
+    // Wait for the open effect to fire
+    await new Promise((r) => setTimeout(r, 20));
+    const titleInput = screen.getByRole("textbox", {
+      name: /title/i,
+    }) as HTMLInputElement;
+    expect(titleInput.value).toBe("morning workout");
+  });
+
+  it("Save is enabled when pre-filled with a non-empty title", async () => {
+    render(
+      <AddBrickSheet {...defaultProps({ defaultTitle: "morning workout" })} />,
+    );
+    await new Promise((r) => setTimeout(r, 20));
+    const saveBtn = screen.getByRole("button", { name: /save/i });
+    expect(saveBtn.getAttribute("aria-disabled")).toBe("false");
+  });
+});
+
+// ─── C-m10-017: pre-filled cleared → Save disabled ───────────────────────────
+
+describe("C-m10-017: AddBrickSheet pre-filled then cleared → Save disabled", () => {
+  it("clearing the pre-filled name disables Save", async () => {
+    const user = userEvent.setup();
+    render(
+      <AddBrickSheet {...defaultProps({ defaultTitle: "morning workout" })} />,
+    );
+    await new Promise((r) => setTimeout(r, 20));
+    const titleInput = screen.getByRole("textbox", { name: /title/i });
+    await user.clear(titleInput);
+    const saveBtn = screen.getByRole("button", { name: /save/i });
+    expect(saveBtn.getAttribute("aria-disabled")).toBe("true");
+  });
+});
+
+// ─── C-m10-018: no defaultTitle → empty field (no regression) ────────────────
+
+describe("C-m10-018: AddBrickSheet no defaultTitle → empty field on open", () => {
+  it("title field is empty when defaultTitle is omitted", async () => {
+    render(<AddBrickSheet {...defaultProps()} />);
+    await new Promise((r) => setTimeout(r, 20));
+    const titleInput = screen.getByRole("textbox", {
+      name: /title/i,
+    }) as HTMLInputElement;
+    expect(titleInput.value).toBe("");
+  });
+
+  it("title field is empty when defaultTitle is empty string", async () => {
+    render(<AddBrickSheet {...defaultProps({ defaultTitle: "" })} />);
+    await new Promise((r) => setTimeout(r, 20));
+    const titleInput = screen.getByRole("textbox", {
+      name: /title/i,
+    }) as HTMLInputElement;
+    expect(titleInput.value).toBe("");
+  });
+});
