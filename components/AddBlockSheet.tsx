@@ -24,6 +24,7 @@ import {
 import { findOverlaps, selectAllTimedItems } from "@/lib/overlap";
 import { currentDayBlocks } from "@/lib/currentDayBlocks";
 import { Sheet } from "@/components/ui/Sheet";
+import { TimeInput } from "@/components/ui/TimeInput";
 import { RecurrenceChips } from "@/components/RecurrenceChips";
 import { CategoryPicker } from "@/components/CategoryPicker";
 import { NewCategoryForm } from "@/components/NewCategoryForm";
@@ -227,14 +228,21 @@ export function AddBlockSheet({
       return;
     }
     // Defense-in-depth: read the LIVE DOM values via ref and re-validate.
-    // React's value tracker can be bypassed by direct DOM mutation
-    // (`el.value = "25:99"` + dispatchEvent), leaving React state stale
-    // while the displayed value is invalid. Re-reading from the ref + the
-    // pure HH:MM validator catches that case before any block is created.
-    // Surfaced by the HOSTILE lifecycle audit's "invalid-time-25-99" probe.
-    const liveStart = startInputRef.current?.value ?? start;
-    const liveEndRaw = endInputRef.current?.value ?? end;
-    const liveEndForBlock = liveEndRaw === "" ? undefined : liveEndRaw;
+    // TimeInput's hidden <input> stores raw digits ("0400"), so we normalise
+    // to "HH:MM" before validating. Direct DOM mutation still caught here.
+    const rawStart = startInputRef.current?.value ?? start;
+    const rawEnd = endInputRef.current?.value ?? end;
+    const liveStart = rawStart.includes(":")
+      ? rawStart
+      : rawStart.length === 4
+        ? `${rawStart.slice(0, 2)}:${rawStart.slice(2)}`
+        : start;
+    const liveEndNorm = rawEnd.includes(":")
+      ? rawEnd
+      : rawEnd.length === 4
+        ? `${rawEnd.slice(0, 2)}:${rawEnd.slice(2)}`
+        : end;
+    const liveEndForBlock = liveEndNorm === "" ? undefined : liveEndNorm;
     if (!isValidStart(liveStart) || !isValidEnd(liveEndForBlock)) {
       haptics.medium();
       return;
@@ -339,25 +347,11 @@ export function AddBlockSheet({
                 >
                   Start
                 </label>
-                <input
+                <TimeInput
                   id="block-start"
-                  ref={startInputRef}
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="HH:MM"
+                  inputRef={startInputRef}
                   value={start}
-                  onChange={(e) => setStart(e.target.value)}
-                  style={{
-                    height: "44px",
-                    borderRadius: "8px",
-                    border: "1px solid var(--ink-dim)",
-                    background: "var(--bg-elev)",
-                    color: "var(--ink)",
-                    fontFamily: "var(--font-ui)",
-                    fontSize: "var(--fs-14)",
-                    padding: "0 12px",
-                    width: "100%",
-                  }}
+                  onChange={setStart}
                 />
               </div>
               <div
@@ -378,28 +372,15 @@ export function AddBlockSheet({
                 >
                   End (optional)
                 </label>
-                <input
+                <TimeInput
                   id="block-end"
-                  ref={endInputRef}
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="HH:MM"
+                  inputRef={endInputRef}
                   value={end}
-                  onChange={(e) => setEnd(e.target.value)}
+                  onChange={setEnd}
+                  hasError={endPastMidnight || endBeforeStart}
                   aria-invalid={
                     endPastMidnight || endBeforeStart ? "true" : "false"
                   }
-                  style={{
-                    height: "44px",
-                    borderRadius: "8px",
-                    border: `1px solid ${endPastMidnight || endBeforeStart ? "var(--accent-deep)" : "var(--ink-dim)"}`,
-                    background: "var(--bg-elev)",
-                    color: "var(--ink)",
-                    fontFamily: "var(--font-ui)",
-                    fontSize: "var(--fs-14)",
-                    padding: "0 12px",
-                    width: "100%",
-                  }}
                 />
               </div>
             </div>
