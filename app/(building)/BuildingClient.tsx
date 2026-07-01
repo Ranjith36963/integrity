@@ -44,7 +44,7 @@ import {
   selectAllTimedItems,
   findOverlaps,
 } from "@/lib/overlap";
-import { currentDayBlocks } from "@/lib/currentDayBlocks";
+import { visibleDayBlocks, currentDayState } from "@/lib/currentDayView";
 import { useDayCelebrationOnce, celebrate } from "@/lib/celebrations";
 import { useReducedMotion, AnimatePresence, motion } from "motion/react";
 import { EditModeProvider } from "@/components/EditModeProvider";
@@ -343,8 +343,10 @@ export function BuildingClient({
   const totalDays = daysInYear(isoToLocalDate(todayIso));
   const dateLabelValue = dateLabel(todayIso);
 
-  // M3: dayPct now takes full AppState (blocks + looseBricks)
-  const heroPct = dayPct(state);
+  // M3: dayPct takes full AppState (blocks + looseBricks).
+  // Recurrence fix: score only today's applicable blocks — a weekday routine
+  // must not be diluted by weekend-only blocks (and vice versa).
+  const heroPct = dayPct(currentDayState(state));
 
   // M7d: replace useCrossUpEffect+playChime with useDayCelebrationOnce+celebrate.
   // shouldCelebrate is true for exactly one render on the FIRST 0→100 crossing per mount.
@@ -610,9 +612,11 @@ export function BuildingClient({
     openBrickSheet(null, null);
   }
 
-  // M5: currentDayBlocks filters state.blocks by deletions (ADR-047).
+  // M5: filter state.blocks by deletions (ADR-047) AND, per the recurrence fix,
+  // by whether each block's recurrence applies to state.currentDate — so a
+  // weekday routine hides on weekends and a weekend routine hides on weekdays.
   // Build a filtered-state view so selectTimelineItems/selectTrayBricks operate on visible blocks.
-  const visibleBlocks = currentDayBlocks(state);
+  const visibleBlocks = visibleDayBlocks(state);
   const stateForTimeline = { ...state, blocks: visibleBlocks };
 
   // Effective wake-to-wake anchor for the day being shown: weekend wake time on

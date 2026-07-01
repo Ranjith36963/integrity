@@ -53,7 +53,7 @@ beforeEach(() => {
         name: "Block 1",
         start: "09:00",
         end: "10:00",
-        recurrence: { kind: "just-today", date: "2026-05-09" },
+        recurrence: { kind: "just-today", date: today() },
         categoryId: "c1",
         bricks: [
           {

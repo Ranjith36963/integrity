@@ -13,6 +13,7 @@ import { weekDates } from "./weekGrid";
 import { monthDates } from "./yearGrid";
 import { dayPct } from "./dharma";
 import { appliesOn } from "./appliesOn";
+import { currentDayState } from "./currentDayView";
 import { uuid } from "./uuid";
 
 // Re-export ArchivedDay for caller convenience
@@ -52,9 +53,11 @@ export function dayScore(state: AppState, isoDate: string): number | null {
     });
   }
 
-  // Branch 2: today's live in-progress day
+  // Branch 2: today's live in-progress day. Score only the blocks whose
+  // recurrence applies today (currentDayState) so the Week/Month/Year "today"
+  // cell matches the Day view hero and isn't diluted by other-day routines.
   if (isoDate === state.currentDate) {
-    return dayPct(state);
+    return dayPct(currentDayState(state));
   }
 
   // Branch 3: future / pre-start / past-missed — no data

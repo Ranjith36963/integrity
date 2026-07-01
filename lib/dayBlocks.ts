@@ -8,14 +8,16 @@
  * Pure: reads state only; no clock, no storage.
  */
 import type { AppState, Block, Category } from "./types";
-import { currentDayBlocks } from "./currentDayBlocks";
+import { visibleDayBlocks } from "./currentDayView";
 
 export function dayBlocksFor(
   state: AppState,
   iso: string,
 ): { blocks: Block[]; categories: Category[] } {
   if (iso === state.currentDate) {
-    return { blocks: currentDayBlocks(state), categories: state.categories };
+    // Recurrence fix: today's ring shows only blocks whose recurrence applies
+    // to currentDate (weekday routine hidden on weekends, and vice versa).
+    return { blocks: visibleDayBlocks(state), categories: state.categories };
   }
   const archived = state.history[iso];
   if (archived) {

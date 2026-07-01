@@ -80,7 +80,7 @@ const BASE_FIXTURE: PersistedState = {
       name: "One-off",
       start: "09:00",
       end: "10:00",
-      recurrence: { kind: "just-today", date: "2026-05-18" },
+      recurrence: { kind: "just-today", date: today() },
       categoryId: null,
       bricks: [
         {
@@ -351,7 +351,7 @@ describe("C-m5-020: deleting last block + brick returns to M1 empty state", () =
           name: "One-off",
           start: "09:00",
           end: "10:00",
-          recurrence: { kind: "just-today", date: "2026-05-18" },
+          recurrence: { kind: "just-today", date: today() },
           categoryId: null,
           bricks: [],
         },
