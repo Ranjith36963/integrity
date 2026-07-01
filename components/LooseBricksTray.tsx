@@ -291,6 +291,7 @@ export function LooseBricksTray({
                         logMode &&
                         (logIncompleteBrickIds?.has(brick.id) ?? false)
                       }
+                      onTimerCommit={onTimerCommit}
                     />
                   </motion.div>
                 ))}
@@ -349,6 +350,10 @@ export function LooseBricksTray({
                     onTickToggle={onTickToggle}
                     onUnitsOpenSheet={onUnitsOpenSheet}
                     onRequestDeleteBrick={onRequestDeleteBrick}
+                    logHighlight={
+                      logMode && (logIncompleteBrickIds?.has(brick.id) ?? false)
+                    }
+                    onTimerCommit={onTimerCommit}
                   />
                 </div>
               ))}
