@@ -53,9 +53,10 @@ test("E-m2-001: + opens sheet with rounded-down Start; Save adds block to timeli
   await expect(dialog).toBeVisible();
   await expect(dialog).toHaveAttribute("aria-label", "Add Block");
 
-  // Start input should be "09:00" (rounded DOWN from 09:47, SG-m2-04)
+  // Start input should be "09:00" (rounded DOWN from 09:47, SG-m2-04).
+  // The masked TimeInput exposes a digits-only value ("09:00" → "0900").
   const startInput = page.getByRole("textbox", { name: /Start/i });
-  await expect(startInput).toHaveValue("09:00");
+  await expect(startInput).toHaveValue("0900");
 
   // Type title
   await page.getByLabel(/Title/i).fill("Foo");

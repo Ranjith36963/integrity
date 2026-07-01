@@ -33,10 +33,10 @@ describe("C-m0-009: Input number variant with label wiring", () => {
     expect(input).toHaveAttribute("aria-invalid", "false");
   });
 
-  it("input has h-11 class (≥44px)", () => {
+  it("input has h-[48px] class (≥44px)", () => {
     render(<Input id="x" type="text" value="" onChange={vi.fn()} />);
     const input = screen.getByRole("textbox");
-    expect(input.className).toContain("h-11");
+    expect(input.className).toContain("h-[48px]");
   });
 });
 

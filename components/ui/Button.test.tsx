@@ -20,10 +20,10 @@ describe("C-m0-001: Button renders with primary+md defaults", () => {
     const primaryMdClasses = buttonVariants({ variant: "primary", size: "md" });
     // Split and check key classes
     expect(classes).toContain("bg-[var(--accent)]");
-    expect(classes).toContain("h-11");
+    expect(classes).toContain("h-[48px]");
     expect(classes).toContain("min-w-[44px]");
     expect(primaryMdClasses).toContain("bg-[var(--accent)]");
-    expect(primaryMdClasses).toContain("h-11");
+    expect(primaryMdClasses).toContain("h-[48px]");
   });
 });
 
@@ -31,11 +31,11 @@ describe("C-m0-001: Button renders with primary+md defaults", () => {
 describe("C-m0-002: Button renders all variant+size pairs with distinct classes", () => {
   const variants = ["primary", "secondary", "ghost"] as const;
   const sizes = ["sm", "md", "lg"] as const;
-  // sm uses min-h-[44px] (tap target compliant); md/lg use h-11/h-12
+  // sm uses min-h-[44px] (tap target compliant); md/lg both use h-[48px]
   const sizeHeights: Record<(typeof sizes)[number], string> = {
     sm: "min-h-[44px]",
-    md: "h-11",
-    lg: "h-12",
+    md: "h-[48px]",
+    lg: "h-[48px]",
   };
 
   it("all 9 combinations produce distinct class strings", () => {
@@ -68,10 +68,10 @@ describe("C-m0-003: Button loading state", () => {
     expect(btn).toHaveAttribute("aria-busy", "true");
   });
 
-  it("retains height ≥44px in loading state (h-11 class present)", () => {
+  it("retains height ≥44px in loading state (h-[48px] class present)", () => {
     render(<Button loading>Tap</Button>);
     const btn = screen.getByRole("button");
-    expect(btn.className).toContain("h-11");
+    expect(btn.className).toContain("h-[48px]");
   });
 });
 

@@ -85,24 +85,22 @@ describe("C-m3-013: AddBrickSheet Title required + autofocus", () => {
 // M4f: 3 chips → 2 chips (Tick, Units); Time chip removed (ADR-043).
 
 describe("C-m3-014: AddBrickSheet type selector", () => {
-  it("renders two chips in a radiogroup: Tick (default checked) and Units; no Time chip (C-m4f-013)", () => {
+  it("renders three chips in a radiogroup: Tick (default checked), Units, Timer", () => {
     render(<AddBrickSheet {...defaultProps()} />);
     const group = screen.getByRole("radiogroup");
     expect(group).toBeTruthy();
     const radios = within(group).getAllByRole("radio");
-    expect(radios).toHaveLength(2);
-    const tickRadio = radios.find((r) =>
-      r.getAttribute("aria-label")?.toLowerCase().includes("tick"),
+    expect(radios).toHaveLength(3);
+    const labels = radios.map((r) =>
+      r.getAttribute("aria-label")?.toLowerCase(),
+    );
+    expect(labels).toContain("tick");
+    expect(labels).toContain("units");
+    expect(labels).toContain("timer");
+    const tickRadio = radios.find(
+      (r) => r.getAttribute("aria-label")?.toLowerCase() === "tick",
     );
     expect(tickRadio?.getAttribute("aria-checked")).toBe("true");
-    // No Time chip (C-m4f-013)
-    expect(
-      within(group)
-        .queryAllByRole("radio")
-        .find((r) =>
-          r.getAttribute("aria-label")?.toLowerCase().includes("time"),
-        ),
-    ).toBeUndefined();
   });
 
   it("no per-type fields render under default Tick selection", () => {
@@ -366,11 +364,12 @@ describe("C-m4e-003: Duration toggle ON fills default Start/End from parent bloc
       <AddBrickSheet {...defaultProps({ parentBlockId: "bk1", state })} />,
     );
     fireEvent.click(screen.getByRole("switch", { name: /duration/i }));
+    // TimeInput exposes a digits-only value on its raw <input> ("06:00" → "0600").
     expect((screen.getByLabelText(/^start$/i) as HTMLInputElement).value).toBe(
-      "06:00",
+      "0600",
     );
     expect((screen.getByLabelText(/^end$/i) as HTMLInputElement).value).toBe(
-      "06:40",
+      "0640",
     );
     // "Just today" chip should be the default selected recurrence
     const justTodayBtn = screen.getByRole("radio", { name: /just today/i });
@@ -384,17 +383,20 @@ describe("C-m4e-003: Duration toggle ON fills default Start/End from parent bloc
       />,
     );
     fireEvent.click(screen.getByRole("switch", { name: /duration/i }));
+    // TimeInput exposes a digits-only value on its raw <input> ("HH:MM" → "HHMM").
     const startVal = (screen.getByLabelText(/^start$/i) as HTMLInputElement)
       .value;
     const endVal = (screen.getByLabelText(/^end$/i) as HTMLInputElement).value;
-    // Start should be current hour floored — ends in ":00"
-    expect(startVal).toMatch(/^\d{2}:00$/);
-    expect(endVal).toMatch(/^\d{2}:\d{2}$/);
+    // Start should be current hour floored — minutes "00"
+    expect(startVal).toMatch(/^\d{2}00$/);
+    expect(endVal).toMatch(/^\d{4}$/);
     // End is exactly 30 min after Start
-    const [sH, sM] = startVal.split(":").map(Number);
-    const [eH, eM] = endVal.split(":").map(Number);
-    const startMins = (sH ?? 0) * 60 + (sM ?? 0);
-    const endMins = (eH ?? 0) * 60 + (eM ?? 0);
+    const sH = Number(startVal.slice(0, 2));
+    const sM = Number(startVal.slice(2));
+    const eH = Number(endVal.slice(0, 2));
+    const eM = Number(endVal.slice(2));
+    const startMins = sH * 60 + sM;
+    const endMins = eH * 60 + eM;
     expect(endMins - startMins).toBe(30);
   });
 });

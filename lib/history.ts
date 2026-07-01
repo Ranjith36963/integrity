@@ -333,6 +333,15 @@ function seedBrick(
     };
   }
 
+  if (brick.kind === "timer") {
+    return {
+      ...brick,
+      id: newId,
+      parentBlockId,
+      elapsedSec: 0, // reset (AC #12)
+    };
+  }
+
   // kind === "units"
   return {
     ...brick,

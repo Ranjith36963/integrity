@@ -71,7 +71,7 @@ interface Props {
 }
 
 type View = "brick" | "newCategory";
-type BrickKind = "tick" | "units";
+type BrickKind = "tick" | "units" | "timer";
 
 export function AddBrickSheet({
   open,
@@ -259,9 +259,13 @@ export function AddBrickSheet({
   const titleValid = title.trim().length > 0;
   const target = parseInt(targetStr, 10);
   const unitsValid = kind !== "units" || isValidBrickUnitsTarget(target);
+  // timer reuses targetStr as the goal in minutes (positive integer).
+  const timerValid =
+    kind !== "timer" || (Number.isInteger(target) && target >= 1);
   const isValid =
     titleValid &&
     unitsValid &&
+    timerValid &&
     startEndValid &&
     !timeAlertMsg &&
     recurrenceValid &&
@@ -288,6 +292,17 @@ export function AddBrickSheet({
         target,
         done: 0,
         unit: unit.trim(),
+        categoryId: selectedCategoryId,
+        parentBlockId,
+        ...durationFields,
+      };
+    } else if (kind === "timer") {
+      brick = {
+        id: uuid(),
+        name: title.trim(),
+        kind: "timer",
+        targetMin: target, // targetStr holds the goal minutes for timer
+        elapsedSec: 0,
         categoryId: selectedCategoryId,
         parentBlockId,
         ...durationFields,
@@ -388,13 +403,13 @@ export function AddBrickSheet({
               />
             </div>
 
-            {/* Type selector — M4f: tick + units only (ADR-043) */}
+            {/* Type selector — tick + units + timer */}
             <div
               role="radiogroup"
               aria-label="Brick type"
               style={{ display: "flex", gap: "8px" }}
             >
-              {(["tick", "units"] as BrickKind[]).map((k) => (
+              {(["tick", "units", "timer"] as BrickKind[]).map((k) => (
                 <button
                   key={k}
                   type="button"
@@ -507,6 +522,45 @@ export function AddBrickSheet({
                     }}
                   />
                 </div>
+              </div>
+            )}
+
+            {/* Per-type fields — timer: goal in minutes (reuses targetStr) */}
+            {kind === "timer" && (
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: "4px" }}
+              >
+                <label
+                  htmlFor="brick-timer-goal"
+                  style={{
+                    fontFamily: "var(--font-ui)",
+                    fontSize: "var(--fs-12)",
+                    color: "var(--ink-dim)",
+                  }}
+                >
+                  Goal (minutes)
+                </label>
+                <input
+                  id="brick-timer-goal"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  value={targetStr}
+                  onChange={(e) => setTargetStr(e.target.value)}
+                  placeholder="e.g. 20"
+                  aria-label="Goal minutes"
+                  style={{
+                    height: "44px",
+                    borderRadius: "8px",
+                    border: "1px solid var(--ink-dim)",
+                    background: "var(--bg-elev)",
+                    color: "var(--ink)",
+                    fontFamily: "var(--font-ui)",
+                    fontSize: "var(--fs-14)",
+                    padding: "0 12px",
+                    width: "100%",
+                  }}
+                />
               </div>
             )}
 

@@ -46,6 +46,8 @@ interface Props {
   isActive?: boolean;
   /** Log mode: threads logHighlight to inner <TimelineBlock>. */
   logHighlight?: boolean;
+  /** timer: threads onTimerCommit to inner <TimelineBlock>. */
+  onTimerCommit?: (brickId: string, elapsedSec: number) => void;
 }
 
 export function DraggableTimelineBlock({
@@ -63,6 +65,7 @@ export function DraggableTimelineBlock({
   onReorderBrickInBlock,
   isActive = false,
   logHighlight = false,
+  onTimerCommit,
 }: Props) {
   const { editMode } = useEditMode();
   const dragControls = useDragControls();
@@ -199,6 +202,7 @@ export function DraggableTimelineBlock({
         onReorderBrickInBlock={onReorderBrickInBlock}
         isActive={isActive}
         logHighlight={logHighlight}
+        onTimerCommit={onTimerCommit}
       />
     </motion.div>
   );

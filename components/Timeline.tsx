@@ -79,6 +79,8 @@ interface Props {
   logMode?: boolean;
   /** Log mode: set of block IDs that have unlogged bricks and have started. */
   logIncompleteBlockIds?: Set<string>;
+  /** timer: called with (brickId, elapsedSec) when a running timer is paused/committed. */
+  onTimerCommit?: (brickId: string, elapsedSec: number) => void;
 }
 
 export function Timeline({
@@ -99,6 +101,7 @@ export function Timeline({
   stagger = false,
   logMode = false,
   logIncompleteBlockIds,
+  onTimerCommit,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -265,6 +268,7 @@ export function Timeline({
                         logMode &&
                         (logIncompleteBlockIds?.has(item.block.id) ?? false)
                       }
+                      onTimerCommit={onTimerCommit}
                     />
                   ) : (
                     <motion.div key={item.block.id} variants={childVariants}>
@@ -281,6 +285,7 @@ export function Timeline({
                           logMode &&
                           (logIncompleteBlockIds?.has(item.block.id) ?? false)
                         }
+                        onTimerCommit={onTimerCommit}
                       />
                     </motion.div>
                   )
@@ -292,6 +297,7 @@ export function Timeline({
                       onTickToggle={onTickToggle}
                       onUnitsOpenSheet={onUnitsOpenSheet}
                       onRequestDeleteBrick={onRequestDeleteBrick}
+                      onTimerCommit={onTimerCommit}
                     />
                   </motion.div>
                 ),
@@ -337,6 +343,7 @@ export function Timeline({
                         logMode &&
                         (logIncompleteBlockIds?.has(item.block.id) ?? false)
                       }
+                      onTimerCommit={onTimerCommit}
                     />
                   ) : (
                     <TimelineBlock
@@ -353,6 +360,7 @@ export function Timeline({
                         logMode &&
                         (logIncompleteBlockIds?.has(item.block.id) ?? false)
                       }
+                      onTimerCommit={onTimerCommit}
                     />
                   )
                 ) : (
@@ -363,6 +371,7 @@ export function Timeline({
                     onTickToggle={onTickToggle}
                     onUnitsOpenSheet={onUnitsOpenSheet}
                     onRequestDeleteBrick={onRequestDeleteBrick}
+                    onTimerCommit={onTimerCommit}
                   />
                 ),
               )}

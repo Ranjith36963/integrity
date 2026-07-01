@@ -71,7 +71,8 @@ describe("C-m2-002: AddBlockSheet opens with default Start prefill", () => {
   it("Start input has value '09:00'", () => {
     render(<AddBlockSheet {...defaultProps} defaultStart="09:00" />);
     const startInput = screen.getByLabelText(/Start/i);
-    expect(startInput).toHaveValue("09:00");
+    // TimeInput exposes a digits-only value on its raw <input> ("09:00" → "0900").
+    expect(startInput).toHaveValue("0900");
   });
 
   it("End input is empty", () => {

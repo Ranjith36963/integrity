@@ -80,8 +80,8 @@ test("A-m1-004: dock quick-brick pill and + button are both enabled and keyboard
 }) => {
   await page.goto("/");
 
-  // Quick-brick pill (replaced the M10 Voice Log placeholder)
-  const quickBrick = page.getByRole("button", { name: /log brick/i });
+  // Quick-log pill (replaced the M10 Voice Log placeholder)
+  const quickBrick = page.getByRole("button", { name: "Log", exact: true });
   await expect(quickBrick).not.toHaveAttribute("aria-disabled");
   await expect(quickBrick).not.toHaveAttribute("disabled");
 
@@ -102,7 +102,7 @@ test("A-m1-004: dock quick-brick pill and + button are both enabled and keyboard
         text: el?.textContent?.trim() ?? "",
       };
     });
-    if (focused.label === "Log brick") foundQuick = true;
+    if (focused.label === "Log") foundQuick = true;
     if (focused.label === "Add") foundAdd = true;
     if (foundQuick && foundAdd) break;
     await page.keyboard.press("Tab");
@@ -147,7 +147,7 @@ test("A-m1-005: focus order includes all interactive elements with visible focus
   );
   const hasEdit = labels.some((l) => l.includes("edit"));
   const hasSettings = labels.some((l) => l.includes("settings"));
-  const hasQuickBrick = labels.some((l) => l.includes("log brick"));
+  const hasQuickBrick = labels.some((l) => l.includes("log"));
   const hasAdd = labels.some((l) => /\badd\b/.test(l));
 
   expect(hasEdit).toBe(true);

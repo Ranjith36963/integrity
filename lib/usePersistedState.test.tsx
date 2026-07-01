@@ -390,7 +390,7 @@ describe("C-m8-004: post-mount rehydration restores exact block/brick/category v
       expect(nestedBrick.done).toBe(40); // exact integer
     }
     expect(state.categories[0].id).toBe("c1");
-    expect(state.looseBricks[0].done).toBe(true); // exact boolean
+    expect((state.looseBricks[0] as { done: boolean }).done).toBe(true); // exact boolean
     expect(state.programStart).toBe("2026-05-01");
     // schemaVersion must NOT be on AppState
     expect("schemaVersion" in state).toBe(false);
@@ -678,7 +678,11 @@ describe("C-m9b-002: next-day load — rollover(loaded, today()) archives yester
     const archived = state.history["2026-05-17"];
     // The archived every-day brick still has done: true (pre-rollover value)
     expect(
-      archived.blocks[0].bricks.find((b) => b.name === "DailyTask")?.done,
+      (
+        archived.blocks[0].bricks.find((b) => b.name === "DailyTask") as
+          | { done: boolean }
+          | undefined
+      )?.done,
     ).toBe(true);
     // Fresh day: every-day brick seeded with done: false; just-today dropped
     const freshBricks = state.blocks[0].bricks;

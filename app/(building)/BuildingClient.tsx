@@ -248,6 +248,14 @@ export function BuildingClient({
     setLogMode((v) => !v);
   }
 
+  // timer: commit accumulated elapsed seconds when a running timer is paused.
+  const handleTimerCommit = useCallback(
+    (brickId: string, elapsedSec: number) => {
+      dispatch({ type: "SET_TIMER_ELAPSED", brickId, elapsedSec });
+    },
+    [dispatch],
+  );
+
   // M5: pendingDelete — set when a × is tapped; cleared on modal confirm/cancel.
   // Stays open independent of editMode (ADR plan.md § Modal-open + Edit-Mode-toggle).
   const [pendingDelete, setPendingDelete] = useState<{
@@ -613,27 +621,19 @@ export function BuildingClient({
   // Log mode: compute which blocks/bricks are "incomplete" (have started but still unlogged).
   // A brick is incomplete when: tick && !done, or units && done < target.
   // A block is incomplete when it has started (start ≤ now) AND has at least one incomplete brick.
+  const brickIncomplete = (br: Brick): boolean =>
+    (br.kind === "tick" && !br.done) ||
+    (br.kind === "units" && br.done < br.target) ||
+    (br.kind === "timer" && br.elapsedSec < br.targetMin * 60);
   const logIncompleteBlockIds = new Set<string>(
     visibleBlocks
       .filter(
-        (block) =>
-          block.start <= now &&
-          block.bricks.some(
-            (br) =>
-              (br.kind === "tick" && !br.done) ||
-              (br.kind === "units" && br.done < br.target),
-          ),
+        (block) => block.start <= now && block.bricks.some(brickIncomplete),
       )
       .map((b) => b.id),
   );
   const logIncompleteBrickIds = new Set<string>(
-    trayBricks
-      .filter(
-        (br) =>
-          (br.kind === "tick" && !br.done) ||
-          (br.kind === "units" && br.done < br.target),
-      )
-      .map((br) => br.id),
+    trayBricks.filter(brickIncomplete).map((br) => br.id),
   );
   const logPendingCount =
     logIncompleteBlockIds.size + logIncompleteBrickIds.size;
@@ -816,6 +816,7 @@ export function BuildingClient({
               stagger={stagger}
               logMode={logMode}
               logIncompleteBlockIds={logIncompleteBlockIds}
+              onTimerCommit={handleTimerCommit}
             />
             {/* LooseBricksTray: visible when blocks exist OR non-timed loose bricks exist */}
             {showTray && (
@@ -830,6 +831,7 @@ export function BuildingClient({
                 stagger={stagger}
                 logMode={logMode}
                 logIncompleteBrickIds={logIncompleteBrickIds}
+                onTimerCommit={handleTimerCommit}
               />
             )}
           </>

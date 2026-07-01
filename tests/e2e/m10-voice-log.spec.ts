@@ -84,8 +84,8 @@ test("E-m10-003: when Web Speech API absent, no mic button, typed Add Brick stil
       (e) => !e.includes("favicon") && !e.includes("webpack"),
     ),
   ).toHaveLength(0);
-  // Typed Add Brick still works
-  const quickBrick = page.getByRole("button", { name: /log brick/i });
+  // Log pill still present
+  const quickBrick = page.getByRole("button", { name: "Log", exact: true });
   expect(await quickBrick.count()).toBeGreaterThan(0);
 });
 
@@ -164,7 +164,7 @@ test("E-m10-007: AddBrickSheet pre-filled via transcript saves identically to ty
 
 // ─── E-m10-008: 430px dock no overflow ───────────────────────────────────────
 
-test("E-m10-008: 430px dock renders mic + Log Brick + + with no overflow (guarded)", async ({
+test("E-m10-008: 430px dock renders mic + Log + + with no overflow (guarded)", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 430, height: 932 });
@@ -207,16 +207,13 @@ test("E-m10-010: typed Add Brick / Add Block / chooser flows work after M10 buil
     if (msg.type() === "error") consoleErrors.push(msg.text());
   });
 
-  // Log Brick pill still works
-  const quickBrick = page.getByRole("button", { name: /log brick/i });
-  expect(await quickBrick.count()).toBeGreaterThan(0);
-  await quickBrick.click();
-  const addBrickDialog = page.getByRole("dialog", { name: "Add Brick" });
-  if ((await addBrickDialog.count()) > 0) {
-    // Close it
-    const cancelBtn = addBrickDialog.getByRole("button", { name: /cancel/i });
-    if ((await cancelBtn.count()) > 0) await cancelBtn.click();
-  }
+  // Log pill still works — it toggles Log mode (a status banner), not a dialog.
+  const logBtn = page.getByRole("button", { name: "Log", exact: true });
+  expect(await logBtn.count()).toBeGreaterThan(0);
+  await logBtn.click();
+  await expect(page.getByTestId("log-mode-banner")).toBeVisible();
+  await logBtn.click(); // exit log mode
+  await expect(page.getByTestId("log-mode-banner")).toHaveCount(0);
 
   // + chooser still works
   const addBtn = page.getByRole("button", { name: /^add$/i });

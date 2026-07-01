@@ -23,7 +23,14 @@ type BrickBase = {
 
 export type Brick =
   | (BrickBase & { kind: "tick"; done: boolean })
-  | (BrickBase & { kind: "units"; target: number; unit: string; done: number });
+  | (BrickBase & { kind: "units"; target: number; unit: string; done: number })
+  // timer — re-introduced as the third measurement axis. Stores a goal in
+  // minutes + accumulated elapsed SECONDS. The running/paused state is NOT
+  // stored here — it lives locally in the chip (BrickChip). Only committed
+  // elapsed seconds round-trip through state, so brickPct() stays pure and
+  // there is no wall-clock state to go stale across reloads (the reason the
+  // original M4-era timer was cut in ADR-043).
+  | (BrickBase & { kind: "timer"; targetMin: number; elapsedSec: number });
 
 // Recurrence discriminated union — locked by ADR-019.
 // custom-range weekdays: 0=Sun..6=Sat.
@@ -89,6 +96,7 @@ export type Action =
   | { type: "ADD_BRICK"; brick: Brick } // M3 — routed by brick.parentBlockId
   | { type: "LOG_TICK_BRICK"; brickId: string } // M4a — flips `done` on the brick with this id
   | { type: "SET_UNITS_DONE"; brickId: string; done: number } // M4f — sets done on a units brick
+  | { type: "SET_TIMER_ELAPSED"; brickId: string; elapsedSec: number } // timer — absolute write of accumulated elapsed seconds
   | { type: "DELETE_BLOCK_TODAY"; blockId: string } // M5 — sets deletions[`${currentDate}:${blockId}`] = true
   | { type: "DELETE_BLOCK_ALL"; blockId: string } // M5 — removes the template from state.blocks
   | { type: "DELETE_BRICK"; brickId: string } // M5 — removes the brick from its block or looseBricks

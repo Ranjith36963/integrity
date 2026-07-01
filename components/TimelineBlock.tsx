@@ -49,6 +49,8 @@ interface Props {
   isActive?: boolean;
   /** Log mode: when true, renders a neon green border signalling this block has unlogged bricks. */
   logHighlight?: boolean;
+  /** timer: called with (brickId, elapsedSec) when a running timer is paused/committed. */
+  onTimerCommit?: (brickId: string, elapsedSec: number) => void;
 }
 
 export function TimelineBlock({
@@ -64,6 +66,7 @@ export function TimelineBlock({
   onReorderBrickInBlock,
   isActive = false,
   logHighlight = false,
+  onTimerCommit,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [bloomKey, setBloomKey] = useState(0);
@@ -397,6 +400,7 @@ export function TimelineBlock({
                           onUnitsOpenSheet={onUnitsOpenSheet}
                           onRequestDeleteBrick={onRequestDeleteBrick}
                           logHighlight={logHighlight}
+                          onTimerCommit={onTimerCommit}
                         />
                       </li>
                     ))}

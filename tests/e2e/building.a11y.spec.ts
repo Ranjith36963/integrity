@@ -105,7 +105,7 @@ test("A-bld-004: Tab focus order passes through key interactive elements", async
   );
   expect(settingsFocused).toBe(true);
 
-  // Tab through bricks until we reach the quick-brick pill ("Log brick")
+  // Tab through bricks until we reach the quick-log pill ("Log")
   // and the + Add chooser button. Voice Log was retired in the polish pass.
   let reachedQuickBrick = false;
   let reachedAdd = false;
@@ -120,7 +120,7 @@ test("A-bld-004: Tab focus order passes through key interactive elements", async
         text: el.textContent?.trim().substring(0, 30),
       };
     });
-    if (focused?.label === "Log brick") reachedQuickBrick = true;
+    if (focused?.label === "Log") reachedQuickBrick = true;
     if (focused?.label === "Add") reachedAdd = true;
     if (reachedQuickBrick && reachedAdd) break;
   }

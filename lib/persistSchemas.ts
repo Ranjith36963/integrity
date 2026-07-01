@@ -100,6 +100,14 @@ export const brickSchema = v.variant("kind", [
     unit: v.string(),
     done: v.pipe(v.number(), v.finite(), v.minValue(0)),
   }),
+  // timer — additive variant (no schema version bump). Existing v3 tick/units
+  // data still validates; a timer brick is simply a newly-allowed shape.
+  v.object({
+    ...brickBaseFields,
+    kind: v.literal("timer"),
+    targetMin: v.pipe(v.number(), v.finite(), v.minValue(1)),
+    elapsedSec: v.pipe(v.number(), v.finite(), v.minValue(0)),
+  }),
 ]);
 
 // Block (lib/types.ts:Block).

@@ -74,19 +74,19 @@ describe("C-m4d-001: chooser renders role=dialog, two buttons, cancel control", 
 // ─── C-m4d-002: buttons meet ADR-031 44px min touch target ───────────────────
 
 describe("C-m4d-002: Add Block and Add Brick buttons meet ADR-031 44px touch target", () => {
-  it("Add Block button has a 44px touch target (min-h-[44px] or h-11 class)", () => {
+  it("Add Block button has a 44px touch target (min-h-[44px] or h-[48px] class)", () => {
     render(<AddChooserSheet open={true} onPick={vi.fn()} onCancel={vi.fn()} />);
     const btn = screen.getByRole("button", { name: "Add Block" });
-    // Button uses either min-h-[44px] (size=sm) or h-11 (44px, size=md) per ADR-031
+    // Button uses either min-h-[44px] (size=sm) or h-[48px] (size=md/lg) per ADR-031
     const cls = btn.className;
-    expect(cls).toMatch(/min-h|h-11/);
+    expect(cls).toMatch(/min-h|h-11|h-\[48px\]/);
   });
 
-  it("Add Brick button has a 44px touch target (min-h-[44px] or h-11 class)", () => {
+  it("Add Brick button has a 44px touch target (min-h-[44px] or h-[48px] class)", () => {
     render(<AddChooserSheet open={true} onPick={vi.fn()} onCancel={vi.fn()} />);
     const btn = screen.getByRole("button", { name: "Add Brick" });
     const cls = btn.className;
-    expect(cls).toMatch(/min-h|h-11/);
+    expect(cls).toMatch(/min-h|h-11|h-\[48px\]/);
   });
 });
 

@@ -91,9 +91,10 @@ describe("C-m4d-009: dock + opens AddChooserSheet, not AddBlockSheet directly", 
     await user.click(screen.getByRole("button", { name: "Add" }));
     await user.click(screen.getByRole("button", { name: "Add Block" }));
 
-    // Start input should be "08:00" (rounded down from 08:47)
+    // Start input should be "08:00" (rounded down from 08:47).
+    // TimeInput exposes a digits-only value on its raw <input> ("08:00" → "0800").
     const startInput = screen.getByLabelText(/Start/i);
-    expect(startInput).toHaveValue("08:00");
+    expect(startInput).toHaveValue("0800");
   });
 });
 
@@ -163,9 +164,9 @@ describe("C-m4d-011: slot tap opens chooser; Add Block gets defaultStart=capture
     // Click "Add Block" in chooser
     await user.click(screen.getByRole("button", { name: "Add Block" }));
 
-    // AddBlockSheet should show defaultStart = 13:00
+    // AddBlockSheet should show defaultStart = 13:00 (TimeInput digits → "1300")
     const startInput = screen.getByLabelText(/Start/i);
-    expect(startInput).toHaveValue("13:00");
+    expect(startInput).toHaveValue("1300");
   });
 
   it("slot tap (hour 13) → Add Brick → AddBrickSheet opens; captured hour discarded", async () => {

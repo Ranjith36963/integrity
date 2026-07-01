@@ -30,6 +30,13 @@ export function duration(block: Block): number {
  */
 export function brickPct(b: Brick): number {
   if (b.kind === "tick") return b.done ? 100 : 0;
+  if (b.kind === "timer") {
+    // Goal in seconds; clamp to [0,100]. Pure — reads committed elapsedSec only
+    // (the live running delta is UI-local in BrickChip, never scored here).
+    const goalSec = b.targetMin * 60;
+    if (goalSec <= 0) return 0;
+    return Math.min(b.elapsedSec / goalSec, 1) * 100;
+  }
   // units (kind === "units" by exhaustiveness)
   if (b.target <= 0) return 0;
   return Math.min(b.done / b.target, 1) * 100;
@@ -124,6 +131,10 @@ export function blockStatus(
 // M4f: 2-arm collapse; units arm renders done/target unit (no "min" suffix — unit is in data)
 export function brickLabel(b: Brick): string {
   if (b.kind === "tick") return b.done ? "done" : "—";
+  if (b.kind === "timer") {
+    const doneMin = Math.floor(b.elapsedSec / 60);
+    return `${doneMin}/${b.targetMin} min`;
+  }
   return `${b.done}/${b.target}${b.unit ? " " + b.unit : ""}`;
 }
 

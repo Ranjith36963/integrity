@@ -15,15 +15,13 @@ vi.mock("@/lib/haptics", () => ({
 describe("BottomBar — quick-brick pill + add chooser", () => {
   it("renders both dock buttons with their accessible labels", () => {
     render(<BottomBar />);
-    expect(
-      screen.getByRole("button", { name: "Log brick" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Log" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add" })).toBeInTheDocument();
   });
 
   it("Add brick pill has h-12 and amber gradient", () => {
     render(<BottomBar />);
-    const quick = screen.getByRole("button", { name: "Log brick" });
+    const quick = screen.getByRole("button", { name: "Log" });
     expect(quick.className).toMatch(/h-12/);
     const style = quick.getAttribute("style") ?? "";
     expect(style).toContain("var(--amber)");
@@ -31,7 +29,7 @@ describe("BottomBar — quick-brick pill + add chooser", () => {
 
   it("both buttons are enabled (no aria-disabled)", () => {
     render(<BottomBar />);
-    const quick = screen.getByRole("button", { name: "Log brick" });
+    const quick = screen.getByRole("button", { name: "Log" });
     const add = screen.getByRole("button", { name: "Add" });
     expect(quick).not.toHaveAttribute("aria-disabled");
     expect(add).not.toHaveAttribute("aria-disabled");
@@ -41,7 +39,7 @@ describe("BottomBar — quick-brick pill + add chooser", () => {
     const onQuickBrick = vi.fn();
     const user = userEvent.setup();
     render(<BottomBar onQuickBrick={onQuickBrick} />);
-    await user.click(screen.getByRole("button", { name: "Log brick" }));
+    await user.click(screen.getByRole("button", { name: "Log" }));
     expect(onQuickBrick).toHaveBeenCalledTimes(1);
   });
 
@@ -63,7 +61,7 @@ describe("BottomBar — quick-brick pill + add chooser", () => {
 
   it("both buttons meet the 44px touch target via h-12", () => {
     render(<BottomBar />);
-    expect(screen.getByRole("button", { name: "Log brick" }).className).toMatch(
+    expect(screen.getByRole("button", { name: "Log" }).className).toMatch(
       /h-12/,
     );
     expect(screen.getByRole("button", { name: "Add" }).className).toMatch(
@@ -101,9 +99,7 @@ describe("C-m10-015: BottomBar micSupported=false — no mic button, existing bu
     expect(
       screen.queryByRole("button", { name: /voice log/i }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Log brick" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Log" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add" })).toBeInTheDocument();
   });
 

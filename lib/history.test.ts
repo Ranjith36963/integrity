@@ -110,7 +110,7 @@ describe("U-m9b-011: rollover ARCHIVE — in-progress day snapshotted into histo
     if (b.kind === "units") {
       expect(b.done).toBe(9); // captured at pre-rollover value
     }
-    expect(archived.looseBricks[0].done).toBe(true); // captured at pre-rollover value
+    expect((archived.looseBricks[0] as { done: boolean }).done).toBe(true); // captured at pre-rollover value
     expect(archived.categories[0].id).toBe("c1");
   });
 });

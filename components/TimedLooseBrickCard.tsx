@@ -24,6 +24,8 @@ interface Props {
   onUnitsOpenSheet?: (brickId: string) => void;
   /** M5: called with brick.id when the × delete button is tapped. */
   onRequestDeleteBrick?: (brickId: string) => void;
+  /** timer: called with (brickId, elapsedSec) when a running timer is paused/committed. */
+  onTimerCommit?: (brickId: string, elapsedSec: number) => void;
 }
 
 function resolveBorderColor(brick: Brick, categories: Category[]): string {
@@ -38,6 +40,7 @@ export function TimedLooseBrickCard({
   onTickToggle,
   onUnitsOpenSheet,
   onRequestDeleteBrick,
+  onTimerCommit,
 }: Props) {
   const start = brick.hasDuration ? (brick.start ?? "") : "";
   const end = brick.hasDuration ? (brick.end ?? "") : "";
@@ -72,6 +75,7 @@ export function TimedLooseBrickCard({
         onTickToggle={onTickToggle}
         onUnitsOpenSheet={onUnitsOpenSheet}
         onRequestDeleteBrick={onRequestDeleteBrick}
+        onTimerCommit={onTimerCommit}
       />
     </div>
   );

@@ -45,6 +45,8 @@ interface Props {
   logMode?: boolean;
   /** Log mode: set of loose brick IDs that are incomplete. */
   logIncompleteBrickIds?: Set<string>;
+  /** timer: called with (brickId, elapsedSec) when a running timer is paused/committed. */
+  onTimerCommit?: (brickId: string, elapsedSec: number) => void;
 }
 
 export function LooseBricksTray({
@@ -58,6 +60,7 @@ export function LooseBricksTray({
   stagger = false,
   logMode = false,
   logIncompleteBrickIds,
+  onTimerCommit,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const listId = useId();
@@ -211,6 +214,7 @@ export function LooseBricksTray({
                     logHighlight={
                       logMode && (logIncompleteBrickIds?.has(brick.id) ?? false)
                     }
+                    onTimerCommit={onTimerCommit}
                   />
                 </motion.li>
               ))}
@@ -240,6 +244,7 @@ export function LooseBricksTray({
                     logHighlight={
                       logMode && (logIncompleteBrickIds?.has(brick.id) ?? false)
                     }
+                    onTimerCommit={onTimerCommit}
                   />
                 </li>
               ))}

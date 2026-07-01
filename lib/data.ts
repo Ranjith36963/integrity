@@ -90,7 +90,7 @@ export function reducer(state: AppState, action: Action): AppState {
       // M4f: defensive kind guard (runtime defense-in-depth against stale fixtures).
       // TypeScript prevents kind:"goal"/"time" at compile time, but old fixtures may slip through.
       const k = b.kind as string;
-      if (k !== "tick" && k !== "units") return state;
+      if (k !== "tick" && k !== "units" && k !== "timer") return state;
       // M4e: Presence invariant guard (defense-in-depth — UI should never construct an invalid action).
       // hasDuration === true IFF all three of start/end/recurrence are present.
       const allPresent =
@@ -173,6 +173,42 @@ export function reducer(state: AppState, action: Action): AppState {
         return out;
       });
       if (!blocksChanged && !looseChanged) return state; // AC #8: missing id ⇒ unchanged
+      return {
+        ...state,
+        blocks: blocksChanged ? newBlocks : state.blocks,
+        looseBricks: looseChanged ? newLoose : state.looseBricks,
+      };
+    }
+    case "SET_TIMER_ELAPSED": {
+      // Absolute write of accumulated elapsed seconds on a timer brick.
+      // Mirrors SET_UNITS_DONE: clamp to ≥0, identity short-circuit, no-op on
+      // non-timer / missing id.
+      const clamped = Math.max(0, Math.floor(action.elapsedSec));
+      const apply = (b: Brick): Brick => {
+        if (b.id !== action.brickId) return b;
+        if (b.kind !== "timer") return b;
+        if (b.elapsedSec === clamped) return b;
+        return { ...b, elapsedSec: clamped };
+      };
+      let blocksChanged = false;
+      const newBlocks = state.blocks.map((bl) => {
+        let blockChanged = false;
+        const bricks = bl.bricks.map((br) => {
+          const out = apply(br);
+          if (out !== br) blockChanged = true;
+          return out;
+        });
+        if (!blockChanged) return bl;
+        blocksChanged = true;
+        return { ...bl, bricks };
+      });
+      let looseChanged = false;
+      const newLoose = state.looseBricks.map((br) => {
+        const out = apply(br);
+        if (out !== br) looseChanged = true;
+        return out;
+      });
+      if (!blocksChanged && !looseChanged) return state;
       return {
         ...state,
         blocks: blocksChanged ? newBlocks : state.blocks,

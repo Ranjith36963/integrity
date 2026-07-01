@@ -5,13 +5,128 @@
 //     New props: dragHandle (boolean, default false) + dragControls (DragControls).
 //     dragHandle=false (the default) keeps tray chips handle-free (SG-m6-04).
 
+import { useState, useEffect, useRef } from "react";
 import { useReducedMotion } from "motion/react";
 import type { DragControls } from "motion/react";
-import { Square, Check, X, GripVertical } from "lucide-react";
+import { Square, Check, X, GripVertical, Play, Pause } from "lucide-react";
 import { brickPct } from "@/lib/dharma";
 import { haptics } from "@/lib/haptics";
 import type { Brick, Category } from "@/lib/types";
 import { useEditMode } from "./EditModeProvider";
+
+/** mm:ss from a whole-second count (used by the timer chip). */
+function fmtClock(totalSec: number): string {
+  const s = Math.max(0, Math.floor(totalSec));
+  const mm = Math.floor(s / 60);
+  const ss = s % 60;
+  return `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
+}
+
+/**
+ * TimerControls — owns the live running state for a timer brick.
+ * Running/paused is UI-local (never persisted): on Pause (or unmount while
+ * running) it commits the accumulated seconds via onCommit, which dispatches
+ * SET_TIMER_ELAPSED. This keeps scored state (brick.elapsedSec) pure and
+ * free of any wall-clock timestamp that could go stale across reloads.
+ */
+function TimerControls({
+  brick,
+  onCommit,
+  disabled,
+}: {
+  brick: Extract<Brick, { kind: "timer" }>;
+  onCommit: (elapsedSec: number) => void;
+  disabled: boolean;
+}) {
+  const [running, setRunning] = useState(false);
+  const [liveExtraSec, setLiveExtraSec] = useState(0);
+  const startMsRef = useRef(0);
+
+  // Tick every second while running.
+  useEffect(() => {
+    if (!running) return;
+    const id = window.setInterval(() => {
+      setLiveExtraSec(Math.floor((Date.now() - startMsRef.current) / 1000));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [running]);
+
+  // Commit-on-unmount-if-running so collapsing a block mid-run doesn't lose time.
+  // commitRef is updated in an effect (never during render) so it always closes
+  // over the latest values; the mount-only effect calls it on unmount.
+  const commitRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    commitRef.current = () => {
+      if (running) onCommit(brick.elapsedSec + liveExtraSec);
+    };
+  });
+  useEffect(() => () => commitRef.current(), []);
+
+  const goalSec = brick.targetMin * 60;
+  const totalSec = brick.elapsedSec + (running ? liveExtraSec : 0);
+  const reached = totalSec >= goalSec;
+
+  function toggle(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (disabled) return;
+    if (!running) {
+      haptics.light();
+      startMsRef.current = Date.now();
+      setLiveExtraSec(0);
+      setRunning(true);
+    } else {
+      haptics.light();
+      setRunning(false);
+      onCommit(brick.elapsedSec + liveExtraSec);
+      setLiveExtraSec(0);
+    }
+  }
+
+  return (
+    <span
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        flexShrink: 0,
+      }}
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          fontFamily: "var(--font-mono, var(--font-ui))",
+          fontSize: "var(--fs-12)",
+          color: reached ? "var(--accent)" : "var(--ink-dim)",
+          whiteSpace: "nowrap",
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {fmtClock(totalSec)} / {brick.targetMin}:00
+      </span>
+      <button
+        type="button"
+        aria-label={running ? `Pause ${brick.name}` : `Start ${brick.name}`}
+        aria-pressed={running}
+        onClick={toggle}
+        disabled={disabled}
+        style={{
+          display: "grid",
+          placeItems: "center",
+          width: "32px",
+          height: "32px",
+          borderRadius: "8px",
+          border: "1px solid var(--card-edge)",
+          background: running ? "var(--accent)" : "transparent",
+          color: running ? "var(--bg)" : "var(--ink)",
+          cursor: disabled ? "default" : "pointer",
+          flexShrink: 0,
+        }}
+      >
+        {running ? <Pause size={14} /> : <Play size={14} />}
+      </button>
+    </span>
+  );
+}
 
 interface Props {
   brick: Brick;
@@ -29,6 +144,8 @@ interface Props {
   dragControls?: DragControls;
   /** Log mode: when true AND brick is incomplete, renders a neon green highlight border. */
   logHighlight?: boolean;
+  /** timer: called with (brickId, elapsedSec) when a running timer is paused/committed. */
+  onTimerCommit?: (brickId: string, elapsedSec: number) => void;
 }
 
 function resolveColor(brick: Brick, categories: Category[]): string | null {
@@ -41,6 +158,15 @@ function buildAriaLabel(brick: Brick, pct: number): string {
     // M4a: enriched tick label
     const state = brick.done ? "done" : "not done";
     const base = `${brick.name}, ${state}, tap to toggle`;
+    if (brick.hasDuration && brick.start && brick.end) {
+      return `${base}, scheduled ${brick.start} to ${brick.end}`;
+    }
+    return base;
+  }
+  if (brick.kind === "timer") {
+    const roundedPct = Math.round(pct);
+    const doneMin = Math.floor(brick.elapsedSec / 60);
+    const base = `${brick.name}, timer, ${roundedPct}% complete, ${doneMin} of ${brick.targetMin} minutes`;
     if (brick.hasDuration && brick.start && brick.end) {
       return `${base}, scheduled ${brick.start} to ${brick.end}`;
     }
@@ -94,6 +220,8 @@ function TypeBadge({ brick }: { brick: Brick }) {
       />
     );
   }
+  // timer renders its own controls (TimerControls) instead of a static badge.
+  if (brick.kind === "timer") return null;
   // units — M4f
   const unitSuffix = brick.unit ? ` ${brick.unit}` : "";
   return (
@@ -117,6 +245,7 @@ function TypeBadge({ brick }: { brick: Brick }) {
 function isBrickIncomplete(brick: Brick): boolean {
   if (brick.kind === "tick") return !brick.done;
   if (brick.kind === "units") return brick.done < brick.target;
+  if (brick.kind === "timer") return brick.elapsedSec < brick.targetMin * 60;
   return false;
 }
 
@@ -130,6 +259,7 @@ export function BrickChip({
   dragHandle = false,
   dragControls,
   logHighlight = false,
+  onTimerCommit,
 }: Props) {
   const pct = brickPct(brick);
   const color = resolveColor(brick, categories);
@@ -209,6 +339,84 @@ export function BrickChip({
         <GripVertical size={12} color="var(--ink-dim)" aria-hidden="true" />
       </button>
     ) : null;
+
+  // timer chip — title + live TimerControls (start/pause). No tap-to-open sheet;
+  // interaction is the play/pause button only. Inert in edit mode.
+  if (brick.kind === "timer") {
+    const showLogRingTimer = logHighlight && isBrickIncomplete(brick);
+    const timerBrick = brick;
+    return (
+      <div
+        data-component="brick-chip"
+        data-uncategorized={isUncategorized ? "true" : undefined}
+        style={{
+          position: "relative",
+          borderRadius: "12px",
+          overflow: "hidden",
+          background: bgStyle,
+          display: "inline-flex",
+          width: "100%",
+          outline: showLogRingTimer ? "1.5px solid #4ade80" : undefined,
+          outlineOffset: "1px",
+          boxShadow: showLogRingTimer
+            ? "0 0 8px 1px rgba(74,222,128,0.35)"
+            : undefined,
+        }}
+      >
+        <div data-testid="brick-fill" aria-hidden="true" style={fillStyle} />
+        <div
+          data-testid="brick-chip-body"
+          aria-label={ariaLabel}
+          style={{
+            position: "relative",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            width: "100%",
+            minHeight: "44px",
+            padding: size === "sm" ? "8px 10px" : "10px 12px",
+            gap: "8px",
+            fontFamily: "var(--font-ui)",
+            fontSize: size === "sm" ? "var(--fs-12)" : "var(--fs-14)",
+            color: "var(--ink)",
+            textAlign: "left",
+          }}
+        >
+          <span
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              flex: 1,
+              minWidth: 0,
+              overflow: "hidden",
+            }}
+          >
+            <span
+              style={{
+                overflow: "hidden",
+                whiteSpace: "nowrap",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {brick.name}
+            </span>
+            <TimeWindowBadge brick={brick} />
+          </span>
+
+          <TimerControls
+            brick={timerBrick}
+            disabled={editMode}
+            onCommit={(elapsedSec) =>
+              onTimerCommit?.(timerBrick.id, elapsedSec)
+            }
+          />
+        </div>
+
+        {deleteButton}
+        {dragHandleButton}
+      </div>
+    );
+  }
 
   // M4f: units chip — simple button that fires onUnitsOpenSheet
   if (brick.kind === "units") {

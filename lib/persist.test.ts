@@ -148,7 +148,7 @@ describe("U-m8-002: saveState/loadState round-trip — exact done value fidelity
       expect(nestedBrick.done).toBe(25); // exact integer
     }
     expect(loaded.categories[0].id).toBe("c1");
-    expect(loaded.looseBricks[0].done).toBe(true); // exact boolean
+    expect((loaded.looseBricks[0] as { done: boolean }).done).toBe(true); // exact boolean
     expect(loaded.programStart).toBe("2026-05-01");
   });
 
@@ -622,7 +622,7 @@ describe("U-m9b-002: saveState/loadState v2 round-trip", () => {
     if (nestedBrick.kind === "units") {
       expect(nestedBrick.done).toBe(25); // exact integer
     }
-    expect(loaded.looseBricks[0].done).toBe(true); // exact boolean
+    expect((loaded.looseBricks[0] as { done: boolean }).done).toBe(true); // exact boolean
     expect(loaded.programStart).toBe("2026-05-01");
   });
 
