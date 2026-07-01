@@ -2911,19 +2911,32 @@ describe("FREEZE_DAY — streak-freeze reducer", () => {
   });
 });
 
-// ─── SET_DAY_START: user-configurable wake-to-wake anchor ────────────────────
-describe("SET_DAY_START: sets the day anchor to the user's wake time", () => {
-  it("updates dayStart to a valid HH:MM", () => {
+// ─── SET_DAY_START: user-configurable wake-to-wake anchor (weekday/weekend) ───
+describe("SET_DAY_START: sets the day anchor per day-type", () => {
+  it("kind:'weekday' updates dayStart", () => {
     const s = reducer(defaultState(), {
       type: "SET_DAY_START",
+      kind: "weekday",
       dayStart: "06:00",
     });
     expect(s.dayStart).toBe("06:00");
+    expect(s.weekendDayStart).toBeUndefined();
   });
 
-  it("supports a night-shift anchor (e.g. 14:00)", () => {
+  it("kind:'weekend' updates weekendDayStart only", () => {
     const s = reducer(defaultState(), {
       type: "SET_DAY_START",
+      kind: "weekend",
+      dayStart: "06:00",
+    });
+    expect(s.weekendDayStart).toBe("06:00");
+    expect(s.dayStart).toBe("04:00"); // weekday anchor untouched (default)
+  });
+
+  it("supports a night-shift weekday anchor (e.g. 14:00)", () => {
+    const s = reducer(defaultState(), {
+      type: "SET_DAY_START",
+      kind: "weekday",
       dayStart: "14:00",
     });
     expect(s.dayStart).toBe("14:00");
@@ -2932,9 +2945,14 @@ describe("SET_DAY_START: sets the day anchor to the user's wake time", () => {
   it("ignores a malformed value (keeps the previous anchor)", () => {
     const base = reducer(defaultState(), {
       type: "SET_DAY_START",
+      kind: "weekday",
       dayStart: "06:00",
     });
-    const s = reducer(base, { type: "SET_DAY_START", dayStart: "6am" });
+    const s = reducer(base, {
+      type: "SET_DAY_START",
+      kind: "weekday",
+      dayStart: "6am",
+    });
     expect(s.dayStart).toBe("06:00");
     expect(s).toBe(base); // no-op returns same reference
   });

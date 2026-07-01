@@ -86,10 +86,13 @@ export type AppState = {
   // payloads without it parse as { freezes: {} } via per-field recovery.
   freezes?: Record<string, true>;
   firstBrickShown?: boolean; // M7e — one-time flag; flipped by ADR-039 first-brick narrative; absent on load is back-filled by lib/persist.ts read-time projection.
-  // Day anchor — the "HH:MM" the day begins at (wake time). The timeline runs
-  // dayStart → +24h so overnight blocks (e.g. Sleep 22:00→04:00) are one span.
+  // Day anchor — the "HH:MM" the day begins at (weekday wake time). The timeline
+  // runs anchor → +24h so overnight blocks (e.g. Sleep 22:00→04:00) are one span.
   // Additive optional field; absent → DEFAULT_DAY_START ("04:00") at read time.
   dayStart?: string;
+  // Weekend (Sat/Sun) wake time. Additive optional; absent → falls back to
+  // dayStart. Resolved per date via resolveDayStart() in lib/dayWindow.ts.
+  weekendDayStart?: string;
 };
 
 // Action — M4f: collapsed to 5 variants; 5 timer/goal actions removed (ADR-043)
@@ -102,7 +105,7 @@ export type Action =
   | { type: "LOG_TICK_BRICK"; brickId: string } // M4a — flips `done` on the brick with this id
   | { type: "SET_UNITS_DONE"; brickId: string; done: number } // M4f — sets done on a units brick
   | { type: "SET_TIMER_ELAPSED"; brickId: string; elapsedSec: number } // timer — absolute write of accumulated elapsed seconds
-  | { type: "SET_DAY_START"; dayStart: string } // day anchor — user's wake time "HH:MM" (wake-to-wake)
+  | { type: "SET_DAY_START"; kind: "weekday" | "weekend"; dayStart: string } // wake time "HH:MM" for weekdays or weekends
   | { type: "DELETE_BLOCK_TODAY"; blockId: string } // M5 — sets deletions[`${currentDate}:${blockId}`] = true
   | { type: "DELETE_BLOCK_ALL"; blockId: string } // M5 — removes the template from state.blocks
   | { type: "DELETE_BRICK"; brickId: string } // M5 — removes the brick from its block or looseBricks

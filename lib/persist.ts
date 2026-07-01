@@ -46,7 +46,8 @@ export type PersistedState = {
   deletions: Record<string, true>; // M5 — per-day block override map (ADR-018)
   freezes?: Record<string, true>; // Streak-freeze: ISO-YYYY-MM-DD → true. Additive field.
   firstBrickShown?: boolean; // M7e — additive within v3 (ADR-044 "optional fields are an additive change").
-  dayStart?: string; // Day anchor "HH:MM" — additive within v3. Absent → DEFAULT_DAY_START.
+  dayStart?: string; // Weekday anchor "HH:MM" — additive within v3. Absent → DEFAULT_DAY_START.
+  weekendDayStart?: string; // Weekend anchor "HH:MM" — additive. Absent → falls back to dayStart.
 };
 
 /**
@@ -236,6 +237,21 @@ function parsePerField(obj: Record<string, unknown>): {
     }
   }
 
+  // weekendDayStart is optional; absent → undefined (falls back to dayStart at
+  // read time). Invalid → reset (dropped, so it falls back too).
+  let weekendDayStart: string | undefined;
+  if (obj.weekendDayStart === undefined) {
+    weekendDayStart = undefined;
+  } else {
+    const wds = v.safeParse(hhmmSchema, obj.weekendDayStart);
+    if (wds.success) {
+      weekendDayStart = wds.output;
+    } else {
+      resetFields.push("weekendDayStart");
+      weekendDayStart = undefined;
+    }
+  }
+
   return {
     state: {
       schemaVersion: 3,
@@ -249,6 +265,7 @@ function parsePerField(obj: Record<string, unknown>): {
       freezes,
       firstBrickShown,
       dayStart,
+      weekendDayStart,
     },
     resetFields,
     droppedHistoryDays,
@@ -393,7 +410,7 @@ export function loadState(): PersistedState {
  */
 export function saveState(state: PersistedState): void {
   try {
-    const payload = {
+    const payload: Record<string, unknown> = {
       schemaVersion: SCHEMA_VERSION,
       programStart: state.programStart,
       currentDate: state.currentDate,
@@ -404,8 +421,14 @@ export function saveState(state: PersistedState): void {
       deletions: state.deletions, // M5
       freezes: state.freezes ?? {}, // Streak-freeze — empty object when never used
       firstBrickShown: state.firstBrickShown ?? false, // M7e — ?? false: undefined coerces to false
-      dayStart: state.dayStart ?? DEFAULT_DAY_START, // day anchor — wake-to-wake
+      dayStart: state.dayStart ?? DEFAULT_DAY_START, // weekday anchor — wake-to-wake
     };
+    // Weekend anchor is only persisted once the user sets it; while absent it
+    // falls back to the weekday anchor at read time (keeps the fallback honest
+    // and doesn't go stale when the weekday anchor later changes).
+    if (state.weekendDayStart !== undefined) {
+      payload.weekendDayStart = state.weekendDayStart;
+    }
     if (process.env.NODE_ENV !== "production") {
       const result = v.safeParse(persistedStateV3Schema, payload);
       if (!result.success) {

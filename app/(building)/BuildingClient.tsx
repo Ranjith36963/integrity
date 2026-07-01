@@ -34,7 +34,7 @@ import {
   dayNumber,
   isoToLocalDate,
 } from "@/lib/dharma";
-import { DEFAULT_DAY_START } from "@/lib/dayWindow";
+import { resolveDayStart } from "@/lib/dayWindow";
 import { daysInYear } from "@/lib/dayOfYear";
 import { useFirstPaintAfterHydration } from "@/lib/firstPaint";
 import { useNow } from "@/lib/useNow";
@@ -614,6 +614,14 @@ export function BuildingClient({
   const visibleBlocks = currentDayBlocks(state);
   const stateForTimeline = { ...state, blocks: visibleBlocks };
 
+  // Effective wake-to-wake anchor for the day being shown: weekend wake time on
+  // Sat/Sun, weekday wake time otherwise (each falling back sensibly when unset).
+  const effectiveDayStart = resolveDayStart(
+    state.dayStart,
+    state.weekendDayStart,
+    state.currentDate,
+  );
+
   // M4e: tray shows only non-timed loose bricks (selectTrayBricks filters out hasDuration:true).
   // showTray: visible when any blocks exist OR any non-timed loose bricks exist (AC #29).
   const trayBricks = selectTrayBricks(state);
@@ -771,9 +779,10 @@ export function BuildingClient({
           onFreezeToday={() =>
             dispatch({ type: "FREEZE_DAY", isoDate: state.currentDate })
           }
-          dayStart={state.dayStart ?? DEFAULT_DAY_START}
-          onSetDayStart={(v) =>
-            dispatch({ type: "SET_DAY_START", dayStart: v })
+          weekdayStart={state.dayStart ?? "04:00"}
+          weekendStart={state.weekendDayStart ?? state.dayStart ?? "04:00"}
+          onSetDayStart={(kind, v) =>
+            dispatch({ type: "SET_DAY_START", kind, dayStart: v })
           }
         />
         <Hero
@@ -804,7 +813,7 @@ export function BuildingClient({
               categories={state.categories}
               now={now}
               stagger={stagger}
-              dayStart={state.dayStart ?? DEFAULT_DAY_START}
+              dayStart={effectiveDayStart}
             />
             {/* NowCard: NOT rendered in M2/M3/M4a */}
             <Timeline
@@ -826,7 +835,7 @@ export function BuildingClient({
               logMode={logMode}
               logIncompleteBlockIds={logIncompleteBlockIds}
               onTimerCommit={handleTimerCommit}
-              dayStart={state.dayStart ?? DEFAULT_DAY_START}
+              dayStart={effectiveDayStart}
             />
             {/* LooseBricksTray: visible when blocks exist OR non-timed loose bricks exist */}
             {showTray && (

@@ -72,3 +72,25 @@ export function dayHours(dayStart: string): string[] {
     (_, i) => String((startHour + i) % 24).padStart(2, "0") + ":00",
   );
 }
+
+/** True when the ISO YYYY-MM-DD falls on Sat or Sun (local calendar). */
+function isWeekendDate(isoDate: string): boolean {
+  const [y, m, d] = isoDate.split("-").map((p) => parseInt(p, 10));
+  // Local-time constructor — no UTC drift (same discipline as lib/appliesOn.ts).
+  const wd = new Date(y, (m || 1) - 1, d || 1).getDay(); // 0=Sun…6=Sat
+  return wd === 0 || wd === 6;
+}
+
+/**
+ * The effective wake-to-wake anchor for a given date. Weekends (Sat/Sun) use the
+ * weekend wake time; everything else uses the weekday wake time. Each falls back
+ * to the weekday value, then to DEFAULT_DAY_START, when unset.
+ */
+export function resolveDayStart(
+  weekday: string | undefined,
+  weekend: string | undefined,
+  isoDate: string,
+): string {
+  const wk = weekday ?? DEFAULT_DAY_START;
+  return isWeekendDate(isoDate) ? (weekend ?? wk) : wk;
+}

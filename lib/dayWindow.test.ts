@@ -4,6 +4,7 @@ import {
   daySpanPx,
   dayHours,
   DEFAULT_DAY_START,
+  resolveDayStart,
 } from "./dayWindow";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -77,5 +78,29 @@ describe("dayHours: 24 labels starting at the anchor", () => {
 describe("DEFAULT_DAY_START", () => {
   it("defaults the day anchor to 04:00", () => {
     expect(DEFAULT_DAY_START).toBe("04:00");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// resolveDayStart — pick the weekday or weekend wake time for a given date
+// ─────────────────────────────────────────────────────────────────────────────
+describe("resolveDayStart: weekday vs weekend anchor per date", () => {
+  // 2026-07-01 is a Wednesday; 2026-07-04 is a Saturday; 2026-07-05 is a Sunday.
+  it("uses the weekday anchor on Mon–Fri", () => {
+    expect(resolveDayStart("04:00", "06:00", "2026-07-01")).toBe("04:00");
+  });
+  it("uses the weekend anchor on Saturday", () => {
+    expect(resolveDayStart("04:00", "06:00", "2026-07-04")).toBe("06:00");
+  });
+  it("uses the weekend anchor on Sunday", () => {
+    expect(resolveDayStart("04:00", "06:00", "2026-07-05")).toBe("06:00");
+  });
+  it("falls back to the weekday anchor when weekend is unset", () => {
+    expect(resolveDayStart("05:00", undefined, "2026-07-04")).toBe("05:00");
+  });
+  it("falls back to the default when both are unset", () => {
+    expect(resolveDayStart(undefined, undefined, "2026-07-01")).toBe(
+      DEFAULT_DAY_START,
+    );
   });
 });

@@ -38,10 +38,12 @@ interface Props {
   onResetAll: () => void;
   /** Called when user spends a freeze on today. Parent dispatches FREEZE_DAY. */
   onFreezeToday?: () => void;
-  /** Current day anchor "HH:MM" — the user's wake time (wake-to-wake day). */
-  dayStart?: string;
-  /** Called with a valid "HH:MM" when the user changes their wake time. */
-  onSetDayStart?: (dayStart: string) => void;
+  /** Weekday wake time "HH:MM" — the Mon–Fri day anchor. */
+  weekdayStart?: string;
+  /** Weekend wake time "HH:MM" — the Sat/Sun day anchor. */
+  weekendStart?: string;
+  /** Called with (kind, "HH:MM") when the user changes a wake time. */
+  onSetDayStart?: (kind: "weekday" | "weekend", dayStart: string) => void;
 }
 
 export function SettingsSheet({
@@ -50,7 +52,8 @@ export function SettingsSheet({
   onClose,
   onResetAll,
   onFreezeToday,
-  dayStart,
+  weekdayStart,
+  weekendStart,
   onSetDayStart,
 }: Props) {
   const [confirmingReset, setConfirmingReset] = useState(false);
@@ -155,27 +158,60 @@ export function SettingsSheet({
             >
               Day starts at
             </h3>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <div style={{ width: "96px" }}>
-                <TimeInput
-                  id="settings-day-start"
-                  value={dayStart ?? "04:00"}
-                  onChange={(v) => {
-                    // TimeInput emits "" for partial input; only commit full HH:MM.
-                    if (/^\d{2}:\d{2}$/.test(v)) onSetDayStart(v);
-                  }}
-                />
-              </div>
-              <span
+            <p
+              style={{
+                margin: 0,
+                fontFamily: "var(--font-ui)",
+                fontSize: "var(--fs-12, 12px)",
+                color: "var(--ink-dim)",
+              }}
+            >
+              Your wake time. The day runs from here, so a sleep block across
+              midnight stays one piece. Set weekdays and weekends separately.
+            </p>
+            <div style={{ display: "flex", gap: "16px" }}>
+              <label
                 style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "4px",
                   fontFamily: "var(--font-ui)",
                   fontSize: "var(--fs-12, 12px)",
                   color: "var(--ink-dim)",
                 }}
               >
-                Your wake time. The day runs from here, so a sleep block across
-                midnight stays one piece.
-              </span>
+                Weekdays
+                <div style={{ width: "96px" }}>
+                  <TimeInput
+                    id="settings-day-start-weekday"
+                    value={weekdayStart ?? "04:00"}
+                    onChange={(v) => {
+                      if (/^\d{2}:\d{2}$/.test(v)) onSetDayStart("weekday", v);
+                    }}
+                  />
+                </div>
+              </label>
+              <label
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "4px",
+                  fontFamily: "var(--font-ui)",
+                  fontSize: "var(--fs-12, 12px)",
+                  color: "var(--ink-dim)",
+                }}
+              >
+                Weekends
+                <div style={{ width: "96px" }}>
+                  <TimeInput
+                    id="settings-day-start-weekend"
+                    value={weekendStart ?? "04:00"}
+                    onChange={(v) => {
+                      if (/^\d{2}:\d{2}$/.test(v)) onSetDayStart("weekend", v);
+                    }}
+                  />
+                </div>
+              </label>
             </div>
           </section>
         )}

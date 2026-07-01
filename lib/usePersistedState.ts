@@ -39,7 +39,8 @@ function projectToAppState(p: PersistedState): AppState {
     history: p.history, // M9b — must round-trip
     deletions: p.deletions, // M5 — must round-trip (ADR-018)
     firstBrickShown: p.firstBrickShown, // M7e — must round-trip (ADR-044 additive field)
-    dayStart: p.dayStart, // day anchor — must round-trip (wake-to-wake)
+    dayStart: p.dayStart, // weekday anchor — must round-trip (wake-to-wake)
+    weekendDayStart: p.weekendDayStart, // weekend anchor — must round-trip
   };
 }
 
@@ -58,7 +59,8 @@ function toPersisted(s: AppState): PersistedState {
     looseBricks: s.looseBricks,
     deletions: s.deletions, // M5 — ADR-018
     firstBrickShown: s.firstBrickShown, // M7e — ADR-044 additive field
-    dayStart: s.dayStart, // day anchor — wake-to-wake
+    dayStart: s.dayStart, // weekday anchor — wake-to-wake
+    weekendDayStart: s.weekendDayStart, // weekend anchor — wake-to-wake
   };
 }
 

@@ -195,6 +195,7 @@ export const persistedStateV3Schema = v.object({
   freezes: v.optional(freezesSchema),
   firstBrickShown: v.optional(v.boolean()),
   dayStart: v.optional(hhmmSchema),
+  weekendDayStart: v.optional(hhmmSchema),
 });
 
 /**
@@ -213,5 +214,6 @@ export const persistedFieldNames = [
   "freezes",
   "firstBrickShown",
   "dayStart",
+  "weekendDayStart",
 ] as const;
 export type PersistedFieldName = (typeof persistedFieldNames)[number];
