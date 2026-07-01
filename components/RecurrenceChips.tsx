@@ -14,6 +14,7 @@ const TODAY_ISO = "2026-05-06"; // default date for just-today chip
 const CHIPS: { label: string; kind: Recurrence["kind"] }[] = [
   { label: "Just today", kind: "just-today" },
   { label: "Every weekday", kind: "every-weekday" },
+  { label: "Weekend", kind: "every-weekend" },
   { label: "Every day", kind: "every-day" },
   { label: "Custom range", kind: "custom-range" },
 ];
@@ -32,6 +33,8 @@ function makeDefault(kind: Recurrence["kind"], today: string): Recurrence {
       return { kind: "just-today", date: today };
     case "every-weekday":
       return { kind: "every-weekday" };
+    case "every-weekend":
+      return { kind: "every-weekend" };
     case "every-day":
       return { kind: "every-day" };
     case "custom-range":

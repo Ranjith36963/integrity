@@ -38,6 +38,11 @@ export function appliesOn(recurrence: Recurrence, date: string): boolean {
       return wd >= 1 && wd <= 5;
     }
 
+    case "every-weekend": {
+      const wd = parseLocalDate(date).getDay(); // 0=Sun…6=Sat
+      return wd === 0 || wd === 6;
+    }
+
     case "custom-range": {
       // Step 1: empty-weekdays guard — short-circuit (cheapest test first)
       if (recurrence.weekdays.length === 0) return false;

@@ -47,6 +47,9 @@ export const recurrenceSchema = v.variant("kind", [
     kind: v.literal("every-weekday"),
   }),
   v.object({
+    kind: v.literal("every-weekend"),
+  }),
+  v.object({
     kind: v.literal("every-day"),
   }),
   v.object({

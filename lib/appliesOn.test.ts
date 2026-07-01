@@ -126,6 +126,29 @@ describe("U-m9a-006: every-weekday returns false for Saturday and Sunday", () =>
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// every-weekend — mirror of every-weekday: true only Sat/Sun
+// ─────────────────────────────────────────────────────────────────────────────
+describe("every-weekend returns true for Sat/Sun and false for Mon–Fri", () => {
+  const rec: Recurrence = { kind: "every-weekend" };
+
+  it("returns true for Saturday 2026-05-23 (getDay 6)", () => {
+    expect(appliesOn(rec, "2026-05-23")).toBe(true);
+  });
+
+  it("returns true for Sunday 2026-05-17 (getDay 0)", () => {
+    expect(appliesOn(rec, "2026-05-17")).toBe(true);
+  });
+
+  it("returns false for Monday 2026-05-18 (getDay 1)", () => {
+    expect(appliesOn(rec, "2026-05-18")).toBe(false);
+  });
+
+  it("returns false for Friday 2026-05-22 (getDay 5)", () => {
+    expect(appliesOn(rec, "2026-05-22")).toBe(false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // U-m9a-007 — success (custom-range, in range with matching weekday)
 // Includes folded edge case: in-range date whose weekday is NOT in weekdays → false
 // ─────────────────────────────────────────────────────────────────────────────

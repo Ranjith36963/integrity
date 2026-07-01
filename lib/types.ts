@@ -37,6 +37,7 @@ export type Brick =
 export type Recurrence =
   | { kind: "just-today"; date: string } // ISO YYYY-MM-DD
   | { kind: "every-weekday" } // Mon–Fri
+  | { kind: "every-weekend" } // Sat–Sun
   | { kind: "every-day" }
   | { kind: "custom-range"; start: string; end: string; weekdays: number[] };
 

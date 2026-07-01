@@ -749,10 +749,10 @@ describe("C-m4e-012: Custom range with zero weekdays → alert, Save disabled", 
   });
 });
 
-// ─── C-m4e-013: RecurrenceChips present with 4 chips, default "Just today" ────
+// ─── C-m4e-013: RecurrenceChips present with 5 chips, default "Just today" ────
 
-describe("C-m4e-013: RecurrenceChips rendered with 4 chips, default Just today", () => {
-  it("4 radio chips in recurrence group; Just today selected; Custom range expands", async () => {
+describe("C-m4e-013: RecurrenceChips rendered with 5 chips, default Just today", () => {
+  it("5 radio chips in recurrence group; Just today selected; Custom range expands", async () => {
     const user = userEvent.setup();
     render(<AddBrickSheet {...defaultProps({ state: emptyState() })} />);
     fireEvent.click(screen.getByRole("switch", { name: /duration/i }));
@@ -762,7 +762,8 @@ describe("C-m4e-013: RecurrenceChips rendered with 4 chips, default Just today",
         el.getAttribute("aria-label")?.toLowerCase().includes("recurrence"),
       )!;
     const chips = within(rg).getAllByRole("radio");
-    expect(chips).toHaveLength(4);
+    // Just today / Every weekday / Weekend / Every day / Custom range
+    expect(chips).toHaveLength(5);
     const justToday = chips.find((c) =>
       c.textContent?.toLowerCase().includes("just today"),
     );
