@@ -347,6 +347,49 @@ body::before {
   }
 }
 
+/* Sci-fi — DayRing: two counter-rotating dashed orbits behind the clock band
+   ("rotations in the back"), plus a pulsing glow on the now-hand tip. Each
+   rotates around its own centre (transform-box: fill-box). PRM users get
+   static rings via the reduced-motion block below. */
+.dayring-spin-cw {
+  animation: dayring-spin-cw 64s linear infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+  will-change: transform;
+}
+.dayring-spin-ccw {
+  animation: dayring-spin-ccw 48s linear infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+  will-change: transform;
+}
+@keyframes dayring-spin-cw {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes dayring-spin-ccw {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+.dayring-tip-pulse {
+  animation: dayring-tip-pulse 2.2s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes dayring-tip-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.25);
+  }
+}
+
 /* Sci-fi Phase 2 — data-stream motes on the NowLine.
    The parent (.now-line) is a 1px high amber bar; these absolute-
    positioned children fly left → right across it, then loop. The
@@ -761,7 +804,10 @@ body::before {
   .scifi-data-mote,
   .scifi-iris-in,
   .scifi-burst-mote,
-  .scifi-skyline-beam {
+  .scifi-skyline-beam,
+  .dayring-spin-cw,
+  .dayring-spin-ccw,
+  .dayring-tip-pulse {
     animation: none !important;
   }
   .scifi-tab-ripple[data-rippling="true"]::after {

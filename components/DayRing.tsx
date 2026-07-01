@@ -86,6 +86,41 @@ export function DayRing({
         role="img"
         aria-label={`Day ring, ${Math.round(pct)}% complete, now ${now}`}
       >
+        {/* Sci-fi: faint amber core glow behind the ring */}
+        <defs>
+          <radialGradient id="dayring-core" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.14} />
+            <stop offset="70%" stopColor="var(--accent)" stopOpacity={0.03} />
+            <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
+          </radialGradient>
+        </defs>
+        <circle cx={C} cy={C} r={R_OUTER} fill="url(#dayring-core)" />
+
+        {/* Sci-fi: two counter-rotating dashed orbits behind the band
+            ("rotations in the back") */}
+        <circle
+          className="dayring-spin-cw"
+          cx={C}
+          cy={C}
+          r={R_OUTER + 6}
+          fill="none"
+          stroke="var(--ink-dim)"
+          strokeWidth={1}
+          strokeDasharray="2 10"
+          opacity={0.5}
+        />
+        <circle
+          className="dayring-spin-ccw"
+          cx={C}
+          cy={C}
+          r={R_INNER - 8}
+          fill="none"
+          stroke="var(--ink-dim)"
+          strokeWidth={1}
+          strokeDasharray="1 8"
+          opacity={0.4}
+        />
+
         {/* Base ring band */}
         <circle
           cx={C}
@@ -95,6 +130,20 @@ export function DayRing({
           stroke="var(--card-edge)"
           strokeWidth={R_OUTER - R_INNER}
           opacity={0.35}
+        />
+
+        {/* Sci-fi: amber orbital data-dashes on the outer edge (echoes the Hero ring) */}
+        <circle
+          className="scifi-orbital-dashes"
+          cx={C}
+          cy={C}
+          r={R_OUTER + 2}
+          fill="none"
+          stroke="var(--accent-glow, var(--accent))"
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeDasharray="3 13"
+          opacity={0.7}
         />
 
         {/* Hour ticks (24) + cardinal labels every 6h */}
@@ -162,7 +211,11 @@ export function DayRing({
               role="button"
               tabIndex={0}
               aria-label={`${block.name}, ${block.start} to ${block.end}, ${Math.round(p)}% complete`}
-              style={{ cursor: "pointer" }}
+              style={{
+                cursor: "pointer",
+                // Sci-fi: each arc emits a soft glow in its own colour.
+                filter: `drop-shadow(0 0 ${isSel ? 5 : 2.5}px ${col})`,
+              }}
               onClick={() =>
                 setSelectedId((cur) => (cur === block.id ? null : block.id))
               }
@@ -176,7 +229,15 @@ export function DayRing({
           );
         })}
 
-        {/* Now-hand */}
+        {/* Now-hand — glowing, with a pulsing halo at the tip */}
+        <circle
+          className="dayring-tip-pulse"
+          cx={handTip.x}
+          cy={handTip.y}
+          r={6}
+          fill="var(--accent)"
+          opacity={0.5}
+        />
         <line
           data-testid="ring-now-hand"
           x1={handBase.x}
@@ -186,8 +247,16 @@ export function DayRing({
           stroke="var(--accent)"
           strokeWidth={2}
           strokeLinecap="round"
+          style={{ filter: "drop-shadow(0 0 3px var(--accent))" }}
         />
-        <circle cx={C} cy={C} r={3} fill="var(--accent)" />
+        <circle cx={handTip.x} cy={handTip.y} r={2.5} fill="var(--ink)" />
+        <circle
+          cx={C}
+          cy={C}
+          r={3}
+          fill="var(--accent)"
+          style={{ filter: "drop-shadow(0 0 3px var(--accent))" }}
+        />
 
         {/* Centre readout */}
         {selected ? (
@@ -224,6 +293,10 @@ export function DayRing({
               fontSize="30"
               fontFamily="var(--font-serif, var(--font-ui))"
               textAnchor="middle"
+              style={{
+                filter:
+                  "drop-shadow(0 0 6px var(--accent-glow, var(--accent)))",
+              }}
             >
               {Math.round(pct)}%
             </text>
