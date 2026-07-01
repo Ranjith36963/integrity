@@ -142,16 +142,29 @@ describe("C-m2-003: Empty Title disables Save", () => {
   });
 });
 
-// C-m2-004: End ≤ Start inline error + Save disabled
-describe("C-m2-004: End ≤ Start shows inline error and disables Save", () => {
-  it("End before Start shows alert and disables Save", async () => {
+// C-m2-004: End vs Start — overnight is allowed; zero-length is blocked
+describe("C-m2-004: End before Start is an overnight block; End = Start is blocked", () => {
+  it("End before Start is treated as an overnight block (valid, hint, Save enabled)", async () => {
     const user = userEvent.setup();
     render(<AddBlockSheet {...defaultProps} defaultStart="10:00" />);
     await user.type(screen.getByLabelText(/Title/i), "Foo");
-    // Set End before Start
+    // End strictly before Start → crosses midnight (e.g. Sleep 22:00→04:00)
     const endInput = screen.getByLabelText(/End/i);
     await user.type(endInput, "09:00");
-    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByText(/End must be after Start/i)).toBeNull();
+    expect(screen.getByTestId("crosses-midnight-hint")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Save/i })).toHaveAttribute(
+      "aria-disabled",
+      "false",
+    );
+  });
+
+  it("End equal to Start (zero-length) shows alert and disables Save", async () => {
+    const user = userEvent.setup();
+    render(<AddBlockSheet {...defaultProps} defaultStart="10:00" />);
+    await user.type(screen.getByLabelText(/Title/i), "Foo");
+    const endInput = screen.getByLabelText(/End/i);
+    await user.type(endInput, "10:00");
     expect(screen.getByRole("alert").textContent).toMatch(
       /End must be after Start/i,
     );

@@ -33,7 +33,9 @@ import {
   dayPct,
   dayNumber,
   isoToLocalDate,
+  toMin,
 } from "@/lib/dharma";
+import { uuid } from "@/lib/uuid";
 import { daysInYear } from "@/lib/dayOfYear";
 import { useFirstPaintAfterHydration } from "@/lib/firstPaint";
 import { useNow } from "@/lib/useNow";
@@ -566,6 +568,19 @@ export function BuildingClient({
   }
 
   function handleSave(block: Block) {
+    // Overnight block: end strictly before start means it crosses midnight
+    // (e.g. Sleep 22:00→04:00). Split into two same-day blocks — [start, 23:59]
+    // and [00:00, end] — so the rest of the app never sees a wrap-around interval.
+    if (block.end !== undefined && toMin(block.end) < toMin(block.start)) {
+      dispatch({ type: "ADD_BLOCK", block: { ...block, end: "23:59" } });
+      dispatch({
+        type: "ADD_BLOCK",
+        block: { ...block, id: uuid(), start: "00:00" },
+      });
+      toast("Overnight block split into two", "success");
+      closeSheet();
+      return;
+    }
     dispatch({ type: "ADD_BLOCK", block });
     toast("Block created", "success"); // M7e: AC #10 block-add toast
     closeSheet();

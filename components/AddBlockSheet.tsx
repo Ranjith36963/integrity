@@ -29,7 +29,7 @@ import { RecurrenceChips } from "@/components/RecurrenceChips";
 import { CategoryPicker } from "@/components/CategoryPicker";
 import { NewCategoryForm } from "@/components/NewCategoryForm";
 import { haptics } from "@/lib/haptics";
-import { today } from "@/lib/dharma";
+import { today, toMin } from "@/lib/dharma";
 
 interface Props {
   open: boolean;
@@ -181,8 +181,16 @@ export function AddBlockSheet({
   const customRangeValid = isValidCustomRange(recurrence);
 
   const endPastMidnight = !endEmpty && !isValidEnd(end);
+  // Overnight block: a valid end that is strictly BEFORE start means the block
+  // crosses midnight (e.g. Sleep 22:00→04:00). This is allowed and saved as two
+  // same-day blocks by BuildingClient. end === start stays invalid (zero-length).
+  const crossesMidnight =
+    !endEmpty && isValidEnd(end) && startValid && toMin(end) < toMin(start);
   const endBeforeStart =
-    !endEmpty && isValidEnd(end) && !endAfterStart(start, end);
+    !endEmpty &&
+    isValidEnd(end) &&
+    !endAfterStart(start, end) &&
+    !crossesMidnight;
 
   const candidate = endEmpty ? null : { start, end };
 
@@ -209,16 +217,19 @@ export function AddBlockSheet({
     blocks: currentDayBlocks(effectiveState),
   };
   const overlaps =
-    titleValid && candidate
+    titleValid && candidate && !crossesMidnight
       ? findOverlaps(candidate, selectAllTimedItems(stateForOverlap))
       : [];
+  // Overlap detection is skipped for overnight blocks — the [start, end) interval
+  // wraps midnight so a same-day sweep can't represent it. The split halves are
+  // added directly by BuildingClient.
   const hasOverlap = overlaps.length > 0;
 
   const isValid =
     titleValid &&
     startValid &&
     endValid &&
-    endAfterStartOk &&
+    (endAfterStartOk || crossesMidnight) &&
     customRangeValid &&
     !hasOverlap;
 
@@ -410,6 +421,19 @@ export function AddBlockSheet({
                 }}
               >
                 End must be before midnight
+              </p>
+            )}
+            {crossesMidnight && (
+              <p
+                data-testid="crosses-midnight-hint"
+                style={{
+                  fontFamily: "var(--font-ui)",
+                  fontSize: "var(--fs-12)",
+                  color: "var(--ink-dim)",
+                  margin: 0,
+                }}
+              >
+                Crosses midnight — saved as two blocks.
               </p>
             )}
 
