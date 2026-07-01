@@ -248,9 +248,11 @@ describe("C-m1-007: BlueprintBar empty-outline path with blocks=[] (re-authored 
   });
 });
 
-// C-m1-008: BlueprintBar NOW pin at 12:00 = 50%, at 06:00 = 25% (re-authored M2)
-describe("C-m1-008: BlueprintBar NOW pin position (re-authored M2)", () => {
-  it("now-pin at 12:00 resolves to left=50%", () => {
+// C-m1-008: BlueprintBar NOW pin — anchored to the wake-to-wake day (04:00 origin).
+// The pin now shows fraction-through-the-day: 12:00 is 8h past the 04:00 wake
+// (8/24 ≈ 33.3%); 06:00 is 2h past (2/24 ≈ 8.3%).
+describe("C-m1-008: BlueprintBar NOW pin position (wake-to-wake anchor)", () => {
+  it("now-pin at 12:00 resolves to left≈33.33% (8h past 04:00 wake)", () => {
     const { container } = render(
       <BlueprintBar blocks={[]} categories={[]} now="12:00" />,
     );
@@ -258,11 +260,11 @@ describe("C-m1-008: BlueprintBar NOW pin position (re-authored M2)", () => {
       '[data-testid="now-pin"]',
     ) as HTMLElement;
     expect(nowPin).not.toBeNull();
-    expect(nowPin.style.left).toMatch(/50%/);
+    expect(nowPin.style.left).toMatch(/33\.3/);
     expect(nowPin.style.left).not.toContain("NaN");
   });
 
-  it("now-pin at 06:00 resolves to left=25%", () => {
+  it("now-pin at 06:00 resolves to left≈8.33% (2h past 04:00 wake)", () => {
     const { container } = render(
       <BlueprintBar blocks={[]} categories={[]} now="06:00" />,
     );
@@ -270,7 +272,7 @@ describe("C-m1-008: BlueprintBar NOW pin position (re-authored M2)", () => {
       '[data-testid="now-pin"]',
     ) as HTMLElement;
     expect(nowPin).not.toBeNull();
-    expect(nowPin.style.left).toMatch(/25%/);
+    expect(nowPin.style.left).toMatch(/8\.33/);
     expect(nowPin.style.left).not.toContain("NaN");
   });
 });

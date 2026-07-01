@@ -108,6 +108,42 @@ describe("U-m4e-002: intervalsOverlap — touching boundary is not an overlap (A
   });
 });
 
+// ─── Overnight (wrap) blocks — end < start crosses the midnight seam ─────────
+
+describe("intervalsOverlap — overnight (wrap) intervals", () => {
+  const sleep = { start: "22:00", end: "04:00" }; // wraps midnight
+
+  it("detects a block inside the pre-midnight half (23:00–23:30)", () => {
+    expect(intervalsOverlap(sleep, { start: "23:00", end: "23:30" })).toBe(
+      true,
+    );
+  });
+
+  it("detects a block inside the post-midnight half (01:00–02:00)", () => {
+    expect(intervalsOverlap(sleep, { start: "01:00", end: "02:00" })).toBe(
+      true,
+    );
+  });
+
+  it("does NOT flag a block fully in the awake window (09:00–10:00)", () => {
+    expect(intervalsOverlap(sleep, { start: "09:00", end: "10:00" })).toBe(
+      false,
+    );
+  });
+
+  it("touching the wrap boundary at 04:00 is not an overlap (half-open)", () => {
+    expect(intervalsOverlap(sleep, { start: "04:00", end: "05:00" })).toBe(
+      false,
+    );
+  });
+
+  it("is symmetric for wrap intervals", () => {
+    expect(intervalsOverlap({ start: "23:00", end: "23:30" }, sleep)).toBe(
+      true,
+    );
+  });
+});
+
 // ─── U-m4e-003: no overlap (separated) ───────────────────────────────────────
 
 describe("U-m4e-003: intervalsOverlap — no overlap when intervals are separated", () => {

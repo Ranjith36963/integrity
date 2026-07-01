@@ -27,7 +27,11 @@ export function snapToSlot(
   // R7-ROOT-M5/M6-P2 (NaN guard): non-finite input (NaN, Infinity, multi-touch
   // pointer event leak) would propagate via Math.round(NaN/30) → "NaN:NaN" all
   // the way into the reducer's REORDER_BLOCK. Snap-to-zero is the safer floor.
-  if (!Number.isFinite(offsetPx) || !Number.isFinite(hourHeightPx) || hourHeightPx <= 0) {
+  if (
+    !Number.isFinite(offsetPx) ||
+    !Number.isFinite(hourHeightPx) ||
+    hourHeightPx <= 0
+  ) {
     return "00:00";
   }
   const totalMin = (offsetPx / hourHeightPx) * 60;
@@ -57,6 +61,19 @@ export function shiftEnd(
   if (oldEnd === null) return null;
   const toMin = (hhmm: string) =>
     Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+  const DAY_LEN = 24 * 60;
+
+  // Overnight (wrap) block, end < start (e.g. Sleep 22:00→04:00). Preserve the
+  // wrap-aware duration and wrap the new end around the day, so a drag
+  // translates the block as a rigid span instead of collapsing it.
+  if (toMin(oldEnd) < toMin(oldStart)) {
+    const dur = toMin(oldEnd) - toMin(oldStart) + DAY_LEN;
+    const ne = (toMin(newStart) + dur) % DAY_LEN;
+    const h = Math.floor(ne / 60);
+    const m = ne % 60;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  }
+
   const delta = toMin(newStart) - toMin(oldStart);
   const ne = toMin(oldEnd) + delta;
   // SG-m6-08: end may be exactly 24:00 but not beyond

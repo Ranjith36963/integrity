@@ -24,18 +24,40 @@ export type TimedItem =
       categoryId: string | null;
     };
 
-/** Half-open interval intersection: [a.start, a.end) ∩ [b.start, b.end) ≠ ∅
- *  iff a.start < b.end AND b.start < a.end. Touching boundaries do NOT overlap (ADR-006).
- *  AC #11. */
+const DAY_LEN = 24 * 60;
+
+/** Expand an interval into 1–2 non-wrapping [start,end) minute segments.
+ *  A block whose end is at/before its start (e.g. Sleep 22:00→04:00) crosses the
+ *  midnight seam and becomes two segments: [start,1440) ∪ [0,end). Since the
+ *  wake-to-wake anchor lets overnight blocks persist with end < start, overlap
+ *  detection must reason about both halves. */
+function expandInterval(iv: {
+  start: string;
+  end: string;
+}): [number, number][] {
+  const s = toMin(iv.start);
+  const e = toMin(iv.end);
+  if (e > s) return [[s, e]]; // normal, same-day
+  if (e === s) return [[s, s + DAY_LEN]]; // degenerate full-day (guarded upstream)
+  return [
+    [s, DAY_LEN],
+    [0, e],
+  ]; // wraps midnight
+}
+
+/** Half-open interval intersection: [a.start, a.end) ∩ [b.start, b.end) ≠ ∅.
+ *  Touching boundaries do NOT overlap (ADR-006). Wrap-aware: an overnight block
+ *  (end < start) is compared as its two half-open segments. AC #11. */
 export function intervalsOverlap(
   a: { start: string; end: string },
   b: { start: string; end: string },
 ): boolean {
-  const as = toMin(a.start),
-    ae = toMin(a.end);
-  const bs = toMin(b.start),
-    be = toMin(b.end);
-  return as < be && bs < ae;
+  for (const [as, ae] of expandInterval(a)) {
+    for (const [bs, be] of expandInterval(b)) {
+      if (as < be && bs < ae) return true;
+    }
+  }
+  return false;
 }
 
 /** Returns all items that overlap `candidate`, excluding `excludeId` (M5 edit case).

@@ -34,9 +34,9 @@ export function minutesFromDayStart(hhmm: string, dayStart: string): number {
 /**
  * Wrap-aware top + height (in px) for a block on the anchored timeline.
  * - end === undefined → a small stub height (open-ended block).
- * - end strictly before start (in anchor terms) → the span crosses the anchor
- *   once and extends toward the bottom (one continuous block, never split).
- * - start === end → treated as a full 24h window.
+ * - end at or before start (in anchor terms) → the span crosses the anchor once
+ *   and extends toward the bottom (one continuous block, never split). When end
+ *   equals start this yields a full 24h window.
  */
 export function daySpanPx(
   start: string,
@@ -53,8 +53,8 @@ export function daySpanPx(
   }
 
   let endMin = minutesFromDayStart(end, dayStart);
-  // end at/**before** the start (in anchor terms) means it wraps the full way
-  // round — extend by a day so the span stays a single positive-height block.
+  // end at or before start (in anchor terms) means it wraps the full way round —
+  // extend by a day so the span stays a single positive-height block.
   if (endMin <= startMin) endMin += MINUTES_PER_DAY;
 
   const heightPx = ((endMin - startMin) / 60) * hourHeightPx;

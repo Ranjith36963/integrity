@@ -11,7 +11,7 @@
 
 import { motion } from "motion/react";
 import type { Block, Category } from "@/lib/types";
-import { toMin, blockPct } from "@/lib/dharma";
+import { blockPct, duration, dayOffset } from "@/lib/dharma";
 import { usePrefersReducedMotion } from "@/lib/reducedMotion";
 import { staggerForCount } from "@/lib/motion";
 
@@ -51,7 +51,10 @@ export function aggregateCategoryMinutes(
     // already excluded them; opacity now matches. The bug only surfaced once
     // M3 introduced real blockPct > 0 — by then the visual was wrong.
     if (b.end === undefined) continue;
-    const mins = toMin(b.end) - toMin(b.start);
+    // Wrap-aware duration: an overnight block (end < start, e.g. Sleep
+    // 22:00→04:00) has a positive duration around the day anchor. Raw
+    // subtraction would give a negative value and silently drop it.
+    const mins = duration(b);
     if (mins <= 0) continue;
     minuteMap.set(b.categoryId, (minuteMap.get(b.categoryId) ?? 0) + mins);
     pctSumMap.set(
@@ -125,7 +128,9 @@ export function BlueprintBar({
     : undefined;
 
   // NOW pin position: time-based fallback when no categorized blocks
-  const nowPct = (toMin(now) / (24 * 60)) * 100;
+  // Anchor the NOW pin to the wake-to-wake day (matches the timeline's 04:00
+  // origin) so the blueprint pin and the timeline now-line stay aligned.
+  const nowPct = (dayOffset(now) / (24 * 60)) * 100;
 
   const faintGrid = {
     backgroundImage:

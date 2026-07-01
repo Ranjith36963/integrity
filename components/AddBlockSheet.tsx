@@ -216,13 +216,13 @@ export function AddBlockSheet({
     ...effectiveState,
     blocks: currentDayBlocks(effectiveState),
   };
+  // Overlap detection is wrap-aware (lib/overlap.ts expands an overnight
+  // [start,end) into its two half-open segments), so overnight candidates are
+  // checked like any other block.
   const overlaps =
-    titleValid && candidate && !crossesMidnight
+    titleValid && candidate
       ? findOverlaps(candidate, selectAllTimedItems(stateForOverlap))
       : [];
-  // Overlap detection is skipped for overnight blocks — the [start, end) interval
-  // wraps midnight so a same-day sweep can't represent it. The split halves are
-  // added directly by BuildingClient.
   const hasOverlap = overlaps.length > 0;
 
   const isValid =

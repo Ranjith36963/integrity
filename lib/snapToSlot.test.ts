@@ -81,6 +81,16 @@ describe("U-m6-011: shiftEnd — duration preserved; upper clamp; null preserved
     expect(shiftEnd("00:00", "00:30", "00:00")).toBe("00:30");
   });
 
+  it("overnight block preserves its wrap duration when dragged earlier", () => {
+    // Sleep 22:00→04:00 (6h) dragged to start 02:00 → 02:00→08:00 (still 6h).
+    expect(shiftEnd("22:00", "04:00", "02:00")).toBe("08:00");
+  });
+
+  it("overnight block stays overnight when dragged later", () => {
+    // Sleep 22:00→04:00 (6h) dragged to 23:00 → 23:00→05:00 (wraps, still 6h).
+    expect(shiftEnd("22:00", "04:00", "23:00")).toBe("05:00");
+  });
+
   it("does not throw and reads no clock", () => {
     expect(() => shiftEnd("08:00", "09:00", "10:00")).not.toThrow();
   });
