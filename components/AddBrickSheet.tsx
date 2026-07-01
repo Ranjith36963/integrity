@@ -19,6 +19,7 @@ import {
 import { findOverlaps, selectAllTimedItems } from "@/lib/overlap";
 import { toMin } from "@/lib/dharma";
 import { Sheet } from "@/components/ui/Sheet";
+import { TimeInput } from "@/components/ui/TimeInput";
 import { Toggle } from "@/components/ui/Toggle";
 import { CategoryPicker } from "@/components/CategoryPicker";
 import { NewCategoryForm } from "@/components/NewCategoryForm";
@@ -562,23 +563,10 @@ export function AddBrickSheet({
                     >
                       Start
                     </label>
-                    <input
+                    <TimeInput
                       id="brick-start"
-                      type="time"
                       value={start}
-                      onChange={(e) => setStart(e.target.value)}
-                      aria-label="Start"
-                      style={{
-                        height: "44px",
-                        borderRadius: "8px",
-                        border: "1px solid var(--ink-dim)",
-                        background: "var(--bg-elev)",
-                        color: "var(--ink)",
-                        fontFamily: "var(--font-mono)",
-                        fontSize: "var(--fs-14)",
-                        padding: "0 12px",
-                        width: "100%",
-                      }}
+                      onChange={setStart}
                     />
                   </div>
                   <div
@@ -599,24 +587,7 @@ export function AddBrickSheet({
                     >
                       End
                     </label>
-                    <input
-                      id="brick-end"
-                      type="time"
-                      value={end}
-                      onChange={(e) => setEnd(e.target.value)}
-                      aria-label="End"
-                      style={{
-                        height: "44px",
-                        borderRadius: "8px",
-                        border: "1px solid var(--ink-dim)",
-                        background: "var(--bg-elev)",
-                        color: "var(--ink)",
-                        fontFamily: "var(--font-mono)",
-                        fontSize: "var(--fs-14)",
-                        padding: "0 12px",
-                        width: "100%",
-                      }}
-                    />
+                    <TimeInput id="brick-end" value={end} onChange={setEnd} />
                   </div>
                 </div>
 
