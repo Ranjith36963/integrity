@@ -86,6 +86,10 @@ export type AppState = {
   // payloads without it parse as { freezes: {} } via per-field recovery.
   freezes?: Record<string, true>;
   firstBrickShown?: boolean; // M7e — one-time flag; flipped by ADR-039 first-brick narrative; absent on load is back-filled by lib/persist.ts read-time projection.
+  // Day anchor — the "HH:MM" the day begins at (wake time). The timeline runs
+  // dayStart → +24h so overnight blocks (e.g. Sleep 22:00→04:00) are one span.
+  // Additive optional field; absent → DEFAULT_DAY_START ("04:00") at read time.
+  dayStart?: string;
 };
 
 // Action — M4f: collapsed to 5 variants; 5 timer/goal actions removed (ADR-043)

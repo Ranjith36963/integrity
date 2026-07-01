@@ -12,7 +12,7 @@
 // M5: onRequestDeleteBrick threaded through to BrickChip (same × treatment as BrickChip).
 
 import type { Brick, Category } from "@/lib/types";
-import { HOUR_HEIGHT_PX, timeToOffsetPx } from "@/lib/timeOffset";
+import { daySpanPx, DEFAULT_DAY_START } from "@/lib/dayWindow";
 import { BrickChip } from "@/components/BrickChip";
 
 interface Props {
@@ -26,6 +26,8 @@ interface Props {
   onRequestDeleteBrick?: (brickId: string) => void;
   /** timer: called with (brickId, elapsedSec) when a running timer is paused/committed. */
   onTimerCommit?: (brickId: string, elapsedSec: number) => void;
+  /** Day anchor "HH:MM" — wake-to-wake geometry. Default 04:00. */
+  dayStart?: string;
 }
 
 function resolveBorderColor(brick: Brick, categories: Category[]): string {
@@ -41,13 +43,12 @@ export function TimedLooseBrickCard({
   onUnitsOpenSheet,
   onRequestDeleteBrick,
   onTimerCommit,
+  dayStart = DEFAULT_DAY_START,
 }: Props) {
   const start = brick.hasDuration ? (brick.start ?? "") : "";
   const end = brick.hasDuration ? (brick.end ?? "") : "";
 
-  const topPx = timeToOffsetPx(start, HOUR_HEIGHT_PX);
-  const endPx = timeToOffsetPx(end, HOUR_HEIGHT_PX);
-  const heightPx = endPx - topPx;
+  const { topPx, heightPx } = daySpanPx(start, end || undefined, dayStart);
 
   const borderColor = resolveBorderColor(brick, categories);
 

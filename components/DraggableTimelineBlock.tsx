@@ -14,6 +14,8 @@ import { TimelineBlock } from "./TimelineBlock";
 import { haptics } from "@/lib/haptics";
 import { snapToSlot, shiftEnd } from "@/lib/snapToSlot";
 import { HOUR_HEIGHT_PX } from "@/lib/timeOffset";
+import { DEFAULT_DAY_START } from "@/lib/dayWindow";
+import { toMin } from "@/lib/dharma";
 
 interface Props {
   block: Block;
@@ -48,6 +50,8 @@ interface Props {
   logHighlight?: boolean;
   /** timer: threads onTimerCommit to inner <TimelineBlock>. */
   onTimerCommit?: (brickId: string, elapsedSec: number) => void;
+  /** Day anchor "HH:MM" — wake-to-wake geometry. Default 04:00. */
+  dayStart?: string;
 }
 
 export function DraggableTimelineBlock({
@@ -66,6 +70,7 @@ export function DraggableTimelineBlock({
   isActive = false,
   logHighlight = false,
   onTimerCommit,
+  dayStart = DEFAULT_DAY_START,
 }: Props) {
   const { editMode } = useEditMode();
   const dragControls = useDragControls();
@@ -149,8 +154,12 @@ export function DraggableTimelineBlock({
       const scrollOffset = containerEl ? containerEl.scrollTop : 0;
       const offsetPx = info.point.y - containerTop + scrollOffset;
 
-      // Snap to 30-minute grid
-      const newStart = snapToSlot(offsetPx, HOUR_HEIGHT_PX);
+      // Snap to 30-minute grid. snapToSlot returns minutes-FROM-THE-TOP; on the
+      // wake-to-wake timeline the top is `dayStart`, so add the anchor and wrap
+      // to get the wall-clock start.
+      const fromTop = snapToSlot(offsetPx, HOUR_HEIGHT_PX);
+      const wallMin = (toMin(dayStart) + toMin(fromTop)) % (24 * 60);
+      const newStart = `${String(Math.floor(wallMin / 60)).padStart(2, "0")}:${String(wallMin % 60).padStart(2, "0")}`;
 
       // Same-slot guard: no dispatch, no haptic, no announce (C-m6-009)
       if (newStart === block.start) return;
@@ -169,7 +178,14 @@ export function DraggableTimelineBlock({
       // reducer accepting) in the same batch, so the useEffect sees the final block.start.
       setDropSeq((s) => s + 1);
     },
-    [block.id, block.start, block.end, dragConstraintsRef, onReorderRequest],
+    [
+      block.id,
+      block.start,
+      block.end,
+      dragConstraintsRef,
+      onReorderRequest,
+      dayStart,
+    ],
   );
 
   return (
@@ -203,6 +219,7 @@ export function DraggableTimelineBlock({
         isActive={isActive}
         logHighlight={logHighlight}
         onTimerCommit={onTimerCommit}
+        dayStart={dayStart}
       />
     </motion.div>
   );

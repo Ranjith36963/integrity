@@ -11,15 +11,22 @@
 // R2-P1-1: this comment was wrongly removed by R1-NIT-3 (the SG ID IS
 // defined in m1/tests.md:554 and docs/tests.md:1580 — restored).
 
-import { timeToOffsetPx, HOUR_HEIGHT_PX } from "@/lib/timeOffset";
+import { HOUR_HEIGHT_PX } from "@/lib/timeOffset";
+import { minutesFromDayStart, DEFAULT_DAY_START } from "@/lib/dayWindow";
 
 interface Props {
   now: string;
+  /** Day anchor "HH:MM" — the now-line is positioned relative to it. */
+  dayStart?: string;
   "data-testid"?: string;
 }
 
-export function NowLine({ now, "data-testid": testId = "now-line" }: Props) {
-  const topPx = timeToOffsetPx(now, HOUR_HEIGHT_PX);
+export function NowLine({
+  now,
+  dayStart = DEFAULT_DAY_START,
+  "data-testid": testId = "now-line",
+}: Props) {
+  const topPx = (minutesFromDayStart(now, dayStart) / 60) * HOUR_HEIGHT_PX;
 
   return (
     <div

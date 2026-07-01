@@ -119,6 +119,7 @@ describe("U-m2-009: reducer ADD_CATEGORY, assertNever, and defaultState", () => 
       currentDate: s.currentDate, // M9b — clock-dependent
       history: {}, // M9b — empty on first run
       deletions: {}, // M5 — empty on first run
+      dayStart: "04:00", // day anchor — wake-to-wake default
     });
     expect(typeof s.programStart).toBe("string");
   });
@@ -358,6 +359,7 @@ describe("U-m3-011: assertNever exhaustiveness + defaultState looseBricks", () =
       currentDate: s.currentDate, // M9b
       history: {}, // M9b
       deletions: {}, // M5 — empty on first run
+      dayStart: "04:00", // day anchor — wake-to-wake default
     });
   });
 });
@@ -968,6 +970,7 @@ describe("U-m4e-021: assertNever exhaustiveness preserved after M4e; defaultStat
       currentDate: s.currentDate, // M9b
       history: {}, // M9b
       deletions: {}, // M5 — empty on first run
+      dayStart: "04:00", // day anchor — wake-to-wake default
     });
   });
 });
@@ -1436,6 +1439,7 @@ describe("U-m4f-010: assertNever exhaustiveness + defaultState shape post-M4f", 
       currentDate: s.currentDate, // M9b
       history: {}, // M9b
       deletions: {}, // M5 — empty on first run
+      dayStart: "04:00", // day anchor — wake-to-wake default
     });
   });
 });

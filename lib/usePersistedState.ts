@@ -18,11 +18,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { Dispatch } from "react";
 import type { AppState, Action } from "./types";
 import { reducer } from "./data";
-import {
-  loadStateWithReport,
-  saveState,
-  defaultPersisted,
-} from "./persist";
+import { loadStateWithReport, saveState, defaultPersisted } from "./persist";
 import type { PersistedState } from "./persist";
 import { rollover } from "./history";
 import { today } from "./dharma";
@@ -43,6 +39,7 @@ function projectToAppState(p: PersistedState): AppState {
     history: p.history, // M9b — must round-trip
     deletions: p.deletions, // M5 — must round-trip (ADR-018)
     firstBrickShown: p.firstBrickShown, // M7e — must round-trip (ADR-044 additive field)
+    dayStart: p.dayStart, // day anchor — must round-trip (wake-to-wake)
   };
 }
 
@@ -61,6 +58,7 @@ function toPersisted(s: AppState): PersistedState {
     looseBricks: s.looseBricks,
     deletions: s.deletions, // M5 — ADR-018
     firstBrickShown: s.firstBrickShown, // M7e — ADR-044 additive field
+    dayStart: s.dayStart, // day anchor — wake-to-wake
   };
 }
 

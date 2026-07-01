@@ -45,6 +45,7 @@ describe("C-m4e-020: TimedLooseBrickCard absolute positioning and dashed border"
   it("outer wrapper has data-testid=timed-loose-brick; top/height match timeToOffsetPx; border-style=dashed", () => {
     const { container } = render(
       <TimedLooseBrickCard
+        dayStart="00:00"
         brick={makeTickBrick({ start: "09:00", end: "09:30" })}
         categories={[cat1]}
         onTickToggle={vi.fn()}
@@ -75,6 +76,7 @@ describe("C-m4e-020: TimedLooseBrickCard absolute positioning and dashed border"
   it("border-color falls back to var(--ink-dim) when categoryId is null", () => {
     const { container } = render(
       <TimedLooseBrickCard
+        dayStart="00:00"
         brick={makeTickBrick({ categoryId: null })}
         categories={[cat1]}
         onTickToggle={vi.fn()}
@@ -94,6 +96,7 @@ describe("C-m4e-021: TimedLooseBrickCard inner BrickChip is fully interactive", 
     const onTickToggle = vi.fn();
     render(
       <TimedLooseBrickCard
+        dayStart="00:00"
         brick={makeTickBrick()}
         categories={[cat1]}
         onTickToggle={onTickToggle}
@@ -122,6 +125,7 @@ describe("C-m4e-021: TimedLooseBrickCard inner BrickChip is fully interactive", 
     };
     render(
       <TimedLooseBrickCard
+        dayStart="00:00"
         brick={unitsBrick}
         categories={[]}
         onUnitsOpenSheet={onUnitsOpenSheet}
@@ -157,6 +161,7 @@ describe("C-m5-007: TimedLooseBrickCard — Unlocked shows × delete; log suppre
     render(
       <EditModeProvider>
         <TimedLooseBrickCard
+          dayStart="00:00"
           brick={looseBrick}
           categories={[]}
           onTickToggle={onTick}
@@ -177,6 +182,7 @@ describe("C-m5-007: TimedLooseBrickCard — Unlocked shows × delete; log suppre
       <EditModeProvider>
         <TopBar />
         <TimedLooseBrickCard
+          dayStart="00:00"
           brick={looseBrick}
           categories={[]}
           onTickToggle={vi.fn()}
@@ -204,6 +210,7 @@ describe("C-m5-007: TimedLooseBrickCard — Unlocked shows × delete; log suppre
       <EditModeProvider>
         <TopBar />
         <TimedLooseBrickCard
+          dayStart="00:00"
           brick={looseBrick}
           categories={[]}
           onTickToggle={onTick}
@@ -230,6 +237,7 @@ describe("C-m5-007: TimedLooseBrickCard — Unlocked shows × delete; log suppre
       <EditModeProvider>
         <TopBar />
         <TimedLooseBrickCard
+          dayStart="00:00"
           brick={looseBrick}
           categories={[]}
           onTickToggle={vi.fn()}

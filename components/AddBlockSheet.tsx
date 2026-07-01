@@ -433,7 +433,7 @@ export function AddBlockSheet({
                   margin: 0,
                 }}
               >
-                Crosses midnight — saved as two blocks.
+                Crosses midnight — one block through your wake time.
               </p>
             )}
 

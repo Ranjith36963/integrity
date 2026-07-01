@@ -9,7 +9,7 @@ import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import type { DragControls } from "motion/react";
 import { Plus, X, GripVertical } from "lucide-react";
 import type { Block, Category } from "@/lib/types";
-import { HOUR_HEIGHT_PX, timeToOffsetPx } from "@/lib/timeOffset";
+import { daySpanPx, DEFAULT_DAY_START } from "@/lib/dayWindow";
 import { fmtRange, blockPct } from "@/lib/dharma";
 import { useBlockCelebrationOnce, celebrate } from "@/lib/celebrations";
 import { springConfigs } from "@/lib/motion";
@@ -51,6 +51,8 @@ interface Props {
   logHighlight?: boolean;
   /** timer: called with (brickId, elapsedSec) when a running timer is paused/committed. */
   onTimerCommit?: (brickId: string, elapsedSec: number) => void;
+  /** Day anchor "HH:MM" — wake-to-wake geometry. Default 04:00. */
+  dayStart?: string;
 }
 
 export function TimelineBlock({
@@ -67,6 +69,7 @@ export function TimelineBlock({
   isActive = false,
   logHighlight = false,
   onTimerCommit,
+  dayStart = DEFAULT_DAY_START,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [bloomKey, setBloomKey] = useState(0);
@@ -78,11 +81,13 @@ export function TimelineBlock({
       ? (categories.find((c) => c.id === block.categoryId) ?? null)
       : null;
 
-  const top = timeToOffsetPx(block.start, HOUR_HEIGHT_PX);
-  const height =
-    block.end !== undefined
-      ? timeToOffsetPx(block.end, HOUR_HEIGHT_PX) - top
-      : HOUR_HEIGHT_PX / 12;
+  // Wake-to-wake geometry: position + height relative to the day anchor, so an
+  // overnight block (end < start) is one continuous span, never split.
+  const { topPx: top, heightPx: height } = daySpanPx(
+    block.start,
+    block.end,
+    dayStart,
+  );
 
   const timeLabel = fmtRange(block);
   const pct = blockPct(block);

@@ -123,6 +123,7 @@ describe("C-m6-006: DraggableTimelineBlock lift + valid drop", () => {
     render(
       <EditModeContext.Provider value={{ editMode: true, toggle: vi.fn() }}>
         <DraggableTimelineBlock
+          dayStart="00:00"
           block={blkA}
           categories={[]}
           modalOpen={false}
@@ -157,6 +158,7 @@ describe("C-m6-006: DraggableTimelineBlock lift + valid drop", () => {
     const { rerender } = render(
       <EditModeContext.Provider value={{ editMode: true, toggle: vi.fn() }}>
         <DraggableTimelineBlock
+          dayStart="00:00"
           block={blkA}
           categories={[]}
           modalOpen={false}
@@ -179,6 +181,7 @@ describe("C-m6-006: DraggableTimelineBlock lift + valid drop", () => {
       rerender(
         <EditModeContext.Provider value={{ editMode: true, toggle: vi.fn() }}>
           <DraggableTimelineBlock
+            dayStart="00:00"
             block={acceptedBlock}
             categories={[]}
             modalOpen={false}
@@ -200,6 +203,7 @@ describe("C-m6-006: DraggableTimelineBlock lift + valid drop", () => {
     render(
       <EditModeContext.Provider value={{ editMode: true, toggle: vi.fn() }}>
         <DraggableTimelineBlock
+          dayStart="00:00"
           block={blkA}
           categories={[]}
           modalOpen={false}
@@ -216,6 +220,7 @@ describe("C-m6-006: DraggableTimelineBlock lift + valid drop", () => {
     render(
       <EditModeContext.Provider value={{ editMode: false, toggle: vi.fn() }}>
         <DraggableTimelineBlock
+          dayStart="00:00"
           block={blkA}
           categories={[]}
           modalOpen={false}
@@ -240,6 +245,7 @@ describe("C-m6-007: reduced motion — haptics and onReorderRequest still fire",
     render(
       <EditModeContext.Provider value={{ editMode: true, toggle: vi.fn() }}>
         <DraggableTimelineBlock
+          dayStart="00:00"
           block={blkA}
           categories={[]}
           modalOpen={false}
@@ -267,6 +273,7 @@ describe("C-m6-007: reduced motion — haptics and onReorderRequest still fire",
     const { rerender } = render(
       <EditModeContext.Provider value={{ editMode: true, toggle: vi.fn() }}>
         <DraggableTimelineBlock
+          dayStart="00:00"
           block={blkA}
           categories={[]}
           modalOpen={false}
@@ -282,6 +289,7 @@ describe("C-m6-007: reduced motion — haptics and onReorderRequest still fire",
       rerender(
         <EditModeContext.Provider value={{ editMode: true, toggle: vi.fn() }}>
           <DraggableTimelineBlock
+            dayStart="00:00"
             block={acceptedBlock}
             categories={[]}
             modalOpen={false}
@@ -321,6 +329,7 @@ describe("C-m6-008: DraggableTimelineBlock overlap rejection path", () => {
     render(
       <EditModeContext.Provider value={{ editMode: true, toggle: vi.fn() }}>
         <DraggableTimelineBlock
+          dayStart="00:00"
           block={blkA}
           categories={[]}
           modalOpen={false}
@@ -368,6 +377,7 @@ describe("C-m6-009: DraggableTimelineBlock same-slot no-op", () => {
     render(
       <EditModeContext.Provider value={{ editMode: true, toggle: vi.fn() }}>
         <DraggableTimelineBlock
+          dayStart="00:00"
           block={blkA}
           categories={[]}
           modalOpen={false}
@@ -402,6 +412,7 @@ describe("C-m6-010: DraggableTimelineBlock — modalOpen=true suppresses drag", 
     render(
       <EditModeContext.Provider value={{ editMode: true, toggle: vi.fn() }}>
         <DraggableTimelineBlock
+          dayStart="00:00"
           block={blkA}
           categories={[]}
           modalOpen={true}
@@ -419,6 +430,7 @@ describe("C-m6-010: DraggableTimelineBlock — modalOpen=true suppresses drag", 
     const { rerender } = render(
       <EditModeContext.Provider value={{ editMode: true, toggle: vi.fn() }}>
         <DraggableTimelineBlock
+          dayStart="00:00"
           block={blkA}
           categories={[]}
           modalOpen={true}
@@ -430,6 +442,7 @@ describe("C-m6-010: DraggableTimelineBlock — modalOpen=true suppresses drag", 
     rerender(
       <EditModeContext.Provider value={{ editMode: true, toggle: vi.fn() }}>
         <DraggableTimelineBlock
+          dayStart="00:00"
           block={blkA}
           categories={[]}
           modalOpen={false}
@@ -454,6 +467,7 @@ describe("C-m6-011: DraggableTimelineBlock — Edit Mode toggle mid-drag", () =>
     const { rerender } = render(
       <EditModeContext.Provider value={{ editMode: true, toggle: vi.fn() }}>
         <DraggableTimelineBlock
+          dayStart="00:00"
           block={blkA}
           categories={[]}
           modalOpen={false}
@@ -472,6 +486,7 @@ describe("C-m6-011: DraggableTimelineBlock — Edit Mode toggle mid-drag", () =>
     rerender(
       <EditModeContext.Provider value={{ editMode: false, toggle: vi.fn() }}>
         <DraggableTimelineBlock
+          dayStart="00:00"
           block={blkA}
           categories={[]}
           modalOpen={false}
@@ -514,6 +529,7 @@ describe("C-m7b-007 — <DraggableTimelineBlock isActive={true}> threads isActiv
     const { container } = render(
       <EditModeContext.Provider value={{ editMode: false, toggle: vi.fn() }}>
         <DraggableTimelineBlock
+          dayStart="00:00"
           block={activeBlk}
           categories={[]}
           modalOpen={false}
@@ -535,6 +551,7 @@ describe("C-m7b-007 — <DraggableTimelineBlock isActive={true}> threads isActiv
     const { container } = render(
       <EditModeContext.Provider value={{ editMode: false, toggle: vi.fn() }}>
         <DraggableTimelineBlock
+          dayStart="00:00"
           block={activeBlk}
           categories={[]}
           modalOpen={false}
@@ -555,6 +572,7 @@ describe("C-m7b-007 — <DraggableTimelineBlock isActive={true}> threads isActiv
     const { container, rerender } = render(
       <EditModeContext.Provider value={{ editMode: false, toggle: vi.fn() }}>
         <DraggableTimelineBlock
+          dayStart="00:00"
           block={activeBlk}
           categories={[]}
           modalOpen={false}
@@ -574,6 +592,7 @@ describe("C-m7b-007 — <DraggableTimelineBlock isActive={true}> threads isActiv
     rerender(
       <EditModeContext.Provider value={{ editMode: false, toggle: vi.fn() }}>
         <DraggableTimelineBlock
+          dayStart="00:00"
           block={activeBlk}
           categories={[]}
           modalOpen={false}
@@ -595,6 +614,7 @@ describe("C-m7b-008 — <DraggableTimelineBlock isActive={false}> (default) — 
     const { container } = render(
       <EditModeContext.Provider value={{ editMode: false, toggle: vi.fn() }}>
         <DraggableTimelineBlock
+          dayStart="00:00"
           block={activeBlk}
           categories={[]}
           modalOpen={false}
@@ -615,6 +635,7 @@ describe("C-m7b-008 — <DraggableTimelineBlock isActive={false}> (default) — 
     const { container } = render(
       <EditModeContext.Provider value={{ editMode: false, toggle: vi.fn() }}>
         <DraggableTimelineBlock
+          dayStart="00:00"
           block={activeBlk}
           categories={[]}
           modalOpen={false}
@@ -631,6 +652,7 @@ describe("C-m7b-008 — <DraggableTimelineBlock isActive={false}> (default) — 
     const { container: c1 } = render(
       <EditModeContext.Provider value={{ editMode: false, toggle: vi.fn() }}>
         <DraggableTimelineBlock
+          dayStart="00:00"
           block={activeBlk}
           categories={[]}
           modalOpen={false}
@@ -643,6 +665,7 @@ describe("C-m7b-008 — <DraggableTimelineBlock isActive={false}> (default) — 
     const { container: c2 } = render(
       <EditModeContext.Provider value={{ editMode: false, toggle: vi.fn() }}>
         <DraggableTimelineBlock
+          dayStart="00:00"
           block={activeBlk}
           categories={[]}
           modalOpen={false}

@@ -85,8 +85,11 @@ describe("U-m1-010: HOUR_HEIGHT_PX constant is exactly 64", () => {
     ];
     for (const f of files) {
       const src = fs.readFileSync(path.join(__dirname, "..", f), "utf-8");
-      // The file must import HOUR_HEIGHT_PX (so it has the symbol available).
-      expect(src.includes("HOUR_HEIGHT_PX")).toBe(true);
+      // The file routes height/top through the shared constant — either directly
+      // (HOUR_HEIGHT_PX) or via daySpanPx() from lib/dayWindow (which uses it).
+      expect(src.includes("HOUR_HEIGHT_PX") || src.includes("daySpanPx")).toBe(
+        true,
+      );
       // Any standalone `: 64` or `* 64` or `64 *` would be the smell.
       // We grep for height/top style patterns specifically.
       const badHeightPattern = /(height|top)\s*[:=]\s*[^,;)]*\b64\b/g;

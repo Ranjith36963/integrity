@@ -26,7 +26,7 @@ describe("C-m2-014: TimelineBlock new schema, absolute position, height", () => 
 
   it("renders with position absolute, top 576px (9*64), height 96px ((10.5-9)*64)", () => {
     const { container: c } = render(
-      <TimelineBlock block={block} categories={categories} />,
+      <TimelineBlock dayStart="00:00" block={block} categories={categories} />,
     );
     const el = c.querySelector(
       '[data-component="timeline-block"]',
@@ -38,7 +38,9 @@ describe("C-m2-014: TimelineBlock new schema, absolute position, height", () => 
   });
 
   it("renders title 'Foo' with single-line ellipsis CSS", () => {
-    render(<TimelineBlock block={block} categories={categories} />);
+    render(
+      <TimelineBlock dayStart="00:00" block={block} categories={categories} />,
+    );
     const title = screen.getByText("Foo");
     const style = (title as HTMLElement).style;
     expect(style.overflow).toBe("hidden");
@@ -47,13 +49,15 @@ describe("C-m2-014: TimelineBlock new schema, absolute position, height", () => 
   });
 
   it("renders time-range label '09:00–10:30' (en-dash)", () => {
-    render(<TimelineBlock block={block} categories={categories} />);
+    render(
+      <TimelineBlock dayStart="00:00" block={block} categories={categories} />,
+    );
     expect(screen.getByText("09:00–10:30")).toBeInTheDocument();
   });
 
   it("renders category color dot with background matching #34d399", () => {
     const { container } = render(
-      <TimelineBlock block={block} categories={categories} />,
+      <TimelineBlock dayStart="00:00" block={block} categories={categories} />,
     );
     const dot = container.querySelector(
       '[data-testid="category-dot"]',
@@ -66,7 +70,7 @@ describe("C-m2-014: TimelineBlock new schema, absolute position, height", () => 
 
   it("clicking does not throw (no-op onClick)", () => {
     const { container } = render(
-      <TimelineBlock block={block} categories={categories} />,
+      <TimelineBlock dayStart="00:00" block={block} categories={categories} />,
     );
     const el = container.querySelector('[data-component="timeline-block"]');
     expect(() => (el as HTMLElement).click()).not.toThrow();
@@ -87,7 +91,7 @@ describe("C-m2-015: TimelineBlock with no end field", () => {
 
   it("renders top=576px (9*64) and height≈5.33px (64/12)", () => {
     const { container } = render(
-      <TimelineBlock block={block} categories={[]} />,
+      <TimelineBlock dayStart="00:00" block={block} categories={[]} />,
     );
     const el = container.querySelector(
       '[data-component="timeline-block"]',
@@ -99,7 +103,7 @@ describe("C-m2-015: TimelineBlock with no end field", () => {
   });
 
   it("renders just '09:00' (no en-dash) when end is not set", () => {
-    render(<TimelineBlock block={block} categories={[]} />);
+    render(<TimelineBlock dayStart="00:00" block={block} categories={[]} />);
     expect(screen.getByText("09:00")).toBeInTheDocument();
     // en-dash should NOT appear in the time label
     const all = screen.queryAllByText(/09:00[–]/);
@@ -108,7 +112,7 @@ describe("C-m2-015: TimelineBlock with no end field", () => {
 
   it("does NOT render category dot when categoryId is null", () => {
     const { container } = render(
-      <TimelineBlock block={block} categories={[]} />,
+      <TimelineBlock dayStart="00:00" block={block} categories={[]} />,
     );
     expect(container.querySelector('[data-testid="category-dot"]')).toBeNull();
   });
@@ -141,7 +145,12 @@ describe("C-m3-021: TimelineBlock tap-to-expand toggles", () => {
   it("clicking block sets aria-expanded='true'", async () => {
     const user = userEvent.setup();
     const { container } = render(
-      <TimelineBlock block={block} categories={[cat1]} onAddBrick={vi.fn()} />,
+      <TimelineBlock
+        dayStart="00:00"
+        block={block}
+        categories={[cat1]}
+        onAddBrick={vi.fn()}
+      />,
     );
     const card = container.querySelector(
       '[data-component="timeline-block"]',
@@ -153,7 +162,12 @@ describe("C-m3-021: TimelineBlock tap-to-expand toggles", () => {
   it("expanded: renders ul role='list' with one li per block.bricks[]", async () => {
     const user = userEvent.setup();
     const { container } = render(
-      <TimelineBlock block={block} categories={[cat1]} onAddBrick={vi.fn()} />,
+      <TimelineBlock
+        dayStart="00:00"
+        block={block}
+        categories={[cat1]}
+        onAddBrick={vi.fn()}
+      />,
     );
     const card = container.querySelector(
       '[data-component="timeline-block"]',
@@ -168,10 +182,20 @@ describe("C-m3-021: TimelineBlock tap-to-expand toggles", () => {
   it("expanded: '+ Add brick' ghost button is below the list", async () => {
     const user = userEvent.setup();
     render(
-      <TimelineBlock block={block} categories={[cat1]} onAddBrick={vi.fn()} />,
+      <TimelineBlock
+        dayStart="00:00"
+        block={block}
+        categories={[cat1]}
+        onAddBrick={vi.fn()}
+      />,
     );
     const { container } = render(
-      <TimelineBlock block={block} categories={[cat1]} onAddBrick={vi.fn()} />,
+      <TimelineBlock
+        dayStart="00:00"
+        block={block}
+        categories={[cat1]}
+        onAddBrick={vi.fn()}
+      />,
     );
     const card = container.querySelector(
       '[data-component="timeline-block"]',
@@ -185,7 +209,12 @@ describe("C-m3-021: TimelineBlock tap-to-expand toggles", () => {
   it("clicking card again returns aria-expanded='false'", async () => {
     const user = userEvent.setup();
     const { container } = render(
-      <TimelineBlock block={block} categories={[cat1]} onAddBrick={vi.fn()} />,
+      <TimelineBlock
+        dayStart="00:00"
+        block={block}
+        categories={[cat1]}
+        onAddBrick={vi.fn()}
+      />,
     );
     const card = container.querySelector(
       '[data-component="timeline-block"]',
@@ -623,7 +652,7 @@ describe("C-m5-003: TimelineBlock Locked mode — no × delete button; expand fi
   it("block card carries no jiggle data attribute in Locked mode", () => {
     const { container } = render(
       <EditModeProvider>
-        <TimelineBlock block={blkRecur} categories={[]} />
+        <TimelineBlock dayStart="00:00" block={blkRecur} categories={[]} />
       </EditModeProvider>,
     );
     const card = container.querySelector(
@@ -1002,7 +1031,7 @@ describe("C-m6-002: Locked mode — no drag handle rendered", () => {
   it("no 'Reorder block' handle renders when editMode === false", () => {
     render(
       <EditModeProvider>
-        <TimelineBlock block={blkM6} categories={[]} />
+        <TimelineBlock dayStart="00:00" block={blkM6} categories={[]} />
       </EditModeProvider>,
     );
     expect(screen.queryByRole("button", { name: /reorder block/i })).toBeNull();
@@ -1058,7 +1087,12 @@ const activeBlock: Block = {
 describe("C-m7b-004 — <TimelineBlock isActive={true}> adds is-active class + renders NowTag", () => {
   it("outer motion.div has class is-active", () => {
     const { container } = render(
-      <TimelineBlock block={activeBlock} categories={[]} isActive={true} />,
+      <TimelineBlock
+        dayStart="00:00"
+        block={activeBlock}
+        categories={[]}
+        isActive={true}
+      />,
     );
     const outer = container.querySelector(
       '[data-component="timeline-block"]',
@@ -1069,14 +1103,24 @@ describe("C-m7b-004 — <TimelineBlock isActive={true}> adds is-active class + r
 
   it("NowTag is present in DOM subtree", () => {
     render(
-      <TimelineBlock block={activeBlock} categories={[]} isActive={true} />,
+      <TimelineBlock
+        dayStart="00:00"
+        block={activeBlock}
+        categories={[]}
+        isActive={true}
+      />,
     );
     expect(screen.getByTestId("now-tag")).toBeInTheDocument();
   });
 
   it("NowTag is a direct child of the outer motion.div", () => {
     const { container } = render(
-      <TimelineBlock block={activeBlock} categories={[]} isActive={true} />,
+      <TimelineBlock
+        dayStart="00:00"
+        block={activeBlock}
+        categories={[]}
+        isActive={true}
+      />,
     );
     const outer = container.querySelector(
       '[data-component="timeline-block"]',
@@ -1089,7 +1133,12 @@ describe("C-m7b-004 — <TimelineBlock isActive={true}> adds is-active class + r
 
   it("existing card semantics are unchanged — title, aria-expanded present", () => {
     render(
-      <TimelineBlock block={activeBlock} categories={[]} isActive={true} />,
+      <TimelineBlock
+        dayStart="00:00"
+        block={activeBlock}
+        categories={[]}
+        isActive={true}
+      />,
     );
     expect(screen.getByText("Active Block")).toBeInTheDocument();
     const outer = screen.getByRole("article");
@@ -1101,7 +1150,12 @@ describe("C-m7b-004 — <TimelineBlock isActive={true}> adds is-active class + r
 describe("C-m7b-005 — <TimelineBlock isActive={false}> (default) — byte-identical to today: no is-active, no NowTag", () => {
   it("explicit isActive={false} — outer div does NOT have is-active class", () => {
     const { container } = render(
-      <TimelineBlock block={activeBlock} categories={[]} isActive={false} />,
+      <TimelineBlock
+        dayStart="00:00"
+        block={activeBlock}
+        categories={[]}
+        isActive={false}
+      />,
     );
     const outer = container.querySelector(
       '[data-component="timeline-block"]',
@@ -1111,14 +1165,19 @@ describe("C-m7b-005 — <TimelineBlock isActive={false}> (default) — byte-iden
 
   it("explicit isActive={false} — no NowTag in DOM", () => {
     render(
-      <TimelineBlock block={activeBlock} categories={[]} isActive={false} />,
+      <TimelineBlock
+        dayStart="00:00"
+        block={activeBlock}
+        categories={[]}
+        isActive={false}
+      />,
     );
     expect(screen.queryByTestId("now-tag")).toBeNull();
   });
 
   it("isActive prop omitted (default false) — outer div does NOT have is-active class", () => {
     const { container } = render(
-      <TimelineBlock block={activeBlock} categories={[]} />,
+      <TimelineBlock dayStart="00:00" block={activeBlock} categories={[]} />,
     );
     const outer = container.querySelector(
       '[data-component="timeline-block"]',
@@ -1127,16 +1186,23 @@ describe("C-m7b-005 — <TimelineBlock isActive={false}> (default) — byte-iden
   });
 
   it("isActive prop omitted (default false) — no NowTag in DOM", () => {
-    render(<TimelineBlock block={activeBlock} categories={[]} />);
+    render(
+      <TimelineBlock dayStart="00:00" block={activeBlock} categories={[]} />,
+    );
     expect(screen.queryByTestId("now-tag")).toBeNull();
   });
 
   it("outerHTML is byte-identical between explicit false and omitted prop", () => {
     const { container: c1 } = render(
-      <TimelineBlock block={activeBlock} categories={[]} isActive={false} />,
+      <TimelineBlock
+        dayStart="00:00"
+        block={activeBlock}
+        categories={[]}
+        isActive={false}
+      />,
     );
     const { container: c2 } = render(
-      <TimelineBlock block={activeBlock} categories={[]} />,
+      <TimelineBlock dayStart="00:00" block={activeBlock} categories={[]} />,
     );
     const outer1 = c1.querySelector(
       '[data-component="timeline-block"]',
@@ -1155,7 +1221,12 @@ describe("C-m7b-006 — <TimelineBlock isActive={true}> under reduced motion —
     vi.mocked(useReducedMotion).mockReturnValue(true);
 
     const { container } = render(
-      <TimelineBlock block={activeBlock} categories={[]} isActive={true} />,
+      <TimelineBlock
+        dayStart="00:00"
+        block={activeBlock}
+        categories={[]}
+        isActive={true}
+      />,
     );
     const outer = container.querySelector(
       '[data-component="timeline-block"]',
@@ -1170,7 +1241,12 @@ describe("C-m7b-006 — <TimelineBlock isActive={true}> under reduced motion —
     vi.mocked(useReducedMotion).mockReturnValue(true);
 
     render(
-      <TimelineBlock block={activeBlock} categories={[]} isActive={true} />,
+      <TimelineBlock
+        dayStart="00:00"
+        block={activeBlock}
+        categories={[]}
+        isActive={true}
+      />,
     );
     expect(screen.getByTestId("now-tag")).toBeInTheDocument();
 
@@ -1182,7 +1258,12 @@ describe("C-m7b-006 — <TimelineBlock isActive={true}> under reduced motion —
 
     vi.mocked(useReducedMotion).mockReturnValue(false);
     const { container: cFalse } = render(
-      <TimelineBlock block={activeBlock} categories={[]} isActive={true} />,
+      <TimelineBlock
+        dayStart="00:00"
+        block={activeBlock}
+        categories={[]}
+        isActive={true}
+      />,
     );
     const outerFalse = cFalse.querySelector(
       '[data-component="timeline-block"]',
@@ -1190,7 +1271,12 @@ describe("C-m7b-006 — <TimelineBlock isActive={true}> under reduced motion —
 
     vi.mocked(useReducedMotion).mockReturnValue(true);
     const { container: cTrue } = render(
-      <TimelineBlock block={activeBlock} categories={[]} isActive={true} />,
+      <TimelineBlock
+        dayStart="00:00"
+        block={activeBlock}
+        categories={[]}
+        isActive={true}
+      />,
     );
     const outerTrue = cTrue.querySelector(
       '[data-component="timeline-block"]',

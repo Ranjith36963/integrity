@@ -69,6 +69,9 @@ const defaultProps = {
   categories: [],
   now: "08:00",
   onSlotTap: vi.fn(),
+  // These tests assert 00:00-origin pixel math; pin the anchor to 00:00 so the
+  // wake-to-wake default (04:00) doesn't shift the expected offsets.
+  dayStart: "00:00",
 };
 
 // C-m1-009: 24 hour labels in document order, font-ui, color ink-dim (re-authored M2)
@@ -336,6 +339,7 @@ describe("C-m2-019: Timeline layered structure (re-authored M2)", () => {
         categories={[]}
         now="08:00"
         onSlotTap={vi.fn()}
+        dayStart="00:00"
       />,
     );
     expect(
@@ -394,6 +398,7 @@ describe("C-m4e-030: Timeline renders TimelineBlock for block items + TimedLoose
         categories={[]}
         now="08:00"
         onSlotTap={vi.fn()}
+        dayStart="00:00"
       />,
     );
     const tlBlock = container.querySelector(
@@ -411,6 +416,7 @@ describe("C-m4e-030: Timeline renders TimelineBlock for block items + TimedLoose
         categories={[]}
         now="08:00"
         onSlotTap={vi.fn()}
+        dayStart="00:00"
       />,
     );
     const timedCard = container.querySelector(
@@ -431,6 +437,7 @@ describe("C-m4e-030: Timeline renders TimelineBlock for block items + TimedLoose
         categories={[]}
         now="08:00"
         onSlotTap={vi.fn()}
+        dayStart="00:00"
       />,
     );
     expect(
@@ -550,6 +557,7 @@ describe("C-m7a-007: <Timeline stagger> toggle — false byte-identical; true wr
         categories={[]}
         now="08:00"
         onSlotTap={vi.fn()}
+        dayStart="00:00"
       />,
     );
     expect(
@@ -747,6 +755,7 @@ describe("C-m7b-009 — <Timeline> applies isActive={true} to EXACTLY ONE block 
         categories={[]}
         now="08:00"
         onSlotTap={vi.fn()}
+        dayStart="00:00"
       />,
     );
     const active = container.querySelectorAll(

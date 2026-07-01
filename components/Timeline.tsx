@@ -18,7 +18,12 @@
 import { useRef, useEffect } from "react";
 import { motion } from "motion/react";
 import type { Block, Brick, Category } from "@/lib/types";
-import { HOUR_HEIGHT_PX, timeToOffsetPx } from "@/lib/timeOffset";
+import { HOUR_HEIGHT_PX } from "@/lib/timeOffset";
+import {
+  dayHours,
+  minutesFromDayStart,
+  DEFAULT_DAY_START,
+} from "@/lib/dayWindow";
 import { usePrefersReducedMotion } from "@/lib/reducedMotion";
 import { staggerForCount } from "@/lib/motion";
 import { NowLine } from "./NowLine";
@@ -33,11 +38,6 @@ import { activeBlockId } from "@/lib/activeBlock";
 export type TimelineItem =
   | { kind: "block"; block: Block }
   | { kind: "brick"; brick: Brick };
-
-const HOURS = Array.from(
-  { length: 24 },
-  (_, i) => String(i).padStart(2, "0") + ":00",
-);
 
 interface Props {
   items: TimelineItem[];
@@ -81,6 +81,8 @@ interface Props {
   logIncompleteBlockIds?: Set<string>;
   /** timer: called with (brickId, elapsedSec) when a running timer is paused/committed. */
   onTimerCommit?: (brickId: string, elapsedSec: number) => void;
+  /** Day anchor "HH:MM" — the timeline runs dayStart → +24h. Default 04:00. */
+  dayStart?: string;
 }
 
 export function Timeline({
@@ -102,7 +104,9 @@ export function Timeline({
   logMode = false,
   logIncompleteBlockIds,
   onTimerCommit,
+  dayStart = DEFAULT_DAY_START,
 }: Props) {
+  const hourLabels = dayHours(dayStart);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // M7a: stagger variants — built only when stagger===true
@@ -164,7 +168,7 @@ export function Timeline({
   useEffect(() => {
     if (!scrollRef.current) return;
     const containerHeight = scrollRef.current.clientHeight;
-    const offsetPx = timeToOffsetPx(now, HOUR_HEIGHT_PX);
+    const offsetPx = (minutesFromDayStart(now, dayStart) / 60) * HOUR_HEIGHT_PX;
     const targetTop = Math.max(0, offsetPx - containerHeight / 2);
     scrollRef.current.scrollTop = targetTop;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -198,7 +202,7 @@ export function Timeline({
           className="absolute top-0 bottom-0 left-0 flex flex-col"
           style={{ width: `${labelColumnWidth}px` }}
         >
-          {HOURS.map((label) => (
+          {hourLabels.map((label) => (
             <div
               key={label}
               data-testid="hour-label"
@@ -229,7 +233,11 @@ export function Timeline({
           }}
         >
           {/* Layer 1: Slot tap targets (z=1, above hour-grid, below blocks) */}
-          <SlotTapTargets onSlotTap={onSlotTap} editMode={editMode} />
+          <SlotTapTargets
+            onSlotTap={onSlotTap}
+            editMode={editMode}
+            dayStart={dayStart}
+          />
 
           {/* Layer 2: Timeline items — block cards OR timed loose brick cards */}
           {/* M7a: when stagger===true, wrap the items list in a Framer Motion stagger container.
@@ -269,6 +277,7 @@ export function Timeline({
                         (logIncompleteBlockIds?.has(item.block.id) ?? false)
                       }
                       onTimerCommit={onTimerCommit}
+                      dayStart={dayStart}
                     />
                   ) : (
                     <motion.div key={item.block.id} variants={childVariants}>
@@ -286,6 +295,7 @@ export function Timeline({
                           (logIncompleteBlockIds?.has(item.block.id) ?? false)
                         }
                         onTimerCommit={onTimerCommit}
+                        dayStart={dayStart}
                       />
                     </motion.div>
                   )
@@ -298,6 +308,7 @@ export function Timeline({
                       onUnitsOpenSheet={onUnitsOpenSheet}
                       onRequestDeleteBrick={onRequestDeleteBrick}
                       onTimerCommit={onTimerCommit}
+                      dayStart={dayStart}
                     />
                   </motion.div>
                 ),
@@ -311,7 +322,7 @@ export function Timeline({
                   <div
                     className="absolute inset-x-4 z-0"
                     style={{
-                      top: `${Math.max(20, timeToOffsetPx(now, HOUR_HEIGHT_PX) - 80)}px`,
+                      top: `${Math.max(20, (minutesFromDayStart(now, dayStart) / 60) * HOUR_HEIGHT_PX - 80)}px`,
                     }}
                   >
                     <EmptyBlocks />
@@ -344,6 +355,7 @@ export function Timeline({
                         (logIncompleteBlockIds?.has(item.block.id) ?? false)
                       }
                       onTimerCommit={onTimerCommit}
+                      dayStart={dayStart}
                     />
                   ) : (
                     <TimelineBlock
@@ -361,6 +373,7 @@ export function Timeline({
                         (logIncompleteBlockIds?.has(item.block.id) ?? false)
                       }
                       onTimerCommit={onTimerCommit}
+                      dayStart={dayStart}
                     />
                   )
                 ) : (
@@ -372,6 +385,7 @@ export function Timeline({
                     onUnitsOpenSheet={onUnitsOpenSheet}
                     onRequestDeleteBrick={onRequestDeleteBrick}
                     onTimerCommit={onTimerCommit}
+                    dayStart={dayStart}
                   />
                 ),
               )}
@@ -383,7 +397,7 @@ export function Timeline({
                 <div
                   className="absolute inset-x-4 z-0"
                   style={{
-                    top: `${Math.max(20, timeToOffsetPx(now, HOUR_HEIGHT_PX) - 80)}px`,
+                    top: `${Math.max(20, (minutesFromDayStart(now, dayStart) / 60) * HOUR_HEIGHT_PX - 80)}px`,
                   }}
                 >
                   <EmptyBlocks />
@@ -393,7 +407,7 @@ export function Timeline({
           )}
 
           {/* Layer 3: NowLine — always on top */}
-          <NowLine now={now} />
+          <NowLine now={now} dayStart={dayStart} />
         </div>
       </div>
     </div>

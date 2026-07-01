@@ -16,6 +16,7 @@
 import type { AppState, Action, Brick } from "./types";
 import { assertNever } from "./types";
 import { today } from "./dharma";
+import { DEFAULT_DAY_START } from "./dayWindow";
 import { findOverlaps, selectAllTimedItems } from "./overlap";
 
 /**
@@ -45,6 +46,7 @@ export function defaultState(): AppState {
     currentDate: today(), // M9b — in-progress day date (ADR-045)
     history: {}, // M9b — archived days map (ADR-045)
     deletions: {}, // M5 — per-day block override map (ADR-018)
+    dayStart: DEFAULT_DAY_START, // day anchor — wake-to-wake (04:00 default)
   };
 }
 

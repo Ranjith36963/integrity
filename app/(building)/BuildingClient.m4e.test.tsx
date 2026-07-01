@@ -53,6 +53,7 @@ describe("C-m4e-027: tray shows non-timed brick only; timeline shows block + Tim
     // Seed: 1 block (bk1), 1 non-timed loose brick (r1), 1 timed loose brick (r2)
     const seed: PersistedState = {
       schemaVersion: 3,
+      dayStart: "00:00",
       programStart: "2026-05-14",
       currentDate: today(), // M9b: rollover no-op (currentDate === today)
       history: {},
@@ -146,6 +147,7 @@ describe("C-m4e-028: tray hidden when looseBricks all have hasDuration=true and 
   beforeEach(() => {
     const seed: PersistedState = {
       schemaVersion: 3,
+      dayStart: "00:00",
       programStart: "2026-05-14",
       currentDate: today(), // M9b: rollover no-op (currentDate === today)
       history: {},
@@ -212,6 +214,7 @@ describe("C-m4e-029: pre-M4e brick without hasDuration gets hasDuration:false vi
     } as Brick;
     const seed: PersistedState = {
       schemaVersion: 3,
+      dayStart: "00:00",
       programStart: "2026-05-14",
       currentDate: today(), // M9b: rollover no-op (currentDate === today)
       history: {},
@@ -253,6 +256,7 @@ describe("U-m4f-018: M4e duration-axis assertions hold for kind:units with hasDu
   beforeEach(() => {
     const seed: PersistedState = {
       schemaVersion: 3,
+      dayStart: "00:00",
       programStart: "2026-05-15",
       currentDate: today(), // M9b: rollover no-op (currentDate === today)
       history: {},

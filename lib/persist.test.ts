@@ -152,7 +152,7 @@ describe("U-m8-002: saveState/loadState round-trip — exact done value fidelity
     expect(loaded.programStart).toBe("2026-05-01");
   });
 
-  it("raw localStorage JSON has exactly the 10 v3 keys — schemaVersion, programStart, currentDate, history, blocks, categories, looseBricks, deletions, firstBrickShown — and schemaVersion === 3", () => {
+  it("raw localStorage JSON has exactly the 11 v3 keys — schemaVersion, programStart, currentDate, history, blocks, categories, looseBricks, deletions, firstBrickShown — and schemaVersion === 3", () => {
     // Sanctioned M5 amendment: schema v2→v3 adds deletions; key count 7→8.
     // Sanctioned M7e amendment: additive firstBrickShown field; key count 9→10.
     const state: PersistedState = {
@@ -176,6 +176,7 @@ describe("U-m8-002: saveState/loadState round-trip — exact done value fidelity
         "blocks",
         "categories",
         "currentDate",
+        "dayStart",
         "deletions",
         "firstBrickShown",
         "freezes",
@@ -234,6 +235,7 @@ describe("U-m8-003: saveState writes ADR-045 persisted shape — schemaVersion i
         "blocks",
         "categories",
         "currentDate",
+        "dayStart",
         "deletions",
         "firstBrickShown",
         "freezes",
@@ -626,7 +628,7 @@ describe("U-m9b-002: saveState/loadState v2 round-trip", () => {
     expect(loaded.programStart).toBe("2026-05-01");
   });
 
-  it("raw localStorage JSON has exactly the 10 v3 keys and schemaVersion === 3", () => {
+  it("raw localStorage JSON has exactly the 11 v3 keys and schemaVersion === 3", () => {
     // Sanctioned M5 amendment: schema v2→v3 adds deletions; key count 7→8.
     // Sanctioned M7e amendment: additive firstBrickShown field; key count 9→10.
     const state: PersistedState = {
@@ -650,6 +652,7 @@ describe("U-m9b-002: saveState/loadState v2 round-trip", () => {
         "blocks",
         "categories",
         "currentDate",
+        "dayStart",
         "deletions",
         "firstBrickShown",
         "freezes",

@@ -17,6 +17,7 @@
 import * as v from "valibot";
 import type { Block, Category, Brick, ArchivedDay } from "./types";
 import { today } from "./dharma";
+import { DEFAULT_DAY_START } from "./dayWindow";
 import {
   archivedDaySchema,
   blockSchema,
@@ -24,6 +25,7 @@ import {
   categorySchema,
   deletionsSchema,
   freezesSchema,
+  hhmmSchema,
   isoDateSchema,
   persistedStateV3Schema,
   type PersistedFieldName,
@@ -44,6 +46,7 @@ export type PersistedState = {
   deletions: Record<string, true>; // M5 — per-day block override map (ADR-018)
   freezes?: Record<string, true>; // Streak-freeze: ISO-YYYY-MM-DD → true. Additive field.
   firstBrickShown?: boolean; // M7e — additive within v3 (ADR-044 "optional fields are an additive change").
+  dayStart?: string; // Day anchor "HH:MM" — additive within v3. Absent → DEFAULT_DAY_START.
 };
 
 /**
@@ -101,6 +104,7 @@ export function defaultPersisted(): PersistedState {
     looseBricks: [],
     deletions: {}, // M5 — empty on first run (ADR-018)
     firstBrickShown: false, // M7e — first-run users have NOT yet earned the card (ADR-039)
+    dayStart: DEFAULT_DAY_START, // day anchor — wake-to-wake (04:00 default)
   };
 }
 
@@ -218,6 +222,20 @@ function parsePerField(obj: Record<string, unknown>): {
     }
   }
 
+  // dayStart is optional; absent → DEFAULT_DAY_START (not a reset). Invalid → reset.
+  let dayStart: string;
+  if (obj.dayStart === undefined) {
+    dayStart = DEFAULT_DAY_START;
+  } else {
+    const ds = v.safeParse(hhmmSchema, obj.dayStart);
+    if (ds.success) {
+      dayStart = ds.output;
+    } else {
+      resetFields.push("dayStart");
+      dayStart = DEFAULT_DAY_START;
+    }
+  }
+
   return {
     state: {
       schemaVersion: 3,
@@ -230,6 +248,7 @@ function parsePerField(obj: Record<string, unknown>): {
       deletions,
       freezes,
       firstBrickShown,
+      dayStart,
     },
     resetFields,
     droppedHistoryDays,
@@ -385,6 +404,7 @@ export function saveState(state: PersistedState): void {
       deletions: state.deletions, // M5
       freezes: state.freezes ?? {}, // Streak-freeze — empty object when never used
       firstBrickShown: state.firstBrickShown ?? false, // M7e — ?? false: undefined coerces to false
+      dayStart: state.dayStart ?? DEFAULT_DAY_START, // day anchor — wake-to-wake
     };
     if (process.env.NODE_ENV !== "production") {
       const result = v.safeParse(persistedStateV3Schema, payload);
