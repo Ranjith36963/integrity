@@ -75,6 +75,10 @@ interface Props {
   /** M7a: when true, wraps the items.map render block in a Framer Motion stagger container.
    * When false (default), renders byte-identical to pre-M7a. Chrome layers not wrapped. */
   stagger?: boolean;
+  /** Log mode: when true, blocks in logIncompleteBlockIds get a neon highlight border. */
+  logMode?: boolean;
+  /** Log mode: set of block IDs that have unlogged bricks and have started. */
+  logIncompleteBlockIds?: Set<string>;
 }
 
 export function Timeline({
@@ -93,6 +97,8 @@ export function Timeline({
   onReorderBrickInBlock,
   modalOpen = false,
   stagger = false,
+  logMode = false,
+  logIncompleteBlockIds,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -255,6 +261,10 @@ export function Timeline({
                       onRequestDeleteBrick={onRequestDeleteBrick}
                       onReorderBrickInBlock={onReorderBrickInBlock}
                       isActive={item.block.id === activeId}
+                      logHighlight={
+                        logMode &&
+                        (logIncompleteBlockIds?.has(item.block.id) ?? false)
+                      }
                     />
                   ) : (
                     <motion.div key={item.block.id} variants={childVariants}>
@@ -267,6 +277,10 @@ export function Timeline({
                         onRequestDeleteBlock={onRequestDeleteBlock}
                         onRequestDeleteBrick={onRequestDeleteBrick}
                         isActive={item.block.id === activeId}
+                        logHighlight={
+                          logMode &&
+                          (logIncompleteBlockIds?.has(item.block.id) ?? false)
+                        }
                       />
                     </motion.div>
                   )
@@ -319,6 +333,10 @@ export function Timeline({
                       onRequestDeleteBrick={onRequestDeleteBrick}
                       onReorderBrickInBlock={onReorderBrickInBlock}
                       isActive={item.block.id === activeId}
+                      logHighlight={
+                        logMode &&
+                        (logIncompleteBlockIds?.has(item.block.id) ?? false)
+                      }
                     />
                   ) : (
                     <TimelineBlock
@@ -331,6 +349,10 @@ export function Timeline({
                       onRequestDeleteBlock={onRequestDeleteBlock}
                       onRequestDeleteBrick={onRequestDeleteBrick}
                       isActive={item.block.id === activeId}
+                      logHighlight={
+                        logMode &&
+                        (logIncompleteBlockIds?.has(item.block.id) ?? false)
+                      }
                     />
                   )
                 ) : (

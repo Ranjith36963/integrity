@@ -41,6 +41,10 @@ interface Props {
   /** M7a: when true, wraps the chip list in a Framer Motion stagger container.
    * When false (default), renders byte-identical to pre-M7a. */
   stagger?: boolean;
+  /** Log mode: when true, incomplete bricks in logIncompleteBrickIds get a neon highlight. */
+  logMode?: boolean;
+  /** Log mode: set of loose brick IDs that are incomplete. */
+  logIncompleteBrickIds?: Set<string>;
 }
 
 export function LooseBricksTray({
@@ -52,6 +56,8 @@ export function LooseBricksTray({
   blocksExist,
   onRequestDeleteBrick,
   stagger = false,
+  logMode = false,
+  logIncompleteBrickIds,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const listId = useId();
@@ -202,6 +208,9 @@ export function LooseBricksTray({
                     onTickToggle={onTickToggle}
                     onUnitsOpenSheet={onUnitsOpenSheet}
                     onRequestDeleteBrick={onRequestDeleteBrick}
+                    logHighlight={
+                      logMode && (logIncompleteBrickIds?.has(brick.id) ?? false)
+                    }
                   />
                 </motion.li>
               ))}
@@ -228,6 +237,9 @@ export function LooseBricksTray({
                     onTickToggle={onTickToggle}
                     onUnitsOpenSheet={onUnitsOpenSheet}
                     onRequestDeleteBrick={onRequestDeleteBrick}
+                    logHighlight={
+                      logMode && (logIncompleteBrickIds?.has(brick.id) ?? false)
+                    }
                   />
                 </li>
               ))}
@@ -270,6 +282,10 @@ export function LooseBricksTray({
                       onTickToggle={onTickToggle}
                       onUnitsOpenSheet={onUnitsOpenSheet}
                       onRequestDeleteBrick={onRequestDeleteBrick}
+                      logHighlight={
+                        logMode &&
+                        (logIncompleteBrickIds?.has(brick.id) ?? false)
+                      }
                     />
                   </motion.div>
                 ))}

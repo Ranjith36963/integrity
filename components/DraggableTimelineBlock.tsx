@@ -44,6 +44,8 @@ interface Props {
   /** M7b: when true, threads isActive={true} to inner <TimelineBlock>.
    * Default false — byte-identical to pre-M7b when omitted. */
   isActive?: boolean;
+  /** Log mode: threads logHighlight to inner <TimelineBlock>. */
+  logHighlight?: boolean;
 }
 
 export function DraggableTimelineBlock({
@@ -60,6 +62,7 @@ export function DraggableTimelineBlock({
   onRequestDeleteBrick,
   onReorderBrickInBlock,
   isActive = false,
+  logHighlight = false,
 }: Props) {
   const { editMode } = useEditMode();
   const dragControls = useDragControls();
@@ -195,6 +198,7 @@ export function DraggableTimelineBlock({
         onRequestDeleteBrick={onRequestDeleteBrick}
         onReorderBrickInBlock={onReorderBrickInBlock}
         isActive={isActive}
+        logHighlight={logHighlight}
       />
     </motion.div>
   );

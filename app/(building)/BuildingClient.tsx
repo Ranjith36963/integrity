@@ -23,6 +23,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { Dispatch } from "react";
 import { toast } from "@/components/Toaster";
+import { haptics } from "@/lib/haptics";
 import { useVoiceCapture } from "@/lib/useVoiceCapture";
 import { VoiceCaptureOverlay } from "@/components/VoiceCaptureOverlay";
 import { FirstBrickCard } from "@/components/FirstBrickCard";
@@ -44,7 +45,7 @@ import {
 } from "@/lib/overlap";
 import { currentDayBlocks } from "@/lib/currentDayBlocks";
 import { useDayCelebrationOnce, celebrate } from "@/lib/celebrations";
-import { useReducedMotion } from "motion/react";
+import { useReducedMotion, AnimatePresence, motion } from "motion/react";
 import { EditModeProvider } from "@/components/EditModeProvider";
 import { TopBar } from "@/components/TopBar";
 import { Hero } from "@/components/Hero";
@@ -239,6 +240,13 @@ export function BuildingClient({
     open: false,
     brickId: null,
   });
+
+  // Log mode: highlights unlogged blocks/bricks from earlier today
+  const [logMode, setLogMode] = useState(false);
+  function handleLogPress() {
+    haptics.light();
+    setLogMode((v) => !v);
+  }
 
   // M5: pendingDelete — set when a × is tapped; cleared on modal confirm/cancel.
   // Stays open independent of editMode (ADR plan.md § Modal-open + Edit-Mode-toggle).
@@ -602,6 +610,34 @@ export function BuildingClient({
   // M5: use stateForTimeline so deleted-today blocks are excluded.
   const timelineItems = selectTimelineItems(stateForTimeline);
 
+  // Log mode: compute which blocks/bricks are "incomplete" (have started but still unlogged).
+  // A brick is incomplete when: tick && !done, or units && done < target.
+  // A block is incomplete when it has started (start ≤ now) AND has at least one incomplete brick.
+  const logIncompleteBlockIds = new Set<string>(
+    visibleBlocks
+      .filter(
+        (block) =>
+          block.start <= now &&
+          block.bricks.some(
+            (br) =>
+              (br.kind === "tick" && !br.done) ||
+              (br.kind === "units" && br.done < br.target),
+          ),
+      )
+      .map((b) => b.id),
+  );
+  const logIncompleteBrickIds = new Set<string>(
+    trayBricks
+      .filter(
+        (br) =>
+          (br.kind === "tick" && !br.done) ||
+          (br.kind === "units" && br.done < br.target),
+      )
+      .map((br) => br.id),
+  );
+  const logPendingCount =
+    logIncompleteBlockIds.size + logIncompleteBrickIds.size;
+
   // M5: derive the delete modal target from pendingDelete
   const pendingDeleteTarget: DeleteTarget | null = (() => {
     if (!pendingDelete) return null;
@@ -650,6 +686,79 @@ export function BuildingClient({
           {announcement}
         </span>
         <TopBar state={state} onOpenSettings={() => setSettingsOpen(true)} />
+
+        {/* Log mode banner — slides in below TopBar when LOG is tapped */}
+        <AnimatePresence>
+          {logMode && (
+            <motion.div
+              data-testid="log-mode-banner"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "0 20px 8px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                <span
+                  style={{
+                    width: "6px",
+                    height: "6px",
+                    borderRadius: "50%",
+                    background: "#4ade80",
+                    boxShadow: "0 0 6px 2px rgba(74,222,128,0.5)",
+                    flexShrink: 0,
+                  }}
+                  aria-hidden="true"
+                />
+                <span
+                  style={{
+                    fontFamily: "var(--font-ui)",
+                    fontSize: "var(--fs-11, 11px)",
+                    color: "#4ade80",
+                    letterSpacing: "0.22em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {logPendingCount > 0
+                    ? `${logPendingCount} to log`
+                    : "All logged"}
+                </span>
+              </div>
+              <button
+                type="button"
+                aria-label="Exit log mode"
+                onClick={() => setLogMode(false)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  fontFamily: "var(--font-ui)",
+                  fontSize: "var(--fs-12, 12px)",
+                  color: "var(--ink-dim)",
+                  padding: "4px 8px",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Done
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
         <SettingsSheet
           open={settingsOpen}
           state={state}
@@ -705,6 +814,8 @@ export function BuildingClient({
               onReorderBrickInBlock={handleReorderBrickInBlock}
               modalOpen={pendingDelete !== null}
               stagger={stagger}
+              logMode={logMode}
+              logIncompleteBlockIds={logIncompleteBlockIds}
             />
             {/* LooseBricksTray: visible when blocks exist OR non-timed loose bricks exist */}
             {showTray && (
@@ -717,13 +828,15 @@ export function BuildingClient({
                 blocksExist={visibleBlocks.length > 0}
                 onRequestDeleteBrick={handleRequestDeleteBrick}
                 stagger={stagger}
+                logMode={logMode}
+                logIncompleteBrickIds={logIncompleteBrickIds}
               />
             )}
           </>
         )}
         <BottomBar
           onAddPress={handleDockAdd}
-          onQuickBrick={() => openBrickSheet(null, null)}
+          onQuickBrick={handleLogPress}
           onMicPress={voice.toggle}
           micSupported={voice.supported}
           listening={voice.status === "listening"}

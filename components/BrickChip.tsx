@@ -27,6 +27,8 @@ interface Props {
   dragHandle?: boolean;
   /** M6: DragControls instance from BlockBrickReorderGroup — used by the handle. */
   dragControls?: DragControls;
+  /** Log mode: when true AND brick is incomplete, renders a neon green highlight border. */
+  logHighlight?: boolean;
 }
 
 function resolveColor(brick: Brick, categories: Category[]): string | null {
@@ -112,6 +114,12 @@ function TypeBadge({ brick }: { brick: Brick }) {
 
 // ─── Main BrickChip ──────────────────────────────────────────────────────────
 
+function isBrickIncomplete(brick: Brick): boolean {
+  if (brick.kind === "tick") return !brick.done;
+  if (brick.kind === "units") return brick.done < brick.target;
+  return false;
+}
+
 export function BrickChip({
   brick,
   categories,
@@ -121,6 +129,7 @@ export function BrickChip({
   onRequestDeleteBrick,
   dragHandle = false,
   dragControls,
+  logHighlight = false,
 }: Props) {
   const pct = brickPct(brick);
   const color = resolveColor(brick, categories);
@@ -255,6 +264,7 @@ export function BrickChip({
       textAlign: "left",
     };
 
+    const showLogRing = logHighlight && isBrickIncomplete(brick);
     return (
       <div
         data-component="brick-chip"
@@ -266,6 +276,11 @@ export function BrickChip({
           background: bgStyle,
           display: "inline-flex",
           width: "100%",
+          outline: showLogRing ? "1.5px solid #4ade80" : undefined,
+          outlineOffset: "1px",
+          boxShadow: showLogRing
+            ? "0 0 8px 1px rgba(74,222,128,0.35)"
+            : undefined,
         }}
       >
         {/* Foreground gradient fill */}
@@ -352,6 +367,7 @@ export function BrickChip({
     textAlign: "left",
   };
 
+  const showLogRingTick = logHighlight && isBrickIncomplete(brick);
   return (
     <div
       data-component="brick-chip"
@@ -363,6 +379,11 @@ export function BrickChip({
         background: bgStyle,
         display: "inline-flex",
         width: "100%",
+        outline: showLogRingTick ? "1.5px solid #4ade80" : undefined,
+        outlineOffset: "1px",
+        boxShadow: showLogRingTick
+          ? "0 0 8px 1px rgba(74,222,128,0.35)"
+          : undefined,
       }}
     >
       {/* Foreground gradient fill */}

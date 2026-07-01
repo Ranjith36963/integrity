@@ -47,6 +47,8 @@ interface Props {
    * Computed by Timeline.tsx via activeBlockId(visibleBlockList, now).
    * Default false — byte-identical to pre-M7b when omitted. */
   isActive?: boolean;
+  /** Log mode: when true, renders a neon green border signalling this block has unlogged bricks. */
+  logHighlight?: boolean;
 }
 
 export function TimelineBlock({
@@ -61,6 +63,7 @@ export function TimelineBlock({
   onReorderRequest: _onReorderRequest,
   onReorderBrickInBlock,
   isActive = false,
+  logHighlight = false,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [bloomKey, setBloomKey] = useState(0);
@@ -164,7 +167,12 @@ export function TimelineBlock({
           right: "4px",
           overflow: "hidden",
           borderRadius: "6px",
-          border: "1px solid var(--card-edge)",
+          border: logHighlight
+            ? "1.5px solid #4ade80"
+            : "1px solid var(--card-edge)",
+          boxShadow: logHighlight
+            ? "0 0 10px 2px rgba(74,222,128,0.3), inset 0 0 0 1px rgba(74,222,128,0.1)"
+            : undefined,
           background: "var(--card)",
           display: "flex",
           alignItems: "flex-start",
@@ -388,6 +396,7 @@ export function TimelineBlock({
                           onTickToggle={onTickToggle}
                           onUnitsOpenSheet={onUnitsOpenSheet}
                           onRequestDeleteBrick={onRequestDeleteBrick}
+                          logHighlight={logHighlight}
                         />
                       </li>
                     ))}
