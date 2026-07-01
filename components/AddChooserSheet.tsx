@@ -100,6 +100,7 @@ export function AddChooserSheet({ open, onPick, onCancel }: Props) {
         >
           <Button
             variant="primary"
+            size="md"
             className="w-full"
             onClick={handleBlock}
             aria-label="Add Block"
@@ -109,6 +110,7 @@ export function AddChooserSheet({ open, onPick, onCancel }: Props) {
           </Button>
           <Button
             variant="secondary"
+            size="md"
             className="w-full"
             onClick={handleBrick}
             aria-label="Add Brick"
@@ -116,15 +118,16 @@ export function AddChooserSheet({ open, onPick, onCancel }: Props) {
           >
             Add Brick
           </Button>
-          <button
-            type="button"
-            data-testid="chooser-cancel"
+          <Button
+            variant="ghost"
+            size="md"
+            className="w-full"
             onClick={handleClose}
             aria-label="Cancel"
-            className="tap mt-1 flex h-11 w-full items-center justify-center rounded-lg border border-[var(--ink-dim)] bg-transparent font-mono [font-size:var(--fs-14)] tracking-wide text-[var(--ink-dim)] uppercase hover:text-[var(--ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+            data-testid="chooser-cancel"
           >
             Cancel
-          </button>
+          </Button>
         </div>
       </div>
     </Sheet>

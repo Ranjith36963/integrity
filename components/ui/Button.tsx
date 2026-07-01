@@ -10,19 +10,19 @@ import { cn } from "@/lib/utils";
 // which manifested as the chooser's "Add Block" button rendering ink-on-amber
 // instead of bg-on-amber — a critical color-contrast failure on a primary CTA.
 export const buttonVariants = cva(
-  "inline-flex items-center justify-center font-mono uppercase tracking-wide transition-transform active:scale-[0.96] disabled:pointer-events-none disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]",
+  "inline-flex items-center justify-center rounded-[8px] font-mono uppercase tracking-[0.08em] transition-transform active:scale-[0.96] disabled:pointer-events-none disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]",
   {
     variants: {
       variant: {
         primary: "bg-[var(--accent)] text-[var(--bg)] hover:brightness-110",
         secondary:
-          "border border-[var(--ink-dim)] text-[var(--ink)] hover:bg-[var(--bg-elev)]",
+          "border border-[var(--card-edge)] text-[var(--ink-dim)] hover:bg-[var(--bg-elev)]",
         ghost: "text-[var(--ink-dim)] hover:text-[var(--ink)]",
       },
       size: {
         sm: "min-h-[44px] px-3 [font-size:var(--fs-12)] min-w-[44px]",
-        md: "h-11 px-4 [font-size:var(--fs-14)] min-w-[44px]",
-        lg: "h-12 px-6 [font-size:var(--fs-16)] min-w-[44px]",
+        md: "h-[48px] px-4 [font-size:var(--fs-14)] min-w-[44px]",
+        lg: "h-[48px] px-6 [font-size:var(--fs-14)] min-w-[44px]",
       },
     },
     defaultVariants: { variant: "primary", size: "md" },
