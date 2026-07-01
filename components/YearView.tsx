@@ -22,6 +22,7 @@ import { ChevronLeft, ChevronRight, Share2 } from "lucide-react";
 import type { AppState } from "@/lib/types";
 import { today } from "@/lib/dharma";
 import { PeriodRing } from "./PeriodRing";
+import { MiniScoreRing } from "./MiniScoreRing";
 import { yearMonths, addYear, subYear } from "@/lib/yearGrid";
 import { monthScore, yearScore } from "@/lib/history";
 import { longestStreak, avgDailyScore, daysCompleted } from "@/lib/insights";
@@ -151,6 +152,53 @@ export function YearView({ state, onOpenMonth }: YearViewProps) {
 
       {/* Year aggregate ring */}
       <YearAggregate score={aggregateScore} />
+
+      {/* Year as 12 month-rings (one progress ring per month) */}
+      <div
+        aria-label="Year month rings"
+        data-testid="year-month-rings"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(6, 1fr)",
+          gap: "var(--sp-4, 4px)",
+          padding: "0 var(--sp-8, 8px) var(--sp-8, 8px)",
+        }}
+      >
+        {months.map((descriptor, idx) => (
+          <button
+            key={descriptor.monthIndex}
+            type="button"
+            aria-label={`${descriptor.name}`}
+            onClick={() => onOpenMonth(descriptor.year, descriptor.monthIndex)}
+            className="tap"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "2px",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              padding: "4px 0",
+            }}
+          >
+            <MiniScoreRing score={monthScores[idx]!} size={34} />
+            <span
+              style={{
+                fontFamily: "var(--font-ui)",
+                fontSize: "9px",
+                color:
+                  descriptor.year === todayYear &&
+                  descriptor.monthIndex === todayMonth
+                    ? "var(--accent)"
+                    : "var(--ink-dim)",
+              }}
+            >
+              {descriptor.name.slice(0, 3)}
+            </span>
+          </button>
+        ))}
+      </div>
 
       {/* Share — generates a stylized PNG card of this year and either
           opens the native share sheet (iOS/Android) or downloads. The

@@ -26,6 +26,9 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { AppState } from "@/lib/types";
 import { today } from "@/lib/dharma";
 import { PeriodRing } from "./PeriodRing";
+import { MiniDayRing } from "./MiniDayRing";
+import { dayBlocksFor } from "@/lib/dayBlocks";
+import { resolveDayStart } from "@/lib/dayWindow";
 import { weekDates, addWeek, subWeek, weekRangeLabel } from "@/lib/weekGrid";
 import { dayScore, weekScore } from "@/lib/history";
 import { longestStreak, avgDailyScore, daysCompleted } from "@/lib/insights";
@@ -155,6 +158,67 @@ export function WeekView({ state, onOpenDay }: WeekViewProps) {
 
       {/* Week aggregate ring */}
       <WeekAggregate score={score} />
+
+      {/* Week as 7 day-rings (each day's blocks drawn as a mini clock) */}
+      <div
+        role="list"
+        aria-label="Week day rings"
+        data-testid="week-day-rings"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(7, 1fr)",
+          gap: "var(--sp-4, 4px)",
+          marginBottom: "var(--sp-8, 8px)",
+        }}
+      >
+        {dates.map((iso, idx) => {
+          const { blocks, categories } = dayBlocksFor(state, iso);
+          const isToday = iso === todayIso;
+          const isFuture = iso > todayIso;
+          return (
+            <button
+              key={iso}
+              type="button"
+              role="listitem"
+              aria-label={`${WEEKDAY_LABELS[idx]} ${Number(iso.slice(8, 10))}`}
+              onClick={() => handleCellOpen(iso)}
+              className="tap"
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "2px",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                padding: "4px 0",
+              }}
+            >
+              <MiniDayRing
+                blocks={blocks}
+                categories={categories}
+                dayStart={resolveDayStart(
+                  state.dayStart,
+                  state.weekendDayStart,
+                  iso,
+                )}
+                size={38}
+                dimmed={isFuture}
+              />
+              <span
+                style={{
+                  fontFamily: "var(--font-ui)",
+                  fontSize: "9px",
+                  color: isToday ? "var(--accent)" : "var(--ink-dim)",
+                }}
+              >
+                {WEEKDAY_LABELS[idx]![0]}
+                {Number(iso.slice(8, 10))}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
       {/* Seven-row day list */}
       <div

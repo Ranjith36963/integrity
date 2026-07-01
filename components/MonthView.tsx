@@ -29,6 +29,9 @@ import { DayCell } from "./DayCell";
 import { PastDayDetail } from "./PastDayDetail";
 import { InsightStrip } from "./InsightStrip";
 import { PeriodRing } from "./PeriodRing";
+import { MiniDayRing } from "./MiniDayRing";
+import { dayBlocksFor } from "@/lib/dayBlocks";
+import { resolveDayStart } from "@/lib/dayWindow";
 
 type MonthViewProps = {
   state: AppState;
@@ -183,6 +186,54 @@ export function MonthView({ state, onOpenDay, initialMonth }: MonthViewProps) {
 
       {/* Month aggregate ring */}
       <PeriodRing score={monthScore} label="Month" />
+
+      {/* Month as a grid of day-rings (one mini clock per day) */}
+      <div
+        aria-label="Month day rings"
+        data-testid="month-day-rings"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(7, 1fr)",
+          gap: "4px",
+          marginBottom: "var(--sp-12, 12px)",
+        }}
+      >
+        {cells.map((cell, i) => {
+          if (cell.kind === "blank") return <div key={`b-${i}`} />;
+          const { iso } = cell;
+          const isFuture = iso > todayIso;
+          const { blocks, categories } = dayBlocksFor(state, iso);
+          return (
+            <button
+              key={iso}
+              type="button"
+              aria-label={`Day ${cell.dayOfMonth}`}
+              onClick={() => handleCellOpen(iso)}
+              className="tap"
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                padding: 0,
+              }}
+            >
+              <MiniDayRing
+                blocks={blocks}
+                categories={categories}
+                dayStart={resolveDayStart(
+                  state.dayStart,
+                  state.weekendDayStart,
+                  iso,
+                )}
+                size={34}
+                dimmed={isFuture}
+              />
+            </button>
+          );
+        })}
+      </div>
 
       {/* Grid — R7-ROOT-M8/M9-P2: added aria-rowcount + aria-colcount and per-
           cell aria-rowindex/colindex so SR users in grid-aware mode (NVDA / JAWS)
