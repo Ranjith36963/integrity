@@ -250,8 +250,8 @@ describe("C-m2-020: BuildingClient wires reducer + sheet + onSave (re-authored M
     expect(tlBlock).not.toBeNull();
     expect(tlBlock?.textContent).toContain("Foo");
 
-    // Hero 0% unchanged
-    expect(screen.getByText("0%")).toBeInTheDocument();
+    // Hero 0% unchanged (the day ring also shows 0% now, so scope to the hero numeral)
+    expect(screen.getByTestId("hero-numeral").textContent).toContain("0%");
 
     // M8: localStorage now has dharma:v1 (persistence is intentional post-M8)
     expect(localStorage.getItem("dharma:v1")).not.toBeNull();

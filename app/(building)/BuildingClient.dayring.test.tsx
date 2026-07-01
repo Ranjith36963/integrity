@@ -1,8 +1,8 @@
-// BuildingClient.dayring.test.tsx — Phase 2: Line/Ring day-view toggle.
+// BuildingClient.dayring.test.tsx — Day view stacks the clock Ring above the
+// Timeline (no toggle — both are always shown, in sequence).
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { BuildingClient } from "./BuildingClient";
 import { usePersistedState } from "@/lib/usePersistedState";
 import { saveState } from "@/lib/persist";
@@ -44,28 +44,31 @@ beforeEach(() => {
   saveState(seed);
 });
 
-describe("Day view Line/Ring toggle", () => {
-  it("defaults to the linear timeline (Line active, no ring)", async () => {
+describe("Day view — Ring above, Timeline below (no toggle)", () => {
+  it("shows BOTH the clock ring and the timeline, always", async () => {
     render(<Harness />);
     await act(async () => {});
-    expect(
-      screen.getByTestId("day-view-line").getAttribute("aria-checked"),
-    ).toBe("true");
-    expect(screen.queryByTestId("day-ring")).toBeNull();
+    // Both surfaces are present at once — the ring...
+    expect(screen.getByTestId("day-ring")).toBeInTheDocument();
+    // ...and the timeline hour-grid.
+    expect(screen.getByTestId("hour-grid")).toBeInTheDocument();
   });
 
-  it("tapping Ring shows the DayRing; tapping Line brings the timeline back", async () => {
-    const user = userEvent.setup();
+  it("no longer renders a Line/Ring view toggle", async () => {
     render(<Harness />);
     await act(async () => {});
+    expect(screen.queryByTestId("day-view-line")).toBeNull();
+    expect(screen.queryByTestId("day-view-ring")).toBeNull();
+  });
 
-    await user.click(screen.getByTestId("day-view-ring"));
-    expect(screen.getByTestId("day-ring")).toBeInTheDocument();
+  it("renders the ring before the timeline in document order", async () => {
+    render(<Harness />);
+    await act(async () => {});
+    const ring = screen.getByTestId("day-ring");
+    const grid = screen.getByTestId("hour-grid");
+    // ring comes first → Node.DOCUMENT_POSITION_FOLLOWING (4) for grid.
     expect(
-      screen.getByTestId("day-view-ring").getAttribute("aria-checked"),
-    ).toBe("true");
-
-    await user.click(screen.getByTestId("day-view-line"));
-    expect(screen.queryByTestId("day-ring")).toBeNull();
+      ring.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });
