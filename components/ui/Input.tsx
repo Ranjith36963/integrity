@@ -48,7 +48,7 @@ export function Input({
         aria-describedby={errorId}
         inputMode={type === "number" ? "numeric" : undefined}
         className={cn(
-          "h-11 w-full rounded-lg border border-[var(--ink-dim)]/30 bg-[var(--bg-elev)] px-3",
+          "h-[48px] w-full rounded-[8px] border border-[var(--card-edge)] bg-[var(--bg-elev)] px-3",
           "font-mono [font-size:var(--fs-14)] text-[var(--ink)] placeholder:text-[var(--ink-dim)]",
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]",
           "disabled:pointer-events-none disabled:opacity-50",

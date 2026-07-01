@@ -23,6 +23,7 @@
 
 import { useState, useRef } from "react";
 import { Sheet } from "@/components/ui/Sheet";
+import { Button } from "@/components/ui/Button";
 import type { AppState } from "@/lib/types";
 import { STORAGE_KEY, migrate, saveState } from "@/lib/persist";
 import { haptics } from "@/lib/haptics";
@@ -153,9 +154,9 @@ export function SettingsSheet({
             className="tap"
             style={{
               width: "100%",
-              minHeight: "52px",
+              minHeight: "48px",
               padding: "var(--sp-12, 12px) var(--sp-16, 16px)",
-              borderRadius: "10px",
+              borderRadius: "8px",
               border: "1px solid var(--surface-2)",
               background: "var(--surface-1)",
               color: "var(--ink)",
@@ -185,9 +186,9 @@ export function SettingsSheet({
             className="tap"
             style={{
               width: "100%",
-              minHeight: "52px",
+              minHeight: "48px",
               padding: "var(--sp-12, 12px) var(--sp-16, 16px)",
-              borderRadius: "10px",
+              borderRadius: "8px",
               border: "1px solid var(--surface-2)",
               background: "var(--surface-1)",
               color: "var(--ink)",
@@ -278,9 +279,9 @@ export function SettingsSheet({
                   className="tap"
                   style={{
                     width: "100%",
-                    minHeight: "52px",
+                    minHeight: "48px",
                     padding: "var(--sp-12, 12px) var(--sp-16, 16px)",
-                    borderRadius: "10px",
+                    borderRadius: "8px",
                     border: "1px solid var(--surface-2)",
                     background: "var(--surface-1)",
                     color: "var(--ink)",
@@ -340,9 +341,9 @@ export function SettingsSheet({
               className="tap"
               style={{
                 width: "100%",
-                minHeight: "52px",
+                minHeight: "48px",
                 padding: "var(--sp-12, 12px) var(--sp-16, 16px)",
-                borderRadius: "10px",
+                borderRadius: "8px",
                 border: "1px solid var(--surface-2)",
                 background: "var(--surface-1)",
                 color: "var(--ink)",
@@ -371,7 +372,7 @@ export function SettingsSheet({
               data-testid="settings-reset-confirm"
               style={{
                 padding: "var(--sp-16, 16px)",
-                borderRadius: "10px",
+                borderRadius: "8px",
                 border: "1px solid var(--cat-5)",
                 background: "var(--surface-1)",
                 display: "flex",
@@ -391,48 +392,24 @@ export function SettingsSheet({
                 cannot be undone.
               </p>
               <div style={{ display: "flex", gap: "8px" }}>
-                <button
-                  type="button"
+                <Button
+                  variant="secondary"
+                  size="md"
+                  className="flex-1"
                   data-testid="settings-reset-cancel"
                   onClick={() => setConfirmingReset(false)}
-                  className="tap"
-                  style={{
-                    flex: 1,
-                    minHeight: "44px",
-                    borderRadius: "8px",
-                    border: "1px solid var(--ink-dim)",
-                    background: "transparent",
-                    color: "var(--ink-dim)",
-                    fontFamily: "var(--font-ui)",
-                    fontSize: "var(--fs-14, 14px)",
-                    cursor: "pointer",
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                  }}
                 >
                   Cancel
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
+                  variant="primary"
+                  size="md"
+                  className="flex-1 bg-[var(--cat-5)] hover:brightness-110"
                   data-testid="settings-reset-confirm-button"
                   onClick={handleConfirmReset}
-                  className="tap"
-                  style={{
-                    flex: 1,
-                    minHeight: "44px",
-                    borderRadius: "8px",
-                    border: "none",
-                    background: "var(--cat-5)",
-                    color: "var(--bg)",
-                    fontFamily: "var(--font-ui)",
-                    fontSize: "var(--fs-14, 14px)",
-                    cursor: "pointer",
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                  }}
                 >
                   Erase
-                </button>
+                </Button>
               </div>
             </div>
           )}

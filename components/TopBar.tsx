@@ -79,7 +79,7 @@ export function TopBar({ state, onOpenSettings }: TopBarProps = {}) {
           aria-label={editMode ? "Edit mode, on" : "Edit mode, off"}
           aria-pressed={editMode}
           onClick={handleEditToggle}
-          className="tap grid h-11 w-11 place-items-center rounded-md border transition-colors"
+          className="tap grid h-11 w-11 place-items-center rounded-[8px] border transition-colors"
           style={{
             background: editMode ? "var(--accent)" : "var(--card)",
             borderColor: editMode
@@ -104,8 +104,8 @@ export function TopBar({ state, onOpenSettings }: TopBarProps = {}) {
           onClick={onOpenSettings ? handleSettings : undefined}
           className={
             onOpenSettings
-              ? "tap grid h-11 w-11 place-items-center rounded-md border border-white/5 transition-colors"
-              : "grid h-11 w-11 cursor-not-allowed place-items-center rounded-md border border-white/5 opacity-50 transition-colors"
+              ? "tap grid h-11 w-11 place-items-center rounded-[8px] border border-white/5 transition-colors"
+              : "grid h-11 w-11 cursor-not-allowed place-items-center rounded-[8px] border border-white/5 opacity-50 transition-colors"
           }
           style={{ background: "var(--card)" }}
         >

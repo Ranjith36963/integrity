@@ -22,6 +22,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Sheet } from "@/components/ui/Sheet";
+import { Button } from "@/components/ui/Button";
 import { haptics } from "@/lib/haptics";
 import type { Brick } from "@/lib/types";
 
@@ -145,11 +146,12 @@ export function UnitsEntrySheet({ brick, open, onClose, onSave }: Props) {
               fontFamily: "var(--font-ui)",
               fontSize: "var(--fs-20)",
               color: "var(--ink)",
-              background: "var(--surface-2)",
+              background: "var(--bg-elev)",
               border: "1px solid var(--card-edge)",
               borderRadius: "8px",
               padding: "12px 16px",
               width: "100%",
+              height: "48px",
               boxSizing: "border-box",
             }}
           />
@@ -174,45 +176,36 @@ export function UnitsEntrySheet({ brick, open, onClose, onSave }: Props) {
 
         {/* Action buttons */}
         <div style={{ display: "flex", gap: "12px" }}>
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="md"
+            className="flex-1"
             aria-label="Cancel"
             onClick={handleCancelClick}
-            style={{
-              flex: 1,
-              minHeight: "44px",
-              borderRadius: "8px",
-              border: "1px solid var(--ink-dim)",
-              background: "transparent",
-              color: "var(--ink)",
-              cursor: "pointer",
-              fontFamily: "var(--font-ui)",
-              fontSize: "var(--fs-14)",
-            }}
           >
             Cancel
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="primary"
+            size="md"
+            className="flex-1"
             aria-label="Save"
             aria-disabled={isValid ? "false" : "true"}
             aria-describedby="units-save-hint"
             onClick={handleSaveClick}
-            style={{
-              flex: 1,
-              minHeight: "44px",
-              borderRadius: "8px",
-              border: "none",
-              background: isValid ? "var(--accent)" : "var(--surface-2)",
-              color: isValid ? "var(--bg)" : "var(--ink-dim)",
-              cursor: isValid ? "pointer" : "not-allowed",
-              fontFamily: "var(--font-ui)",
-              fontSize: "var(--fs-14)",
-              opacity: isValid ? 1 : 0.6,
-            }}
+            style={
+              !isValid
+                ? {
+                    background: "var(--surface-2)",
+                    color: "var(--ink-dim)",
+                    opacity: 0.6,
+                    cursor: "not-allowed",
+                  }
+                : undefined
+            }
           >
             Save
-          </button>
+          </Button>
         </div>
       </div>
     </Sheet>
