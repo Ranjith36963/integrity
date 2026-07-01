@@ -3,9 +3,13 @@
 // M4e: universal duration axis (ADR-042) — detects block↔block, brick↔block, brick↔brick collisions.
 
 import { toMin } from "./dharma";
-import type { AppState, Block, Brick } from "./types";
+import { appliesOn } from "./appliesOn";
+import type { AppState, Block, Brick, Recurrence } from "./types";
 
 // TimedItem — discriminated union used by findOverlaps and selectAllTimedItems.
+// `recurrence` lets overlap detection skip items that can never share a day with
+// the candidate (e.g. a Mon–Fri block vs a Sat–Sun block). Optional for
+// backward compatibility — absent → treated as "every day" (coincides always).
 export type TimedItem =
   | {
       kind: "block";
@@ -14,6 +18,7 @@ export type TimedItem =
       start: string;
       end: string;
       categoryId: string | null;
+      recurrence?: Recurrence;
     }
   | {
       kind: "brick";
@@ -22,9 +27,76 @@ export type TimedItem =
       start: string;
       end: string;
       categoryId: string | null;
+      recurrence?: Recurrence;
     };
 
 const DAY_LEN = 24 * 60;
+const EVERY_DAY: Recurrence = { kind: "every-day" };
+
+function parseLocalDate(iso: string): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1); // local — no UTC drift
+}
+function isoOf(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function weekdaySet(r: Recurrence): Set<number> {
+  switch (r.kind) {
+    case "every-day":
+      return new Set([0, 1, 2, 3, 4, 5, 6]);
+    case "every-weekday":
+      return new Set([1, 2, 3, 4, 5]);
+    case "every-weekend":
+      return new Set([0, 6]);
+    case "custom-range":
+      return new Set(r.weekdays);
+    case "just-today":
+      return new Set([parseLocalDate(r.date).getDay()]);
+  }
+}
+function dateBounds(r: Recurrence): [string, string] | null {
+  if (r.kind === "just-today") return [r.date, r.date];
+  if (r.kind === "custom-range") return [r.start, r.end];
+  return null; // every-day / every-weekday / every-weekend are unbounded
+}
+
+/**
+ * True when two recurrences can BOTH apply on some common calendar day.
+ * A block that recurs Mon–Fri and one that recurs Sat–Sun can never coincide,
+ * so they must not be reported as overlapping even at the same clock time.
+ * Exact: shared-weekday check, then date-range overlap, with a bounded scan for
+ * windows shorter than a week (longer windows always contain the shared weekday).
+ */
+export function recurrencesCanCoincide(a: Recurrence, b: Recurrence): boolean {
+  const wa = weekdaySet(a);
+  const wb = weekdaySet(b);
+  let sharedWeekday = false;
+  for (const d of wa)
+    if (wb.has(d)) {
+      sharedWeekday = true;
+      break;
+    }
+  if (!sharedWeekday) return false;
+
+  const ra = dateBounds(a);
+  const rb = dateBounds(b);
+  if (!ra && !rb) return true; // both unbounded + shared weekday → yes
+
+  const lo = ra && rb ? (ra[0] > rb[0] ? ra[0] : rb[0]) : (ra ?? rb!)[0];
+  const hi = ra && rb ? (ra[1] < rb[1] ? ra[1] : rb[1]) : (ra ?? rb!)[1];
+  if (lo > hi) return false; // date ranges disjoint
+
+  const loD = parseLocalDate(lo);
+  const hiD = parseLocalDate(hi);
+  const span = Math.round((hiD.getTime() - loD.getTime()) / 86_400_000) + 1;
+  if (span >= 7) return true; // a full week always contains the shared weekday
+
+  for (let t = loD.getTime(); t <= hiD.getTime(); t += 86_400_000) {
+    const iso = isoOf(new Date(t));
+    if (appliesOn(a, iso) && appliesOn(b, iso)) return true;
+  }
+  return false;
+}
 
 /** Expand an interval into 1–2 non-wrapping [start,end) minute segments.
  *  A block whose end is at/before its start (e.g. Sleep 22:00→04:00) crosses the
@@ -63,14 +135,18 @@ export function intervalsOverlap(
 /** Returns all items that overlap `candidate`, excluding `excludeId` (M5 edit case).
  *  Sort: start asc, then kind ("block" before "brick"), then name alphabetic. AC #18. */
 export function findOverlaps(
-  candidate: { start: string; end: string },
+  candidate: { start: string; end: string; recurrence?: Recurrence },
   items: TimedItem[],
   excludeId?: string,
 ): TimedItem[] {
+  const candRec = candidate.recurrence ?? EVERY_DAY;
   const hits = items.filter(
     (it) =>
       (excludeId === undefined || it.id !== excludeId) &&
-      intervalsOverlap(candidate, it),
+      intervalsOverlap(candidate, it) &&
+      // Skip items whose recurrence can never share a day with the candidate
+      // (e.g. a weekday routine block vs a weekend routine block).
+      recurrencesCanCoincide(candRec, it.recurrence ?? EVERY_DAY),
   );
   hits.sort((x, y) => {
     const xs = toMin(x.start),
@@ -96,6 +172,7 @@ export function selectAllTimedItems(state: AppState): TimedItem[] {
       start: bl.start,
       end: bl.end,
       categoryId: bl.categoryId,
+      recurrence: bl.recurrence,
     });
   }
   const pushBrick = (br: Brick) => {
@@ -112,6 +189,7 @@ export function selectAllTimedItems(state: AppState): TimedItem[] {
       start: br.start,
       end: br.end,
       categoryId: br.categoryId,
+      recurrence: br.recurrence,
     });
   };
   for (const bl of state.blocks) for (const br of bl.bricks) pushBrick(br);

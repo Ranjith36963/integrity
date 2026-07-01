@@ -45,7 +45,7 @@ function stateWithBlock(
         end: block.end,
         categoryId: null,
         bricks: [],
-        recurrence: { kind: "just-today", date: "2026-05-14" },
+        recurrence: { kind: "every-day" },
       },
     ],
   };
@@ -218,7 +218,7 @@ describe("C-m2-006: Overlap warning (M4e: role=alert, Save disabled)", () => {
     name: "Existing",
     start: "09:00",
     end: "10:00",
-    recurrence: { kind: "just-today", date: "2026-05-06" },
+    recurrence: { kind: "every-day" },
     categoryId: null,
     bricks: [],
   };
@@ -408,7 +408,7 @@ describe("C-m4e-025: AddBlockSheet detects overlap with timed loose brick", () =
       hasDuration: true,
       start: "09:30",
       end: "10:00",
-      recurrence: { kind: "just-today", date: "2026-05-14" },
+      recurrence: { kind: "every-day" },
       categoryId: null,
       parentBlockId: null,
     };

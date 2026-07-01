@@ -247,7 +247,7 @@ export function AddBrickSheet({
   const overlaps =
     hasDuration && start.length > 0 && end.length > 0 && !timeAlertMsg
       ? findOverlaps(
-          { start, end },
+          { start, end, recurrence },
           selectAllTimedItems(state),
           undefined, // no excludeId for new brick
         )

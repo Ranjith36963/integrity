@@ -35,7 +35,7 @@ function stateWithBlock(
     end: overrides.end ?? "09:30",
     categoryId: null,
     bricks: [],
-    recurrence: { kind: "just-today" as const, date: "2026-05-14" },
+    recurrence: { kind: "every-day" as const },
   };
   return { ...defaultState(), blocks: [block] };
 }
@@ -597,7 +597,7 @@ describe("C-m4e-009: 4 overlapping items shows 3 names + +1 more", () => {
           end: "10:00",
           categoryId: null,
           bricks: [],
-          recurrence: { kind: "just-today", date: "2026-05-14" },
+          recurrence: { kind: "every-day" },
         },
         {
           id: "bk2",
@@ -606,7 +606,7 @@ describe("C-m4e-009: 4 overlapping items shows 3 names + +1 more", () => {
           end: "10:00",
           categoryId: null,
           bricks: [],
-          recurrence: { kind: "just-today", date: "2026-05-14" },
+          recurrence: { kind: "every-day" },
         },
         {
           id: "bk3",
@@ -615,7 +615,7 @@ describe("C-m4e-009: 4 overlapping items shows 3 names + +1 more", () => {
           end: "10:00",
           categoryId: null,
           bricks: [],
-          recurrence: { kind: "just-today", date: "2026-05-14" },
+          recurrence: { kind: "every-day" },
         },
       ],
       looseBricks: [
@@ -627,7 +627,7 @@ describe("C-m4e-009: 4 overlapping items shows 3 names + +1 more", () => {
           hasDuration: true,
           start: "09:00",
           end: "10:00",
-          recurrence: { kind: "just-today", date: "2026-05-14" },
+          recurrence: { kind: "every-day" },
           categoryId: null,
           parentBlockId: null,
         },

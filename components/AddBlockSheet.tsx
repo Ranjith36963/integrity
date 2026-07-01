@@ -192,7 +192,9 @@ export function AddBlockSheet({
     !endAfterStart(start, end) &&
     !crossesMidnight;
 
-  const candidate = endEmpty ? null : { start, end };
+  // Include the selected recurrence so overlap detection skips blocks that can
+  // never share a day (e.g. a weekend block vs a weekday block).
+  const candidate = endEmpty ? null : { start, end, recurrence };
 
   // M4e: use findOverlaps + selectAllTimedItems so timed loose bricks are also checked.
   // Only check when there is a valid end time AND title is filled (avoids noisy alerts).
