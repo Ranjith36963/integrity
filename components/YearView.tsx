@@ -21,13 +21,10 @@ import { useState, useMemo } from "react";
 import { ChevronLeft, ChevronRight, Share2 } from "lucide-react";
 import type { AppState } from "@/lib/types";
 import { today } from "@/lib/dharma";
+import { PeriodRing } from "./PeriodRing";
 import { yearMonths, addYear, subYear } from "@/lib/yearGrid";
 import { monthScore, yearScore } from "@/lib/history";
-import {
-  longestStreak,
-  avgDailyScore,
-  daysCompleted,
-} from "@/lib/insights";
+import { longestStreak, avgDailyScore, daysCompleted } from "@/lib/insights";
 import { shareOrDownload } from "@/lib/shareCard";
 import { haptics } from "@/lib/haptics";
 import { MonthCell } from "./MonthCell";
@@ -45,108 +42,9 @@ type YearViewProps = {
  * Mirrors M9d's WeekAggregate (WeekView.tsx) — same shape, different label.
  */
 function YearAggregate({ score }: { score: number | null }) {
-  const SIZE = 100;
-  const STROKE = 8;
-  const R = (SIZE - STROKE) / 2;
-  const CIRCUMFERENCE = 2 * Math.PI * R;
-  const progress = score !== null ? (score / 100) * CIRCUMFERENCE : 0;
-
-  const ariaLabel =
-    score !== null
-      ? `Year score ${Math.round(score)} percent`
-      : "Year score: no data";
-
   return (
-    <div
-      data-year-aggregate="true"
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        padding: "var(--sp-12, 12px) 0",
-      }}
-    >
-      <div style={{ position: "relative", width: SIZE, height: SIZE }}>
-        <svg
-          role="img"
-          aria-label={ariaLabel}
-          width={SIZE}
-          height={SIZE}
-          viewBox={`0 0 ${SIZE} ${SIZE}`}
-          style={{ transform: "rotate(-90deg)" }}
-        >
-          {/* Track */}
-          <circle
-            cx={SIZE / 2}
-            cy={SIZE / 2}
-            r={R}
-            fill="none"
-            stroke="var(--card-edge)"
-            strokeWidth={STROKE}
-          />
-          {/* Progress arc — only rendered when score is not null */}
-          {score !== null && (
-            <circle
-              cx={SIZE / 2}
-              cy={SIZE / 2}
-              r={R}
-              fill="none"
-              stroke="var(--accent)"
-              strokeWidth={STROKE}
-              strokeDasharray={`${progress} ${CIRCUMFERENCE - progress}`}
-              strokeLinecap="round"
-            />
-          )}
-        </svg>
-
-        {/* Centered numeral */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {score !== null ? (
-            <span
-              style={{
-                fontFamily: "var(--font-display)",
-                fontSize: "var(--fs-32)",
-                color: "var(--ink)",
-                lineHeight: 1,
-              }}
-            >
-              {Math.round(score)}%
-            </span>
-          ) : (
-            <span
-              style={{
-                fontFamily: "var(--font-display)",
-                fontSize: "var(--fs-32)",
-                color: "var(--ink-dim)",
-                lineHeight: 1,
-              }}
-            >
-              &mdash;
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Label */}
-      <span
-        style={{
-          fontFamily: "var(--font-ui)",
-          fontSize: "var(--fs-10)",
-          color: "var(--ink-dim)",
-          marginTop: "var(--sp-4, 4px)",
-        }}
-      >
-        Year
-      </span>
+    <div data-year-aggregate="true">
+      <PeriodRing score={score} label="Year" />
     </div>
   );
 }

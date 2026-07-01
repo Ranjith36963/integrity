@@ -25,13 +25,10 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { AppState } from "@/lib/types";
 import { today } from "@/lib/dharma";
+import { PeriodRing } from "./PeriodRing";
 import { weekDates, addWeek, subWeek, weekRangeLabel } from "@/lib/weekGrid";
 import { dayScore, weekScore } from "@/lib/history";
-import {
-  longestStreak,
-  avgDailyScore,
-  daysCompleted,
-} from "@/lib/insights";
+import { longestStreak, avgDailyScore, daysCompleted } from "@/lib/insights";
 import { WeekDayCell } from "./WeekDayCell";
 import { PastDayDetail } from "./PastDayDetail";
 import { InsightStrip } from "./InsightStrip";
@@ -50,109 +47,7 @@ const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
  * Uses only defined M0 tokens: --accent, --card-edge, --ink, --ink-dim.
  */
 function WeekAggregate({ score }: { score: number | null }) {
-  const SIZE = 100;
-  const STROKE = 8;
-  const R = (SIZE - STROKE) / 2;
-  const CIRCUMFERENCE = 2 * Math.PI * R;
-  const progress = score !== null ? (score / 100) * CIRCUMFERENCE : 0;
-
-  const ariaLabel =
-    score !== null
-      ? `Week score ${Math.round(score)} percent`
-      : "Week score: no data";
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        padding: "var(--sp-12, 12px) 0",
-      }}
-    >
-      <div style={{ position: "relative", width: SIZE, height: SIZE }}>
-        <svg
-          role="img"
-          aria-label={ariaLabel}
-          width={SIZE}
-          height={SIZE}
-          viewBox={`0 0 ${SIZE} ${SIZE}`}
-          style={{ transform: "rotate(-90deg)" }}
-        >
-          {/* Track */}
-          <circle
-            cx={SIZE / 2}
-            cy={SIZE / 2}
-            r={R}
-            fill="none"
-            stroke="var(--card-edge)"
-            strokeWidth={STROKE}
-          />
-          {/* Progress arc — only rendered when score is not null */}
-          {score !== null && (
-            <circle
-              cx={SIZE / 2}
-              cy={SIZE / 2}
-              r={R}
-              fill="none"
-              stroke="var(--accent)"
-              strokeWidth={STROKE}
-              strokeDasharray={`${progress} ${CIRCUMFERENCE - progress}`}
-              strokeLinecap="round"
-            />
-          )}
-        </svg>
-
-        {/* Centered numeral */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {score !== null ? (
-            <span
-              style={{
-                fontFamily: "var(--font-display)",
-                fontSize: "var(--fs-32)",
-                color: "var(--ink)",
-                lineHeight: 1,
-              }}
-            >
-              {Math.round(score)}%
-            </span>
-          ) : (
-            <span
-              style={{
-                fontFamily: "var(--font-display)",
-                fontSize: "var(--fs-32)",
-                color: "var(--ink-dim)",
-                lineHeight: 1,
-              }}
-            >
-              &mdash;
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Label */}
-      <span
-        style={{
-          fontFamily: "var(--font-ui)",
-          fontSize: "var(--fs-10)",
-          color: "var(--ink-dim)",
-          marginTop: "var(--sp-4, 4px)",
-        }}
-      >
-        Week
-      </span>
-    </div>
-  );
+  return <PeriodRing score={score} label="Week" />;
 }
 
 export function WeekView({ state, onOpenDay }: WeekViewProps) {

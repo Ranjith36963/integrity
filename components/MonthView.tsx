@@ -24,14 +24,11 @@ import type { AppState } from "@/lib/types";
 import { today } from "@/lib/dharma";
 import { monthGridCells, addMonth, subMonth } from "@/lib/monthGrid";
 import { dayScore } from "@/lib/history";
-import {
-  longestStreak,
-  avgDailyScore,
-  daysCompleted,
-} from "@/lib/insights";
+import { longestStreak, avgDailyScore, daysCompleted } from "@/lib/insights";
 import { DayCell } from "./DayCell";
 import { PastDayDetail } from "./PastDayDetail";
 import { InsightStrip } from "./InsightStrip";
+import { PeriodRing } from "./PeriodRing";
 
 type MonthViewProps = {
   state: AppState;
@@ -74,6 +71,12 @@ export function MonthView({ state, onOpenDay, initialMonth }: MonthViewProps) {
 
   const { year, month } = displayed;
   const monthLabel = `${MONTH_NAMES[month]} ${year}`;
+
+  // Month aggregate score for the header ring (mean day-score across the month).
+  const monthFirstIso = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const monthLastDay = new Date(year, month + 1, 0).getDate();
+  const monthLastIso = `${year}-${String(month + 1).padStart(2, "0")}-${String(monthLastDay).padStart(2, "0")}`;
+  const monthScore = avgDailyScore(state, monthFirstIso, monthLastIso);
 
   // Build the grid cells
   const cells = monthGridCells(year, month);
@@ -177,6 +180,9 @@ export function MonthView({ state, onOpenDay, initialMonth }: MonthViewProps) {
           <ChevronRight size={20} />
         </button>
       </div>
+
+      {/* Month aggregate ring */}
+      <PeriodRing score={monthScore} label="Month" />
 
       {/* Grid — R7-ROOT-M8/M9-P2: added aria-rowcount + aria-colcount and per-
           cell aria-rowindex/colindex so SR users in grid-aware mode (NVDA / JAWS)
