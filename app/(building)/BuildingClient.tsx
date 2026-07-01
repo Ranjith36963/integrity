@@ -52,6 +52,7 @@ import { TopBar } from "@/components/TopBar";
 import { Hero } from "@/components/Hero";
 import { BlueprintBar } from "@/components/BlueprintBar";
 import { Timeline } from "@/components/Timeline";
+import { DayRing } from "@/components/DayRing";
 import { BottomBar } from "@/components/BottomBar";
 import { AddChooserSheet } from "@/components/AddChooserSheet";
 import { AddBlockSheet } from "@/components/AddBlockSheet";
@@ -244,6 +245,8 @@ export function BuildingClient({
 
   // Log mode: highlights unlogged blocks/bricks from earlier today
   const [logMode, setLogMode] = useState(false);
+  // Day view: linear timeline ("line") or the 24h clock ring ("ring").
+  const [dayView, setDayView] = useState<"line" | "ring">("line");
   function handleLogPress() {
     haptics.light();
     setLogMode((v) => !v);
@@ -815,28 +818,69 @@ export function BuildingClient({
               stagger={stagger}
               dayStart={effectiveDayStart}
             />
+            {/* Line / Ring view toggle */}
+            <div
+              role="radiogroup"
+              aria-label="Day view"
+              className="mb-2 flex justify-center gap-2 px-5"
+            >
+              {(["line", "ring"] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  role="radio"
+                  aria-checked={dayView === v}
+                  aria-label={v === "line" ? "Timeline view" : "Ring view"}
+                  data-testid={`day-view-${v}`}
+                  onClick={() => {
+                    haptics.light();
+                    setDayView(v);
+                  }}
+                  className="tap rounded-[8px] border px-3 font-mono text-[12px] tracking-[0.08em] uppercase"
+                  style={{
+                    minHeight: "36px",
+                    background: dayView === v ? "var(--accent)" : "transparent",
+                    borderColor:
+                      dayView === v ? "var(--accent)" : "var(--card-edge)",
+                    color: dayView === v ? "var(--bg)" : "var(--ink-dim)",
+                  }}
+                >
+                  {v === "line" ? "Line" : "Ring"}
+                </button>
+              ))}
+            </div>
             {/* NowCard: NOT rendered in M2/M3/M4a */}
-            <Timeline
-              items={timelineItems}
-              categories={state.categories}
-              now={now}
-              onSlotTap={handleSlotTap}
-              onAddBrick={handleAddBrickFromBlock}
-              onTickToggle={handleTickToggle}
-              onUnitsOpenSheet={handleUnitsOpenSheet}
-              hasLooseBricks={trayBricks.length > 0}
-              onRequestDeleteBlock={handleRequestDeleteBlock}
-              onRequestDeleteBrick={handleRequestDeleteBrick}
-              onReorderRequest={handleReorderBlock}
-              onAnnounce={setAnnouncement}
-              onReorderBrickInBlock={handleReorderBrickInBlock}
-              modalOpen={pendingDelete !== null}
-              stagger={stagger}
-              logMode={logMode}
-              logIncompleteBlockIds={logIncompleteBlockIds}
-              onTimerCommit={handleTimerCommit}
-              dayStart={effectiveDayStart}
-            />
+            {dayView === "ring" ? (
+              <DayRing
+                blocks={visibleBlocks}
+                categories={state.categories}
+                now={now}
+                dayStart={effectiveDayStart}
+                pct={heroPct}
+              />
+            ) : (
+              <Timeline
+                items={timelineItems}
+                categories={state.categories}
+                now={now}
+                onSlotTap={handleSlotTap}
+                onAddBrick={handleAddBrickFromBlock}
+                onTickToggle={handleTickToggle}
+                onUnitsOpenSheet={handleUnitsOpenSheet}
+                hasLooseBricks={trayBricks.length > 0}
+                onRequestDeleteBlock={handleRequestDeleteBlock}
+                onRequestDeleteBrick={handleRequestDeleteBrick}
+                onReorderRequest={handleReorderBlock}
+                onAnnounce={setAnnouncement}
+                onReorderBrickInBlock={handleReorderBrickInBlock}
+                modalOpen={pendingDelete !== null}
+                stagger={stagger}
+                logMode={logMode}
+                logIncompleteBlockIds={logIncompleteBlockIds}
+                onTimerCommit={handleTimerCommit}
+                dayStart={effectiveDayStart}
+              />
+            )}
             {/* LooseBricksTray: visible when blocks exist OR non-timed loose bricks exist */}
             {showTray && (
               <LooseBricksTray
