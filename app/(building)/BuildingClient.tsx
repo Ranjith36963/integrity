@@ -771,6 +771,10 @@ export function BuildingClient({
           onFreezeToday={() =>
             dispatch({ type: "FREEZE_DAY", isoDate: state.currentDate })
           }
+          dayStart={state.dayStart ?? DEFAULT_DAY_START}
+          onSetDayStart={(v) =>
+            dispatch({ type: "SET_DAY_START", dayStart: v })
+          }
         />
         <Hero
           dateLabel={dateLabelValue}
@@ -800,6 +804,7 @@ export function BuildingClient({
               categories={state.categories}
               now={now}
               stagger={stagger}
+              dayStart={state.dayStart ?? DEFAULT_DAY_START}
             />
             {/* NowCard: NOT rendered in M2/M3/M4a */}
             <Timeline

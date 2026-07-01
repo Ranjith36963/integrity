@@ -11,7 +11,8 @@
 
 import { motion } from "motion/react";
 import type { Block, Category } from "@/lib/types";
-import { blockPct, duration, dayOffset } from "@/lib/dharma";
+import { blockPct, duration } from "@/lib/dharma";
+import { minutesFromDayStart, DEFAULT_DAY_START } from "@/lib/dayWindow";
 import { usePrefersReducedMotion } from "@/lib/reducedMotion";
 import { staggerForCount } from "@/lib/motion";
 
@@ -22,6 +23,8 @@ interface Props {
   /** M7a: when true, wraps the segment list in a Framer Motion stagger container.
    * When false (default), renders byte-identical to pre-M7a (no motion.div, no variants). */
   stagger?: boolean;
+  /** Day anchor "HH:MM" — positions the NOW pin. Default 04:00. */
+  dayStart?: string;
 }
 
 /**
@@ -92,6 +95,7 @@ export function BlueprintBar({
   categories,
   now,
   stagger = false,
+  dayStart = DEFAULT_DAY_START,
 }: Props) {
   const aggregated = aggregateCategoryMinutes(blocks, categories);
   const totalMinutes = aggregated.reduce((s, e) => s + e.minutes, 0);
@@ -128,9 +132,9 @@ export function BlueprintBar({
     : undefined;
 
   // NOW pin position: time-based fallback when no categorized blocks
-  // Anchor the NOW pin to the wake-to-wake day (matches the timeline's 04:00
-  // origin) so the blueprint pin and the timeline now-line stay aligned.
-  const nowPct = (dayOffset(now) / (24 * 60)) * 100;
+  // Anchor the NOW pin to the user's wake-to-wake day so the blueprint pin and
+  // the timeline now-line stay aligned at whatever dayStart the user chose.
+  const nowPct = (minutesFromDayStart(now, dayStart) / (24 * 60)) * 100;
 
   const faintGrid = {
     backgroundImage:

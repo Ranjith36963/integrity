@@ -2910,3 +2910,32 @@ describe("FREEZE_DAY — streak-freeze reducer", () => {
     expect(Object.keys(s.freezes ?? {})).toHaveLength(4);
   });
 });
+
+// ─── SET_DAY_START: user-configurable wake-to-wake anchor ────────────────────
+describe("SET_DAY_START: sets the day anchor to the user's wake time", () => {
+  it("updates dayStart to a valid HH:MM", () => {
+    const s = reducer(defaultState(), {
+      type: "SET_DAY_START",
+      dayStart: "06:00",
+    });
+    expect(s.dayStart).toBe("06:00");
+  });
+
+  it("supports a night-shift anchor (e.g. 14:00)", () => {
+    const s = reducer(defaultState(), {
+      type: "SET_DAY_START",
+      dayStart: "14:00",
+    });
+    expect(s.dayStart).toBe("14:00");
+  });
+
+  it("ignores a malformed value (keeps the previous anchor)", () => {
+    const base = reducer(defaultState(), {
+      type: "SET_DAY_START",
+      dayStart: "06:00",
+    });
+    const s = reducer(base, { type: "SET_DAY_START", dayStart: "6am" });
+    expect(s.dayStart).toBe("06:00");
+    expect(s).toBe(base); // no-op returns same reference
+  });
+});

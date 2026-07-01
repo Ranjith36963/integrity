@@ -85,6 +85,11 @@ export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case "ADD_BLOCK":
       return { ...state, blocks: [...state.blocks, action.block] };
+    case "SET_DAY_START":
+      // User's wake time — the day anchor. Ignore malformed values defensively.
+      return /^\d{2}:\d{2}$/.test(action.dayStart)
+        ? { ...state, dayStart: action.dayStart }
+        : state;
     case "ADD_CATEGORY":
       return { ...state, categories: [...state.categories, action.category] };
     case "ADD_BRICK": {

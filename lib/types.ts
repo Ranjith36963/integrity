@@ -102,6 +102,7 @@ export type Action =
   | { type: "LOG_TICK_BRICK"; brickId: string } // M4a — flips `done` on the brick with this id
   | { type: "SET_UNITS_DONE"; brickId: string; done: number } // M4f — sets done on a units brick
   | { type: "SET_TIMER_ELAPSED"; brickId: string; elapsedSec: number } // timer — absolute write of accumulated elapsed seconds
+  | { type: "SET_DAY_START"; dayStart: string } // day anchor — user's wake time "HH:MM" (wake-to-wake)
   | { type: "DELETE_BLOCK_TODAY"; blockId: string } // M5 — sets deletions[`${currentDate}:${blockId}`] = true
   | { type: "DELETE_BLOCK_ALL"; blockId: string } // M5 — removes the template from state.blocks
   | { type: "DELETE_BRICK"; brickId: string } // M5 — removes the brick from its block or looseBricks
