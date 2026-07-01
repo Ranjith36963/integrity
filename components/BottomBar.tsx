@@ -54,7 +54,7 @@ export function BottomBar({
           <button
             type="button"
             data-testid="dock-quick-brick"
-            aria-label="Log brick"
+            aria-label="Log"
             onClick={onQuickBrick}
             className="tap flex h-12 flex-1 items-center justify-center gap-2 rounded-full text-[12px] tracking-[0.18em] uppercase"
             style={{
@@ -66,7 +66,7 @@ export function BottomBar({
             }}
           >
             <Zap size={16} />
-            Log Brick
+            Log
           </button>
           {/* M10: Mic button — self-hides when micSupported !== true (AC #3).
               Layout: [Log Brick pill flex-1] [Mic h-12 w-12] [+ h-12 w-12] */}
