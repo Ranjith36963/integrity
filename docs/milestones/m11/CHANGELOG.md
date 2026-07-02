@@ -2,6 +2,21 @@
 
 ## [unreleased]
 
+### Added — Step 4 (part 1): backend-agnostic sync engine (Supabase groundwork)
+
+- `lib/cloudSync.ts` — the correctness-critical, backend-independent core of cross-device backup:
+  `decideSync(localUpdatedAt, remote)` implements **last-write-wins** by ISO timestamp and
+  `syncOnce(local, localUpdatedAt, now, transport)` orchestrates pull → decide → push over a thin
+  `SyncTransport` seam. Pure — never reads the clock or storage.
+- Proven by `lib/cloudSync.test.ts` (8): first sync pushes; a fresh device with a newer cloud copy
+  **adopts remote and does NOT clobber it**; local-newer pushes; equal → noop. This is the part that
+  can lose data if wrong, so it is fully tested here without a backend.
+- **Remaining (needs the user's action):** the live Supabase hookup — a `SyncTransport` adapter
+  against one `dharma_state` row per authenticated user (jsonb `state` + `updated_at`, row-level
+  security), plus a login screen — requires the user to create a free Supabase project and provide
+  the **Project URL + anon public key**. Until then the app runs exactly as today (localStorage
+  only); no unverified auth/network code is shipped. Tracked in `spec.md` Step 4.
+
 ### Added — Step 3b: "Editing past days" setting + gated back-logging (DEC-2)
 
 - A Settings control **"Editing past days"** (read-only / yesterday / up-to-3-days) persisted as an
