@@ -2,6 +2,25 @@
 
 ## [unreleased]
 
+### Added — Step 4 (part 2): Supabase cloud backup wired in (magic-link login + sync)
+
+- Email **magic-link login** + **automatic cloud backup/sync** across devices, all behind Supabase.
+  New: `lib/supabaseConfig.ts` (public URL + anon key baked in — env vars win if present),
+  `lib/supabaseClient.ts` (lazy, client-only, null when unconfigured), `lib/useSupabaseSession.ts`
+  (auth hook), `lib/supabaseTransport.ts` (the `SyncTransport` over the `dharma_state` row),
+  `components/CloudSync.tsx` (background last-write-wins sync — pull-on-signin, debounced push),
+  `components/CloudSyncSettings.tsx` (the "Cloud backup" login UI in Settings).
+- **Fail-safe by construction:** every network call is wrapped so any error (offline, policy, RLS)
+  is a silent no-op with localStorage as the source of truth — nothing is ever lost. When signed
+  out / unconfigured the app behaves exactly as before.
+- Tests: `lib/supabaseTransport.test.ts` (adapter over a mock client — table/columns, migrate,
+  empty-row → null, error surfacing, upsert-on-user_id). 1854 vitest green, 0 type/lint errors,
+  production build clean; a browser smoke confirmed the app is stable with the client initialized
+  and the login form renders.
+- **Live proof is the user's:** this sandbox is network-policy-blocked from Supabase (403), so the
+  end-to-end login + cross-device sync is verified in the deployed app. Requires the one-time
+  Supabase table (SQL in spec Step 4) — already created by the user.
+
 ### Added — Step 4 (part 1): backend-agnostic sync engine (Supabase groundwork)
 
 - `lib/cloudSync.ts` — the correctness-critical, backend-independent core of cross-device backup:

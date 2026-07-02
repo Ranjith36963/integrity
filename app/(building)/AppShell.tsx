@@ -26,6 +26,7 @@ import { YearView } from "@/components/YearView";
 import { BuildingClient } from "./BuildingClient";
 import { MonthView } from "@/components/MonthView";
 import type { ArchivedBrickEdit } from "@/lib/pastEdit";
+import { CloudSync } from "@/components/CloudSync";
 import { Toaster, toast } from "@/components/Toaster";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { BurstOverlay, fireBurst } from "@/components/BurstOverlay";
@@ -219,6 +220,8 @@ export function AppShell() {
       {/* M7e: Toaster — mounted once as a ViewSwitcher sibling, outside the view branch.
            Lives here so it persists across Day→Week→Month→Year switches (C-m7e-035). */}
       <Toaster />
+      {/* M11 Step 4 — background cloud backup; renders nothing, no-op when signed out. */}
+      <CloudSync />
       {/* PWA install affordance — null when already-installed, dismissed,
            or browser doesn't support beforeinstallprompt. iOS Safari gets
            a how-to overlay because it has no programmatic install path. */}

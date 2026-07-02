@@ -29,6 +29,7 @@ import type { AppState } from "@/lib/types";
 import { STORAGE_KEY, migrate, saveState } from "@/lib/persist";
 import { haptics } from "@/lib/haptics";
 import { freezesUsedThisMonth, FREEZES_PER_MONTH } from "@/lib/insights";
+import { CloudSyncSettings } from "./CloudSyncSettings";
 
 interface Props {
   open: boolean;
@@ -295,6 +296,9 @@ export function SettingsSheet({
             </p>
           </section>
         )}
+
+        {/* ─── Cloud backup (M11 Step 4) — null when cloud is off ──── */}
+        <CloudSyncSettings />
 
         {/* ─── Data ────────────────────────────────────────────────── */}
         <section
