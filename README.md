@@ -155,8 +155,19 @@ docs/
   tests.md           Acceptance criteria as GIVEN/WHEN/THEN
   decisions.md       Architecture Decision Records (ADRs)
   status.md          Current ship state — read this first in a new session
-public/              Static assets, service-worker manifest
+public/              Static assets: sw.js (offline service worker), icon-192/512.png,
+                     icon-maskable-512.png, apple-touch-icon.png, icon.svg, sounds/
 ```
+
+## Installable PWA (offline)
+
+Dharma is an installable Progressive Web App. `public/sw.js` is a hand-rolled Cache-API service
+worker (offline-first: navigations network-first with an app-shell fallback, static assets
+stale-while-revalidate) registered by `components/ServiceWorkerRegister.tsx` via `workbox-window`
+in production builds only. `app/manifest.ts` + the layout metadata advertise maskable + Apple
+touch icons, so "Add to Home Screen" gives a real icon and a fullscreen standalone launch on both
+iOS and Android — and the app opens and runs with no network. Data is local (localStorage);
+cross-device sync/accounts is a separate future piece.
 
 ## Methodology
 
