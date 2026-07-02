@@ -18,18 +18,19 @@
  *                --fs-12/--fs-14 (body text), --card / --card-edge / --ink-dim
  */
 
-import { X } from "lucide-react";
+import { X, Minus, Plus } from "lucide-react";
 import type { ArchivedDay, Block, Brick } from "@/lib/types";
+import type { ArchivedBrickEdit } from "@/lib/pastEdit";
 import { dateLabel, fmtRange, brickLabel, dayPct } from "@/lib/dharma";
 
 type PastDayDetailProps = {
   archivedDay: ArchivedDay;
   isoDate: string;
   onClose: () => void;
-  /** M11 DEC-2 — when true, tick bricks become toggles that back-log this day. */
+  /** M11 DEC-2 — when true, bricks become editable so this day can be back-logged. */
   canEdit?: boolean;
-  /** M11 DEC-2 — dispatch a TOGGLE_ARCHIVED_TICK for (isoDate, brickId). */
-  onToggleTick?: (brickId: string) => void;
+  /** M11 DEC-2 — apply a back-log edit (tick toggle / units count / timer secs). */
+  onEdit?: (brickId: string, edit: ArchivedBrickEdit) => void;
 };
 
 export function PastDayDetail({
@@ -37,30 +38,79 @@ export function PastDayDetail({
   isoDate,
   onClose,
   canEdit = false,
-  onToggleTick,
+  onEdit,
 }: PastDayDetailProps) {
-  const editable = canEdit && !!onToggleTick;
+  const editable = canEdit && !!onEdit;
 
-  // One brick row — a read-only line, or a tick toggle when editing is allowed.
+  const rowStyle: React.CSSProperties = {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    fontSize: "var(--fs-12)",
+    color: "var(--ink)",
+    padding: "6px 0",
+    gap: "8px",
+  };
+  const nameStyle: React.CSSProperties = {
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    flex: 1,
+    textAlign: "left",
+  };
+  const stepBtn: React.CSSProperties = {
+    display: "grid",
+    placeItems: "center",
+    width: "36px",
+    height: "36px",
+    borderRadius: "8px",
+    border: "1px solid var(--card-edge)",
+    background: "transparent",
+    color: "var(--ink)",
+    cursor: "pointer",
+  };
+
+  // A ±stepper used for units (step 1) and timer (step = 1 minute in seconds).
+  const stepper = (
+    label: string,
+    onDec: () => void,
+    onInc: () => void,
+    ariaName: string,
+  ) => (
+    <span
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "6px",
+        flexShrink: 0,
+      }}
+    >
+      <button
+        type="button"
+        aria-label={`Decrease ${ariaName}`}
+        onClick={onDec}
+        style={stepBtn}
+      >
+        <Minus size={14} />
+      </button>
+      <span
+        style={{ minWidth: "64px", textAlign: "center", color: "var(--ink)" }}
+      >
+        {label}
+      </span>
+      <button
+        type="button"
+        aria-label={`Increase ${ariaName}`}
+        onClick={onInc}
+        style={stepBtn}
+      >
+        <Plus size={14} />
+      </button>
+    </span>
+  );
+
+  // One brick row — read-only, or an editable control when back-logging is on.
   const renderBrick = (brick: Brick) => {
-    const rowStyle: React.CSSProperties = {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      fontSize: "var(--fs-12)",
-      color: "var(--ink)",
-      padding: "6px 0",
-      whiteSpace: "nowrap",
-      overflow: "hidden",
-      textOverflow: "ellipsis",
-    };
-    const nameStyle: React.CSSProperties = {
-      overflow: "hidden",
-      textOverflow: "ellipsis",
-      whiteSpace: "nowrap",
-      flex: 1,
-      textAlign: "left",
-    };
     if (editable && brick.kind === "tick") {
       const done = brick.done;
       return (
@@ -70,7 +120,7 @@ export function PastDayDetail({
           role="checkbox"
           aria-checked={done}
           aria-label={`${brick.name}, ${done ? "done" : "not done"}, tap to back-log`}
-          onClick={() => onToggleTick!(brick.id)}
+          onClick={() => onEdit!(brick.id, { kind: "toggle-tick" })}
           style={{
             ...rowStyle,
             width: "100%",
@@ -84,7 +134,6 @@ export function PastDayDetail({
           <span
             aria-hidden="true"
             style={{
-              marginLeft: "var(--sp-8, 8px)",
               flexShrink: 0,
               color: done ? "var(--accent)" : "var(--ink-dim)",
               fontWeight: 600,
@@ -95,16 +144,46 @@ export function PastDayDetail({
         </button>
       );
     }
+    if (editable && brick.kind === "units") {
+      const done = brick.done;
+      return (
+        <div key={brick.id} style={{ ...rowStyle, minHeight: "44px" }}>
+          <span style={nameStyle}>{brick.name}</span>
+          {stepper(
+            `${done}/${brick.target} ${brick.unit}`,
+            () => onEdit!(brick.id, { kind: "units", done: done - 1 }),
+            () => onEdit!(brick.id, { kind: "units", done: done + 1 }),
+            `${brick.name} count`,
+          )}
+        </div>
+      );
+    }
+    if (editable && brick.kind === "timer") {
+      const mins = Math.floor(brick.elapsedSec / 60);
+      return (
+        <div key={brick.id} style={{ ...rowStyle, minHeight: "44px" }}>
+          <span style={nameStyle}>{brick.name}</span>
+          {stepper(
+            `${mins}/${brick.targetMin} min`,
+            () =>
+              onEdit!(brick.id, {
+                kind: "timer",
+                elapsedSec: brick.elapsedSec - 60,
+              }),
+            () =>
+              onEdit!(brick.id, {
+                kind: "timer",
+                elapsedSec: brick.elapsedSec + 60,
+              }),
+            `${brick.name} minutes`,
+          )}
+        </div>
+      );
+    }
     return (
       <div key={brick.id} style={rowStyle}>
         <span style={nameStyle}>{brick.name}</span>
-        <span
-          style={{
-            color: "var(--ink-dim)",
-            marginLeft: "var(--sp-8, 8px)",
-            flexShrink: 0,
-          }}
-        >
+        <span style={{ color: "var(--ink-dim)", flexShrink: 0 }}>
           {brickLabel(brick)}
         </span>
       </div>

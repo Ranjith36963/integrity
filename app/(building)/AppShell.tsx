@@ -25,6 +25,7 @@ import { WeekView } from "@/components/WeekView";
 import { YearView } from "@/components/YearView";
 import { BuildingClient } from "./BuildingClient";
 import { MonthView } from "@/components/MonthView";
+import type { ArchivedBrickEdit } from "@/lib/pastEdit";
 import { Toaster, toast } from "@/components/Toaster";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { BurstOverlay, fireBurst } from "@/components/BurstOverlay";
@@ -103,6 +104,32 @@ export function AppShell() {
     // YearView calls this when a MonthCell is tapped → switch to Month view at that month
     setMonthTarget({ year, month: monthIndex });
     setView("month");
+  }
+
+  // M11 DEC-2 — route a past-day back-log edit to the matching reducer action.
+  // The reducer gates each on canEditPastDay, so an out-of-window edit is a no-op.
+  function handleEditArchivedBrick(
+    isoDate: string,
+    brickId: string,
+    edit: ArchivedBrickEdit,
+  ) {
+    if (edit.kind === "toggle-tick") {
+      dispatch({ type: "TOGGLE_ARCHIVED_TICK", isoDate, brickId });
+    } else if (edit.kind === "units") {
+      dispatch({
+        type: "SET_ARCHIVED_UNITS_DONE",
+        isoDate,
+        brickId,
+        done: edit.done,
+      });
+    } else {
+      dispatch({
+        type: "SET_ARCHIVED_TIMER_ELAPSED",
+        isoDate,
+        brickId,
+        elapsedSec: edit.elapsedSec,
+      });
+    }
   }
 
   // Command palette command set — built from current state so freeze
@@ -221,9 +248,7 @@ export function AppShell() {
         <WeekView
           state={state}
           onOpenDay={handleOpenDay}
-          onToggleArchivedTick={(isoDate, brickId) =>
-            dispatch({ type: "TOGGLE_ARCHIVED_TICK", isoDate, brickId })
-          }
+          onEditArchivedBrick={handleEditArchivedBrick}
         />
       ) : view === "year" ? (
         <YearView state={state} onOpenMonth={handleOpenMonth} />
@@ -233,9 +258,7 @@ export function AppShell() {
           state={state}
           onOpenDay={handleOpenDay}
           initialMonth={monthTarget ?? undefined}
-          onToggleArchivedTick={(isoDate, brickId) =>
-            dispatch({ type: "TOGGLE_ARCHIVED_TICK", isoDate, brickId })
-          }
+          onEditArchivedBrick={handleEditArchivedBrick}
         />
       )}
     </div>

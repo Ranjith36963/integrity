@@ -133,7 +133,19 @@ export type Action =
       isoDate: string; // YYYY-MM-DD — caller's responsibility to pass a real date
     } // Streak-freeze: marks a day as "scored" for streak purposes. Reducer enforces 2-per-calendar-month cap.
   | { type: "SET_PAST_EDIT_DAYS"; days: 0 | 1 | 3 } // M11 DEC-2 — editing-past-days window
-  | { type: "TOGGLE_ARCHIVED_TICK"; isoDate: string; brickId: string }; // M11 DEC-2 — back-log a tick on an archived day (gated by canEditPastDay)
+  | { type: "TOGGLE_ARCHIVED_TICK"; isoDate: string; brickId: string } // M11 DEC-2 — back-log a tick on an archived day (gated by canEditPastDay)
+  | {
+      type: "SET_ARCHIVED_UNITS_DONE";
+      isoDate: string;
+      brickId: string;
+      done: number;
+    } // M11 DEC-2 — back-log a units count on an archived day (gated, clamped 0..target)
+  | {
+      type: "SET_ARCHIVED_TIMER_ELAPSED";
+      isoDate: string;
+      brickId: string;
+      elapsedSec: number;
+    }; // M11 DEC-2 — back-log timer minutes on an archived day (gated, clamped 0..targetMin*60)
 // START_TIMER, STOP_TIMER, TICK_TIMER, SET_TIMER_MINUTES: REMOVED in M4f
 // LOG_GOAL_BRICK: REMOVED in M4f
 

@@ -14,6 +14,12 @@ import type { AppState } from "./types";
 
 export type PastEditDays = 0 | 1 | 3;
 
+/** A single back-log edit to a brick on an archived day (M11 DEC-2). */
+export type ArchivedBrickEdit =
+  | { kind: "toggle-tick" }
+  | { kind: "units"; done: number }
+  | { kind: "timer"; elapsedSec: number };
+
 /** The configured window, normalized to a valid value (default 0 = read-only). */
 export function pastEditDaysOf(state: AppState): PastEditDays {
   const v = state.pastEditDays;

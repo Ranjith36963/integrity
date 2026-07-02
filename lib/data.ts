@@ -77,6 +77,43 @@ export function findUnitsBrickById(
   return null;
 }
 
+/** Clamp v into [0, max] (finite guard; NaN → 0). */
+function clampNum(v: number, max: number): number {
+  if (!Number.isFinite(v)) return 0;
+  return Math.max(0, Math.min(v, max));
+}
+
+/**
+ * M11 DEC-2 — apply an edit to one brick on an archived past day, gated by the
+ * editing-past-days window. Returns the same state reference (no-op) when the
+ * day isn't editable, the brick isn't found, or `edit` returns it unchanged.
+ * Immutable: clones only the touched day.
+ */
+function editArchivedBrick(
+  state: AppState,
+  isoDate: string,
+  brickId: string,
+  edit: (br: Brick) => Brick,
+): AppState {
+  if (!canEditPastDay(state, isoDate)) return state;
+  const day = state.history[isoDate];
+  if (!day) return state;
+  let changed = false;
+  const apply = (br: Brick): Brick => {
+    if (br.id !== brickId) return br;
+    const next = edit(br);
+    if (next !== br) changed = true;
+    return next;
+  };
+  const blocks = day.blocks.map((b) => ({ ...b, bricks: b.bricks.map(apply) }));
+  const looseBricks = day.looseBricks.map(apply);
+  if (!changed) return state;
+  return {
+    ...state,
+    history: { ...state.history, [isoDate]: { ...day, blocks, looseBricks } },
+  };
+}
+
 /**
  * Pure reducer: returns a new AppState for every action.
  * Switch is exhaustive via assertNever — adding an Action union member without
@@ -351,34 +388,31 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, pastEditDays: d };
     }
     case "TOGGLE_ARCHIVED_TICK": {
-      // M11 DEC-2 — back-log a tick brick on an archived past day, gated by the
-      // editing-past-days window. No-op if the day isn't editable or the brick
-      // isn't a tick found in that day's blocks/looseBricks.
-      const { isoDate, brickId } = action;
-      if (!canEditPastDay(state, isoDate)) return state;
-      const day = state.history[isoDate];
-      if (!day) return state;
-      let changed = false;
-      const flip = (br: Brick): Brick => {
-        if (br.id === brickId && br.kind === "tick") {
-          changed = true;
-          return { ...br, done: !br.done };
-        }
-        return br;
-      };
-      const blocks = day.blocks.map((b) => ({
-        ...b,
-        bricks: b.bricks.map(flip),
-      }));
-      const looseBricks = day.looseBricks.map(flip);
-      if (!changed) return state;
-      return {
-        ...state,
-        history: {
-          ...state.history,
-          [isoDate]: { ...day, blocks, looseBricks },
-        },
-      };
+      // M11 DEC-2 — back-log a tick brick on an archived past day (gated).
+      return editArchivedBrick(state, action.isoDate, action.brickId, (br) =>
+        br.kind === "tick" ? { ...br, done: !br.done } : br,
+      );
+    }
+    case "SET_ARCHIVED_UNITS_DONE": {
+      // M11 DEC-2 — back-log a units count on an archived past day (gated,
+      // clamped to [0, target]).
+      return editArchivedBrick(state, action.isoDate, action.brickId, (br) =>
+        br.kind === "units"
+          ? { ...br, done: clampNum(action.done, br.target) }
+          : br,
+      );
+    }
+    case "SET_ARCHIVED_TIMER_ELAPSED": {
+      // M11 DEC-2 — back-log timer seconds on an archived past day (gated,
+      // clamped to [0, targetMin*60]).
+      return editArchivedBrick(state, action.isoDate, action.brickId, (br) =>
+        br.kind === "timer"
+          ? {
+              ...br,
+              elapsedSec: clampNum(action.elapsedSec, br.targetMin * 60),
+            }
+          : br,
+      );
     }
     default:
       return assertNever(action);

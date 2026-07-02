@@ -126,3 +126,107 @@ describe("reducer TOGGLE_ARCHIVED_TICK — gated back-logging", () => {
     expect(next).toBe(s);
   });
 });
+
+describe("reducer SET_ARCHIVED_UNITS_DONE / SET_ARCHIVED_TIMER_ELAPSED", () => {
+  function unitsState(): AppState {
+    return {
+      ...defaultState(),
+      currentDate: "2026-07-02",
+      pastEditDays: 3,
+      history: {
+        "2026-07-01": {
+          blocks: [],
+          categories: [],
+          looseBricks: [
+            {
+              id: "u1",
+              name: "Pushups",
+              categoryId: null,
+              parentBlockId: null,
+              hasDuration: false,
+              kind: "units",
+              target: 50,
+              unit: "reps",
+              done: 0,
+            },
+            {
+              id: "tm1",
+              name: "Study",
+              categoryId: null,
+              parentBlockId: null,
+              hasDuration: false,
+              kind: "timer",
+              targetMin: 60,
+              elapsedSec: 0,
+            },
+          ],
+        },
+      },
+    };
+  }
+
+  it("sets a units count, clamped to [0, target]", () => {
+    const s = unitsState();
+    const next = reducer(s, {
+      type: "SET_ARCHIVED_UNITS_DONE",
+      isoDate: "2026-07-01",
+      brickId: "u1",
+      done: 40,
+    });
+    const b = next.history["2026-07-01"].looseBricks[0];
+    expect(b.kind === "units" && b.done).toBe(40);
+    // over-target clamps to target; negative clamps to 0
+    expect(
+      (
+        reducer(s, {
+          type: "SET_ARCHIVED_UNITS_DONE",
+          isoDate: "2026-07-01",
+          brickId: "u1",
+          done: 999,
+        }).history["2026-07-01"].looseBricks[0] as { done: number }
+      ).done,
+    ).toBe(50);
+    expect(
+      (
+        reducer(s, {
+          type: "SET_ARCHIVED_UNITS_DONE",
+          isoDate: "2026-07-01",
+          brickId: "u1",
+          done: -5,
+        }).history["2026-07-01"].looseBricks[0] as { done: number }
+      ).done,
+    ).toBe(0);
+  });
+
+  it("sets timer elapsed seconds, clamped to [0, targetMin*60]", () => {
+    const s = unitsState();
+    const next = reducer(s, {
+      type: "SET_ARCHIVED_TIMER_ELAPSED",
+      isoDate: "2026-07-01",
+      brickId: "tm1",
+      elapsedSec: 1800,
+    });
+    const b = next.history["2026-07-01"].looseBricks[1];
+    expect(b.kind === "timer" && b.elapsedSec).toBe(1800);
+    // over-cap clamps to targetMin*60 = 3600
+    const capped = reducer(s, {
+      type: "SET_ARCHIVED_TIMER_ELAPSED",
+      isoDate: "2026-07-01",
+      brickId: "tm1",
+      elapsedSec: 99999,
+    }).history["2026-07-01"].looseBricks[1];
+    expect((capped as { elapsedSec: number }).elapsedSec).toBe(3600);
+  });
+
+  it("is a no-op when the day is read-only (window 0)", () => {
+    const s = { ...unitsState(), pastEditDays: 0 as const };
+    expect(
+      reducer(s, {
+        type: "SET_ARCHIVED_UNITS_DONE",
+        isoDate: "2026-07-01",
+        brickId: "u1",
+        done: 10,
+      }),
+    ).toBe(s);
+  });
+});

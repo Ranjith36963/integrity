@@ -35,12 +35,17 @@ import { longestStreak, avgDailyScore, daysCompleted } from "@/lib/insights";
 import { WeekDayCell } from "./WeekDayCell";
 import { PastDayDetail } from "./PastDayDetail";
 import { canEditPastDay } from "@/lib/pastEdit";
+import type { ArchivedBrickEdit } from "@/lib/pastEdit";
 import { InsightStrip } from "./InsightStrip";
 
 type WeekViewProps = {
   state: AppState;
-  /** M11 DEC-2 — back-log a tick on an archived day (dispatch TOGGLE_ARCHIVED_TICK). */
-  onToggleArchivedTick?: (isoDate: string, brickId: string) => void;
+  /** M11 DEC-2 — back-log an edit (tick/units/timer) on an archived day. */
+  onEditArchivedBrick?: (
+    isoDate: string,
+    brickId: string,
+    edit: ArchivedBrickEdit,
+  ) => void;
   onOpenDay: (isoDate: string) => void;
 };
 
@@ -59,7 +64,7 @@ function WeekAggregate({ score }: { score: number | null }) {
 export function WeekView({
   state,
   onOpenDay,
-  onToggleArchivedTick,
+  onEditArchivedBrick,
 }: WeekViewProps) {
   // Anchor: any day in the displayed week. Initialized to today. Session-only, not persisted.
   const [anchor, setAnchor] = useState<string>(() => today());
@@ -349,9 +354,9 @@ export function WeekView({
           isoDate={openDate}
           onClose={() => setOpenDate(null)}
           canEdit={canEditPastDay(state, openDate)}
-          onToggleTick={
-            onToggleArchivedTick
-              ? (brickId) => onToggleArchivedTick(openDate, brickId)
+          onEdit={
+            onEditArchivedBrick
+              ? (brickId, edit) => onEditArchivedBrick(openDate, brickId, edit)
               : undefined
           }
         />

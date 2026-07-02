@@ -269,21 +269,21 @@ describe("C-m11-002: PastDayDetail — tick toggle when editing is allowed", () 
     ],
   };
 
-  it("renders a checkbox toggle and fires onToggleTick when canEdit", async () => {
-    const onToggleTick = vi.fn();
+  it("renders a checkbox toggle and fires onEdit(toggle-tick) when canEdit", async () => {
+    const onEdit = vi.fn();
     render(
       <PastDayDetail
         archivedDay={dayWithTick}
         isoDate="2026-06-29"
         onClose={vi.fn()}
         canEdit
-        onToggleTick={onToggleTick}
+        onEdit={onEdit}
       />,
     );
     const box = screen.getByRole("checkbox");
     expect(box).toBeTruthy();
     box.click();
-    expect(onToggleTick).toHaveBeenCalledWith("e1");
+    expect(onEdit).toHaveBeenCalledWith("e1", { kind: "toggle-tick" });
   });
 
   it("stays read-only (no checkbox) when canEdit is false", () => {
@@ -293,10 +293,78 @@ describe("C-m11-002: PastDayDetail — tick toggle when editing is allowed", () 
         isoDate="2026-06-29"
         onClose={vi.fn()}
         canEdit={false}
-        onToggleTick={vi.fn()}
+        onEdit={vi.fn()}
       />,
     );
     expect(screen.queryByRole("checkbox")).toBeNull();
+  });
+
+  it("units brick shows ± steppers that fire onEdit with the new count", () => {
+    const onEdit = vi.fn();
+    const unitsDay: ArchivedDay = {
+      blocks: [],
+      categories: [],
+      looseBricks: [
+        {
+          id: "u1",
+          name: "Pushups",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "units",
+          target: 50,
+          unit: "reps",
+          done: 20,
+        },
+      ],
+    };
+    render(
+      <PastDayDetail
+        archivedDay={unitsDay}
+        isoDate="2026-06-29"
+        onClose={vi.fn()}
+        canEdit
+        onEdit={onEdit}
+      />,
+    );
+    screen.getByRole("button", { name: /increase pushups count/i }).click();
+    expect(onEdit).toHaveBeenCalledWith("u1", { kind: "units", done: 21 });
+    screen.getByRole("button", { name: /decrease pushups count/i }).click();
+    expect(onEdit).toHaveBeenCalledWith("u1", { kind: "units", done: 19 });
+  });
+
+  it("timer brick shows ± steppers that fire onEdit with new elapsed seconds", () => {
+    const onEdit = vi.fn();
+    const timerDay: ArchivedDay = {
+      blocks: [],
+      categories: [],
+      looseBricks: [
+        {
+          id: "tm1",
+          name: "Study",
+          categoryId: null,
+          parentBlockId: null,
+          hasDuration: false,
+          kind: "timer",
+          targetMin: 60,
+          elapsedSec: 600, // 10 min
+        },
+      ],
+    };
+    render(
+      <PastDayDetail
+        archivedDay={timerDay}
+        isoDate="2026-06-29"
+        onClose={vi.fn()}
+        canEdit
+        onEdit={onEdit}
+      />,
+    );
+    screen.getByRole("button", { name: /increase study minutes/i }).click();
+    expect(onEdit).toHaveBeenCalledWith("tm1", {
+      kind: "timer",
+      elapsedSec: 660,
+    });
   });
 });
 

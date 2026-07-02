@@ -29,10 +29,14 @@
   `canEditPastDay`** (a no-op otherwise), immutable (clones the day). `PastDayDetail` renders tick
   bricks as toggles when `canEdit`, threaded from `AppShell` → `WeekView`/`MonthView` via
   `onToggleArchivedTick`. Default stays strictly read-only.
-- Tests: `lib/pastEdit.test.ts` (window matrix + reducer gating, 10), `C-m11-002` (editable toggle),
-  a `persist.test.ts` round-trip (persists at 3, absent at default). 1835 vitest green.
-- Scope note: back-logging covers **tick** bricks (the "did I do it" case); units/timer retroactive
-  entry is a later refinement.
+- Back-logging covers **all three brick kinds**: tick (`TOGGLE_ARCHIVED_TICK`), units count
+  (`SET_ARCHIVED_UNITS_DONE`, clamped 0..target) and timer minutes (`SET_ARCHIVED_TIMER_ELAPSED`,
+  clamped 0..targetMin·60), routed through one unified `ArchivedBrickEdit` callback
+  (`AppShell.handleEditArchivedBrick` → reducer). `PastDayDetail` renders a tick toggle and ±
+  steppers for units/timer when `canEdit`; all gated by `canEditPastDay` (a no-op otherwise) and
+  immutable (clones only the touched day) via a shared `editArchivedBrick` reducer helper.
+- Tests: `lib/pastEdit.test.ts` (window matrix + reducer gating for all three kinds + clamping),
+  `C-m11-002` (tick toggle + units/timer steppers), a `persist.test.ts` round-trip. 1849 vitest green.
 
 ### Added — Step 3a: browsing honesty — missed days read "No entry" (DEC-1)
 
