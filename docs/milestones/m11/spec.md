@@ -38,13 +38,19 @@ A third gap blocks "see all previous days":
 
 - `state.blocks` and their bricks are **persistent recurring templates.** They carry forward every
   day, unchanged in definition, until the user edits or deletes them.
-- Bricks belong to their block and carry **with** the block; a normal (non-timed) brick recurs on
-  the block's schedule. Bricks do not need their own separate recurrence to survive.
+- **Every block AND every brick is assigned its own `recurrence` at creation** (every-day /
+  every-weekday / every-weekend / custom-range / just-today) — the same picker for both. This is
+  already the schema. A block recurs on the block's recurrence; a brick recurs on the brick's
+  recurrence. A brick with no explicit recurrence set **inherits its parent block's recurrence**
+  (a task inside a morning block rides that block's schedule by default).
 - At rollover: **archive** the ending day's snapshot (plan + logged measurements) into history
-  forever, then **carry the full routine forward with completion reset** (tick → not done, units →
-  0, timer → 0) so today is a fresh copy to fill in.
+  forever, then **carry each block and brick forward iff its own (or inherited) recurrence still
+  applies going forward, with completion reset** (tick → not done, units → 0, timer → 0) so today
+  is a fresh copy to fill in. A block carries by its OWN recurrence even when it holds zero bricks
+  (an empty recurring time-block is still a valid routine item).
 - Only genuinely **expired one-offs** drop: a `just-today` block/brick whose date is now past, and a
-  `custom-range` whose end date is past.
+  `custom-range` whose end date is past. Recurring items (every-day/weekday/weekend, live
+  custom-range) always carry; the Day view already filters which apply on a given date.
 - Missed days are **backfilled** so history has no holes.
 
 ## Decisions (user-owned, locked)
@@ -102,8 +108,9 @@ A third gap blocks "see all previous days":
 
 - **AC-1:** A block with zero bricks and a recurring recurrence (every-day/weekday/weekend) survives
   a rollover (present in the rolled `state.blocks`).
-- **AC-2:** A normal brick (`hasDuration: false`) inside a recurring block survives a rollover with
-  its completion reset (tick→false, units done→0, timer elapsed→0).
+- **AC-2:** A brick survives a rollover by its OWN recurrence, independent of `hasDuration`, with
+  completion reset (tick→false, units done→0, timer elapsed→0). A brick with no explicit recurrence
+  inherits its parent block's recurrence for the carry decision.
 - **AC-3:** A `just-today` block/brick whose date is before `todayISO` does NOT survive a rollover.
 - **AC-4:** A `custom-range` block whose `end` is before `todayISO` does NOT survive; one whose end
   is on/after `todayISO` does survive.
