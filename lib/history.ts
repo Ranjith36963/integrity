@@ -8,11 +8,10 @@
  */
 
 import type { PersistedState } from "./persist";
-import type { AppState, ArchivedDay, Block, Brick } from "./types";
+import type { AppState, ArchivedDay, Block, Brick, Recurrence } from "./types";
 import { weekDates } from "./weekGrid";
 import { monthDates } from "./yearGrid";
 import { dayPct } from "./dharma";
-import { appliesOn } from "./appliesOn";
 import { currentDayState } from "./currentDayView";
 import { uuid } from "./uuid";
 
@@ -207,7 +206,7 @@ export function yearScore(state: AppState, year: number): number | null {
  * Steps per plan.md § The rollover algorithm:
  * 1. DETECT:  if state.currentDate >= todayISO → return state unchanged (same reference).
  * 2. ARCHIVE: deep-clone the in-progress day into history[state.currentDate].
- * 3. SEED:    compute a fresh day for todayISO via appliesOn + fresh uuids.
+ * 3. SEED:    carry the recurring routine forward for todayISO (fresh uuids, completion reset).
  * 4. ADVANCE: return a new PersistedState with history', currentDate=todayISO, fresh collections.
  *
  * AC #9 (archived-day immutability): structuredClone ensures later mutation of the
@@ -255,10 +254,38 @@ export function rollover(
 }
 
 /**
- * seedFreshDay — compute freshBlocks + freshLoose for todayISO.
- * Each seeded brick gets a fresh uuid and a reset done value.
- * Blocks carry forward iff they have ≥1 applicable recurring brick.
- * parentBlockId is re-pointed to the new block id (plan § parentBlockId consistency).
+ * recurrenceExpired — M11: is this recurrence permanently done as of todayISO?
+ *
+ * Only genuine one-offs expire:
+ *   - just-today  → expired once its date is strictly before today.
+ *   - custom-range → expired once its end is strictly before today.
+ * Repeating recurrences (every-day / every-weekday / every-weekend) never
+ * expire — they carry forward every day; the Day view filters which apply on a
+ * given date (lib/currentDayView.ts). Nothing here is a clock read (ADR-020/046).
+ */
+function recurrenceExpired(r: Recurrence, todayISO: string): boolean {
+  if (r.kind === "just-today") return r.date < todayISO;
+  if (r.kind === "custom-range") return r.end < todayISO;
+  return false;
+}
+
+/**
+ * seedFreshDay — M11: compute freshBlocks + freshLoose for todayISO.
+ *
+ * The routine is a set of persistent recurring templates (spec m11). Rollover
+ * carries EVERY still-live block and brick forward — by its OWN recurrence — with
+ * completion reset, so today is a fresh copy to fill in. Prior behavior dropped
+ * empty blocks and every non-timed brick nightly (defects D1/D2), which silently
+ * erased the whole routine.
+ *
+ * - A block carries iff its own recurrence is not expired. It carries even with
+ *   zero bricks (an empty recurring time-block is a valid routine item).
+ * - A brick carries iff its effective recurrence (its own, else its parent
+ *   block's) is not expired — independent of hasDuration.
+ * - Loose bricks carry only when they carry their own non-expired recurrence
+ *   (no parent to inherit from); a loose brick with no recurrence is a one-off
+ *   and does not survive rollover (unchanged tray behavior).
+ * - Each carried block/brick gets a fresh uuid; parentBlockId is re-pointed.
  */
 function seedFreshDay(
   blocks: Block[],
@@ -268,88 +295,72 @@ function seedFreshDay(
   const freshBlocks: Block[] = [];
 
   for (const block of blocks) {
-    // Filter this block's bricks to only those that apply today
-    const seededBricks: Brick[] = [];
+    // Drop only a genuinely expired one-off block (past just-today / ended range).
+    if (recurrenceExpired(block.recurrence, todayISO)) continue;
+
     const newBlockId = uuid();
-
+    const seededBricks: Brick[] = [];
     for (const brick of block.bricks) {
-      const seeded = seedBrick(brick, todayISO, newBlockId);
-      if (seeded !== null) {
-        seededBricks.push(seeded);
-      }
+      // Block bricks inherit the block's recurrence when they have none.
+      const seeded = seedBrick(brick, todayISO, newBlockId, block.recurrence);
+      if (seeded !== null) seededBricks.push(seeded);
     }
 
-    // Block carries iff ≥1 brick applies today (AC #13)
-    if (seededBricks.length > 0) {
-      freshBlocks.push({
-        ...block,
-        id: newBlockId, // fresh uuid (plan § SG-m9b-01)
-        bricks: seededBricks,
-      });
-    }
+    // Carry the block even when empty — the block itself is a recurring item.
+    freshBlocks.push({
+      ...block,
+      id: newBlockId, // fresh uuid (plan § SG-m9b-01)
+      bricks: seededBricks,
+    });
   }
 
-  // Seed loose bricks
+  // Loose bricks have no parent to inherit from → parentRecurrence = null.
   const freshLoose: Brick[] = [];
   for (const brick of looseBricks) {
-    const seeded = seedBrick(brick, todayISO, null);
-    if (seeded !== null) {
-      freshLoose.push(seeded);
-    }
+    const seeded = seedBrick(brick, todayISO, null, null);
+    if (seeded !== null) freshLoose.push(seeded);
   }
 
   return { freshBlocks, freshLoose };
 }
 
 /**
- * seedBrick — return a seeded copy of a brick for the new day, or null if it should not be seeded.
+ * seedBrick — M11: return a seeded copy of a brick for the new day, or null if it
+ * should not carry (a genuinely expired one-off).
  *
- * Per-brick seeding rule (plan § Fresh-day seeding detail):
- * - hasDuration === false → no recurrence → never seeded (AC #11)
- * - hasDuration === true AND appliesOn(recurrence, todayISO) → seeded with fresh uuid + done reset
- * - hasDuration === true AND !appliesOn → dropped (AC #11)
+ * Effective recurrence = the brick's own recurrence, else the parent block's
+ * (`parentRecurrence`) when the brick has none. Loose bricks have no parent, so
+ * a loose brick with no recurrence is a one-off and does NOT carry.
  *
- * done reset (AC #12):
- * - kind "tick" → done: false
- * - kind "units" → done: 0
+ * The carry decision is independent of `hasDuration` — a plain habit brick
+ * ("Meditation ✓", "Pushups 20 reps") recurs exactly like a timed one (fixes
+ * defect D1, which dropped every non-timed brick nightly).
+ *
+ * Completion reset (spec AC-2):
+ * - tick  → done: false
+ * - units → done: 0
+ * - timer → elapsedSec: 0
  */
 function seedBrick(
   brick: Brick,
   todayISO: string,
   parentBlockId: string | null,
+  parentRecurrence: Recurrence | null,
 ): Brick | null {
-  // hasDuration: false → no recurrence, never seeded
-  if (!brick.hasDuration) return null;
-
-  // hasDuration: true → recurrence is required (presence invariant)
-
-  if (!appliesOn(brick.recurrence!, todayISO)) return null;
+  const effective = brick.recurrence ?? parentRecurrence;
+  // No effective recurrence (loose one-off) → does not carry.
+  if (!effective) return null;
+  // Genuinely expired one-off → does not carry.
+  if (recurrenceExpired(effective, todayISO)) return null;
 
   const newId = uuid();
 
   if (brick.kind === "tick") {
-    return {
-      ...brick,
-      id: newId,
-      parentBlockId,
-      done: false, // reset (AC #12)
-    };
+    return { ...brick, id: newId, parentBlockId, done: false };
   }
-
   if (brick.kind === "timer") {
-    return {
-      ...brick,
-      id: newId,
-      parentBlockId,
-      elapsedSec: 0, // reset (AC #12)
-    };
+    return { ...brick, id: newId, parentBlockId, elapsedSec: 0 };
   }
-
   // kind === "units"
-  return {
-    ...brick,
-    id: newId,
-    parentBlockId,
-    done: 0, // reset (AC #12)
-  };
+  return { ...brick, id: newId, parentBlockId, done: 0 };
 }

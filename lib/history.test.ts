@@ -128,7 +128,8 @@ describe("U-m9b-012: rollover ADVANCE — currentDate advanced and result is a n
   });
 
   it("result.blocks is the freshly-seeded day, not the archived collections", () => {
-    // The in-progress day has only a hasDuration:false brick (no recurrence) → drops on seed
+    // M11: an every-day block with a non-timed tick brick CARRIES (the brick
+    // inherits the block's recurrence); completion is reset for the new day.
     const state = makeState({
       currentDate: "2026-05-17",
       blocks: [
@@ -154,10 +155,17 @@ describe("U-m9b-012: rollover ADVANCE — currentDate advanced and result is a n
     });
 
     const result = rollover(state, "2026-05-18");
-    // hasDuration:false bricks are never seeded → block is dropped (zero seeded bricks)
-    expect(result.blocks).toHaveLength(0);
-    // The archived day still holds the original block
+    // M11: block carries with a fresh uuid; its non-timed brick carries reset.
+    expect(result.blocks).toHaveLength(1);
+    expect(result.blocks[0].name).toBe("Work");
+    expect(result.blocks[0].id).not.toBe("b1"); // fresh uuid
+    expect(result.blocks[0].bricks).toHaveLength(1);
+    const carried = result.blocks[0].bricks[0];
+    expect(carried.kind === "tick" && carried.done).toBe(false); // reset
+    // The archived day still holds the original block + its logged completion.
     expect(result.history["2026-05-17"].blocks[0].id).toBe("b1");
+    const archivedBrick = result.history["2026-05-17"].blocks[0].bricks[0];
+    expect(archivedBrick.kind === "tick" && archivedBrick.done).toBe(true);
   });
 });
 
@@ -346,8 +354,8 @@ describe("U-m9b-015: rollover purity — no clock reads, no input mutation", () 
 
 // ─── U-m9b-016: per-brick seeding rule — every-day / just-today / no-recurrence ─
 
-describe("U-m9b-016: fresh-day seeding — per-brick rule (every-day seeded, just-today dropped, hasDuration:false dropped)", () => {
-  it("only the every-day brick is seeded; just-today and no-recurrence bricks are dropped", () => {
+describe("U-m9b-016: fresh-day seeding — M11 per-brick rule (recurring carry, expired one-off drops, non-timed inherits block)", () => {
+  it("every-day brick and the non-timed brick carry (inheriting block recurrence); the past just-today brick drops", () => {
     const state = makeState({
       currentDate: "2026-05-17",
       blocks: [
@@ -385,7 +393,7 @@ describe("U-m9b-016: fresh-day seeding — per-brick rule (every-day seeded, jus
               done: false,
             },
             {
-              // r3: hasDuration:false → no recurrence → never seeded
+              // r3: hasDuration:false, no own recurrence → inherits block every-day → carries (M11)
               id: "r3",
               name: "NoTime",
               categoryId: null,
@@ -401,11 +409,13 @@ describe("U-m9b-016: fresh-day seeding — per-brick rule (every-day seeded, jus
 
     const result = rollover(state, "2026-05-18");
 
-    // Block B' carries (1 seeded brick: r1 instance)
+    // Block B' carries with r1 (every-day) + r3 (non-timed, inherits block); r2
+    // (past just-today) drops.
     expect(result.blocks).toHaveLength(1);
     const freshBlock = result.blocks[0];
-    expect(freshBlock.bricks).toHaveLength(1);
-    expect(freshBlock.bricks[0].name).toBe("Daily"); // r1 instance (every-day)
+    const names = freshBlock.bricks.map((b) => b.name).sort();
+    expect(names).toEqual(["Daily", "NoTime"]);
+    expect(names).not.toContain("OneOff"); // expired just-today dropped
   });
 });
 
@@ -483,22 +493,25 @@ describe("U-m9b-017: seeding across recurrence kinds at different todayISO value
     looseBricks,
   });
 
-  it("at 2026-05-18 (Mon): wd and inrange seeded; wknd-check and oob dropped", () => {
+  // M11: rollover carries every still-live recurrence forward regardless of
+  // whether it applies on todayISO — the Day view filters per-date. Only an
+  // expired one-off (custom-range whose end is in the past) drops.
+  it("at 2026-05-18 (Mon): wd, wknd-check, inrange all carry; only OOB (ended range) drops", () => {
     const result = rollover(state, "2026-05-18");
     const ids = result.looseBricks.map((b) => b.name);
-    expect(ids).toContain("Weekday"); // every-weekday, Mon ✓
-    expect(ids).toContain("InRange"); // custom-range, in window, Mon ∈ [1] ✓
-    expect(ids).not.toContain("WkndCheck"); // custom-range, Mon ∉ {Sun, Sat} ✗
-    expect(ids).not.toContain("OOB"); // custom-range, outside Jan range ✗
+    expect(ids).toContain("Weekday"); // every-weekday — never expires
+    expect(ids).toContain("InRange"); // custom-range ending 2026-05-31 (future)
+    expect(ids).toContain("WkndCheck"); // custom-range ending 2026-05-31 (future)
+    expect(ids).not.toContain("OOB"); // custom-range ended 2026-01-31 (past) → expired
   });
 
-  it("at 2026-05-16 (Sat): wknd-check seeded; wd, inrange, oob dropped", () => {
+  it("at 2026-05-16 (Sat): same — all live recurrences carry; OOB drops", () => {
     const result = rollover(state, "2026-05-16");
     const ids = result.looseBricks.map((b) => b.name);
-    expect(ids).not.toContain("Weekday"); // every-weekday, Sat ✗
-    expect(ids).toContain("WkndCheck"); // custom-range, Sat ∈ {Sun, Sat}, in range ✓
-    expect(ids).not.toContain("InRange"); // custom-range, Sat ∉ {Mon} ✗
-    expect(ids).not.toContain("OOB"); // out of range ✗
+    expect(ids).toContain("Weekday");
+    expect(ids).toContain("WkndCheck");
+    expect(ids).toContain("InRange");
+    expect(ids).not.toContain("OOB");
   });
 });
 
@@ -578,8 +591,8 @@ describe("U-m9b-018: seeded bricks — done reset, definition preserved, fresh u
 
 // ─── U-m9b-019: block filtering — blocks carry iff ≥1 seeded brick ────────────
 
-describe("U-m9b-019: block filtering — blocks carry iff ≥1 seeded brick; categories carry verbatim", () => {
-  it("Bkeep carries; Bdrop and Bempty are dropped; categories carry unchanged", () => {
+describe("U-m9b-019: M11 block carry — every live-recurrence block carries (even empty); categories carry verbatim", () => {
+  it("all three every-day blocks carry; the past-one-off brick drops leaving its block empty; categories unchanged", () => {
     const state = makeState({
       currentDate: "2026-05-17",
       blocks: [
@@ -655,10 +668,19 @@ describe("U-m9b-019: block filtering — blocks carry iff ≥1 seeded brick; cat
 
     const result = rollover(state, "2026-05-18");
 
-    // Only Bkeep carries
-    expect(result.blocks).toHaveLength(1);
-    expect(result.blocks[0].name).toBe("KeepBlock");
-    expect(result.blocks[0].bricks).toHaveLength(1);
+    // M11: all three every-day blocks carry (blocks recur by their OWN recurrence).
+    const byName = Object.fromEntries(result.blocks.map((b) => [b.name, b]));
+    expect(Object.keys(byName).sort()).toEqual([
+      "DropBlock",
+      "EmptyBlock",
+      "KeepBlock",
+    ]);
+    // Bkeep: its every-day brick carries.
+    expect(byName["KeepBlock"].bricks).toHaveLength(1);
+    // Bdrop: its only brick was a past just-today → drops → block carries EMPTY.
+    expect(byName["DropBlock"].bricks).toHaveLength(0);
+    // Bempty: its non-timed brick inherits the block's every-day → carries.
+    expect(byName["EmptyBlock"].bricks.map((b) => b.name)).toEqual(["NoTime"]);
 
     // Categories carry verbatim (AC #13)
     expect(result.categories).toEqual([
@@ -750,8 +772,8 @@ describe("U-m9b-020: parentBlockId re-pointed to new block id; loose bricks stay
 
 // ─── U-m9b-021: empty fresh day when no brick applies ────────────────────────
 
-describe("U-m9b-021: empty fresh day when all bricks are every-weekday and today is weekend", () => {
-  it("freshBlocks=[], looseBricks=[] for weekend; categories still carry; history holds the day", () => {
+describe("U-m9b-021: M11 — every-weekday routine still carries onto a weekend day (Day view filters, rollover does not drop)", () => {
+  it("weekday block + loose brick carry onto Sunday; categories carry; history holds the day", () => {
     const state = makeState({
       currentDate: "2026-05-16", // Sat — source day
       blocks: [
@@ -796,8 +818,15 @@ describe("U-m9b-021: empty fresh day when all bricks are every-weekday and today
 
     const result = rollover(state, "2026-05-17"); // Sun — still a weekend
 
-    expect(result.blocks).toEqual([]); // no applicable brick → empty
-    expect(result.looseBricks).toEqual([]); // no applicable brick → empty
+    // M11: every-weekday never expires, so the routine carries forward even onto
+    // a weekend. The Day view (lib/currentDayView) hides it on that date; rollover
+    // must not erase it from state.
+    expect(result.blocks).toHaveLength(1);
+    expect(result.blocks[0].name).toBe("WeekdayBlock");
+    expect(result.blocks[0].bricks.map((b) => b.name)).toEqual([
+      "WeekdayBrick",
+    ]);
+    expect(result.looseBricks.map((b) => b.name)).toEqual(["WeekdayLoose"]);
     expect(result.categories).toEqual([
       { id: "cat-A", name: "Alpha", color: "#abc" },
     ]); // carry (AC #13)
