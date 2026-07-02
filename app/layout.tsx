@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 
 const geist = Geist({
   variable: "--font-geist-sans",
@@ -27,10 +28,19 @@ export const metadata: Metadata = {
   title: "Dharma — Build Today",
   description: "Daily routine tracking. Brick by brick.",
   applicationName: "Dharma",
+  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     title: "Dharma",
     statusBarStyle: "black-translucent",
+  },
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
   },
 };
 
@@ -54,7 +64,10 @@ export default function RootLayout({
       lang="en"
       className={`${geist.variable} ${serif.variable} ${mono.variable} h-full antialiased`}
     >
-      <body className="min-h-dvh">{children}</body>
+      <body className="min-h-dvh">
+        <ServiceWorkerRegister />
+        {children}
+      </body>
     </html>
   );
 }

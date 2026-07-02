@@ -89,16 +89,24 @@ describe("C-m7d-015: components/Fireworks.tsx is UNCHANGED by M7d; no new assets
     expect(stat.size).toBe(431);
   });
 
-  it("public/ directory contains no new M7d assets (no new image, font, Lottie, or audio beyond pre-M7d set)", () => {
-    // Known pre-M7d public entries: icon.svg (app icon, M0) + sounds/ (M4a chime placeholder)
-    // M7d is explicitly forbidden from adding Lottie files, new SVGs, new audio, new fonts.
-    // We assert the directory listing matches the pre-M7d set exactly.
+  it("public/ contains no unexpected assets (no Lottie/audio/font bloat; only the known app + PWA set)", () => {
+    // M7d is forbidden from adding Lottie files, new SVGs, new audio, new fonts.
+    // The PWA-hardening feature legitimately adds the offline service worker and
+    // the raster/maskable/apple icons — those are enumerated here. The guard
+    // still fails loudly if ANY other unexpected asset appears under public/.
     const publicDir = join(process.cwd(), "public");
     const entries = (
       readdirSync(publicDir, { recursive: false }) as string[]
     ).sort();
-    // Pre-M7d known set (sorted)
-    const preM7dKnown = ["icon.svg", "sounds"].sort();
-    expect(entries).toEqual(preM7dKnown);
+    const known = [
+      "icon.svg", // app icon (M0)
+      "sounds", // M4a chime placeholder
+      "sw.js", // PWA offline service worker
+      "icon-192.png", // PWA install icon
+      "icon-512.png", // PWA install icon
+      "icon-maskable-512.png", // PWA maskable icon
+      "apple-touch-icon.png", // iOS home-screen icon
+    ].sort();
+    expect(entries).toEqual(known);
   });
 });
