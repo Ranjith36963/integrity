@@ -44,6 +44,8 @@ interface Props {
   weekendStart?: string;
   /** Called with (kind, "HH:MM") when the user changes a wake time. */
   onSetDayStart?: (kind: "weekday" | "weekend", dayStart: string) => void;
+  /** M11 DEC-2 — called with the chosen editing-past-days window (0/1/3). */
+  onSetPastEditDays?: (days: 0 | 1 | 3) => void;
 }
 
 export function SettingsSheet({
@@ -55,7 +57,17 @@ export function SettingsSheet({
   weekdayStart,
   weekendStart,
   onSetDayStart,
+  onSetPastEditDays,
 }: Props) {
+  const pastEditDays: 0 | 1 | 3 =
+    state.pastEditDays === 1 || state.pastEditDays === 3
+      ? state.pastEditDays
+      : 0;
+  const pastEditOptions: { value: 0 | 1 | 3; label: string }[] = [
+    { value: 0, label: "Read-only" },
+    { value: 1, label: "Yesterday" },
+    { value: 3, label: "3 days" },
+  ];
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [importStatus, setImportStatus] = useState<
     { kind: "idle" } | { kind: "error"; message: string }
@@ -213,6 +225,74 @@ export function SettingsSheet({
                 </div>
               </label>
             </div>
+          </section>
+        )}
+
+        {/* ─── Editing past days (M11 DEC-2) ───────────────────────── */}
+        {onSetPastEditDays && (
+          <section
+            style={{ display: "flex", flexDirection: "column", gap: "8px" }}
+          >
+            <h3
+              style={{
+                fontFamily: "var(--font-ui)",
+                fontSize: "var(--fs-10, 10px)",
+                color: "var(--ink-dim)",
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                margin: 0,
+              }}
+            >
+              Editing past days
+            </h3>
+            <div
+              role="radiogroup"
+              aria-label="Editing past days"
+              data-testid="settings-past-edit"
+              style={{ display: "flex", gap: "6px" }}
+            >
+              {pastEditOptions.map((opt) => {
+                const active = pastEditDays === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    aria-label={opt.label}
+                    onClick={() => {
+                      haptics.light();
+                      onSetPastEditDays(opt.value);
+                    }}
+                    style={{
+                      flex: 1,
+                      minHeight: "44px",
+                      borderRadius: "8px",
+                      border: `1px solid ${active ? "var(--accent)" : "var(--surface-2)"}`,
+                      background: active ? "var(--accent)" : "var(--surface-1)",
+                      color: active ? "var(--bg)" : "var(--ink)",
+                      fontFamily: "var(--font-ui)",
+                      fontSize: "var(--fs-12, 12px)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+            <p
+              style={{
+                fontFamily: "var(--font-ui)",
+                fontSize: "var(--fs-10, 10px)",
+                color: "var(--ink-dim)",
+                margin: 0,
+              }}
+            >
+              {pastEditDays === 0
+                ? "The past is locked — your history stays honest."
+                : `You can back-log the last ${pastEditDays === 1 ? "day" : `${pastEditDays} days`}.`}
+            </p>
           </section>
         )}
 

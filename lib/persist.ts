@@ -48,6 +48,7 @@ export type PersistedState = {
   firstBrickShown?: boolean; // M7e — additive within v3 (ADR-044 "optional fields are an additive change").
   dayStart?: string; // Weekday anchor "HH:MM" — additive within v3. Absent → DEFAULT_DAY_START.
   weekendDayStart?: string; // Weekend anchor "HH:MM" — additive. Absent → falls back to dayStart.
+  pastEditDays?: 0 | 1 | 3; // M11 DEC-2 — editing-past-days window. Additive; absent → 0 (read-only).
 };
 
 /**
@@ -252,6 +253,21 @@ function parsePerField(obj: Record<string, unknown>): {
     }
   }
 
+  // pastEditDays is optional; absent → undefined (read as 0). Invalid → reset.
+  let pastEditDays: 0 | 1 | 3 | undefined;
+  if (obj.pastEditDays === undefined) {
+    pastEditDays = undefined;
+  } else if (
+    obj.pastEditDays === 0 ||
+    obj.pastEditDays === 1 ||
+    obj.pastEditDays === 3
+  ) {
+    pastEditDays = obj.pastEditDays;
+  } else {
+    resetFields.push("pastEditDays");
+    pastEditDays = undefined;
+  }
+
   return {
     state: {
       schemaVersion: 3,
@@ -266,6 +282,7 @@ function parsePerField(obj: Record<string, unknown>): {
       firstBrickShown,
       dayStart,
       weekendDayStart,
+      pastEditDays,
     },
     resetFields,
     droppedHistoryDays,
@@ -428,6 +445,11 @@ export function saveState(state: PersistedState): void {
     // and doesn't go stale when the weekday anchor later changes).
     if (state.weekendDayStart !== undefined) {
       payload.weekendDayStart = state.weekendDayStart;
+    }
+    // M11 DEC-2 — only persist the editing-past-days window once set to a
+    // non-default value (0 read-only is the implicit default when absent).
+    if (state.pastEditDays === 1 || state.pastEditDays === 3) {
+      payload.pastEditDays = state.pastEditDays;
     }
     if (process.env.NODE_ENV !== "production") {
       const result = v.safeParse(persistedStateV3Schema, payload);

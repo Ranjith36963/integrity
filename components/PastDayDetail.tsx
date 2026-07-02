@@ -26,13 +26,90 @@ type PastDayDetailProps = {
   archivedDay: ArchivedDay;
   isoDate: string;
   onClose: () => void;
+  /** M11 DEC-2 — when true, tick bricks become toggles that back-log this day. */
+  canEdit?: boolean;
+  /** M11 DEC-2 — dispatch a TOGGLE_ARCHIVED_TICK for (isoDate, brickId). */
+  onToggleTick?: (brickId: string) => void;
 };
 
 export function PastDayDetail({
   archivedDay,
   isoDate,
   onClose,
+  canEdit = false,
+  onToggleTick,
 }: PastDayDetailProps) {
+  const editable = canEdit && !!onToggleTick;
+
+  // One brick row — a read-only line, or a tick toggle when editing is allowed.
+  const renderBrick = (brick: Brick) => {
+    const rowStyle: React.CSSProperties = {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      fontSize: "var(--fs-12)",
+      color: "var(--ink)",
+      padding: "6px 0",
+      whiteSpace: "nowrap",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+    };
+    const nameStyle: React.CSSProperties = {
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap",
+      flex: 1,
+      textAlign: "left",
+    };
+    if (editable && brick.kind === "tick") {
+      const done = brick.done;
+      return (
+        <button
+          key={brick.id}
+          type="button"
+          role="checkbox"
+          aria-checked={done}
+          aria-label={`${brick.name}, ${done ? "done" : "not done"}, tap to back-log`}
+          onClick={() => onToggleTick!(brick.id)}
+          style={{
+            ...rowStyle,
+            width: "100%",
+            minHeight: "44px",
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+          }}
+        >
+          <span style={nameStyle}>{brick.name}</span>
+          <span
+            aria-hidden="true"
+            style={{
+              marginLeft: "var(--sp-8, 8px)",
+              flexShrink: 0,
+              color: done ? "var(--accent)" : "var(--ink-dim)",
+              fontWeight: 600,
+            }}
+          >
+            {done ? "✓ done" : "○ mark"}
+          </span>
+        </button>
+      );
+    }
+    return (
+      <div key={brick.id} style={rowStyle}>
+        <span style={nameStyle}>{brick.name}</span>
+        <span
+          style={{
+            color: "var(--ink-dim)",
+            marginLeft: "var(--sp-8, 8px)",
+            flexShrink: 0,
+          }}
+        >
+          {brickLabel(brick)}
+        </span>
+      </div>
+    );
+  };
   // Compute score: dayPct over the ArchivedDay (blocks + looseBricks)
   const score = Math.round(
     dayPct({
@@ -138,41 +215,7 @@ export function PastDayDetail({
           >
             {fmtRange(block)}
           </div>
-          {block.bricks.map((brick: Brick) => (
-            <div
-              key={brick.id}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                fontSize: "var(--fs-12)",
-                color: "var(--ink)",
-                padding: "2px 0",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              <span
-                style={{
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  flex: 1,
-                }}
-              >
-                {brick.name}
-              </span>
-              <span
-                style={{
-                  color: "var(--ink-dim)",
-                  marginLeft: "var(--sp-8, 8px)",
-                  flexShrink: 0,
-                }}
-              >
-                {brickLabel(brick)}
-              </span>
-            </div>
-          ))}
+          {block.bricks.map(renderBrick)}
         </div>
       ))}
 
@@ -189,41 +232,7 @@ export function PastDayDetail({
           >
             Loose bricks
           </div>
-          {archivedDay.looseBricks.map((brick: Brick) => (
-            <div
-              key={brick.id}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                fontSize: "var(--fs-12)",
-                color: "var(--ink)",
-                padding: "2px 0",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              <span
-                style={{
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  flex: 1,
-                }}
-              >
-                {brick.name}
-              </span>
-              <span
-                style={{
-                  color: "var(--ink-dim)",
-                  marginLeft: "var(--sp-8, 8px)",
-                  flexShrink: 0,
-                }}
-              >
-                {brickLabel(brick)}
-              </span>
-            </div>
-          ))}
+          {archivedDay.looseBricks.map(renderBrick)}
         </div>
       )}
     </div>

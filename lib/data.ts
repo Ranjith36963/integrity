@@ -18,6 +18,7 @@ import { assertNever } from "./types";
 import { today } from "./dharma";
 import { DEFAULT_DAY_START } from "./dayWindow";
 import { findOverlaps, selectAllTimedItems } from "./overlap";
+import { canEditPastDay } from "./pastEdit";
 
 /**
  * Migration helper for pre-M4e in-memory brick literals.
@@ -341,6 +342,42 @@ export function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         freezes: { ...freezes, [isoDate]: true },
+      };
+    }
+    case "SET_PAST_EDIT_DAYS": {
+      // M11 DEC-2 — persist the editing-past-days window (0 read-only / 1 / 3).
+      const d = action.days;
+      if (d !== 0 && d !== 1 && d !== 3) return state; // ignore malformed
+      return { ...state, pastEditDays: d };
+    }
+    case "TOGGLE_ARCHIVED_TICK": {
+      // M11 DEC-2 — back-log a tick brick on an archived past day, gated by the
+      // editing-past-days window. No-op if the day isn't editable or the brick
+      // isn't a tick found in that day's blocks/looseBricks.
+      const { isoDate, brickId } = action;
+      if (!canEditPastDay(state, isoDate)) return state;
+      const day = state.history[isoDate];
+      if (!day) return state;
+      let changed = false;
+      const flip = (br: Brick): Brick => {
+        if (br.id === brickId && br.kind === "tick") {
+          changed = true;
+          return { ...br, done: !br.done };
+        }
+        return br;
+      };
+      const blocks = day.blocks.map((b) => ({
+        ...b,
+        bricks: b.bricks.map(flip),
+      }));
+      const looseBricks = day.looseBricks.map(flip);
+      if (!changed) return state;
+      return {
+        ...state,
+        history: {
+          ...state.history,
+          [isoDate]: { ...day, blocks, looseBricks },
+        },
       };
     }
     default:

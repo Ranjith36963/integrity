@@ -199,6 +199,8 @@ export const persistedStateV3Schema = v.object({
   firstBrickShown: v.optional(v.boolean()),
   dayStart: v.optional(hhmmSchema),
   weekendDayStart: v.optional(hhmmSchema),
+  // M11 DEC-2 — editing-past-days window (0 read-only / 1 / 3). Additive optional.
+  pastEditDays: v.optional(v.picklist([0, 1, 3])),
 });
 
 /**
@@ -218,5 +220,6 @@ export const persistedFieldNames = [
   "firstBrickShown",
   "dayStart",
   "weekendDayStart",
+  "pastEditDays",
 ] as const;
 export type PersistedFieldName = (typeof persistedFieldNames)[number];

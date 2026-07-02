@@ -250,6 +250,56 @@ describe("C-m11-001: PastDayDetail — backfilled missed day shows 'No entry'", 
   });
 });
 
+// ─── C-m11-002: PastDayDetail — editable when canEdit (DEC-2 back-logging) ────
+
+describe("C-m11-002: PastDayDetail — tick toggle when editing is allowed", () => {
+  const dayWithTick: ArchivedDay = {
+    blocks: [],
+    categories: [],
+    looseBricks: [
+      {
+        id: "e1",
+        name: "Meditate",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: false,
+      },
+    ],
+  };
+
+  it("renders a checkbox toggle and fires onToggleTick when canEdit", async () => {
+    const onToggleTick = vi.fn();
+    render(
+      <PastDayDetail
+        archivedDay={dayWithTick}
+        isoDate="2026-06-29"
+        onClose={vi.fn()}
+        canEdit
+        onToggleTick={onToggleTick}
+      />,
+    );
+    const box = screen.getByRole("checkbox");
+    expect(box).toBeTruthy();
+    box.click();
+    expect(onToggleTick).toHaveBeenCalledWith("e1");
+  });
+
+  it("stays read-only (no checkbox) when canEdit is false", () => {
+    render(
+      <PastDayDetail
+        archivedDay={dayWithTick}
+        isoDate="2026-06-29"
+        onClose={vi.fn()}
+        canEdit={false}
+        onToggleTick={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole("checkbox")).toBeNull();
+  });
+});
+
 // ─── C-m9c-014: PastDayDetail — strictly read-only (mutation-resistant) ───────
 
 describe("C-m9c-014: PastDayDetail — strictly read-only: no mutation affordance", () => {

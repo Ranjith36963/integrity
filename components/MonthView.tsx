@@ -27,6 +27,7 @@ import { dayScore } from "@/lib/history";
 import { longestStreak, avgDailyScore, daysCompleted } from "@/lib/insights";
 import { DayCell } from "./DayCell";
 import { PastDayDetail } from "./PastDayDetail";
+import { canEditPastDay } from "@/lib/pastEdit";
 import { InsightStrip } from "./InsightStrip";
 import { PeriodRing } from "./PeriodRing";
 import { MiniDayRing } from "./MiniDayRing";
@@ -37,6 +38,8 @@ type MonthViewProps = {
   state: AppState;
   onOpenDay: (isoDate: string) => void;
   initialMonth?: { year: number; month: number };
+  /** M11 DEC-2 — back-log a tick on an archived day (dispatch TOGGLE_ARCHIVED_TICK). */
+  onToggleArchivedTick?: (isoDate: string, brickId: string) => void;
 };
 
 // Weekday headers — 0=Sun..6=Sat (ADR-019)
@@ -58,7 +61,12 @@ const MONTH_NAMES = [
   "December",
 ];
 
-export function MonthView({ state, onOpenDay, initialMonth }: MonthViewProps) {
+export function MonthView({
+  state,
+  onOpenDay,
+  initialMonth,
+  onToggleArchivedTick,
+}: MonthViewProps) {
   // Displayed month — initialized to initialMonth if provided, else today's year/month; session-only, not persisted
   const todayIso = today();
   const todayYear = Number(todayIso.slice(0, 4));
@@ -396,6 +404,12 @@ export function MonthView({ state, onOpenDay, initialMonth }: MonthViewProps) {
           archivedDay={state.history[openDate]!}
           isoDate={openDate}
           onClose={() => setOpenDate(null)}
+          canEdit={canEditPastDay(state, openDate)}
+          onToggleTick={
+            onToggleArchivedTick
+              ? (brickId) => onToggleArchivedTick(openDate, brickId)
+              : undefined
+          }
         />
       )}
     </div>

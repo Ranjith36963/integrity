@@ -97,6 +97,9 @@ export type AppState = {
   // Weekend (Sat/Sun) wake time. Additive optional; absent → falls back to
   // dayStart. Resolved per date via resolveDayStart() in lib/dayWindow.ts.
   weekendDayStart?: string;
+  // M11 DEC-2 — how many past days may be back-logged: 0 (read-only, default),
+  // 1 (yesterday only), or 3 (up to 3 days). Additive optional; absent → 0.
+  pastEditDays?: 0 | 1 | 3;
 };
 
 // Action — M4f: collapsed to 5 variants; 5 timer/goal actions removed (ADR-043)
@@ -128,7 +131,9 @@ export type Action =
   | {
       type: "FREEZE_DAY";
       isoDate: string; // YYYY-MM-DD — caller's responsibility to pass a real date
-    }; // Streak-freeze: marks a day as "scored" for streak purposes. Reducer enforces 2-per-calendar-month cap.
+    } // Streak-freeze: marks a day as "scored" for streak purposes. Reducer enforces 2-per-calendar-month cap.
+  | { type: "SET_PAST_EDIT_DAYS"; days: 0 | 1 | 3 } // M11 DEC-2 — editing-past-days window
+  | { type: "TOGGLE_ARCHIVED_TICK"; isoDate: string; brickId: string }; // M11 DEC-2 — back-log a tick on an archived day (gated by canEditPastDay)
 // START_TIMER, STOP_TIMER, TICK_TIMER, SET_TIMER_MINUTES: REMOVED in M4f
 // LOG_GOAL_BRICK: REMOVED in M4f
 

@@ -152,6 +152,27 @@ describe("U-m8-002: saveState/loadState round-trip — exact done value fidelity
     expect(loaded.programStart).toBe("2026-05-01");
   });
 
+  it("M11: pastEditDays round-trips when set (3) and is absent when 0/default", () => {
+    const base: PersistedState = {
+      schemaVersion: 3,
+      programStart: "2026-05-01",
+      currentDate: "2026-05-01",
+      history: {},
+      blocks: [],
+      categories: [],
+      looseBricks: [],
+      deletions: {},
+    };
+    saveState({ ...base, pastEditDays: 3 });
+    expect(loadState().pastEditDays).toBe(3);
+    expect(JSON.parse(mockStorage._store[STORAGE_KEY]).pastEditDays).toBe(3);
+    saveState(base);
+    expect(loadState().pastEditDays).toBeUndefined();
+    expect("pastEditDays" in JSON.parse(mockStorage._store[STORAGE_KEY])).toBe(
+      false,
+    );
+  });
+
   it("raw localStorage JSON has exactly the 11 v3 keys — schemaVersion, programStart, currentDate, history, blocks, categories, looseBricks, deletions, firstBrickShown — and schemaVersion === 3", () => {
     // Sanctioned M5 amendment: schema v2→v3 adds deletions; key count 7→8.
     // Sanctioned M7e amendment: additive firstBrickShown field; key count 9→10.

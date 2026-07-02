@@ -218,7 +218,13 @@ export function AppShell() {
       {view === "day" ? (
         <BuildingClient state={state} dispatch={dispatch} hydrated={hydrated} />
       ) : view === "week" ? (
-        <WeekView state={state} onOpenDay={handleOpenDay} />
+        <WeekView
+          state={state}
+          onOpenDay={handleOpenDay}
+          onToggleArchivedTick={(isoDate, brickId) =>
+            dispatch({ type: "TOGGLE_ARCHIVED_TICK", isoDate, brickId })
+          }
+        />
       ) : view === "year" ? (
         <YearView state={state} onOpenMonth={handleOpenMonth} />
       ) : (
@@ -227,6 +233,9 @@ export function AppShell() {
           state={state}
           onOpenDay={handleOpenDay}
           initialMonth={monthTarget ?? undefined}
+          onToggleArchivedTick={(isoDate, brickId) =>
+            dispatch({ type: "TOGGLE_ARCHIVED_TICK", isoDate, brickId })
+          }
         />
       )}
     </div>

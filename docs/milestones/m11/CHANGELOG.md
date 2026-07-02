@@ -2,6 +2,23 @@
 
 ## [unreleased]
 
+### Added — Step 3b: "Editing past days" setting + gated back-logging (DEC-2)
+
+- A Settings control **"Editing past days"** (read-only / yesterday / up-to-3-days) persisted as an
+  additive optional `pastEditDays` (0 | 1 | 3) on the state + v3 schema; default 0 = read-only, and
+  0 is never written (so the honest default costs nothing). `SET_PAST_EDIT_DAYS` reducer action.
+- `lib/pastEdit.ts` — the single gate `canEditPastDay(state, iso)`: a day is editable only when the
+  window > 0, the day is an archived past day (`iso` in history and strictly before `currentDate`),
+  and it falls within the chosen window. Pure (no clock read). Plus `pastEditDaysOf`/`daysBetween`.
+- `TOGGLE_ARCHIVED_TICK` reducer action back-logs a tick brick on an archived day — **guarded by
+  `canEditPastDay`** (a no-op otherwise), immutable (clones the day). `PastDayDetail` renders tick
+  bricks as toggles when `canEdit`, threaded from `AppShell` → `WeekView`/`MonthView` via
+  `onToggleArchivedTick`. Default stays strictly read-only.
+- Tests: `lib/pastEdit.test.ts` (window matrix + reducer gating, 10), `C-m11-002` (editable toggle),
+  a `persist.test.ts` round-trip (persists at 3, absent at default). 1835 vitest green.
+- Scope note: back-logging covers **tick** bricks (the "did I do it" case); units/timer retroactive
+  entry is a later refinement.
+
 ### Added — Step 3a: browsing honesty — missed days read "No entry" (DEC-1)
 
 - The Week/Month/Year views and the tap-a-date drill-down already existed; the data behind them is

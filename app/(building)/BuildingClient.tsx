@@ -789,6 +789,9 @@ export function BuildingClient({
           onSetDayStart={(kind, v) =>
             dispatch({ type: "SET_DAY_START", kind, dayStart: v })
           }
+          onSetPastEditDays={(days) =>
+            dispatch({ type: "SET_PAST_EDIT_DAYS", days })
+          }
         />
         <Hero
           dateLabel={dateLabelValue}
