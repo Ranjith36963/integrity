@@ -203,6 +203,53 @@ const fixture75: ArchivedDay = {
   ],
 };
 
+// ─── C-m11-001: PastDayDetail — a missed day reads "No entry" (DEC-1) ─────────
+
+describe("C-m11-001: PastDayDetail — backfilled missed day shows 'No entry'", () => {
+  const missedDay: ArchivedDay = {
+    blocks: [],
+    categories: [],
+    looseBricks: [
+      {
+        id: "m1",
+        name: "Meditate",
+        categoryId: null,
+        parentBlockId: null,
+        hasDuration: false,
+        kind: "tick",
+        done: false,
+      },
+    ],
+    missed: true,
+  };
+
+  it("shows 'No entry · 0%' for a missed day", () => {
+    render(
+      <PastDayDetail
+        archivedDay={missedDay}
+        isoDate="2026-06-29"
+        onClose={vi.fn()}
+      />,
+    );
+    const score = screen.getByTestId("past-day-score");
+    expect(score.textContent).toMatch(/no entry/i);
+    expect(score.textContent).toMatch(/0%/);
+  });
+
+  it("a normal (non-missed) day shows its numeric score, not 'No entry'", () => {
+    render(
+      <PastDayDetail
+        archivedDay={fixture75}
+        isoDate="2026-06-29"
+        onClose={vi.fn()}
+      />,
+    );
+    const score = screen.getByTestId("past-day-score");
+    expect(score.textContent).toContain("75%");
+    expect(score.textContent).not.toMatch(/no entry/i);
+  });
+});
+
 // ─── C-m9c-014: PastDayDetail — strictly read-only (mutation-resistant) ───────
 
 describe("C-m9c-014: PastDayDetail — strictly read-only: no mutation affordance", () => {

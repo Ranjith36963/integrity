@@ -84,13 +84,15 @@ export function PastDayDetail({
             {formattedDate}
           </h2>
           <p
+            data-testid="past-day-score"
             style={{
               fontSize: "var(--fs-14, 0.875rem)",
               color: "var(--ink-dim)",
               margin: 0,
             }}
           >
-            {score}%
+            {/* M11 DEC-1: a backfilled missed day reads "No entry" (still 0%). */}
+            {archivedDay.missed ? "No entry · 0%" : `${score}%`}
           </p>
         </div>
         <button

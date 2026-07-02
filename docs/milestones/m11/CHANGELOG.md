@@ -2,6 +2,18 @@
 
 ## [unreleased]
 
+### Added — Step 3a: browsing honesty — missed days read "No entry" (DEC-1)
+
+- The Week/Month/Year views and the tap-a-date drill-down already existed; the data behind them is
+  now complete (Steps 1–2). This step makes a backfilled missed day read **"No entry · 0%"** in the
+  read-only day detail (`components/PastDayDetail.tsx`) instead of a bare "0%", so a
+  zero-by-omission is legible and distinct from a worked-then-scored-0 day — while still counting as
+  0% in every average (DEC-1). A normal day keeps its numeric score.
+- Tests: `C-m11-001` in `components/PastDayDetail.test.tsx` (missed → "No entry"; normal → numeric).
+- Note: the **"Editing past days" setting (DEC-2)** and retroactive back-logging are a separate,
+  larger build (past days are strictly read-only today — there is no edit path to gate yet); tracked
+  as Step 3b. Off-device cloud backup (Supabase) is Step 4 and requires the user's Supabase project.
+
 ### Added — Step 2: backfill missed days + honest archived scores (defect D3, DEC-1)
 
 - **No more holes in history.** Rollover previously archived only the single last-open day and
