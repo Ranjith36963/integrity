@@ -2,6 +2,27 @@
 
 ## [unreleased]
 
+### Fixed (post-M9 — recurrence-aware Day view + score) — **resolves the ADR-047 deferral**
+
+- **The Day view now shows and scores only the blocks whose recurrence applies to
+  `state.currentDate`.** ADR-047 (M5) had `currentDayBlocks` resolve deletions **only** and
+  explicitly deferred `appliesOn` Day-view wiring to "a dedicated spec entry" — this is that
+  entry. Before the fix, a user with a weekday routine **and** a weekend routine saw **both**
+  every day (32 blocks on a Wednesday), and the day score averaged over blocks that cannot
+  occur today (weekend blocks diluting a weekday's score, e.g. 50% instead of 100%).
+- New `lib/currentDayView.ts`: `visibleDayBlocks(state)` = `currentDayBlocks` (deletions) ∩
+  `appliesOn(recurrence, currentDate)`; `currentDayState(state)` projects blocks for scoring.
+  Loose bricks pass through unchanged (ad-hoc tray, not part of the weekday/weekend routine
+  distinction).
+- Wired into: `BuildingClient` (hero score + timeline), `lib/history.ts` (today's live cell so
+  the Week/Month/Year "today" ring matches the Day hero), and `lib/dayBlocks.ts` (today's ring).
+- Tests: `lib/currentDayView.test.ts` (weekday/weekend/just-today/deletions matrix) +
+  `lib/currentDayView.tz.test.ts` (weekday classification is TZ-invariant across PT/Tokyo/UTC/
+  Nepal, including the Jan-1 negative-UTC edge). One-off block fixtures in the BuildingClient
+  delete/m4b/m4e suites re-dated to `today()` so they still apply on the test's `currentDate`.
+- Verified in the live app: on a Wednesday the timeline renders exactly the 16 weekday blocks
+  (weekend blocks absent); the day score reflects only today's routine.
+
 ### Added (M9e) — **Completes Milestone 9**
 
 - **M9e — Year view (Empire) + the complete calendar:** a 3×4 twelve-month overview grid where

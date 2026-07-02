@@ -2,6 +2,20 @@
 
 ## [unreleased]
 
+### Fixed (post-M4e — recurrence-aware overlap)
+
+- **Overlap detection now respects recurrence.** `findOverlaps` previously flagged any two
+  timed items whose clock ranges intersect, regardless of when they recur — so a weekend-only
+  block (Sat–Sun) at 07:00 was rejected as "overlapping" a weekday-only block (Mon–Fri) at the
+  same time, blocking users who keep separate weekday + weekend routines from adding the second
+  routine at all. Added `recurrencesCanCoincide(a, b)` to `lib/overlap.ts` (shared-weekday check
+  → date-range intersection → bounded per-day scan for sub-week windows); two items now conflict
+  only when their clock ranges overlap **and** their recurrences can both land on a common
+  calendar day. Threaded `recurrence` through `TimedItem`, `findOverlaps`, `selectAllTimedItems`,
+  and the `AddBlockSheet` / `AddBrickSheet` candidates. Absent recurrence is treated as
+  `every-day` (backward compatible). Tests: `lib/recurrenceOverlap.test.ts`. Found by driving a
+  real 16-block weekday + 16-block weekend routine through the live app with Playwright.
+
 ### Added (M4e)
 
 - **M4e — Brick Duration + Overlap Engine:** universal `hasDuration` toggle on every brick
