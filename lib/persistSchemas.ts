@@ -147,6 +147,9 @@ export const archivedDaySchema = v.object({
   blocks: v.array(blockV3Schema),
   categories: v.array(categoryV3Schema),
   looseBricks: v.array(brickV3Schema),
+  // M11: additive optional flag for a backfilled missed day (DEC-1). Old archived
+  // days (no flag) still validate; new missed days round-trip the flag.
+  missed: v.optional(v.boolean()),
 });
 
 // Record<string, ArchivedDay> keyed by ISO date.

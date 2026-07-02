@@ -13,7 +13,46 @@ import { weekDates } from "./weekGrid";
 import { monthDates } from "./yearGrid";
 import { dayPct } from "./dharma";
 import { currentDayState } from "./currentDayView";
+import { appliesOn } from "./appliesOn";
 import { uuid } from "./uuid";
+
+/** Next calendar day for an ISO date, built via the local-time Date constructor
+ *  (no UTC drift; same discipline as lib/appliesOn.ts). Pure — no clock read. */
+function nextISO(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(y, m - 1, d + 1);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+}
+
+/** Reset a brick's completion for a fresh/missed day (definition preserved). */
+function resetCompletion(brick: Brick): Brick {
+  if (brick.kind === "tick") return { ...brick, done: false };
+  if (brick.kind === "timer") return { ...brick, elapsedSec: 0 };
+  return { ...brick, done: 0 };
+}
+
+/** M11: an immutable snapshot of the routine that APPLIED on `iso`, all
+ *  completion reset → a missed day (0%). Blocks/bricks filtered by appliesOn so
+ *  the day view can show exactly what was scheduled-but-not-done that date. */
+function missedDaySnapshot(state: PersistedState, iso: string): ArchivedDay {
+  const blocks = state.blocks
+    .filter((b) => appliesOn(b.recurrence, iso))
+    .map((b) => ({
+      ...b,
+      bricks: b.bricks
+        .filter((br) => appliesOn(br.recurrence ?? b.recurrence, iso))
+        .map(resetCompletion),
+    }));
+  const looseBricks = state.looseBricks
+    .filter((br) => (br.recurrence ? appliesOn(br.recurrence, iso) : false))
+    .map(resetCompletion);
+  return structuredClone({
+    blocks,
+    categories: state.categories,
+    looseBricks,
+    missed: true,
+  });
+}
 
 // Re-export ArchivedDay for caller convenience
 export type { ArchivedDay };
@@ -226,13 +265,30 @@ export function rollover(
     return state; // same reference — AC #6 no-op
   }
 
-  // Step 2: ARCHIVE — deep snapshot of the in-progress day under the old date key.
+  // Step 2: ARCHIVE — snapshot the in-progress day under its date key. M11:
+  // archive the recurrence-FILTERED day the user actually saw+scored
+  // (currentDayState), not the full template set — otherwise a past weekday's
+  // score would be diluted by weekend-only blocks now that the whole routine
+  // persists in state.blocks (M11 Step 1).
+  const dels = state.deletions ?? {};
+  const workedBlocks = state.blocks.filter(
+    (b) =>
+      !dels[`${state.currentDate}:${b.id}`] &&
+      appliesOn(b.recurrence, state.currentDate),
+  );
   const archived: ArchivedDay = structuredClone({
-    blocks: state.blocks,
+    blocks: workedBlocks,
     categories: state.categories,
     looseBricks: state.looseBricks,
   });
   const newHistory = { ...state.history, [state.currentDate]: archived };
+
+  // M11 Step 2 — BACKFILL: record every skipped day between (exclusive)
+  // currentDate and todayISO as a missed day (routine reset → 0%, missed:true),
+  // so history has no holes when the user reopens after a gap (DEC-1).
+  for (let d = nextISO(state.currentDate); d < todayISO; d = nextISO(d)) {
+    newHistory[d] = missedDaySnapshot(state, d);
+  }
 
   // Step 3: SEED — compute the fresh day for todayISO.
   const { freshBlocks, freshLoose } = seedFreshDay(

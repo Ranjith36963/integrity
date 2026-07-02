@@ -169,10 +169,10 @@ describe("U-m9b-012: rollover ADVANCE — currentDate advanced and result is a n
   });
 });
 
-// ─── U-m9b-013: multi-day skip — only currentDate archived, no intervening dates ─
+// ─── U-m9b-013: M11 multi-day skip — every skipped day backfilled as missed ──
 
-describe("U-m9b-013: rollover multi-day skip — only state.currentDate archived", () => {
-  it("archives only '2026-05-11'; no intervening-date entries; advances to '2026-05-18'", () => {
+describe("U-m9b-013: rollover multi-day skip — backfills every intervening day (M11)", () => {
+  it("archives '2026-05-11' + backfills 05-12..05-17 as missed(0%); advances to '2026-05-18'", () => {
     const priorDay: ArchivedDay = {
       blocks: [
         {
@@ -218,12 +218,27 @@ describe("U-m9b-013: rollover multi-day skip — only state.currentDate archived
     const result = rollover(state, "2026-05-18");
 
     const keys = Object.keys(result.history).sort();
-    expect(keys).toEqual(["2026-05-04", "2026-05-11"]); // only the two real entries
-    // Confirm no intervening dates
+    // M11: prior entry + the real last-open day + every skipped day 05-12..05-17.
+    expect(keys).toEqual([
+      "2026-05-04",
+      "2026-05-11",
+      "2026-05-12",
+      "2026-05-13",
+      "2026-05-14",
+      "2026-05-15",
+      "2026-05-16",
+      "2026-05-17",
+    ]);
+    // 2026-05-18 becomes the new current day — NOT archived.
+    expect(Object.keys(result.history)).not.toContain("2026-05-18");
+    // Backfilled days are flagged missed and score 0% (routine reset).
     for (let d = 12; d <= 17; d++) {
       const isoDate = `2026-05-${String(d).padStart(2, "0")}`;
-      expect(Object.keys(result.history)).not.toContain(isoDate);
+      expect(result.history[isoDate].missed).toBe(true);
+      expect(dayScore(result, isoDate)).toBe(0);
     }
+    // The real last-open day is NOT flagged missed.
+    expect(result.history["2026-05-11"].missed).toBeUndefined();
     expect(result.currentDate).toBe("2026-05-18"); // advanced straight to today
     // Prior '2026-05-04' entry preserved unchanged
     expect(result.history["2026-05-04"]).toEqual(priorDay);

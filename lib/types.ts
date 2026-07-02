@@ -65,6 +65,10 @@ export type ArchivedDay = {
   blocks: Block[];
   categories: Category[];
   looseBricks: Brick[];
+  // M11: true for a day backfilled by rollover because the user never opened the
+  // app that day (a scheduled-but-untouched day). Scores 0% either way; the flag
+  // lets the UI label it "No entry" (DEC-1). Absent on days the user opened.
+  missed?: boolean;
 };
 
 // AppState — M4f: runningTimerBrickId removed (ADR-043). M8: programStart added.
