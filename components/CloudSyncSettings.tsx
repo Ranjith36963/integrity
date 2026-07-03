@@ -60,16 +60,33 @@ export function CloudSyncSettings() {
           Checking…
         </p>
       ) : email ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          <p style={{ color: "var(--ink)", fontSize: "var(--fs-14, 14px)" }}>
-            Signed in as <strong>{email}</strong>. Your data backs up
-            automatically.
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          <p
+            data-testid="cloud-backed-up"
+            style={{
+              color: "var(--ink)",
+              fontSize: "var(--fs-14, 14px)",
+              margin: 0,
+            }}
+          >
+            <span style={{ color: "var(--accent)" }}>✓</span> Your data is
+            backed up to <strong>{email}</strong>.
           </p>
           <button
             type="button"
             data-testid="cloud-sign-out"
             onClick={() => void signOut()}
-            style={secondaryBtn}
+            style={{
+              alignSelf: "flex-start",
+              background: "transparent",
+              border: "none",
+              color: "var(--ink-dim)",
+              fontFamily: "var(--font-ui)",
+              fontSize: "var(--fs-12, 12px)",
+              textDecoration: "underline",
+              cursor: "pointer",
+              padding: 0,
+            }}
           >
             Sign out
           </button>
