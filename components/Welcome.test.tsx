@@ -25,12 +25,16 @@ describe("Welcome", () => {
     expect(screen.getByText(/Empires are years/i)).toBeInTheDocument();
   });
 
-  it("calls onBegin when the primary CTA is tapped", async () => {
+  it("'Lay your first brick' reveals the email sign-in (sign-in required, not skipped)", async () => {
     const user = userEvent.setup();
     const onBegin = vi.fn();
     render(<Welcome onBegin={onBegin} />);
+    expect(screen.queryByTestId("welcome-email")).toBeNull();
     await user.click(screen.getByTestId("welcome-begin"));
-    expect(onBegin).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("welcome-email")).toBeTruthy();
+    expect(screen.getByTestId("welcome-send-link")).toBeTruthy();
+    // must NOT skip into the app — cloud is configured, so sign-in is required
+    expect(onBegin).not.toHaveBeenCalled();
   });
 
   it("calls onBegin when Escape is pressed (keyboard dismiss)", () => {
@@ -40,22 +44,11 @@ describe("Welcome", () => {
     expect(onBegin).toHaveBeenCalledTimes(1);
   });
 
-  it("primary CTA is 'Lay your first brick'; secondary is the skippable cloud sign-in (M11 Option 3)", () => {
+  it("has a single button — no secondary skip/sign-in link", () => {
     render(<Welcome onBegin={vi.fn()} />);
-    // Primary action is unchanged and prominent.
     expect(screen.getByTestId("welcome-begin")).toHaveTextContent(
       /lay your first brick/i,
     );
-    // Option 3 adds one secondary, skippable "sign in to back up" link.
-    expect(screen.getByTestId("welcome-signin")).toBeTruthy();
-  });
-
-  it("tapping the sign-in link reveals an inline email field (no jump to Settings)", async () => {
-    const user = userEvent.setup();
-    render(<Welcome onBegin={vi.fn()} />);
-    expect(screen.queryByTestId("welcome-email")).toBeNull();
-    await user.click(screen.getByTestId("welcome-signin"));
-    expect(screen.getByTestId("welcome-email")).toBeTruthy();
-    expect(screen.getByTestId("welcome-send-link")).toBeTruthy();
+    expect(screen.queryByTestId("welcome-signin")).toBeNull();
   });
 });

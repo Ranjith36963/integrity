@@ -33,9 +33,10 @@ interface Props {
 }
 
 export function Welcome({ onBegin }: Props) {
-  // M11 Option 3 — inline sign-in right on the welcome screen (no jump to
-  // Settings): tap the link → enter email → magic link → continue.
-  const { signInWithEmail } = useSupabaseSession();
+  // M11 — "Lay your first brick" IS the sign-in: tap it → enter email → magic
+  // link → return signed in → day view. Backed up from day one. When cloud is
+  // not configured, the button just enters the app (never a hard lock).
+  const { signInWithEmail, email } = useSupabaseSession();
   const [mode, setMode] = useState<"intro" | "signin">("intro");
   const [addr, setAddr] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
@@ -55,6 +56,17 @@ export function Welcome({ onBegin }: Props) {
       setErr(res.error ?? "Could not send the link.");
     }
   }
+
+  function handlePrimary() {
+    // Configured → require sign-in (reveal email). Not configured → just start.
+    if (isSupabaseConfigured()) setMode("signin");
+    else onBegin();
+  }
+
+  // Once the magic link brings them back signed in, drop into the day view.
+  useEffect(() => {
+    if (email) onBegin();
+  }, [email, onBegin]);
 
   // Esc-to-dismiss keyboard parity with sheets.
   useEffect(() => {
@@ -240,57 +252,31 @@ export function Welcome({ onBegin }: Props) {
       </p>
 
       {mode === "intro" ? (
-        <>
-          {/* Primary CTA — single, full-width, the action the screen is for */}
-          <button
-            type="button"
-            data-testid="welcome-begin"
-            onClick={onBegin}
-            className="tap"
-            style={{
-              height: "52px",
-              width: "100%",
-              borderRadius: "12px",
-              border: "none",
-              background: "var(--accent)",
-              color: "var(--bg)",
-              fontFamily: "var(--font-ui)",
-              fontSize: "var(--fs-14, 14px)",
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              cursor: "pointer",
-              marginTop: "var(--sp-24, 24px)",
-            }}
-          >
-            Lay your first brick
-          </button>
-
-          {/* M11 Option 3 — a skippable "back up & sync" offer, from day one.
-              Tapping reveals the inline email sign-in below (no Settings jump). */}
-          {isSupabaseConfigured() && (
-            <button
-              type="button"
-              data-testid="welcome-signin"
-              onClick={() => setMode("signin")}
-              className="tap"
-              style={{
-                marginTop: "var(--sp-12, 12px)",
-                width: "100%",
-                background: "transparent",
-                border: "none",
-                color: "var(--ink-dim)",
-                fontFamily: "var(--font-ui)",
-                fontSize: "var(--fs-12, 12px)",
-                cursor: "pointer",
-                textDecoration: "underline",
-              }}
-            >
-              Sign in to back up &amp; sync across devices
-            </button>
-          )}
-        </>
+        // The ONE action: "Lay your first brick" — which is sign-in.
+        <button
+          type="button"
+          data-testid="welcome-begin"
+          onClick={handlePrimary}
+          className="tap"
+          style={{
+            height: "52px",
+            width: "100%",
+            borderRadius: "12px",
+            border: "none",
+            background: "var(--accent)",
+            color: "var(--bg)",
+            fontFamily: "var(--font-ui)",
+            fontSize: "var(--fs-14, 14px)",
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            cursor: "pointer",
+            marginTop: "var(--sp-24, 24px)",
+          }}
+        >
+          Lay your first brick
+        </button>
       ) : status === "sent" ? (
-        // Magic link sent — one clear next step.
+        // Magic link sent — the only way in is the emailed link.
         <div
           data-testid="welcome-signin-sent"
           style={{
@@ -301,20 +287,30 @@ export function Welcome({ onBegin }: Props) {
           }}
         >
           <p style={{ color: "var(--ink)", fontSize: "var(--fs-14, 14px)" }}>
-            Check your email and tap the link to sign in. Your data will back up
-            automatically.
+            Check your email and tap the link to begin — your day is saved from
+            the very first brick, backed up to <strong>{addr}</strong>.
           </p>
           <button
             type="button"
-            onClick={onBegin}
-            className="tap"
-            style={primaryBtn}
+            onClick={() => {
+              setStatus("idle");
+              setAddr("");
+            }}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "var(--ink-dim)",
+              fontFamily: "var(--font-ui)",
+              fontSize: "var(--fs-12, 12px)",
+              cursor: "pointer",
+              textDecoration: "underline",
+            }}
           >
-            Continue
+            Use a different email
           </button>
         </div>
       ) : (
-        // Inline email sign-in.
+        // Enter your email to begin (sign-in is the first brick).
         <div
           style={{
             marginTop: "var(--sp-24, 24px)",
@@ -323,12 +319,18 @@ export function Welcome({ onBegin }: Props) {
             gap: "10px",
           }}
         >
+          <p
+            style={{ color: "var(--ink-dim)", fontSize: "var(--fs-12, 12px)" }}
+          >
+            Enter your email — we&rsquo;ll send a magic link. Your routine backs
+            up from day one and follows you across devices.
+          </p>
           <input
             type="email"
             inputMode="email"
             autoComplete="email"
             placeholder="you@email.com"
-            aria-label="Email for cloud backup"
+            aria-label="Email to begin"
             data-testid="welcome-email"
             value={addr}
             onChange={(e) => setAddr(e.target.value)}
@@ -364,20 +366,6 @@ export function Welcome({ onBegin }: Props) {
               {err}
             </p>
           )}
-          <button
-            type="button"
-            onClick={() => setMode("intro")}
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "var(--ink-dim)",
-              fontFamily: "var(--font-ui)",
-              fontSize: "var(--fs-12, 12px)",
-              cursor: "pointer",
-            }}
-          >
-            Back
-          </button>
         </div>
       )}
     </div>

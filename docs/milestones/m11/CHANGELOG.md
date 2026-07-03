@@ -2,7 +2,18 @@
 
 ## [unreleased]
 
-### Changed — Option 3 refinement: inline sign-in on the Welcome screen
+### Changed — "Lay your first brick" IS the sign-in (one button, required)
+
+- Final call (per user): the Welcome screen has **one** button. Tapping **"Lay your first brick"**
+  reveals an inline email field → **"Email me a magic link"** → "check your email"; the emailed link
+  brings the user back **signed in**, and Welcome auto-dismisses to the Day view. So the routine is
+  backed up **from day one** — sign-in is the first brick, no skip, no second button. Settings still
+  reads "Signed in as … Your data backs up automatically." If cloud is not configured, the button
+  simply enters the app (never a hard lock). Removed the secondary "Sign in to back up" link and the
+  Settings-jump. Tests: `Welcome.test.tsx` (single button; tapping reveals the email step and does
+  not skip into the app). 1860 vitest green; browser-verified.
+
+### Superseded — Option 3 refinement: inline sign-in on the Welcome screen
 
 - The Welcome "Sign in to back up" link no longer jumps to Settings. Tapping it now reveals an
   **inline email field + "Email me a magic link"** right on the Welcome screen; after sending it
