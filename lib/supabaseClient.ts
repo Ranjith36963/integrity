@@ -27,7 +27,12 @@ export function getSupabase(): SupabaseClient | null {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
-        flowType: "pkce",
+        // Implicit (not PKCE): a magic link tapped from the email app opens in a
+        // different browser context than where it was requested, so there's no
+        // PKCE verifier to exchange. Implicit carries the session in the URL and
+        // signs in whatever browser opens the link. (M11 — fixes "still signed
+        // out after tapping the link".)
+        flowType: "implicit",
       },
     });
   } catch {
