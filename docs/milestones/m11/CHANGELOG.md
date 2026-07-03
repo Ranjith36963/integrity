@@ -2,6 +2,19 @@
 
 ## [unreleased]
 
+### Added — Step 4 (part 3): cloud offered from day one, skippable (Option 3)
+
+- Backup is now surfaced up front instead of hiding in Settings — without a login wall.
+  `components/Welcome.tsx` gains a subtle, skippable **"Sign in to back up & sync across devices"**
+  link under the primary CTA (only when cloud is configured; tapping it dismisses Welcome and opens
+  the cloud sign-in). `components/CloudBackupBanner.tsx` shows a gentle, **dismissible** "back up
+  your data" nudge in the Day view once the user has built a routine and is signed out; "Back up"
+  opens sign-in, "×" hides it forever (persisted in `dharma:cloud-nudge-dismissed`). Never blocks
+  anything; never shown when cloud is off or the user is already signed in.
+- Tests: `components/CloudBackupBanner.test.tsx` (shows only when signed-out + has-data + not
+  dismissed; dismissal persists). 1860 vitest green, 0 type/lint errors, prod build clean; browser
+  smoke confirmed the Welcome link + the appear/dismiss/stays-gone banner flow.
+
 ### Added — Step 4 (part 2): Supabase cloud backup wired in (magic-link login + sync)
 
 - Email **magic-link login** + **automatic cloud backup/sync** across devices, all behind Supabase.

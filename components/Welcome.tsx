@@ -25,12 +25,15 @@
  */
 
 import { useEffect } from "react";
+import { isSupabaseConfigured } from "@/lib/supabaseConfig";
 
 interface Props {
   onBegin: () => void;
+  /** M11 Option 3 — offered from day one: dismiss welcome + open cloud sign-in. */
+  onSignIn?: () => void;
 }
 
-export function Welcome({ onBegin }: Props) {
+export function Welcome({ onBegin, onSignIn }: Props) {
   // Esc-to-dismiss keyboard parity with sheets.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -237,6 +240,30 @@ export function Welcome({ onBegin }: Props) {
       >
         Lay your first brick
       </button>
+
+      {/* M11 Option 3 — a skippable "back up & sync" offer, from day one.
+          Only shown when cloud backup is configured; never a wall. */}
+      {onSignIn && isSupabaseConfigured() && (
+        <button
+          type="button"
+          data-testid="welcome-signin"
+          onClick={onSignIn}
+          className="tap"
+          style={{
+            marginTop: "var(--sp-12, 12px)",
+            width: "100%",
+            background: "transparent",
+            border: "none",
+            color: "var(--ink-dim)",
+            fontFamily: "var(--font-ui)",
+            fontSize: "var(--fs-12, 12px)",
+            cursor: "pointer",
+            textDecoration: "underline",
+          }}
+        >
+          Sign in to back up &amp; sync across devices
+        </button>
+      )}
     </div>
   );
 }

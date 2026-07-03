@@ -57,6 +57,7 @@ import { BottomBar } from "@/components/BottomBar";
 import { AddChooserSheet } from "@/components/AddChooserSheet";
 import { AddBlockSheet } from "@/components/AddBlockSheet";
 import { Welcome } from "@/components/Welcome";
+import { CloudBackupBanner } from "@/components/CloudBackupBanner";
 import { SettingsSheet } from "@/components/SettingsSheet";
 import { fireBurst } from "@/components/BurstOverlay";
 import {
@@ -682,7 +683,15 @@ export function BuildingClient({
 
   return (
     <EditModeProvider>
-      {welcomeOpen && <Welcome onBegin={dismissWelcome} />}
+      {welcomeOpen && (
+        <Welcome
+          onBegin={dismissWelcome}
+          onSignIn={() => {
+            dismissWelcome();
+            setSettingsOpen(true);
+          }}
+        />
+      )}
       <div className="relative mx-auto min-h-dvh max-w-[430px]">
         {/* M6: aria-live region — polite, atomic, visually hidden (sr-only equivalent) */}
         <span
@@ -703,6 +712,12 @@ export function BuildingClient({
           {announcement}
         </span>
         <TopBar state={state} onOpenSettings={() => setSettingsOpen(true)} />
+
+        {/* M11 Option 3 — gentle, dismissible "back up your data" nudge. */}
+        <CloudBackupBanner
+          hasData={state.blocks.length > 0}
+          onSignIn={() => setSettingsOpen(true)}
+        />
 
         {/* Log mode banner — slides in below TopBar when LOG is tapped */}
         <AnimatePresence>
