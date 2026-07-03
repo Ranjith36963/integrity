@@ -2,6 +2,15 @@
 
 ## [unreleased]
 
+### Changed — Option 3 refinement: inline sign-in on the Welcome screen
+
+- The Welcome "Sign in to back up" link no longer jumps to Settings. Tapping it now reveals an
+  **inline email field + "Email me a magic link"** right on the Welcome screen; after sending it
+  shows a "Check your email" confirmation with a Continue button. Simpler, one flow, no context
+  switch (per user feedback). `components/Welcome.tsx` gained the inline sign-in mode via
+  `useSupabaseSession`; the `onSignIn`→Settings prop was removed. Settings still shows "Signed in
+  as …". Tests updated (`Welcome.test.tsx`: secondary link present; tap reveals inline email).
+
 ### Added — Step 4 (part 3): cloud offered from day one, skippable (Option 3)
 
 - Backup is now surfaced up front instead of hiding in Settings — without a login wall.

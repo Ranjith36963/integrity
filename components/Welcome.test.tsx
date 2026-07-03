@@ -40,10 +40,22 @@ describe("Welcome", () => {
     expect(onBegin).toHaveBeenCalledTimes(1);
   });
 
-  it("renders exactly one primary CTA — no skip link, no secondary", () => {
+  it("primary CTA is 'Lay your first brick'; secondary is the skippable cloud sign-in (M11 Option 3)", () => {
     render(<Welcome onBegin={vi.fn()} />);
-    const buttons = screen.getAllByRole("button");
-    expect(buttons).toHaveLength(1);
-    expect(buttons[0]).toHaveTextContent(/lay your first brick/i);
+    // Primary action is unchanged and prominent.
+    expect(screen.getByTestId("welcome-begin")).toHaveTextContent(
+      /lay your first brick/i,
+    );
+    // Option 3 adds one secondary, skippable "sign in to back up" link.
+    expect(screen.getByTestId("welcome-signin")).toBeTruthy();
+  });
+
+  it("tapping the sign-in link reveals an inline email field (no jump to Settings)", async () => {
+    const user = userEvent.setup();
+    render(<Welcome onBegin={vi.fn()} />);
+    expect(screen.queryByTestId("welcome-email")).toBeNull();
+    await user.click(screen.getByTestId("welcome-signin"));
+    expect(screen.getByTestId("welcome-email")).toBeTruthy();
+    expect(screen.getByTestId("welcome-send-link")).toBeTruthy();
   });
 });

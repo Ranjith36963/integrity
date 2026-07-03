@@ -683,15 +683,7 @@ export function BuildingClient({
 
   return (
     <EditModeProvider>
-      {welcomeOpen && (
-        <Welcome
-          onBegin={dismissWelcome}
-          onSignIn={() => {
-            dismissWelcome();
-            setSettingsOpen(true);
-          }}
-        />
-      )}
+      {welcomeOpen && <Welcome onBegin={dismissWelcome} />}
       <div className="relative mx-auto min-h-dvh max-w-[430px]">
         {/* M6: aria-live region — polite, atomic, visually hidden (sr-only equivalent) */}
         <span

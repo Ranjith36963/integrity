@@ -24,16 +24,38 @@
  * tap on the CTA; ESC also dismisses for keyboard users.
  */
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { isSupabaseConfigured } from "@/lib/supabaseConfig";
+import { useSupabaseSession } from "@/lib/useSupabaseSession";
 
 interface Props {
   onBegin: () => void;
-  /** M11 Option 3 — offered from day one: dismiss welcome + open cloud sign-in. */
-  onSignIn?: () => void;
 }
 
-export function Welcome({ onBegin, onSignIn }: Props) {
+export function Welcome({ onBegin }: Props) {
+  // M11 Option 3 — inline sign-in right on the welcome screen (no jump to
+  // Settings): tap the link → enter email → magic link → continue.
+  const { signInWithEmail } = useSupabaseSession();
+  const [mode, setMode] = useState<"intro" | "signin">("intro");
+  const [addr, setAddr] = useState("");
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
+    "idle",
+  );
+  const [err, setErr] = useState<string | null>(null);
+
+  async function handleSend() {
+    if (!addr.trim()) return;
+    setStatus("sending");
+    setErr(null);
+    const res = await signInWithEmail(addr);
+    if (res.ok) {
+      setStatus("sent");
+    } else {
+      setStatus("error");
+      setErr(res.error ?? "Could not send the link.");
+    }
+  }
+
   // Esc-to-dismiss keyboard parity with sheets.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -217,53 +239,160 @@ export function Welcome({ onBegin, onSignIn }: Props) {
         Empires are years.
       </p>
 
-      {/* Primary CTA — single, full-width, the action the screen is for */}
-      <button
-        type="button"
-        data-testid="welcome-begin"
-        onClick={onBegin}
-        className="tap"
-        style={{
-          height: "52px",
-          width: "100%",
-          borderRadius: "12px",
-          border: "none",
-          background: "var(--accent)",
-          color: "var(--bg)",
-          fontFamily: "var(--font-ui)",
-          fontSize: "var(--fs-14, 14px)",
-          letterSpacing: "0.12em",
-          textTransform: "uppercase",
-          cursor: "pointer",
-          marginTop: "var(--sp-24, 24px)",
-        }}
-      >
-        Lay your first brick
-      </button>
+      {mode === "intro" ? (
+        <>
+          {/* Primary CTA — single, full-width, the action the screen is for */}
+          <button
+            type="button"
+            data-testid="welcome-begin"
+            onClick={onBegin}
+            className="tap"
+            style={{
+              height: "52px",
+              width: "100%",
+              borderRadius: "12px",
+              border: "none",
+              background: "var(--accent)",
+              color: "var(--bg)",
+              fontFamily: "var(--font-ui)",
+              fontSize: "var(--fs-14, 14px)",
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              cursor: "pointer",
+              marginTop: "var(--sp-24, 24px)",
+            }}
+          >
+            Lay your first brick
+          </button>
 
-      {/* M11 Option 3 — a skippable "back up & sync" offer, from day one.
-          Only shown when cloud backup is configured; never a wall. */}
-      {onSignIn && isSupabaseConfigured() && (
-        <button
-          type="button"
-          data-testid="welcome-signin"
-          onClick={onSignIn}
-          className="tap"
+          {/* M11 Option 3 — a skippable "back up & sync" offer, from day one.
+              Tapping reveals the inline email sign-in below (no Settings jump). */}
+          {isSupabaseConfigured() && (
+            <button
+              type="button"
+              data-testid="welcome-signin"
+              onClick={() => setMode("signin")}
+              className="tap"
+              style={{
+                marginTop: "var(--sp-12, 12px)",
+                width: "100%",
+                background: "transparent",
+                border: "none",
+                color: "var(--ink-dim)",
+                fontFamily: "var(--font-ui)",
+                fontSize: "var(--fs-12, 12px)",
+                cursor: "pointer",
+                textDecoration: "underline",
+              }}
+            >
+              Sign in to back up &amp; sync across devices
+            </button>
+          )}
+        </>
+      ) : status === "sent" ? (
+        // Magic link sent — one clear next step.
+        <div
+          data-testid="welcome-signin-sent"
           style={{
-            marginTop: "var(--sp-12, 12px)",
-            width: "100%",
-            background: "transparent",
-            border: "none",
-            color: "var(--ink-dim)",
-            fontFamily: "var(--font-ui)",
-            fontSize: "var(--fs-12, 12px)",
-            cursor: "pointer",
-            textDecoration: "underline",
+            marginTop: "var(--sp-24, 24px)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
           }}
         >
-          Sign in to back up &amp; sync across devices
-        </button>
+          <p style={{ color: "var(--ink)", fontSize: "var(--fs-14, 14px)" }}>
+            Check your email and tap the link to sign in. Your data will back up
+            automatically.
+          </p>
+          <button
+            type="button"
+            onClick={onBegin}
+            className="tap"
+            style={primaryBtn}
+          >
+            Continue
+          </button>
+        </div>
+      ) : (
+        // Inline email sign-in.
+        <div
+          style={{
+            marginTop: "var(--sp-24, 24px)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+          }}
+        >
+          <input
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            placeholder="you@email.com"
+            aria-label="Email for cloud backup"
+            data-testid="welcome-email"
+            value={addr}
+            onChange={(e) => setAddr(e.target.value)}
+            style={{
+              height: "52px",
+              borderRadius: "12px",
+              border: "1px solid var(--surface-2)",
+              background: "var(--surface-1)",
+              color: "var(--ink)",
+              padding: "0 14px",
+              fontFamily: "var(--font-ui)",
+              fontSize: "var(--fs-14, 14px)",
+            }}
+          />
+          <button
+            type="button"
+            data-testid="welcome-send-link"
+            disabled={status === "sending" || !addr.trim()}
+            onClick={() => void handleSend()}
+            className="tap"
+            style={{
+              ...primaryBtn,
+              opacity: status === "sending" || !addr.trim() ? 0.5 : 1,
+            }}
+          >
+            {status === "sending" ? "Sending…" : "Email me a magic link"}
+          </button>
+          {status === "error" && err && (
+            <p
+              role="alert"
+              style={{ color: "#f87171", fontSize: "var(--fs-12, 12px)" }}
+            >
+              {err}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={() => setMode("intro")}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "var(--ink-dim)",
+              fontFamily: "var(--font-ui)",
+              fontSize: "var(--fs-12, 12px)",
+              cursor: "pointer",
+            }}
+          >
+            Back
+          </button>
+        </div>
       )}
     </div>
   );
 }
+
+const primaryBtn: React.CSSProperties = {
+  height: "52px",
+  width: "100%",
+  borderRadius: "12px",
+  border: "none",
+  background: "var(--accent)",
+  color: "var(--bg)",
+  fontFamily: "var(--font-ui)",
+  fontSize: "var(--fs-14, 14px)",
+  letterSpacing: "0.06em",
+  cursor: "pointer",
+};
