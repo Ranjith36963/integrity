@@ -36,12 +36,13 @@ export function Welcome({ onBegin }: Props) {
   // M11 — "Lay your first brick" IS the sign-in: tap it → enter email → magic
   // link → return signed in → day view. Backed up from day one. When cloud is
   // not configured, the button just enters the app (never a hard lock).
-  const { signInWithEmail, email } = useSupabaseSession();
+  const { signInWithEmail, verifyCode, email } = useSupabaseSession();
   const [mode, setMode] = useState<"intro" | "signin">("intro");
   const [addr, setAddr] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
-    "idle",
-  );
+  const [code, setCode] = useState("");
+  const [status, setStatus] = useState<
+    "idle" | "sending" | "sent" | "verifying" | "error"
+  >("idle");
   const [err, setErr] = useState<string | null>(null);
 
   async function handleSend() {
@@ -53,7 +54,20 @@ export function Welcome({ onBegin }: Props) {
       setStatus("sent");
     } else {
       setStatus("error");
-      setErr(res.error ?? "Could not send the link.");
+      setErr(res.error ?? "Could not send the code.");
+    }
+  }
+
+  async function handleVerify() {
+    if (!code.trim()) return;
+    setStatus("verifying");
+    setErr(null);
+    const res = await verifyCode(addr, code);
+    // On success the auth listener sets `email`, and the effect below drops the
+    // user into the day view. Only handle the failure path here.
+    if (!res.ok) {
+      setStatus("sent");
+      setErr(res.error ?? "That code didn't work — check it and try again.");
     }
   }
 
@@ -275,8 +289,8 @@ export function Welcome({ onBegin }: Props) {
         >
           Lay your first brick
         </button>
-      ) : status === "sent" ? (
-        // Magic link sent — the only way in is the emailed link.
+      ) : status === "sent" || status === "verifying" ? (
+        // Code sent — type the 6 digits right here (same browser → session sticks).
         <div
           data-testid="welcome-signin-sent"
           style={{
@@ -287,14 +301,49 @@ export function Welcome({ onBegin }: Props) {
           }}
         >
           <p style={{ color: "var(--ink)", fontSize: "var(--fs-14, 14px)" }}>
-            Check your email and tap the link to begin — your day is saved from
-            the very first brick, backed up to <strong>{addr}</strong>.
+            Enter the 6-digit code we emailed to <strong>{addr}</strong>. Your
+            day is backed up from the very first brick.
           </p>
+          <input
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            placeholder="123456"
+            aria-label="6-digit code"
+            data-testid="welcome-code"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            style={{
+              height: "52px",
+              borderRadius: "12px",
+              border: "1px solid var(--surface-2)",
+              background: "var(--surface-1)",
+              color: "var(--ink)",
+              padding: "0 14px",
+              fontFamily: "var(--font-ui)",
+              fontSize: "var(--fs-14, 14px)",
+              letterSpacing: "0.3em",
+            }}
+          />
+          <button
+            type="button"
+            data-testid="welcome-verify-code"
+            disabled={status === "verifying" || !code.trim()}
+            onClick={() => void handleVerify()}
+            className="tap"
+            style={{
+              ...primaryBtn,
+              opacity: status === "verifying" || !code.trim() ? 0.5 : 1,
+            }}
+          >
+            {status === "verifying" ? "Verifying…" : "Verify & begin"}
+          </button>
           <button
             type="button"
             onClick={() => {
               setStatus("idle");
-              setAddr("");
+              setCode("");
+              setErr(null);
             }}
             style={{
               background: "transparent",
@@ -308,6 +357,14 @@ export function Welcome({ onBegin }: Props) {
           >
             Use a different email
           </button>
+          {err && (
+            <p
+              role="alert"
+              style={{ color: "#f87171", fontSize: "var(--fs-12, 12px)" }}
+            >
+              {err}
+            </p>
+          )}
         </div>
       ) : (
         // Enter your email to begin (sign-in is the first brick).
@@ -322,8 +379,8 @@ export function Welcome({ onBegin }: Props) {
           <p
             style={{ color: "var(--ink-dim)", fontSize: "var(--fs-12, 12px)" }}
           >
-            Enter your email — we&rsquo;ll send a magic link. Your routine backs
-            up from day one and follows you across devices.
+            Enter your email — we&rsquo;ll send a 6-digit code. Your routine
+            backs up from day one and follows you across devices.
           </p>
           <input
             type="email"
@@ -356,7 +413,7 @@ export function Welcome({ onBegin }: Props) {
               opacity: status === "sending" || !addr.trim() ? 0.5 : 1,
             }}
           >
-            {status === "sending" ? "Sending…" : "Email me a magic link"}
+            {status === "sending" ? "Sending…" : "Email me a code"}
           </button>
           {status === "error" && err && (
             <p

@@ -8,13 +8,16 @@
  */
 import { useEffect, useState, useCallback } from "react";
 import { getSupabase } from "./supabaseClient";
-import { SUPABASE_REDIRECT_URL } from "./supabaseConfig";
 
 export type SyncAuth = {
   ready: boolean;
   email: string | null;
   configured: boolean;
   signInWithEmail: (email: string) => Promise<{ ok: boolean; error?: string }>;
+  verifyCode: (
+    email: string,
+    code: string,
+  ) => Promise<{ ok: boolean; error?: string }>;
   signOut: () => Promise<void>;
 };
 
@@ -44,13 +47,34 @@ export function useSupabaseSession(): SyncAuth {
     };
   }, [supabase]);
 
+  // Send a 6-digit code (NOT a magic link). A code is typed back into this same
+  // browser, so the session is created where the app actually lives — unlike a
+  // magic link, which opens in Gmail's browser / a fresh tab and strands the
+  // session in the wrong storage box (the mobile PWA sign-in trap). No
+  // emailRedirectTo → Supabase emails the {{ .Token }} code, not a link.
   const signInWithEmail = useCallback(
     async (addr: string) => {
       if (!supabase)
         return { ok: false, error: "Cloud sync isn't configured." };
       const { error } = await supabase.auth.signInWithOtp({
         email: addr.trim(),
-        options: { emailRedirectTo: SUPABASE_REDIRECT_URL },
+        options: { shouldCreateUser: true },
+      });
+      return error ? { ok: false, error: error.message } : { ok: true };
+    },
+    [supabase],
+  );
+
+  // Exchange the emailed code for a session — right here, in the app's browser.
+  // On success, onAuthStateChange fires SIGNED_IN and `email` populates.
+  const verifyCode = useCallback(
+    async (addr: string, code: string) => {
+      if (!supabase)
+        return { ok: false, error: "Cloud sync isn't configured." };
+      const { error } = await supabase.auth.verifyOtp({
+        email: addr.trim(),
+        token: code.trim(),
+        type: "email",
       });
       return error ? { ok: false, error: error.message } : { ok: true };
     },
@@ -61,5 +85,12 @@ export function useSupabaseSession(): SyncAuth {
     if (supabase) await supabase.auth.signOut();
   }, [supabase]);
 
-  return { ready, email, configured: !!supabase, signInWithEmail, signOut };
+  return {
+    ready,
+    email,
+    configured: !!supabase,
+    signInWithEmail,
+    verifyCode,
+    signOut,
+  };
 }

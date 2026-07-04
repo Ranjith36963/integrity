@@ -10,12 +10,13 @@ import { useState } from "react";
 import { useSupabaseSession } from "@/lib/useSupabaseSession";
 
 export function CloudSyncSettings() {
-  const { ready, email, configured, signInWithEmail, signOut } =
+  const { ready, email, configured, signInWithEmail, verifyCode, signOut } =
     useSupabaseSession();
   const [addr, setAddr] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
-    "idle",
-  );
+  const [code, setCode] = useState("");
+  const [status, setStatus] = useState<
+    "idle" | "sending" | "sent" | "verifying" | "error"
+  >("idle");
   const [err, setErr] = useState<string | null>(null);
 
   if (!configured) return null;
@@ -29,7 +30,20 @@ export function CloudSyncSettings() {
       setStatus("sent");
     } else {
       setStatus("error");
-      setErr(res.error ?? "Could not send the link.");
+      setErr(res.error ?? "Could not send the code.");
+    }
+  }
+
+  async function handleVerify() {
+    if (!code.trim()) return;
+    setStatus("verifying");
+    setErr(null);
+    const res = await verifyCode(addr, code);
+    // On success, the auth listener flips `email` and this section re-renders
+    // to the signed-in state; no extra work here.
+    if (!res.ok) {
+      setStatus("sent");
+      setErr(res.error ?? "That code didn't work — check it and try again.");
     }
   }
 
@@ -92,10 +106,76 @@ export function CloudSyncSettings() {
             Sign out
           </button>
         </div>
-      ) : status === "sent" ? (
-        <p style={{ color: "var(--ink)", fontSize: "var(--fs-14, 14px)" }}>
-          Check your email — tap the link to sign in and sync across devices.
-        </p>
+      ) : status === "sent" || status === "verifying" ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          <p
+            style={{ color: "var(--ink-dim)", fontSize: "var(--fs-12, 12px)" }}
+          >
+            Enter the 6-digit code we emailed to <strong>{addr}</strong>.
+          </p>
+          <input
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            placeholder="123456"
+            aria-label="6-digit code"
+            data-testid="cloud-code"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            style={{
+              height: "48px",
+              borderRadius: "8px",
+              border: "1px solid var(--surface-2)",
+              background: "var(--surface-1)",
+              color: "var(--ink)",
+              padding: "0 12px",
+              fontFamily: "var(--font-ui)",
+              fontSize: "var(--fs-14, 14px)",
+              letterSpacing: "0.3em",
+            }}
+          />
+          <button
+            type="button"
+            data-testid="cloud-verify-code"
+            disabled={status === "verifying" || !code.trim()}
+            onClick={() => void handleVerify()}
+            style={{
+              ...secondaryBtn,
+              opacity: status === "verifying" || !code.trim() ? 0.5 : 1,
+            }}
+          >
+            {status === "verifying" ? "Verifying…" : "Verify & back up"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setStatus("idle");
+              setCode("");
+              setErr(null);
+            }}
+            style={{
+              alignSelf: "flex-start",
+              background: "transparent",
+              border: "none",
+              color: "var(--ink-dim)",
+              fontFamily: "var(--font-ui)",
+              fontSize: "var(--fs-12, 12px)",
+              textDecoration: "underline",
+              cursor: "pointer",
+              padding: 0,
+            }}
+          >
+            Use a different email
+          </button>
+          {err && (
+            <p
+              role="alert"
+              style={{ color: "#f87171", fontSize: "var(--fs-12, 12px)" }}
+            >
+              {err}
+            </p>
+          )}
+        </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           <p
@@ -132,7 +212,7 @@ export function CloudSyncSettings() {
               opacity: status === "sending" || !addr.trim() ? 0.5 : 1,
             }}
           >
-            {status === "sending" ? "Sending…" : "Send magic link"}
+            {status === "sending" ? "Sending…" : "Email me a code"}
           </button>
           {status === "error" && err && (
             <p
