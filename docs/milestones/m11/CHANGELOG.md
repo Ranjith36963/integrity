@@ -2,6 +2,37 @@
 
 ## [unreleased]
 
+### Fixed — sign in with a 6-digit code, not a magic link (session now sticks)
+
+- **The bug:** after tapping the emailed magic link, Settings still showed the signed-out form —
+  the app kept asking to sign in even though the link "worked". Root cause: a magic link tapped
+  inside the Gmail app opens in a _different_ browser context (Gmail's in-app browser, or a fresh
+  Safari tab, or — on iOS — a completely separate storage box from a home-screen PWA) than the one
+  the app runs in. Supabase created + stored the session **there**, and the app's browser never saw
+  it. Switching to implicit flow earlier didn't help because the problem isn't the flow — it's that
+  the session lands in the wrong browser entirely.
+- **The fix:** email a **6-digit code** instead of a link. `signInWithOtp` is now called **without**
+  `emailRedirectTo` (so Supabase emails the `{{ .Token }}` code, not a link), and a new
+  `verifyCode` wraps `supabase.auth.verifyOtp({ email, token, type: "email" })`. The user types the
+  code **back into the app**, so the session is created in the _same_ browser the app lives in — and
+  therefore persists. On success `onAuthStateChange` fires `SIGNED_IN` and the UI flips to the
+  signed-in state automatically.
+- Both entry points updated: `components/Welcome.tsx` (the first-brick sign-in) and
+  `components/CloudSyncSettings.tsx` (Settings → Cloud backup) now show **email → "Email me a code"
+  → 6-digit code input → "Verify"**. Copy no longer mentions magic links.
+- **User action required (one-time):** in the Supabase dashboard → Authentication → Email templates
+  → **Magic Link**, include `{{ .Token }}` in the body so the email carries the 6-digit code.
+- Tests: full suite green (1860 vitest, 0 type/lint errors); `Welcome.test.tsx` still passes (single
+  button; tapping reveals the email step, then the code step). Live end-to-end sign-in remains the
+  user's to confirm — the sandbox is firewalled from Supabase and the built-in email sender is
+  rate-limited project-wide.
+
+### Changed — signed-in cloud copy names both facts
+
+- The Settings signed-in line now reads **"✓ You're signed in as <email>. Your data is backed up to
+  this Gmail."** — stating both that the user is signed in and that the data is backed up, to the
+  exact address they entered (per user request).
+
 ### Changed — "Lay your first brick" IS the sign-in (one button, required)
 
 - Final call (per user): the Welcome screen has **one** button. Tapping **"Lay your first brick"**
