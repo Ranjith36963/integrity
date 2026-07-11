@@ -9,7 +9,7 @@ const auth = {
   ready: true,
   email: null as string | null,
   configured: true,
-  signInWithEmail: vi.fn(),
+  signInOrSignUp: vi.fn(),
   signOut: vi.fn(),
 };
 vi.mock("@/lib/useSupabaseSession", () => ({

@@ -1,6 +1,12 @@
 "use client";
 /**
- * lib/useSupabaseSession.ts — M11 Step 4: auth state + magic-link sign in/out.
+ * lib/useSupabaseSession.ts — M11 Step 4: auth state + email/password sign in/out.
+ *
+ * Password auth, deliberately: every email-dependent flow failed in the field —
+ * magic links open in the wrong browser (Gmail's in-app browser / a fresh tab /
+ * an iOS home-screen PWA has its own storage), OTP codes need a paid-gated email
+ * template edit, and the built-in sender is rate-limited project-wide. A password
+ * typed in the app touches no email at all: same browser, session sticks, free.
  *
  * Safe when cloud is off: `configured` is false and the actions no-op, so any
  * consumer can render an "off" state without special-casing. Reads only the
@@ -13,10 +19,11 @@ export type SyncAuth = {
   ready: boolean;
   email: string | null;
   configured: boolean;
-  signInWithEmail: (email: string) => Promise<{ ok: boolean; error?: string }>;
-  verifyCode: (
+  /** Sign in; if the account doesn't exist yet, create it (first sign-in IS
+   *  sign-up). Resolves ok when a live session exists. */
+  signInOrSignUp: (
     email: string,
-    code: string,
+    password: string,
   ) => Promise<{ ok: boolean; error?: string }>;
   signOut: () => Promise<void>;
 };
@@ -47,36 +54,36 @@ export function useSupabaseSession(): SyncAuth {
     };
   }, [supabase]);
 
-  // Send a 6-digit code (NOT a magic link). A code is typed back into this same
-  // browser, so the session is created where the app actually lives — unlike a
-  // magic link, which opens in Gmail's browser / a fresh tab and strands the
-  // session in the wrong storage box (the mobile PWA sign-in trap). No
-  // emailRedirectTo → Supabase emails the {{ .Token }} code, not a link.
-  const signInWithEmail = useCallback(
-    async (addr: string) => {
+  // Try sign-in; on "no such account" create it. Everything happens in the
+  // app's own browser — no email round-trip, so the session always sticks.
+  const signInOrSignUp = useCallback(
+    async (addr: string, password: string) => {
       if (!supabase)
         return { ok: false, error: "Cloud sync isn't configured." };
-      const { error } = await supabase.auth.signInWithOtp({
-        email: addr.trim(),
-        options: { shouldCreateUser: true },
+      const em = addr.trim();
+      const { error } = await supabase.auth.signInWithPassword({
+        email: em,
+        password,
       });
-      return error ? { ok: false, error: error.message } : { ok: true };
-    },
-    [supabase],
-  );
-
-  // Exchange the emailed code for a session — right here, in the app's browser.
-  // On success, onAuthStateChange fires SIGNED_IN and `email` populates.
-  const verifyCode = useCallback(
-    async (addr: string, code: string) => {
-      if (!supabase)
-        return { ok: false, error: "Cloud sync isn't configured." };
-      const { error } = await supabase.auth.verifyOtp({
-        email: addr.trim(),
-        token: code.trim(),
-        type: "email",
+      if (!error) return { ok: true };
+      if (!/invalid login credentials/i.test(error.message)) {
+        return { ok: false, error: error.message };
+      }
+      // Unknown account OR wrong password — Supabase deliberately doesn't say
+      // which. Attempt sign-up: a genuinely new account signs straight in.
+      const { data, error: e2 } = await supabase.auth.signUp({
+        email: em,
+        password,
       });
-      return error ? { ok: false, error: error.message } : { ok: true };
+      if (e2) return { ok: false, error: e2.message };
+      if (data.session) return { ok: true };
+      // No session back: either the project requires email confirmation for a
+      // new account, or the account already existed (wrong password).
+      return {
+        ok: false,
+        error:
+          "Wrong password — or, if you're new here, check your email to confirm the account, then sign in again.",
+      };
     },
     [supabase],
   );
@@ -89,8 +96,7 @@ export function useSupabaseSession(): SyncAuth {
     ready,
     email,
     configured: !!supabase,
-    signInWithEmail,
-    verifyCode,
+    signInOrSignUp,
     signOut,
   };
 }

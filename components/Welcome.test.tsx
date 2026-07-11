@@ -25,16 +25,28 @@ describe("Welcome", () => {
     expect(screen.getByText(/Empires are years/i)).toBeInTheDocument();
   });
 
-  it("'Lay your first brick' reveals the email sign-in (sign-in required, not skipped)", async () => {
+  it("'Lay your first brick' reveals the email+password sign-in (sign-in required, not skipped)", async () => {
     const user = userEvent.setup();
     const onBegin = vi.fn();
     render(<Welcome onBegin={onBegin} />);
     expect(screen.queryByTestId("welcome-email")).toBeNull();
     await user.click(screen.getByTestId("welcome-begin"));
     expect(screen.getByTestId("welcome-email")).toBeTruthy();
-    expect(screen.getByTestId("welcome-send-link")).toBeTruthy();
+    expect(screen.getByTestId("welcome-password")).toBeTruthy();
+    expect(screen.getByTestId("welcome-submit")).toBeTruthy();
     // must NOT skip into the app — cloud is configured, so sign-in is required
     expect(onBegin).not.toHaveBeenCalled();
+  });
+
+  it("submit stays disabled until the password has 6+ characters", async () => {
+    const user = userEvent.setup();
+    render(<Welcome onBegin={vi.fn()} />);
+    await user.click(screen.getByTestId("welcome-begin"));
+    await user.type(screen.getByTestId("welcome-email"), "me@example.com");
+    await user.type(screen.getByTestId("welcome-password"), "12345");
+    expect(screen.getByTestId("welcome-submit")).toBeDisabled();
+    await user.type(screen.getByTestId("welcome-password"), "6");
+    expect(screen.getByTestId("welcome-submit")).not.toBeDisabled();
   });
 
   it("calls onBegin when Escape is pressed (keyboard dismiss)", () => {
