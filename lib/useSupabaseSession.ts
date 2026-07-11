@@ -65,6 +65,14 @@ export function useSupabaseSession(): SyncAuth {
         email: em,
         password,
       });
+      // "Failed to fetch" is browser jargon — translate the offline case.
+      if (error && /fetch|network/i.test(error.message)) {
+        return {
+          ok: false,
+          error:
+            "Couldn't reach the cloud — check your connection and try again.",
+        };
+      }
       if (!error) return { ok: true };
       if (!/invalid login credentials/i.test(error.message)) {
         return { ok: false, error: error.message };

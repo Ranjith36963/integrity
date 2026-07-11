@@ -126,11 +126,15 @@ export function CloudSyncSettings() {
             data-testid="cloud-submit"
             disabled={status === "working" || !addr.trim() || pw.length < 6}
             onClick={() => void handleSubmit()}
-            style={{
-              ...secondaryBtn,
-              opacity:
-                status === "working" || !addr.trim() || pw.length < 6 ? 0.5 : 1,
-            }}
+            style={
+              status === "working" || !addr.trim() || pw.length < 6
+                ? {
+                    ...secondaryBtn,
+                    color: "var(--ink-dim)",
+                    cursor: "default",
+                  }
+                : secondaryBtn
+            }
           >
             {status === "working" ? "Signing in…" : "Sign in & back up"}
           </button>

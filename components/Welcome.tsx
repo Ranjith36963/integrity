@@ -90,6 +90,9 @@ export function Welcome({ onBegin }: Props) {
         color: "var(--ink)",
         display: "flex",
         flexDirection: "column",
+        // Short/narrow phones (and the sign-in form + error) must never be
+        // cut off — a fixed overlay doesn't scroll unless told to.
+        overflowY: "auto",
         paddingTop: "calc(var(--safe-top, 0px) + var(--sp-32, 32px))",
         paddingBottom: "calc(var(--safe-bottom, 0px) + var(--sp-24, 24px))",
         paddingLeft: "var(--sp-24, 24px)",
@@ -313,28 +316,41 @@ export function Welcome({ onBegin }: Props) {
             onChange={(e) => setPw(e.target.value)}
             style={fieldStyle}
           />
+          {/* Error sits ABOVE the button — the button hugs the bottom edge,
+              so anything after it can fall below the fold and go unseen. */}
+          {status === "error" && err && (
+            <p
+              role="alert"
+              style={{
+                color: "#f87171",
+                fontSize: "var(--fs-12, 12px)",
+                margin: 0,
+              }}
+            >
+              {err}
+            </p>
+          )}
           <button
             type="button"
             data-testid="welcome-submit"
             disabled={status === "working" || !addr.trim() || pw.length < 6}
             onClick={() => void handleSubmit()}
             className="tap"
-            style={{
-              ...primaryBtn,
-              opacity:
-                status === "working" || !addr.trim() || pw.length < 6 ? 0.5 : 1,
-            }}
+            style={
+              status === "working" || !addr.trim() || pw.length < 6
+                ? {
+                    ...primaryBtn,
+                    // Disabled = dim surface, not translucent amber (which
+                    // reads as "muddy", not "off").
+                    background: "var(--surface-2)",
+                    color: "var(--ink-dim)",
+                    cursor: "default",
+                  }
+                : primaryBtn
+            }
           >
             {status === "working" ? "Signing in…" : "Sign in & begin"}
           </button>
-          {status === "error" && err && (
-            <p
-              role="alert"
-              style={{ color: "#f87171", fontSize: "var(--fs-12, 12px)" }}
-            >
-              {err}
-            </p>
-          )}
         </div>
       )}
     </div>

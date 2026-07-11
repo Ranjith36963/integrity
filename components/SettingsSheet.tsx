@@ -147,6 +147,7 @@ export function SettingsSheet({
   return (
     <Sheet open={open} onClose={onClose} title="Settings">
       <div
+        className="settings-sections"
         style={{
           display: "flex",
           flexDirection: "column",

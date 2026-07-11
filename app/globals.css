@@ -849,3 +849,10 @@ body::before {
   width: 0;
   height: 0;
 }
+
+/* Settings sheet — hairline dividers give the stacked sections a visible
+   rhythm (audit: sections blurred together into one long list). */
+.settings-sections > section ~ section {
+  border-top: 1px solid var(--surface-2);
+  padding-top: var(--sp-24, 24px);
+}
