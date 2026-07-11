@@ -61,6 +61,15 @@ describe("makeSupabaseTransport.pull", () => {
     const t = makeSupabaseTransport(client, "user-1");
     await expect(t.pull()).rejects.toThrow(/boom/);
   });
+
+  it("throws (NOT null) when the row exists but is unrecognizable — a null here would read as 'no remote' and let decideSync push over newer-version cloud data", async () => {
+    const { client } = pullClient({
+      state: { schemaVersion: 99, from: "the future" },
+      updated_at: "2027-01-01T00:00:00Z",
+    });
+    const t = makeSupabaseTransport(client, "user-1");
+    await expect(t.pull()).rejects.toThrow(/unrecognizable/);
+  });
 });
 
 describe("makeSupabaseTransport.push", () => {

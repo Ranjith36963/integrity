@@ -7,14 +7,48 @@
  * when the tab is hidden. EVERY network call is wrapped so a failure (offline,
  * policy, RLS) is a silent no-op — localStorage is always the source of truth and
  * nothing is ever lost. When cloud is off (no client / signed out) it does nothing.
+ *
+ * Data-safety invariants (M11 sync audit):
+ *  1. NO push happens before the initial reconcile finishes. The interval and
+ *     visibilitychange handlers are gated on `synced` — otherwise a device with
+ *     stale data could upsert it over a newer cloud copy while the initial pull
+ *     was still in flight (visibilitychange fires during sign-in itself, when
+ *     the user switches to their email app for the code).
+ *  2. Local data this build can't parse (a FUTURE schemaVersion — possible when
+ *     a stale service worker serves old app code) freezes sync entirely for the
+ *     session: never overwritten by remote, never pushed. The transport applies
+ *     the mirror rule to unrecognizable remote rows (pull throws, pass no-ops).
+ *  3. A "noop" verdict (equal timestamps) only marks the local raw as pushed if
+ *     the CONTENT actually matches the cloud — edits made while signed out do
+ *     not advance the timestamp, so equal stamps can hide unpushed changes.
  */
 import { useEffect, useRef } from "react";
 import { getSupabase } from "@/lib/supabaseClient";
 import { makeSupabaseTransport } from "@/lib/supabaseTransport";
 import { syncOnce } from "@/lib/cloudSync";
-import { migrate, STORAGE_KEY } from "@/lib/persist";
+import { migrate, STORAGE_KEY, type PersistedState } from "@/lib/persist";
 
 const TS_KEY = `${STORAGE_KEY}:updatedAt`;
+
+type LocalRead =
+  | { kind: "none" } // nothing stored → fresh device
+  | { kind: "garbage" } // unparseable JSON — the app itself would reset it
+  | { kind: "unrecognized" } // parses, but a schemaVersion this build can't read
+  | { kind: "ok"; state: PersistedState; raw: string };
+
+function readLocal(): LocalRead {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return { kind: "none" };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { kind: "garbage" };
+  }
+  const state = migrate(parsed);
+  if (!state) return { kind: "unrecognized" };
+  return { kind: "ok", state, raw };
+}
 
 export function CloudSync() {
   const lastPushedRaw = useRef<string | null>(null);
@@ -25,34 +59,37 @@ export function CloudSync() {
 
     let userId: string | null = null;
     let disposed = false;
+    let synced = false; // initial reconcile done → pushes allowed
+    let inFlight = false; // an initialSync is running → don't start another
+    let frozen = false; // local data from a newer app version → hands off
 
     const nowIso = () => new Date().toISOString();
-    const readLocalRaw = () => localStorage.getItem(STORAGE_KEY);
-    const readLocal = () => {
-      const raw = readLocalRaw();
-      if (!raw) return null;
-      try {
-        return migrate(JSON.parse(raw));
-      } catch {
-        return null;
-      }
-    };
 
     async function initialSync() {
-      if (!userId || disposed) return;
+      if (!userId || disposed || inFlight || frozen) return;
+      inFlight = true;
       try {
         const transport = makeSupabaseTransport(supabase!, userId);
-        const raw = readLocalRaw();
         const local = readLocal();
 
-        if (!local) {
-          // No usable local data → adopt whatever the cloud has (fresh device).
+        if (local.kind === "unrecognized") {
+          // Newer-version data on this device (stale SW serving old code).
+          // Touch nothing in either direction until the app code catches up.
+          frozen = true;
+          return;
+        }
+
+        if (local.kind === "none" || local.kind === "garbage") {
+          // Fresh device (or locally unreadable data the app would discard
+          // anyway) → adopt whatever the cloud has.
           const remote = await transport.pull();
           if (remote && !disposed) {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(remote.state));
             localStorage.setItem(TS_KEY, remote.updatedAt);
             location.reload();
+            return;
           }
+          synced = true; // nothing anywhere yet — first edit will push
           return;
         }
 
@@ -64,40 +101,66 @@ export function CloudSync() {
           localStorage.setItem(TS_KEY, localTs);
         }
 
-        const { decision, state } = await syncOnce(
-          local,
+        const pushStamp = nowIso();
+        const { decision, state, remote } = await syncOnce(
+          local.state,
           localTs,
-          nowIso(),
+          pushStamp,
           transport,
         );
         if (disposed) return;
         if (decision.action === "pull") {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-          localStorage.setItem(TS_KEY, nowIso());
+          // Stamp with the REMOTE's timestamp (not "now") so the next open
+          // reads "already in sync" instead of echo-pushing with a fresh stamp.
+          localStorage.setItem(TS_KEY, remote?.updatedAt ?? nowIso());
           location.reload();
-        } else {
-          lastPushedRaw.current = raw;
+          return;
         }
+        if (decision.action === "push") {
+          localStorage.setItem(TS_KEY, pushStamp);
+          lastPushedRaw.current = local.raw;
+        } else {
+          // noop: equal timestamps. Only trust it if the CONTENT matches too —
+          // signed-out edits don't advance the timestamp. Compare via the same
+          // migrate() path so key order is canonical on both sides.
+          const same =
+            remote != null &&
+            JSON.stringify(local.state) === JSON.stringify(remote.state);
+          if (same) {
+            lastPushedRaw.current = local.raw;
+          }
+          // else: leave lastPushedRaw null → the next tick pushes local.
+        }
+        synced = true;
       } catch {
-        /* offline / policy / RLS error → keep localStorage untouched */
+        /* offline / policy / RLS error → keep localStorage untouched; the
+           interval retries initialSync until it succeeds */
+      } finally {
+        inFlight = false;
       }
     }
 
     async function pushIfChanged() {
-      if (!userId || disposed) return;
-      const raw = readLocalRaw();
-      if (!raw || raw === lastPushedRaw.current) return;
+      // Gated on `synced`: pushing before the initial reconcile could upsert
+      // stale local data over a newer cloud copy.
+      if (!userId || disposed || !synced || frozen) return;
       const local = readLocal();
-      if (!local) return;
+      if (local.kind !== "ok" || local.raw === lastPushedRaw.current) return;
       const t = nowIso();
       try {
         localStorage.setItem(TS_KEY, t);
-        await makeSupabaseTransport(supabase!, userId).push(local, t);
-        lastPushedRaw.current = raw;
+        await makeSupabaseTransport(supabase!, userId).push(local.state, t);
+        lastPushedRaw.current = local.raw;
       } catch {
         /* leave lastPushedRaw so we retry on the next tick */
       }
     }
+
+    const tick = () => {
+      if (!synced) void initialSync();
+      else void pushIfChanged();
+    };
 
     supabase.auth.getSession().then(({ data }) => {
       userId = data.session?.user?.id ?? null;
@@ -107,13 +170,15 @@ export function CloudSync() {
       const uid = session?.user?.id ?? null;
       if (uid && uid !== userId) {
         userId = uid;
+        synced = false;
+        lastPushedRaw.current = null;
         void initialSync();
       } else {
         userId = uid;
       }
     });
 
-    const timer = window.setInterval(() => void pushIfChanged(), 6000);
+    const timer = window.setInterval(tick, 6000);
     const onHide = () => void pushIfChanged();
     document.addEventListener("visibilitychange", onHide);
 

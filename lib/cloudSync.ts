@@ -58,21 +58,28 @@ export interface SyncTransport {
  * Run one sync pass: pull remote, decide, then push (local newer / first sync)
  * or return the remote state to adopt (remote newer). `now` is the timestamp to
  * stamp a push with — supplied by the caller, never read from the clock here.
+ * `remote` is returned so the caller can compare content on a noop (equal
+ * timestamps do NOT guarantee equal content — e.g. edits made while signed out
+ * never advanced the local timestamp).
  */
 export async function syncOnce(
   local: PersistedState,
   localUpdatedAt: string | null,
   now: string,
   transport: SyncTransport,
-): Promise<{ decision: SyncDecision; state: PersistedState }> {
+): Promise<{
+  decision: SyncDecision;
+  state: PersistedState;
+  remote: RemoteSnapshot | null;
+}> {
   const remote = await transport.pull();
   const decision = decideSync(localUpdatedAt, remote);
   if (decision.action === "push") {
     await transport.push(local, now);
-    return { decision, state: local };
+    return { decision, state: local, remote };
   }
   if (decision.action === "pull") {
-    return { decision, state: decision.state };
+    return { decision, state: decision.state, remote };
   }
-  return { decision, state: local };
+  return { decision, state: local, remote };
 }

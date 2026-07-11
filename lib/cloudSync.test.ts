@@ -112,4 +112,23 @@ describe("syncOnce — orchestration against a mock transport", () => {
     expect(decision.action).toBe("noop");
     expect(push).not.toHaveBeenCalled();
   });
+
+  it("returns the remote snapshot so the caller can content-compare a noop (equal timestamps can hide signed-out edits)", async () => {
+    const transport: SyncTransport = {
+      pull: () =>
+        Promise.resolve({
+          state: remoteState,
+          updatedAt: "2026-07-02T10:00:00Z",
+        }),
+      push: vi.fn(() => Promise.resolve()),
+    };
+    const { remote } = await syncOnce(
+      local,
+      "2026-07-02T10:00:00Z",
+      "2026-07-02T11:00:00Z",
+      transport,
+    );
+    expect(remote?.state.programStart).toBe("R");
+    expect(remote?.updatedAt).toBe("2026-07-02T10:00:00Z");
+  });
 });

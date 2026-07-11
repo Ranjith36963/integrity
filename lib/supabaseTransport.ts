@@ -27,7 +27,13 @@ export function makeSupabaseTransport(
       if (error) throw new Error(error.message);
       if (!data || data.state == null) return null;
       const state = migrate(data.state);
-      if (!state) return null; // unrecognizable remote → treat as no remote
+      // An unrecognizable remote (e.g. written by a NEWER app version this
+      // build can't parse) must ABORT the sync, not read as "no remote copy" —
+      // decideSync answers "no remote" with a push, which would overwrite the
+      // newer-format cloud data. Throwing makes the whole pass a no-op.
+      if (!state) {
+        throw new Error("remote state unrecognizable (newer app version?)");
+      }
       return { state, updatedAt: data.updated_at as string };
     },
 
