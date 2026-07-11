@@ -2,6 +2,24 @@
 
 ## [unreleased]
 
+### Changed — email + password sign-in (no email round-trip at all) (`967c273`)
+
+- Every email-dependent auth flow failed in the field: magic links open in the wrong browser
+  (Gmail's in-app browser / a fresh tab / an iOS home-screen PWA's separate storage), the 6-digit
+  OTP code needs an email-template edit that is gated behind a paid Supabase tier, and the built-in
+  sender is rate-limited project-wide. A password typed in the app touches **no email**: same
+  browser, session sticks, free tier.
+- `useSupabaseSession` now exposes `signInOrSignUp(email, password)` — tries
+  `signInWithPassword`; on "invalid login credentials" attempts `signUp` (a genuinely new account
+  signs straight in). Replaces `signInWithEmail`/`verifyCode`. Welcome and Settings both show
+  email + password + one button ("Sign in & begin" / "Sign in & back up"); submit is disabled until
+  the password has 6+ characters (Supabase minimum).
+- **User action (free, one-time):** Supabase → Authentication → Sign In / Providers → Email →
+  turn **off "Confirm email"** — otherwise the first sign-up sends a confirmation email (which is
+  exactly the rate-limited dependency this change removes) and returns no session.
+- Tests: `Welcome.test.tsx` updated (tap reveals email + password + submit; 6-char gate) — 1867
+  vitest green, 0 type/lint errors.
+
 ### Fixed — sync audit: three data-loss holes closed (`8c855d4`)
 
 A dedicated deep review of the cloud-sync path (sign-in → pull → reconcile → push) found and
