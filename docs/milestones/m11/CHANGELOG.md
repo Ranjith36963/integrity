@@ -2,6 +2,24 @@
 
 ## [unreleased]
 
+### Fixed — design-audit polish: auth forms + settings rhythm (`6d22e5d`)
+
+- A Playwright screenshot audit at phone size (430px + 320px; PNGs via
+  `tests/e2e/_design-audit.spec.ts`, kept as a rerunnable walk) confirmed the calendar surfaces
+  (Day/Week/Month/Year) are strong and found five concrete defects, all fixed:
+  1. the Welcome overlay never scrolled — at 320px the sign-in button (and any error) was cut off
+     and unreachable; the overlay is now `overflow-y: auto`;
+  2. the sign-in error rendered **below** the bottom-hugging submit button, i.e. under the fold —
+     a failed sign-in looked like nothing happened; the error now renders above the button;
+  3. raw `Failed to fetch` was shown verbatim — network failures now read "Couldn't reach the
+     cloud — check your connection and try again.";
+  4. disabled submit buttons were 50%-opacity amber (read as muddy, not off) — they now render as
+     dim surface with dim ink;
+  5. Settings sections blurred into one long list — `settings-sections` hairline dividers
+     (`app/globals.css`) give the sheet a grouped rhythm.
+- Verified by re-running the audit walk: error visible above the button with human copy; dividers
+  present; 1867 vitest green, 0 type/lint errors.
+
 ### Changed — email + password sign-in (no email round-trip at all) (`967c273`)
 
 - Every email-dependent auth flow failed in the field: magic links open in the wrong browser
