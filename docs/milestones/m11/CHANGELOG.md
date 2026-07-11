@@ -2,6 +2,41 @@
 
 ## [unreleased]
 
+### Fixed — sync audit: three data-loss holes closed (`8c855d4`)
+
+A dedicated deep review of the cloud-sync path (sign-in → pull → reconcile → push) found and
+fixed three ways data could be lost or clobbered. Each is pinned by a new test
+(`components/CloudSync.test.tsx`, +transport/engine tests; suite 1860 → 1866).
+
+1. **Un-gated push race (HIGH).** The 6-second interval and the `visibilitychange` handler could
+   push local state to the cloud _before_ the initial pull-and-reconcile finished — and
+   `visibilitychange` fires during sign-in itself (switching to the email app for the code). A
+   device with stale data could upsert it over a newer cloud copy with a fresh timestamp. All
+   pushes are now gated behind a completed initial reconcile; the interval retries the initial
+   sync until it succeeds (so an offline sign-in heals instead of disabling backup).
+2. **Version-skew clobber (HIGH).** `migrate()` returns null for a future `schemaVersion` — and
+   the transport treated that as "no cloud copy", which `decideSync` answers with a push,
+   overwriting newer-format cloud data with an old-format blob. Plausible in practice because the
+   PWA's service worker can serve stale app code against newer data. Now: an unrecognizable remote
+   row makes `pull()` throw (whole pass no-ops), and unrecognizable _local_ data freezes sync for
+   the session — never overwritten by remote, never pushed.
+3. **Stranded signed-out edits (MEDIUM).** Edits made while signed out don't advance the local
+   timestamp, so the next sign-in's reconcile read "equal timestamps → already in sync" and marked
+   the changed content as pushed — leaving those edits cloud-absent until the _next_ edit. A noop
+   verdict now also compares content (via the canonical `migrate()` path on both sides); a mismatch
+   pushes on the next tick.
+4. **(LOW, bookkeeping.)** Adopting a remote copy now stamps the local timestamp with the
+   _remote's_ `updated_at` (and a push stamps the pushed time), so the next app open reads "in
+   sync" instead of echo-pulling/pushing with a reload.
+
+Deliberately NOT changed (documented limitations): whole-blob last-write-wins means simultaneous
+edits on two devices resolve to whichever pushes last (per-field merge remains a future
+refinement, per `lib/cloudSync.ts` design note); and signing in with a _different_ account on the
+same device would upload the previous account's local data to the new account's row — acceptable
+for a single-user app, revisit if accounts are ever shared. A save-time timestamp stamp was
+considered for #3 and rejected: the boot-time rollover mutates state, so stamping every save would
+make a stale device claim "newest" and clobber real edits — the fix belongs in the sync layer.
+
 ### Fixed — sign in with a 6-digit code, not a magic link (session now sticks)
 
 - **The bug:** after tapping the emailed magic link, Settings still showed the signed-out form —
