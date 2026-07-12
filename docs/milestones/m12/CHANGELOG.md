@@ -2,6 +2,16 @@
 
 ## [unreleased]
 
+### Added — the hero ring lives inside the day clock (`4eff716`)
+
+- Per the user's mock (hero-% image composited into the clock image): the Hero instrument —
+  italic display-serif numeral, slow amber dashed orbit, two glowing data motes on the orbit —
+  now renders inside the day clock's centre hole (orbit r=48 inside the R_INNER=74 hole), so the
+  day score and the 24h clock read as **one** HUD instrument. A faint band sits behind the orbit;
+  the orbit + motes ride the existing `dayring-spin-cw` rotation (PRM-safe). The old centre pivot
+  dot, which collided with the numeral's descender, is removed. 1868 vitest green; zoom-verified
+  in the browser.
+
 ### Added — data-glow on all four views + the magic link returns as secondary (`ef655fc`)
 
 - **The glow is the data.** Scored cells across Week (day rows), Month (day cells), and Year
