@@ -438,9 +438,12 @@ test("E-m3-013: HeroRing SVG visible; shows 0% on fresh load; stays 0% after emp
   // Arc is full (empty) — filled arc dashoffset = circumference
   const R = 56;
   const C = 2 * Math.PI * R;
+  // M12 hero-in-clock: the hero now renders inside the DayRing, whose dashed
+  // orbit circles precede it in the DOM — a page-wide
+  // `circle[stroke-dasharray] .first()` no longer lands on the hero's filled
+  // arc. Target the arc by its own testid instead.
   const dashoffset = await page
-    .locator("circle[stroke-dasharray]")
-    .first()
+    .getByTestId("hero-ring-circle")
     .getAttribute("stroke-dashoffset");
   expect(parseFloat(dashoffset ?? "0")).toBeCloseTo(C, 0);
 

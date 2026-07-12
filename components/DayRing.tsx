@@ -9,6 +9,7 @@ import { useState } from "react";
 import type { Block, Category } from "@/lib/types";
 import { blockPct } from "@/lib/dharma";
 import { DEFAULT_DAY_START } from "@/lib/dayWindow";
+import { HeroRing } from "./HeroRing";
 import {
   timeToAngle,
   pointOnCircle,
@@ -24,6 +25,8 @@ interface Props {
   dayStart?: string;
   /** Day-complete percentage for the centre readout. */
   pct: number;
+  /** M7c count-up, threaded to the embedded <HeroRing> (M12 hero-in-clock). */
+  firstPaintCountUp?: boolean;
 }
 
 const SIZE = 260;
@@ -44,6 +47,7 @@ export function DayRing({
   now,
   dayStart = DEFAULT_DAY_START,
   pct,
+  firstPaintCountUp = false,
 }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -79,281 +83,235 @@ export function DayRing({
         padding: "8px 0 16px",
       }}
     >
-      <svg
-        viewBox={`-16 -16 ${SIZE + 32} ${SIZE + 32}`}
-        width="100%"
-        style={{ maxWidth: "320px" }}
-        // role="group", not "img": the ring contains tappable block arcs
-        // (role="button" paths). An image may not have focusable descendants
-        // (axe nested-interactive, serious) — a group may.
-        role="group"
-        aria-label={`Day ring, ${Math.round(pct)}% complete, now ${now}`}
-      >
-        {/* Sci-fi: faint amber core glow behind the ring */}
-        <defs>
-          <radialGradient id="dayring-core" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.14} />
-            <stop offset="70%" stopColor="var(--accent)" stopOpacity={0.03} />
-            <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
-          </radialGradient>
-        </defs>
-        <circle cx={C} cy={C} r={R_OUTER} fill="url(#dayring-core)" />
+      {/* Relative wrapper so the real <HeroRing> (count-up, live region,
+          orbital motes — the app's score instrument) can sit in the clock's
+          centre hole: image 1 inside image 2, one instrument (M12). */}
+      <div style={{ position: "relative", width: "100%", maxWidth: "320px" }}>
+        <svg
+          viewBox={`-16 -16 ${SIZE + 32} ${SIZE + 32}`}
+          width="100%"
+          // role="group", not "img": the ring contains tappable block arcs
+          // (role="button" paths). An image may not have focusable descendants
+          // (axe nested-interactive, serious) — a group may.
+          role="group"
+          aria-label={`Day ring, now ${now}`}
+        >
+          {/* Sci-fi: faint amber core glow behind the ring */}
+          <defs>
+            <radialGradient id="dayring-core" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.14} />
+              <stop offset="70%" stopColor="var(--accent)" stopOpacity={0.03} />
+              <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
+            </radialGradient>
+          </defs>
+          <circle cx={C} cy={C} r={R_OUTER} fill="url(#dayring-core)" />
 
-        {/* Sci-fi: two counter-rotating dashed orbits behind the band
+          {/* Sci-fi: two counter-rotating dashed orbits behind the band
             ("rotations in the back") */}
-        <circle
-          className="dayring-spin-cw"
-          cx={C}
-          cy={C}
-          r={R_OUTER + 6}
-          fill="none"
-          stroke="var(--ink-dim)"
-          strokeWidth={1}
-          strokeDasharray="2 10"
-          opacity={0.5}
-        />
-        <circle
-          className="dayring-spin-ccw"
-          cx={C}
-          cy={C}
-          r={R_INNER - 8}
-          fill="none"
-          stroke="var(--ink-dim)"
-          strokeWidth={1}
-          strokeDasharray="1 8"
-          opacity={0.4}
-        />
+          <circle
+            className="dayring-spin-cw"
+            cx={C}
+            cy={C}
+            r={R_OUTER + 6}
+            fill="none"
+            stroke="var(--ink-dim)"
+            strokeWidth={1}
+            strokeDasharray="2 10"
+            opacity={0.5}
+          />
+          <circle
+            className="dayring-spin-ccw"
+            cx={C}
+            cy={C}
+            r={R_INNER - 8}
+            fill="none"
+            stroke="var(--ink-dim)"
+            strokeWidth={1}
+            strokeDasharray="1 8"
+            opacity={0.4}
+          />
 
-        {/* Base ring band */}
-        <circle
-          cx={C}
-          cy={C}
-          r={(R_OUTER + R_INNER) / 2}
-          fill="none"
-          stroke="var(--card-edge)"
-          strokeWidth={R_OUTER - R_INNER}
-          opacity={0.35}
-        />
-
-        {/* Sci-fi: amber orbital data-dashes on the outer edge (echoes the Hero ring) */}
-        <circle
-          className="scifi-orbital-dashes"
-          cx={C}
-          cy={C}
-          r={R_OUTER + 2}
-          fill="none"
-          stroke="var(--accent-glow, var(--accent))"
-          strokeWidth={1.5}
-          strokeLinecap="round"
-          strokeDasharray="3 13"
-          opacity={0.7}
-        />
-
-        {/* Hour ticks (24) + cardinal labels every 6h */}
-        {Array.from({ length: 24 }, (_, i) => {
-          const ang = i * 15;
-          const outer = pointOnCircle(C, C, R_OUTER + 2, ang);
-          const inner = pointOnCircle(
-            C,
-            C,
-            R_OUTER - (i % 6 === 0 ? 8 : 4),
-            ang,
-          );
-          return (
-            <line
-              key={i}
-              x1={inner.x}
-              y1={inner.y}
-              x2={outer.x}
-              y2={outer.y}
-              stroke="var(--ink-dim)"
-              strokeWidth={i % 6 === 0 ? 1.5 : 0.75}
-              opacity={i % 6 === 0 ? 0.7 : 0.4}
-            />
-          );
-        })}
-        {[0, 6, 12, 18].map((h) => {
-          const ang = h * 15;
-          const p = pointOnCircle(C, C, R_OUTER + 16, ang);
-          return (
-            <text
-              key={h}
-              x={p.x}
-              y={p.y}
-              fill="var(--ink-dim)"
-              fontSize="9"
-              fontFamily="var(--font-ui)"
-              textAnchor="middle"
-              dominantBaseline="middle"
-            >
-              {hhmmForTick(dayStart, h)}
-            </text>
-          );
-        })}
-
-        {/* Block arcs */}
-        {arcs.map(({ block, startAngle, endAngle }) => {
-          const p = blockPct(block);
-          const isSel = block.id === selectedId;
-          const col = colorFor(block.categoryId);
-          return (
-            <path
-              key={block.id}
-              d={annularSectorPath(
-                C,
-                C,
-                R_INNER,
-                R_OUTER,
-                startAngle,
-                endAngle,
-              )}
-              fill={col}
-              fillOpacity={Math.min(1, 0.35 + (p / 100) * 0.55)}
-              stroke={isSel ? "var(--ink)" : "none"}
-              strokeWidth={isSel ? 2 : 0}
-              role="button"
-              tabIndex={0}
-              aria-label={`${block.name}, ${block.start} to ${block.end}, ${Math.round(p)}% complete`}
-              style={{
-                cursor: "pointer",
-                // Sci-fi: each arc emits a soft glow in its own colour.
-                filter: `drop-shadow(0 0 ${isSel ? 5 : 2.5}px ${col})`,
-              }}
-              onClick={() =>
-                setSelectedId((cur) => (cur === block.id ? null : block.id))
-              }
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  setSelectedId((cur) => (cur === block.id ? null : block.id));
-                }
-              }}
-            />
-          );
-        })}
-
-        {/* Now-hand — glowing, with a pulsing halo at the tip */}
-        <circle
-          className="dayring-tip-pulse"
-          cx={handTip.x}
-          cy={handTip.y}
-          r={6}
-          fill="var(--accent)"
-          opacity={0.5}
-        />
-        <line
-          data-testid="ring-now-hand"
-          x1={handBase.x}
-          y1={handBase.y}
-          x2={handTip.x}
-          y2={handTip.y}
-          stroke="var(--accent)"
-          strokeWidth={2}
-          strokeLinecap="round"
-          style={{ filter: "drop-shadow(0 0 3px var(--accent))" }}
-        />
-        <circle cx={handTip.x} cy={handTip.y} r={2.5} fill="var(--ink)" />
-
-        {/* Hero-in-centre: the % ring's own instrument lives INSIDE the
-            clock — faint band + slow amber dashed orbit + two data motes
-            framing the numeral (the Hero ring and the day clock become one
-            HUD). Replaces the old centre pivot dot, which collided with the
-            numeral's descender. */}
-        <circle
-          cx={C}
-          cy={C}
-          r={48}
-          fill="none"
-          stroke="var(--ink-dim)"
-          strokeWidth={5}
-          opacity={0.12}
-        />
-        <g className="dayring-spin-cw" aria-hidden="true">
+          {/* Base ring band */}
           <circle
             cx={C}
             cy={C}
-            r={48}
+            r={(R_OUTER + R_INNER) / 2}
             fill="none"
-            stroke="var(--accent)"
+            stroke="var(--card-edge)"
+            strokeWidth={R_OUTER - R_INNER}
+            opacity={0.35}
+          />
+
+          {/* Sci-fi: amber orbital data-dashes on the outer edge (echoes the Hero ring) */}
+          <circle
+            className="scifi-orbital-dashes"
+            cx={C}
+            cy={C}
+            r={R_OUTER + 2}
+            fill="none"
+            stroke="var(--accent-glow, var(--accent))"
             strokeWidth={1.5}
             strokeLinecap="round"
-            strokeDasharray="5 9"
-            opacity={0.85}
+            strokeDasharray="3 13"
+            opacity={0.7}
           />
+
+          {/* Hour ticks (24) + cardinal labels every 6h */}
+          {Array.from({ length: 24 }, (_, i) => {
+            const ang = i * 15;
+            const outer = pointOnCircle(C, C, R_OUTER + 2, ang);
+            const inner = pointOnCircle(
+              C,
+              C,
+              R_OUTER - (i % 6 === 0 ? 8 : 4),
+              ang,
+            );
+            return (
+              <line
+                key={i}
+                x1={inner.x}
+                y1={inner.y}
+                x2={outer.x}
+                y2={outer.y}
+                stroke="var(--ink-dim)"
+                strokeWidth={i % 6 === 0 ? 1.5 : 0.75}
+                opacity={i % 6 === 0 ? 0.7 : 0.4}
+              />
+            );
+          })}
+          {[0, 6, 12, 18].map((h) => {
+            const ang = h * 15;
+            const p = pointOnCircle(C, C, R_OUTER + 16, ang);
+            return (
+              <text
+                key={h}
+                x={p.x}
+                y={p.y}
+                fill="var(--ink-dim)"
+                fontSize="9"
+                fontFamily="var(--font-ui)"
+                textAnchor="middle"
+                dominantBaseline="middle"
+              >
+                {hhmmForTick(dayStart, h)}
+              </text>
+            );
+          })}
+
+          {/* Block arcs */}
+          {arcs.map(({ block, startAngle, endAngle }) => {
+            const p = blockPct(block);
+            const isSel = block.id === selectedId;
+            const col = colorFor(block.categoryId);
+            return (
+              <path
+                key={block.id}
+                d={annularSectorPath(
+                  C,
+                  C,
+                  R_INNER,
+                  R_OUTER,
+                  startAngle,
+                  endAngle,
+                )}
+                fill={col}
+                fillOpacity={Math.min(1, 0.35 + (p / 100) * 0.55)}
+                stroke={isSel ? "var(--ink)" : "none"}
+                strokeWidth={isSel ? 2 : 0}
+                role="button"
+                tabIndex={0}
+                aria-label={`${block.name}, ${block.start} to ${block.end}, ${Math.round(p)}% complete`}
+                style={{
+                  cursor: "pointer",
+                  // Sci-fi: each arc emits a soft glow in its own colour.
+                  filter: `drop-shadow(0 0 ${isSel ? 5 : 2.5}px ${col})`,
+                }}
+                onClick={() =>
+                  setSelectedId((cur) => (cur === block.id ? null : block.id))
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelectedId((cur) =>
+                      cur === block.id ? null : block.id,
+                    );
+                  }
+                }}
+              />
+            );
+          })}
+
+          {/* Now-hand — glowing, with a pulsing halo at the tip */}
           <circle
-            cx={pointOnCircle(C, C, 48, 300).x}
-            cy={pointOnCircle(C, C, 48, 300).y}
-            r={2.5}
+            className="dayring-tip-pulse"
+            cx={handTip.x}
+            cy={handTip.y}
+            r={6}
             fill="var(--accent)"
-            style={{ filter: "drop-shadow(0 0 4px var(--accent))" }}
+            opacity={0.5}
           />
-          <circle
-            cx={pointOnCircle(C, C, 48, 120).x}
-            cy={pointOnCircle(C, C, 48, 120).y}
-            r={1.8}
-            fill="var(--accent)"
-            opacity={0.8}
+          <line
+            data-testid="ring-now-hand"
+            x1={handBase.x}
+            y1={handBase.y}
+            x2={handTip.x}
+            y2={handTip.y}
+            stroke="var(--accent)"
+            strokeWidth={2}
+            strokeLinecap="round"
             style={{ filter: "drop-shadow(0 0 3px var(--accent))" }}
           />
-        </g>
+          <circle cx={handTip.x} cy={handTip.y} r={2.5} fill="var(--ink)" />
 
-        {/* Centre readout */}
-        {selected ? (
-          <>
-            <text
-              x={C}
-              y={C - 6}
-              fill="var(--ink)"
-              fontSize="14"
-              fontFamily="var(--font-ui)"
-              textAnchor="middle"
-            >
-              {selected.name.length > 16
-                ? selected.name.slice(0, 15) + "…"
-                : selected.name}
-            </text>
-            <text
-              x={C}
-              y={C + 12}
-              fill="var(--ink-dim)"
-              fontSize="11"
-              fontFamily="var(--font-ui)"
-              textAnchor="middle"
-            >
-              {selected.start}–{selected.end}
-            </text>
-          </>
-        ) : (
-          <>
-            <text
-              x={C}
-              y={C + 2}
-              fill="var(--ink)"
-              fontSize="32"
-              fontFamily="var(--font-display, var(--font-serif, var(--font-ui)))"
-              fontStyle="italic"
-              textAnchor="middle"
-              style={{
-                filter:
-                  "drop-shadow(0 0 6px var(--accent-glow, var(--accent)))",
-              }}
-            >
-              {Math.round(pct)}%
-            </text>
-            <text
-              x={C}
-              y={C + 22}
-              fill="var(--ink-dim)"
-              fontSize="9"
-              fontFamily="var(--font-ui)"
-              letterSpacing="0.18em"
-              textAnchor="middle"
-            >
-              DAY
-            </text>
-          </>
+          {/* Centre readout when a block arc is tapped (the HeroRing overlay
+            hides so name + time have the hole to themselves). */}
+          {selected && (
+            <>
+              <text
+                x={C}
+                y={C - 6}
+                fill="var(--ink)"
+                fontSize="14"
+                fontFamily="var(--font-ui)"
+                textAnchor="middle"
+              >
+                {selected.name.length > 16
+                  ? selected.name.slice(0, 15) + "…"
+                  : selected.name}
+              </text>
+              <text
+                x={C}
+                y={C + 12}
+                fill="var(--ink-dim)"
+                fontSize="11"
+                fontFamily="var(--font-ui)"
+                textAnchor="middle"
+              >
+                {selected.start}–{selected.end}
+              </text>
+            </>
+          )}
+        </svg>
+
+        {/* Hero-in-centre (M12): the REAL HeroRing — count-up tween, polite
+          live region, orbital motes, 72px italic numeral — mounted in the
+          clock's centre hole. One instrument: the day score lives inside the
+          day clock. pointer-events none so the block arcs stay tappable
+          around it (HeroRing is purely presentational). */}
+        {!selected && (
+          <div
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              pointerEvents: "none",
+            }}
+          >
+            <HeroRing pct={pct} firstPaintCountUp={firstPaintCountUp} />
+          </div>
         )}
-      </svg>
+      </div>
     </section>
   );
 }

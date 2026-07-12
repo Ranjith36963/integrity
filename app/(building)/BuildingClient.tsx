@@ -809,6 +809,7 @@ export function BuildingClient({
           hydrated={
             hydrated
           } /* R7-ROOT-5: hide SSR clock until client locks in */
+          ring={false} /* M12 hero-in-clock: the HeroRing lives in <DayRing> */
         />
         {/* M7a: skeleton / real subtree branch (ADR-023 two-pass hydration).
              !hydrated → skeleton placeholders; hydrated → real surfaces + stagger.
@@ -837,6 +838,7 @@ export function BuildingClient({
               now={now}
               dayStart={effectiveDayStart}
               pct={heroPct}
+              firstPaintCountUp={stagger}
             />
             <Timeline
               items={timelineItems}

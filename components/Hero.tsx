@@ -21,6 +21,10 @@ interface Props {
   pct: number;
   firstPaintCountUp?: boolean; // M7c — threaded to <HeroRing>; default false (backwards-compat)
   hydrated?: boolean; // R7-ROOT-5 — when false, render skeleton for date surfaces
+  /** M12 hero-in-clock: when false, render only the date/day metadata — the
+   *  HeroRing lives inside the DayRing's centre instead (one instrument, no
+   *  duplicate % readouts on the day view). Default true (back-compat). */
+  ring?: boolean;
 }
 
 export function Hero({
@@ -30,6 +34,7 @@ export function Hero({
   pct,
   firstPaintCountUp = false,
   hydrated = true,
+  ring = true,
 }: Props) {
   // R7-ROOT-5: em-dash placeholders avoid showing the SSR server-clock value
   // for the ~60s window before useNow() reconciles to the client clock. The
@@ -71,18 +76,22 @@ export function Hero({
           / {totalDaysDisplay}
         </div>
       )}
-      <div className="mt-3 flex items-center gap-4 leading-none">
-        {/* HeroRing renders the numeral as SVG text internally (E-m7c-003: SVG text
-            is outside the CSS layout flow, preventing count-up CLS). The ring's
-            aria-label is the canonical accessible reading; the numeral is aria-hidden. */}
-        <HeroRing pct={pct} firstPaintCountUp={firstPaintCountUp} />
-      </div>
-      <div
-        className="hud-tick mt-2 text-[10px] tracking-[0.18em] uppercase"
-        style={{ color: "var(--ink-dim)" }}
-      >
-        day complete
-      </div>
+      {ring && (
+        <>
+          <div className="mt-3 flex items-center gap-4 leading-none">
+            {/* HeroRing renders the numeral as SVG text internally (E-m7c-003: SVG text
+                is outside the CSS layout flow, preventing count-up CLS). The ring's
+                aria-label is the canonical accessible reading; the numeral is aria-hidden. */}
+            <HeroRing pct={pct} firstPaintCountUp={firstPaintCountUp} />
+          </div>
+          <div
+            className="hud-tick mt-2 text-[10px] tracking-[0.18em] uppercase"
+            style={{ color: "var(--ink-dim)" }}
+          >
+            day complete
+          </div>
+        </>
+      )}
     </section>
   );
 }
