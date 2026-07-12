@@ -2,6 +2,20 @@
 
 ## [unreleased]
 
+### Added — data-glow on all four views + the magic link returns as secondary (`ef655fc`)
+
+- **The glow is the data.** Scored cells across Week (day rows), Month (day cells), and Year
+  (month cells) now emit an amber glow whose radius and strength scale with the score — a strong
+  day literally radiates in the grid. Insight-strip numerals (Avg score / Complete / Streak) glow
+  when non-zero and stay dark at zero, same honesty rule. Day view's "day complete" and "day
+  blueprint" labels get the HUD annotation tick (new reusable `.hud-tick`).
+- **Both sign-in paths offered** (per user request). Password stays primary — it works in every
+  browser. "Prefer no password? Email me a sign-in link" returns as a secondary under both forms
+  (Welcome + Settings cloud), via `signInWithMagicLink` (OTP + `emailRedirectTo`, implicit flow so
+  the link signs in whichever browser opens it — the sent-state copy says exactly that, since the
+  mobile in-app-browser trap is why password is primary). Tests: `Welcome.test.tsx` (+1: secondary
+  link present, enabled by email alone). 1868 vitest green; screenshot walk re-verified.
+
 ### Added — HUD layer: the chrome joins the sci-fi language (`9fdc706`)
 
 - The calendar rings already spoke sci-fi (orbital dashes, amber glow, motes); the CHROME —
