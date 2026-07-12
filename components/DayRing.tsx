@@ -253,13 +253,49 @@ export function DayRing({
           style={{ filter: "drop-shadow(0 0 3px var(--accent))" }}
         />
         <circle cx={handTip.x} cy={handTip.y} r={2.5} fill="var(--ink)" />
+
+        {/* Hero-in-centre: the % ring's own instrument lives INSIDE the
+            clock — faint band + slow amber dashed orbit + two data motes
+            framing the numeral (the Hero ring and the day clock become one
+            HUD). Replaces the old centre pivot dot, which collided with the
+            numeral's descender. */}
         <circle
           cx={C}
           cy={C}
-          r={3}
-          fill="var(--accent)"
-          style={{ filter: "drop-shadow(0 0 3px var(--accent))" }}
+          r={48}
+          fill="none"
+          stroke="var(--ink-dim)"
+          strokeWidth={5}
+          opacity={0.12}
         />
+        <g className="dayring-spin-cw" aria-hidden="true">
+          <circle
+            cx={C}
+            cy={C}
+            r={48}
+            fill="none"
+            stroke="var(--accent)"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeDasharray="5 9"
+            opacity={0.85}
+          />
+          <circle
+            cx={pointOnCircle(C, C, 48, 300).x}
+            cy={pointOnCircle(C, C, 48, 300).y}
+            r={2.5}
+            fill="var(--accent)"
+            style={{ filter: "drop-shadow(0 0 4px var(--accent))" }}
+          />
+          <circle
+            cx={pointOnCircle(C, C, 48, 120).x}
+            cy={pointOnCircle(C, C, 48, 120).y}
+            r={1.8}
+            fill="var(--accent)"
+            opacity={0.8}
+            style={{ filter: "drop-shadow(0 0 3px var(--accent))" }}
+          />
+        </g>
 
         {/* Centre readout */}
         {selected ? (
@@ -291,10 +327,11 @@ export function DayRing({
           <>
             <text
               x={C}
-              y={C - 2}
+              y={C + 2}
               fill="var(--ink)"
-              fontSize="30"
-              fontFamily="var(--font-serif, var(--font-ui))"
+              fontSize="32"
+              fontFamily="var(--font-display, var(--font-serif, var(--font-ui)))"
+              fontStyle="italic"
               textAnchor="middle"
               style={{
                 filter:
@@ -305,7 +342,7 @@ export function DayRing({
             </text>
             <text
               x={C}
-              y={C + 18}
+              y={C + 22}
               fill="var(--ink-dim)"
               fontSize="9"
               fontFamily="var(--font-ui)"
