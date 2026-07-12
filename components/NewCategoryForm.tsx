@@ -137,9 +137,14 @@ export function NewCategoryForm({ onCreate, onCancel }: Props) {
             flex: 1,
             height: "44px",
             borderRadius: "8px",
-            border: "none",
-            background: isValid ? "var(--accent)" : "var(--ink-dim)",
-            color: "var(--bg)",
+            border: isValid
+              ? "1px solid rgba(251,191,36,0.5)"
+              : "1px solid var(--surface-2)",
+            background: isValid
+              ? "linear-gradient(180deg, rgba(251,191,36,0.2), rgba(251,191,36,0.08))"
+              : "var(--surface-2)",
+            color: isValid ? "var(--accent)" : "var(--ink-dim)",
+            boxShadow: isValid ? "0 0 16px -6px var(--amber-glow)" : "none",
             fontFamily: "var(--font-ui)",
             fontSize: "var(--fs-14)",
             cursor: isValid ? "pointer" : "not-allowed",

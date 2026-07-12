@@ -104,9 +104,18 @@ export function ViewSwitcher({ view, onSelect }: ViewSwitcherProps) {
             className="scifi-tab-ripple flex-1"
             style={{
               minHeight: "44px",
-              background: isActive ? "var(--accent)" : "transparent",
-              color: isActive ? "var(--bg)" : "var(--ink-dim)",
-              border: "none",
+              // HUD glass (M12): selected tab is a translucent amber pill,
+              // not an opaque slab — matches the instrument-panel chrome.
+              background: isActive
+                ? "linear-gradient(180deg, rgba(251,191,36,0.2), rgba(251,191,36,0.08))"
+                : "transparent",
+              color: isActive ? "var(--accent)" : "var(--ink-dim)",
+              border: isActive
+                ? "1px solid rgba(251,191,36,0.5)"
+                : "1px solid transparent",
+              boxShadow: isActive
+                ? "inset 0 1px 0 rgba(255,255,255,0.08), 0 0 20px -6px var(--amber-glow)"
+                : "none",
               cursor: "pointer",
               fontFamily: "inherit",
               fontSize: "inherit",

@@ -509,14 +509,11 @@ export function AddBlockSheet({
                 aria-disabled={isValid ? "false" : "true"}
                 aria-describedby={hasOverlap ? "block-save-hint" : undefined}
                 onClick={handleSave}
-                className="tap"
+                className="tap hud-glass-primary"
                 style={{
                   flex: 1,
                   height: "48px",
                   borderRadius: "8px",
-                  border: "none",
-                  background: "var(--accent)",
-                  color: "var(--bg)",
                   fontFamily: "var(--font-ui)",
                   fontSize: "var(--fs-14)",
                   cursor: isValid ? "pointer" : "not-allowed",

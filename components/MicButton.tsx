@@ -34,13 +34,11 @@ export function MicButton({ supported, listening, onPress }: Props) {
       aria-label={listening ? "Stop voice log" : "Start voice log"}
       aria-pressed={listening}
       onClick={handleClick}
-      className="tap grid h-12 w-12 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2"
+      className={`tap ${listening ? "hud-glass-primary" : "hud-glass-ghost"} grid h-12 w-12 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2`}
       style={{
-        background: listening ? "var(--accent-glow)" : "var(--card)",
-        border: listening
-          ? "2px solid var(--accent)"
-          : "1px solid var(--card-edge)",
-        color: listening ? "var(--accent)" : "var(--ink)",
+        // Listening keeps a harder 2px ring on top of the glass tint so the
+        // "live mic" state is unmistakable.
+        ...(listening ? { border: "2px solid var(--accent)" } : {}),
         flexShrink: 0,
       }}
     >

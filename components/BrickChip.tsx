@@ -115,9 +115,13 @@ function TimerControls({
           width: "32px",
           height: "32px",
           borderRadius: "8px",
-          border: "1px solid var(--card-edge)",
-          background: running ? "var(--accent)" : "transparent",
-          color: running ? "var(--bg)" : "var(--ink)",
+          border: running
+            ? "1px solid rgba(251,191,36,0.5)"
+            : "1px solid var(--card-edge)",
+          background: running
+            ? "linear-gradient(180deg, rgba(251,191,36,0.2), rgba(251,191,36,0.08))"
+            : "transparent",
+          color: running ? "var(--accent)" : "var(--ink)",
           cursor: disabled ? "default" : "pointer",
           flexShrink: 0,
         }}

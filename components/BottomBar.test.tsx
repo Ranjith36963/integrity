@@ -19,12 +19,13 @@ describe("BottomBar — quick-brick pill + add chooser", () => {
     expect(screen.getByRole("button", { name: "Add" })).toBeInTheDocument();
   });
 
-  it("Add brick pill has h-12 and amber gradient", () => {
+  it("Add brick pill has h-12 and the glass-primary treatment", () => {
     render(<BottomBar />);
     const quick = screen.getByRole("button", { name: "Log" });
     expect(quick.className).toMatch(/h-12/);
-    const style = quick.getAttribute("style") ?? "";
-    expect(style).toContain("var(--amber)");
+    // M12 glass buttons: translucent amber via hud-glass-primary, not an
+    // opaque gradient slab.
+    expect(quick.className).toMatch(/hud-glass-primary/);
   });
 
   it("both buttons are enabled (no aria-disabled)", () => {

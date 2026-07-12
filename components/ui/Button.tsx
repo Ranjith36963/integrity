@@ -14,7 +14,7 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: "bg-[var(--accent)] text-[var(--bg)] hover:brightness-110",
+        primary: "hud-glass-primary hover:brightness-125",
         secondary:
           "border border-[var(--card-edge)] text-[var(--ink-dim)] hover:bg-[var(--bg-elev)]",
         ghost: "text-[var(--ink-dim)] hover:text-[var(--ink)]",

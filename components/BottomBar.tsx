@@ -56,14 +56,7 @@ export function BottomBar({
             data-testid="dock-quick-brick"
             aria-label="Log"
             onClick={onQuickBrick}
-            className="tap flex h-12 flex-1 items-center justify-center gap-2 rounded-full text-[12px] tracking-[0.18em] uppercase"
-            style={{
-              background:
-                "linear-gradient(180deg, var(--amber), var(--amber-deep))",
-              color: "rgba(0,0,0,0.85)",
-              boxShadow:
-                "inset 0 1px 0 rgba(255,255,255,0.35), 0 8px 24px -8px rgba(245,158,11,0.7), 0 0 0 1px rgba(251,191,36,0.45)",
-            }}
+            className="tap hud-glass-primary flex h-12 flex-1 items-center justify-center gap-2 rounded-full text-[12px] tracking-[0.18em] uppercase"
           >
             <Zap size={16} />
             Log
@@ -82,12 +75,7 @@ export function BottomBar({
             type="button"
             data-testid="dock-add"
             aria-label="Add"
-            className="tap grid h-12 w-12 place-items-center rounded-full"
-            style={{
-              background: "var(--card)",
-              border: "1px solid var(--card-edge)",
-              color: "var(--ink)",
-            }}
+            className="tap hud-glass-ghost grid h-12 w-12 place-items-center rounded-full"
             onClick={onAddPress}
           >
             <Plus size={18} />

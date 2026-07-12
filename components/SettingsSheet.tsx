@@ -270,9 +270,14 @@ export function SettingsSheet({
                       flex: 1,
                       minHeight: "44px",
                       borderRadius: "8px",
-                      border: `1px solid ${active ? "var(--accent)" : "var(--surface-2)"}`,
-                      background: active ? "var(--accent)" : "var(--surface-1)",
-                      color: active ? "var(--bg)" : "var(--ink)",
+                      border: `1px solid ${active ? "rgba(251,191,36,0.5)" : "var(--surface-2)"}`,
+                      background: active
+                        ? "linear-gradient(180deg, rgba(251,191,36,0.2), rgba(251,191,36,0.08))"
+                        : "var(--surface-1)",
+                      color: active ? "var(--accent)" : "var(--ink)",
+                      boxShadow: active
+                        ? "0 0 16px -6px var(--amber-glow)"
+                        : "none",
                       fontFamily: "var(--font-ui)",
                       fontSize: "var(--fs-12, 12px)",
                       cursor: "pointer",

@@ -88,9 +88,14 @@ export function RecurrenceChips({ value, onChange, today = TODAY_ISO }: Props) {
                 padding: "8px 12px",
                 minHeight: "44px",
                 borderRadius: "9999px",
-                border: `1px solid ${selected ? "var(--accent)" : "var(--ink-dim)"}`,
-                background: selected ? "var(--accent)" : "transparent",
-                color: selected ? "var(--bg)" : "var(--ink-dim)",
+                border: `1px solid ${selected ? "rgba(251,191,36,0.5)" : "var(--ink-dim)"}`,
+                background: selected
+                  ? "linear-gradient(180deg, rgba(251,191,36,0.2), rgba(251,191,36,0.08))"
+                  : "transparent",
+                color: selected ? "var(--accent)" : "var(--ink-dim)",
+                boxShadow: selected
+                  ? "0 0 16px -6px var(--amber-glow)"
+                  : "none",
                 cursor: "pointer",
                 letterSpacing: "0.06em",
                 textTransform: "uppercase",

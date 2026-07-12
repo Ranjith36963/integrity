@@ -757,13 +757,11 @@ export function AddBrickSheet({
                 aria-disabled={isValid ? "false" : "true"}
                 aria-describedby={hasOverlap ? "brick-save-hint" : undefined}
                 onClick={handleSave}
+                className="hud-glass-primary"
                 style={{
                   flex: 1,
                   height: "48px",
                   borderRadius: "8px",
-                  border: "none",
-                  background: "var(--accent)",
-                  color: "var(--bg)",
                   fontFamily: "var(--font-ui)",
                   fontSize: "var(--fs-14)",
                   cursor: isValid ? "pointer" : "not-allowed",
