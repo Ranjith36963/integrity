@@ -2,6 +2,20 @@
 
 ## [unreleased]
 
+### Changed — glass buttons everywhere: no more opaque amber slabs (`bf8d91e`)
+
+- Per user feedback (screenshots of the solid "Day" tab pill + the solid "LOG" capsule): opaque
+  amber slabs read as legacy against the instrument-panel chrome. One shared recipe —
+  `.hud-glass-primary` / `.hud-glass-ghost` in `globals.css`: translucent amber tint, hairline
+  amber border, amber ink, soft halo, backdrop blur — applied to every tappable primary/selected
+  state: view-switcher selected tab, dock LOG pill + mic + add, Welcome primary CTA, block/brick
+  sheet Save, `Button.tsx` primary variant, recurrence chips, Settings past-edit segments,
+  cloud-backup banner, install prompt, new-category Save, running-timer chip.
+- **Indicators stay solid** — the now-line, now-tag, category swatches, and score heat fills are
+  data, not controls; solid amber there is signal.
+- `Button.test.tsx` + `BottomBar.test.tsx` updated to the glass contract. 1868 vitest green;
+  m5 + m7c a11y e2e green (amber-on-glass contrast holds); tab bar + dock zoom-verified.
+
 ### Changed — ONE instrument: the real HeroRing replaces the drawn centre copy (`5db0160`)
 
 - User feedback on the live app: the day view showed **two** % readouts (standalone hero on top +
