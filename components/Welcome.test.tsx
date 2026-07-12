@@ -38,6 +38,17 @@ describe("Welcome", () => {
     expect(onBegin).not.toHaveBeenCalled();
   });
 
+  it("offers the emailed sign-in link as a secondary option (needs only the email)", async () => {
+    const user = userEvent.setup();
+    render(<Welcome onBegin={vi.fn()} />);
+    await user.click(screen.getByTestId("welcome-begin"));
+    const link = screen.getByTestId("welcome-magic-link");
+    expect(link).toHaveTextContent(/email me a sign-in link/i);
+    expect(link).toBeDisabled(); // no email yet
+    await user.type(screen.getByTestId("welcome-email"), "me@example.com");
+    expect(link).not.toBeDisabled(); // email alone is enough for the link
+  });
+
   it("submit stays disabled until the password has 6+ characters", async () => {
     const user = userEvent.setup();
     render(<Welcome onBegin={vi.fn()} />);

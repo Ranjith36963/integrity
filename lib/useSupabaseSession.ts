@@ -14,6 +14,7 @@
  */
 import { useEffect, useState, useCallback } from "react";
 import { getSupabase } from "./supabaseClient";
+import { SUPABASE_REDIRECT_URL } from "./supabaseConfig";
 
 export type SyncAuth = {
   ready: boolean;
@@ -24,6 +25,12 @@ export type SyncAuth = {
   signInOrSignUp: (
     email: string,
     password: string,
+  ) => Promise<{ ok: boolean; error?: string }>;
+  /** Secondary path: email a magic sign-in link. Works when the link opens in
+   *  the same browser the app runs in (implicit flow carries the session in
+   *  the URL); the mobile in-app-browser trap is why password is primary. */
+  signInWithMagicLink: (
+    email: string,
   ) => Promise<{ ok: boolean; error?: string }>;
   signOut: () => Promise<void>;
 };
@@ -96,6 +103,32 @@ export function useSupabaseSession(): SyncAuth {
     [supabase],
   );
 
+  // Secondary path: the emailed sign-in link. Kept alongside password (per
+  // user request) — it works when the link opens in the browser the app lives
+  // in; the implicit flow (supabaseClient) carries the session in the URL.
+  const signInWithMagicLink = useCallback(
+    async (addr: string) => {
+      if (!supabase)
+        return { ok: false, error: "Cloud sync isn't configured." };
+      const { error } = await supabase.auth.signInWithOtp({
+        email: addr.trim(),
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo: SUPABASE_REDIRECT_URL,
+        },
+      });
+      if (error && /fetch|network/i.test(error.message)) {
+        return {
+          ok: false,
+          error:
+            "Couldn't reach the cloud — check your connection and try again.",
+        };
+      }
+      return error ? { ok: false, error: error.message } : { ok: true };
+    },
+    [supabase],
+  );
+
   const signOut = useCallback(async () => {
     if (supabase) await supabase.auth.signOut();
   }, [supabase]);
@@ -105,6 +138,7 @@ export function useSupabaseSession(): SyncAuth {
     email,
     configured: !!supabase,
     signInOrSignUp,
+    signInWithMagicLink,
     signOut,
   };
 }

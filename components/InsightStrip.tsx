@@ -59,6 +59,9 @@ function Numeric({ value, suffix }: { value: Item["value"]; suffix?: string }) {
         color: isZero ? "var(--ink-dim)" : "var(--ink)",
         letterSpacing: "-0.02em",
         lineHeight: 1,
+        // HUD readout: real data glows faintly, zero stays dark — the glow
+        // itself is information (same rule as the calendar cells).
+        textShadow: isZero ? "none" : "0 0 12px rgba(251, 191, 36, 0.35)",
       }}
     >
       {value}

@@ -12,14 +12,35 @@ import { useState } from "react";
 import { useSupabaseSession } from "@/lib/useSupabaseSession";
 
 export function CloudSyncSettings() {
-  const { ready, email, configured, signInOrSignUp, signOut } =
-    useSupabaseSession();
+  const {
+    ready,
+    email,
+    configured,
+    signInOrSignUp,
+    signInWithMagicLink,
+    signOut,
+  } = useSupabaseSession();
   const [addr, setAddr] = useState("");
   const [pw, setPw] = useState("");
-  const [status, setStatus] = useState<"idle" | "working" | "error">("idle");
+  const [status, setStatus] = useState<
+    "idle" | "working" | "link-sent" | "error"
+  >("idle");
   const [err, setErr] = useState<string | null>(null);
 
   if (!configured) return null;
+
+  async function handleMagicLink() {
+    if (!addr.trim()) return;
+    setStatus("working");
+    setErr(null);
+    const res = await signInWithMagicLink(addr);
+    if (res.ok) {
+      setStatus("link-sent");
+    } else {
+      setStatus("error");
+      setErr(res.error ?? "Could not send the link.");
+    }
+  }
 
   async function handleSubmit() {
     if (!addr.trim() || pw.length < 6) return;
@@ -123,23 +144,59 @@ export function CloudSyncSettings() {
             onChange={(e) => setPw(e.target.value)}
             style={fieldStyle}
           />
-          <button
-            type="button"
-            data-testid="cloud-submit"
-            disabled={status === "working" || !addr.trim() || pw.length < 6}
-            onClick={() => void handleSubmit()}
-            style={
-              status === "working" || !addr.trim() || pw.length < 6
-                ? {
-                    ...secondaryBtn,
-                    color: "var(--ink-dim)",
-                    cursor: "default",
-                  }
-                : secondaryBtn
-            }
-          >
-            {status === "working" ? "Signing in…" : "Sign in & back up"}
-          </button>
+          {status === "link-sent" ? (
+            <p
+              data-testid="cloud-link-sent"
+              style={{
+                color: "var(--ink)",
+                fontSize: "var(--fs-12, 12px)",
+                margin: 0,
+              }}
+            >
+              Link sent to <strong>{addr}</strong>. Tap it on this phone — it
+              signs in whichever browser opens it.
+            </p>
+          ) : (
+            <button
+              type="button"
+              data-testid="cloud-submit"
+              disabled={status === "working" || !addr.trim() || pw.length < 6}
+              onClick={() => void handleSubmit()}
+              style={
+                status === "working" || !addr.trim() || pw.length < 6
+                  ? {
+                      ...secondaryBtn,
+                      color: "var(--ink-dim)",
+                      cursor: "default",
+                    }
+                  : secondaryBtn
+              }
+            >
+              {status === "working" ? "Signing in…" : "Sign in & back up"}
+            </button>
+          )}
+          {status !== "link-sent" && (
+            <button
+              type="button"
+              data-testid="cloud-magic-link"
+              disabled={status === "working" || !addr.trim()}
+              onClick={() => void handleMagicLink()}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "var(--ink-dim)",
+                fontFamily: "var(--font-ui)",
+                fontSize: "var(--fs-12, 12px)",
+                textDecoration: "underline",
+                cursor: "pointer",
+                padding: 0,
+                alignSelf: "flex-start",
+                opacity: status === "working" || !addr.trim() ? 0.5 : 1,
+              }}
+            >
+              Prefer no password? Email me a sign-in link
+            </button>
+          )}
           {status === "error" && err && (
             <p
               role="alert"

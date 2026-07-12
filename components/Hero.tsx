@@ -78,7 +78,7 @@ export function Hero({
         <HeroRing pct={pct} firstPaintCountUp={firstPaintCountUp} />
       </div>
       <div
-        className="mt-2 text-[10px] tracking-[0.18em] uppercase"
+        className="hud-tick mt-2 text-[10px] tracking-[0.18em] uppercase"
         style={{ color: "var(--ink-dim)" }}
       >
         day complete

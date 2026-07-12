@@ -972,3 +972,16 @@ textarea:focus-visible {
     }
   }
 }
+
+/* Standalone HUD annotation tick — same mark the settings labels use, as an
+   opt-in class for view labels (day blueprint, day complete, …). */
+.hud-tick::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 1.5px;
+  background: var(--accent);
+  margin-right: 8px;
+  vertical-align: middle;
+  opacity: 0.8;
+}

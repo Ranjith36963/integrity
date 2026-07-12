@@ -36,12 +36,27 @@ export function Welcome({ onBegin }: Props) {
   // M11 — "Lay your first brick" IS the sign-in: tap it → enter email → magic
   // link → return signed in → day view. Backed up from day one. When cloud is
   // not configured, the button just enters the app (never a hard lock).
-  const { signInOrSignUp, email } = useSupabaseSession();
+  const { signInOrSignUp, signInWithMagicLink, email } = useSupabaseSession();
   const [mode, setMode] = useState<"intro" | "signin">("intro");
   const [addr, setAddr] = useState("");
   const [pw, setPw] = useState("");
-  const [status, setStatus] = useState<"idle" | "working" | "error">("idle");
+  const [status, setStatus] = useState<
+    "idle" | "working" | "link-sent" | "error"
+  >("idle");
   const [err, setErr] = useState<string | null>(null);
+
+  async function handleMagicLink() {
+    if (!addr.trim()) return;
+    setStatus("working");
+    setErr(null);
+    const res = await signInWithMagicLink(addr);
+    if (res.ok) {
+      setStatus("link-sent");
+    } else {
+      setStatus("error");
+      setErr(res.error ?? "Could not send the link.");
+    }
+  }
 
   async function handleSubmit() {
     if (!addr.trim() || pw.length < 6) return;
@@ -336,27 +351,65 @@ export function Welcome({ onBegin }: Props) {
               {err}
             </p>
           )}
-          <button
-            type="button"
-            data-testid="welcome-submit"
-            disabled={status === "working" || !addr.trim() || pw.length < 6}
-            onClick={() => void handleSubmit()}
-            className="tap"
-            style={
-              status === "working" || !addr.trim() || pw.length < 6
-                ? {
-                    ...primaryBtn,
-                    // Disabled = dim surface, not translucent amber (which
-                    // reads as "muddy", not "off").
-                    background: "var(--surface-2)",
-                    color: "var(--ink-dim)",
-                    cursor: "default",
-                  }
-                : primaryBtn
-            }
-          >
-            {status === "working" ? "Signing in…" : "Sign in & begin"}
-          </button>
+          {status === "link-sent" ? (
+            <p
+              data-testid="welcome-link-sent"
+              style={{
+                color: "var(--ink)",
+                fontSize: "var(--fs-12, 12px)",
+                margin: 0,
+              }}
+            >
+              Link sent to <strong>{addr}</strong>. Tap it on this phone — it
+              signs in whichever browser opens it.
+            </p>
+          ) : (
+            <button
+              type="button"
+              data-testid="welcome-submit"
+              disabled={status === "working" || !addr.trim() || pw.length < 6}
+              onClick={() => void handleSubmit()}
+              className="tap"
+              style={
+                status === "working" || !addr.trim() || pw.length < 6
+                  ? {
+                      ...primaryBtn,
+                      // Disabled = dim surface, not translucent amber (which
+                      // reads as "muddy", not "off").
+                      background: "var(--surface-2)",
+                      color: "var(--ink-dim)",
+                      cursor: "default",
+                    }
+                  : primaryBtn
+              }
+            >
+              {status === "working" ? "Signing in…" : "Sign in & begin"}
+            </button>
+          )}
+          {/* Secondary: the emailed link, for when typing a password is a
+              pain. Needs only the email field. */}
+          {status !== "link-sent" && (
+            <button
+              type="button"
+              data-testid="welcome-magic-link"
+              disabled={status === "working" || !addr.trim()}
+              onClick={() => void handleMagicLink()}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "var(--ink-dim)",
+                fontFamily: "var(--font-ui)",
+                fontSize: "var(--fs-12, 12px)",
+                textDecoration: "underline",
+                cursor: "pointer",
+                padding: 0,
+                alignSelf: "flex-start",
+                opacity: status === "working" || !addr.trim() ? 0.5 : 1,
+              }}
+            >
+              Prefer no password? Email me a sign-in link
+            </button>
+          )}
         </div>
       )}
     </div>

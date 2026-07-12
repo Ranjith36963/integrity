@@ -163,6 +163,9 @@ export function DayCell(props: DayCellProps) {
         border: "none",
         cursor: "pointer",
         textAlign: "left",
+        // HUD heat: glow radius/strength scale with the score, so a strong
+        // day literally radiates in the grid — the glow IS the data.
+        boxShadow: `0 0 ${Math.round(6 + (score / 100) * 12)}px -2px rgba(251, 191, 36, ${(0.1 + (score / 100) * 0.4).toFixed(2)})`,
         ...todayRing,
       }}
     >

@@ -151,7 +151,7 @@ export function BlueprintBar({
     <section aria-label="Day blueprint" className="px-5 pb-4">
       <div className="mb-2 flex items-center justify-between">
         <div
-          className="text-[10px] tracking-[0.22em] uppercase"
+          className="hud-tick text-[10px] tracking-[0.22em] uppercase"
           style={{ color: "var(--ink-dim)" }}
         >
           day blueprint

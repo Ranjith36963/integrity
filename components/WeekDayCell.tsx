@@ -115,6 +115,8 @@ export function WeekDayCell(props: WeekDayCellProps) {
             outlineOffset: "1px",
             textAlign: "left",
             boxSizing: "border-box",
+            // HUD heat: glow scales with the score (same rule as Month/Year).
+            boxShadow: `0 0 ${Math.round(6 + (score / 100) * 12)}px -2px rgba(251, 191, 36, ${(0.1 + (score / 100) * 0.4).toFixed(2)})`,
           }}
         >
           <span

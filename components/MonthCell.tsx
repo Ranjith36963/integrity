@@ -48,9 +48,11 @@ export function MonthCell({
   const buttonStyle: React.CSSProperties =
     score !== null
       ? {
-          // Scored tile: heat fill
+          // Scored tile: heat fill + score-proportional glow (the glow IS
+          // the data — same HUD rule as the month grid's DayCell).
           background: `rgba(251, 191, 36, ${alpha})`,
           border: "none",
+          boxShadow: `0 0 ${Math.round(6 + (score / 100) * 12)}px -2px rgba(251, 191, 36, ${(0.1 + (score / 100) * 0.4).toFixed(2)})`,
           ...(isCurrentMonth
             ? { outline: "2px solid var(--accent)", outlineOffset: "1px" }
             : {}),
