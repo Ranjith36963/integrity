@@ -2,6 +2,21 @@
 
 ## [unreleased]
 
+### Changed — ONE instrument: the real HeroRing replaces the drawn centre copy (`5db0160`)
+
+- User feedback on the live app: the day view showed **two** % readouts (standalone hero on top +
+  the SVG-drawn copy inside the clock) and the in-clock copy was too small. Now the actual
+  `<HeroRing>` — 72px italic numeral, M7c count-up tween, polite live region, progress arc,
+  orbital motes — mounts as an overlay in the day clock's centre hole (`pointer-events: none`, so
+  the block arcs stay tappable), and the standalone top ring is gone (`Hero` gains
+  `ring={false}`; the date/day-number metadata stays). Tapping an arc hides the hero and shows
+  the block's name + time in the hole. `firstPaintCountUp` threads to `DayRing`.
+- Because the embedded ring IS the original component, its whole tested contract survives:
+  m7c count-up + CLS + a11y specs and m3 hero specs pass unmodified — except `E-m3-013`, whose
+  page-wide `circle[stroke-dasharray] .first()` selector now landed on the clock's orbit circles;
+  retargeted to the `hero-ring-circle` testid (behavior unchanged). The 6 remaining m3 tray
+  failures **pre-exist on main** (proven by stash-rerun) and are unrelated. 1868 vitest green.
+
 ### Added — the hero ring lives inside the day clock (`4eff716`)
 
 - Per the user's mock (hero-% image composited into the clock image): the Hero instrument —
