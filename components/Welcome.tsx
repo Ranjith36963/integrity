@@ -280,12 +280,18 @@ export function Welcome({ onBegin }: Props) {
       ) : (
         // Email + password, right here — no email round-trip, session sticks.
         // First sign-in creates the account; after that the same fields log in.
+        // hud-panel: the sign-in is an instrument panel — blueprint corner
+        // registration marks frame it like the rest of the HUD chrome.
         <div
+          className="hud-panel"
           style={{
             marginTop: "var(--sp-24, 24px)",
             display: "flex",
             flexDirection: "column",
             gap: "10px",
+            padding: "var(--sp-16, 16px)",
+            background: "var(--surface-1)",
+            borderRadius: "12px",
           }}
         >
           <p

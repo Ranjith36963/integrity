@@ -856,3 +856,119 @@ body::before {
   border-top: 1px solid var(--surface-2);
   padding-top: var(--sp-24, 24px);
 }
+
+/* ============ HUD layer — blueprint-instrument chrome (M12 sci-fi pass) ============
+   The calendar views already speak the sci-fi language (orbital dashes, amber
+   glow, motes). This layer extends it to the CHROME — sheets, forms, settings —
+   via four devices, all tied to the drafting-table metaphor:
+   1. .hud-panel        — amber corner registration marks (blueprint reticle)
+   2. focus glow        — every focused field/button reads as "powered"
+   3. .hud-scanlines    — faint glass texture on sheet surfaces
+   4. section ticks     — settings labels get a blueprint annotation dash    */
+
+/* 1 — Corner registration marks. Two pseudo-elements draw four "L" corners
+   with layered gradients; pointer-events none so the panel stays inert. */
+.hud-panel {
+  position: relative;
+}
+.hud-panel::before,
+.hud-panel::after {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  opacity: 0.55;
+}
+.hud-panel::before {
+  /* top-left + top-right corners */
+  background-image:
+    linear-gradient(var(--accent), var(--accent)),
+    linear-gradient(var(--accent), var(--accent)),
+    linear-gradient(var(--accent), var(--accent)),
+    linear-gradient(var(--accent), var(--accent));
+  background-size:
+    14px 1.5px,
+    1.5px 14px,
+    14px 1.5px,
+    1.5px 14px;
+  background-position:
+    top left,
+    top left,
+    top right,
+    top right;
+}
+.hud-panel::after {
+  /* bottom-left + bottom-right corners */
+  background-image:
+    linear-gradient(var(--accent), var(--accent)),
+    linear-gradient(var(--accent), var(--accent)),
+    linear-gradient(var(--accent), var(--accent)),
+    linear-gradient(var(--accent), var(--accent));
+  background-size:
+    14px 1.5px,
+    1.5px 14px,
+    14px 1.5px,
+    1.5px 14px;
+  background-position:
+    bottom left,
+    bottom left,
+    bottom right,
+    bottom right;
+}
+
+/* 2 — Powered focus. One rule upgrades every text field and button in the
+   app: amber ring + soft halo, replacing the browser default outline. */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: var(--accent) !important;
+  box-shadow:
+    0 0 0 1.5px var(--accent),
+    0 0 18px -6px var(--amber-glow);
+  transition: box-shadow 120ms ease-out;
+}
+
+/* 3 — Glass scanlines for sheet surfaces. 3% ink at 3px pitch — texture you
+   feel more than see. */
+.hud-scanlines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(245, 241, 232, 0.03),
+    rgba(245, 241, 232, 0.03) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* 4 — Blueprint annotation ticks on settings section labels. */
+.settings-sections section > h3:first-child::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 1.5px;
+  background: var(--accent);
+  margin-right: 8px;
+  vertical-align: middle;
+  opacity: 0.8;
+}
+
+/* ✓ power-up — one-shot glow pulse when a success state mounts (e.g. the
+   "signed in" line). Static under PRM via the media guard below. */
+@media (prefers-reduced-motion: no-preference) {
+  .hud-power-in {
+    animation: hud-power-in 900ms ease-out both;
+  }
+  @keyframes hud-power-in {
+    0% {
+      text-shadow: 0 0 0 rgba(251, 191, 36, 0);
+    }
+    35% {
+      text-shadow: 0 0 14px rgba(251, 191, 36, 0.9);
+    }
+    100% {
+      text-shadow: 0 0 0 rgba(251, 191, 36, 0);
+    }
+  }
+}

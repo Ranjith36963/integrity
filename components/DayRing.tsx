@@ -83,7 +83,10 @@ export function DayRing({
         viewBox={`-16 -16 ${SIZE + 32} ${SIZE + 32}`}
         width="100%"
         style={{ maxWidth: "320px" }}
-        role="img"
+        // role="group", not "img": the ring contains tappable block arcs
+        // (role="button" paths). An image may not have focusable descendants
+        // (axe nested-interactive, serious) — a group may.
+        role="group"
         aria-label={`Day ring, ${Math.round(pct)}% complete, now ${now}`}
       >
         {/* Sci-fi: faint amber core glow behind the ring */}

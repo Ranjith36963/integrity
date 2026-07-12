@@ -97,7 +97,7 @@ export function Sheet({
       <div
         data-variant={variant}
         className={cn(
-          "scifi-iris-in relative z-10 flex w-full max-w-[430px] flex-col",
+          "scifi-iris-in hud-panel hud-scanlines relative z-10 flex w-full max-w-[430px] flex-col",
           isCompact ? "h-auto max-h-[90dvh] rounded-t-2xl" : "ml-auto h-full",
           "bg-[var(--bg-elev)]",
           className,

@@ -70,9 +70,11 @@ export function CloudSyncSettings() {
               margin: 0,
             }}
           >
-            <span style={{ color: "var(--accent)" }}>✓</span> You&rsquo;re
-            signed in as <strong>{email}</strong>. Your data is backed up to
-            this Gmail.
+            <span className="hud-power-in" style={{ color: "var(--accent)" }}>
+              ✓
+            </span>{" "}
+            You&rsquo;re signed in as <strong>{email}</strong>. Your data is
+            backed up to this Gmail.
           </p>
           <button
             type="button"
