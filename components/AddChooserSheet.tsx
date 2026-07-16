@@ -108,8 +108,10 @@ export function AddChooserSheet({ open, onPick, onCancel }: Props) {
           >
             Add Block
           </Button>
+          {/* Same glass-primary weight as Add Block (per user): both are
+              first-class creation paths, not a primary/secondary pair. */}
           <Button
-            variant="secondary"
+            variant="primary"
             size="md"
             className="w-full"
             onClick={handleBrick}
