@@ -2,6 +2,12 @@
 
 ## [unreleased]
 
+### Fixed — Add Brick matches Add Block's glass-primary weight (`f1f1392`)
+
+- In the add chooser, "Add Brick" rendered as a dim outline next to the glowing "Add Block" —
+  but both are first-class creation paths, not a primary/secondary pair (per user). Both now use
+  the `primary` (hud-glass) Button variant. Chooser tests green; zoom-verified in the browser.
+
 ### Changed — glass buttons everywhere: no more opaque amber slabs (`bf8d91e`)
 
 - Per user feedback (screenshots of the solid "Day" tab pill + the solid "LOG" capsule): opaque
