@@ -2,6 +2,13 @@
 
 ## [unreleased]
 
+### Fixed — uniformity sweep: last solid-amber straggler (`130810e`)
+
+- A grep-audit for design uniformity ("is my design uniform?") found exactly one control still on
+  the old opaque style: the Welcome intro CTA ("Lay your first brick") carried its own inline
+  style the glass sweep missed. Now glass like everything else. Verified by re-running the
+  screenshot walk: every tappable control app-wide now shares the glass language.
+
 ### Fixed — Add Brick matches Add Block's glass-primary weight (`f1f1392`)
 
 - In the add chooser, "Add Brick" rendered as a dim outline next to the glowing "Add Block" —
