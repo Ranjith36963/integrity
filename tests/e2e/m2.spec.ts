@@ -209,8 +209,10 @@ test("E-m2-005: Save is aria-disabled when Title is empty; enabled after typing"
   );
 });
 
-// E-m2-006: End ≤ Start → inline error, Save disabled
-test("E-m2-006: End before Start shows inline error and disables Save", async ({
+// E-m2-006 (SUPERSEDED CONTRACT): End ≤ Start = overnight block since the
+// wake-to-wake day anchor — a hint shows and Save stays ENABLED. Pre-M11
+// this was an inline error with Save disabled.
+test("E-m2-006: End before Start = overnight block; hint shows, Save enabled", async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -229,25 +231,19 @@ test("E-m2-006: End before Start shows inline error and disables Save", async ({
   // Trigger blur/change
   await page.keyboard.press("Tab");
 
-  // Inline error visible (exclude Next.js route announcer which is always role="alert")
-  const alert = page.locator(
-    '[role="alert"]:not([id="__next-route-announcer__"])',
-  );
-  await expect(alert).toBeVisible();
-  await expect(alert).toContainText(/End must be after Start/i);
+  // The crosses-midnight hint shows — this is guidance, not an error
+  await expect(page.getByTestId("crosses-midnight-hint")).toBeVisible();
 
-  // Save disabled
+  // Save stays ENABLED — an overnight block is legal
   await expect(page.getByRole("button", { name: /Save/i })).toHaveAttribute(
     "aria-disabled",
-    "true",
+    "false",
   );
 
-  // Fix end time — error disappears, Save enabled
+  // Same-day end — hint disappears, Save still enabled
   await endInput.fill("10:00");
   await page.keyboard.press("Tab");
-  await expect(
-    page.locator('[role="alert"]:not([id="__next-route-announcer__"])'),
-  ).toHaveCount(0);
+  await expect(page.getByTestId("crosses-midnight-hint")).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Save/i })).toHaveAttribute(
     "aria-disabled",
     "false",
