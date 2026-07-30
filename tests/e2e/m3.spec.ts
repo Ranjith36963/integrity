@@ -163,7 +163,10 @@ test("E-m3-004: add loose brick via tray + Brick pill; chip renders in tray", as
   await expect(tray).toBeVisible();
 
   // Tap "+ Brick" pill
-  await page.getByTestId("add-loose-brick-pill").click({ force: true });
+  // M4d+: the tray "+ Brick" pill no longer exists — a loose brick is added
+  // via the dock "+" → "Add Brick" chooser path.
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByTestId("chooser-add-brick").click();
 
   // AddBrickSheet opens
   await expect(page.locator('[role="dialog"]')).toBeVisible();
@@ -317,7 +320,10 @@ test("E-m3-009: tray chevron expands and collapses; icon flips", async ({
   await addBlock(page, "Morning");
 
   // Add a loose brick
-  await page.getByTestId("add-loose-brick-pill").click({ force: true });
+  // M4d+: the tray "+ Brick" pill no longer exists — a loose brick is added
+  // via the dock "+" → "Add Brick" chooser path.
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByTestId("chooser-add-brick").click();
   await page.getByLabel(/Title/i).fill("loose A");
   await page.getByRole("button", { name: /Save/i }).click();
 

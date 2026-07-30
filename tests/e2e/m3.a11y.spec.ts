@@ -37,7 +37,9 @@ test("A-m3-001: zero axe violations on day view with expanded block and loose br
   await expect(page.locator('[role="dialog"]')).toHaveCount(0);
 
   // Add loose brick
-  await page.getByTestId("add-loose-brick-pill").click({ force: true });
+  // M4d+: loose bricks are added via dock "+" → "Add Brick" (the tray pill is gone).
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByTestId("chooser-add-brick").click();
   await page.getByLabel(/Title/i).fill("loose A");
   await page.getByRole("button", { name: /Save/i }).click();
   await expect(page.locator('[role="dialog"]')).toHaveCount(0);
@@ -193,7 +195,9 @@ test("A-m3-004: zero axe violations on expanded tray; role=region + aria-expande
   await addBlock(page, "Morning");
 
   // Add loose brick
-  await page.getByTestId("add-loose-brick-pill").click({ force: true });
+  // M4d+: loose bricks are added via dock "+" → "Add Brick" (the tray pill is gone).
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByTestId("chooser-add-brick").click();
   await page.getByLabel(/Title/i).fill("loose A");
   await page.getByRole("button", { name: /Save/i }).click();
   await expect(page.locator('[role="dialog"]')).toHaveCount(0);
@@ -265,14 +269,16 @@ test("A-m3-006: all M3 touch targets are ≥ 44px tall", async ({ page }) => {
   await addBlock(page, "Morning");
 
   // Add a loose brick so chip appears in tray
-  await page.getByTestId("add-loose-brick-pill").click({ force: true });
+  // M4d+: loose bricks are added via dock "+" → "Add Brick" (the tray pill is gone).
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByTestId("chooser-add-brick").click();
   await page.getByLabel(/Title/i).fill("loose A");
   await page.getByRole("button", { name: /Save/i }).click();
   await expect(page.locator('[role="dialog"]')).toHaveCount(0);
 
-  // + Brick pill ≥ 44px tall
-  const addLoosePill = page.getByTestId("add-loose-brick-pill");
-  const pillBox = await addLoosePill.boundingBox();
+  // Dock "+" (the current add-brick entry point) ≥ 44px tall
+  const dockAdd = page.getByTestId("dock-add");
+  const pillBox = await dockAdd.boundingBox();
   expect(pillBox?.height ?? 0).toBeGreaterThanOrEqual(44);
 
   // Chevron toggle ≥ 44px
