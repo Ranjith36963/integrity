@@ -2,6 +2,30 @@
 
 ## [unreleased]
 
+### Fixed — full-feature Playwright verification: entire e2e suite green (`53b471e`, `8073758`, `ae09af5`)
+
+- Ran the complete e2e suite (60 spec files, 290 tests) and fixed **all 17 accumulated
+  failures** — every one was test drift behind evolved features, each verified live in the
+  browser before the spec was touched (no app behavior changed):
+  - **m3 (6)**: specs clicked the tray "+ Brick" pill removed in M4d+ → repointed to
+    dock "+" → "Add Brick".
+  - **m5 (3)**: no pinned clock — when real time entered 07:00–08:00 the seeded block went
+    active (now-pulse + jiggle) and force-clicks missed the moving ×. Clock pinned to noon.
+  - **m6 (3)**: fixture date 2026-06-29 with no Date mock — the M11 rollover archived the seed
+    and re-seeded blocks with fresh ids. Full Date-constructor mock added (`Date.now` alone is
+    insufficient — the app derives today via `new Date()`). E-m6-001 rewritten as a relative
+    drag; manual probe proved drag→snap→persist works (08:00→10:30, announced, persisted).
+  - **m2-002 + m4d-003 (2)**: masked TimeInput stores digits ("1400"); tests expected "14:00".
+  - **m2-006 (1)**: end≤start is now a valid overnight block (hint + Save enabled), not an
+    inline error — rewritten to the superseded-contract convention.
+  - **m1-002 (1)**: auto-scroll centers NOW within the timeline container; the viewport-center
+    assertion measured the wrong frame since the day clock joined the view.
+  - **\_feature-audit (1)**: hung 30 min on the repurposed Log pill (toggles Log mode, no
+    dialog); section updated — completes in ~36 s.
+- Suite result: **286 passing / 4 intentional skips / 0 failures** (skips are the M10
+  SpeechRecognition feature-detection guards). Clocks are now pinned in every seeded spec, so
+  time-of-day flakes are gone structurally.
+
 ### Fixed — uniformity sweep: last solid-amber straggler (`130810e`)
 
 - A grep-audit for design uniformity ("is my design uniform?") found exactly one control still on
