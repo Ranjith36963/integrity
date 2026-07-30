@@ -65,8 +65,16 @@ test("E-m1-002: auto-scroll centers NowLine in viewport at 15:00", async ({
   // NowLine should be within the visible viewport
   expect(box!.y).toBeGreaterThanOrEqual(0);
   expect(box!.y).toBeLessThanOrEqual(900);
-  // Approximately vertically centered (within ±280px of viewport mid-height — generous for auto-scroll variance)
-  expect(Math.abs(box!.y - 900 / 2)).toBeLessThan(280);
+  // Auto-scroll centers NOW within the TIMELINE container — since the day
+  // clock joined the view above the timeline, the container (not the
+  // viewport) is the honest frame for the centering assertion.
+  const container = page.getByRole("region", { name: "Timeline" });
+  const cBox = await container.boundingBox();
+  expect(cBox).not.toBeNull();
+  const containerCenter = cBox!.y + cBox!.height / 2;
+  expect(box!.y).toBeGreaterThanOrEqual(cBox!.y);
+  expect(box!.y).toBeLessThanOrEqual(cBox!.y + cBox!.height);
+  expect(Math.abs(box!.y - containerCenter)).toBeLessThan(cBox!.height * 0.4);
 });
 
 // E-m1-003: Reduced-motion honored

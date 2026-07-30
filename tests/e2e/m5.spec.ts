@@ -58,8 +58,22 @@ function makePayload(today: string) {
 
 test.beforeEach(async ({ page }) => {
   const today = makeTodayISO();
+  // Pin the clock to noon TODAY (same convention as m3). Without this the
+  // suite is time-of-day flaky: when real time enters 07:00-08:00 the seeded
+  // block goes ACTIVE (now-pulse animation) on top of the edit-mode jiggle,
+  // and force-clicks land off the moving × — the delete dialog never opens.
+  const fixedTime = new Date(`${today}T12:00:00`).getTime();
   await page.addInitScript(
-    ({ today: t, payload }: { today: string; payload: unknown }) => {
+    ({
+      today: t,
+      payload,
+      fixed,
+    }: {
+      today: string;
+      payload: unknown;
+      fixed: number;
+    }) => {
+      Date.now = () => fixed;
       localStorage.setItem("dharma:onboarding-shown", "true");
       localStorage.setItem(
         "dharma:v1",
@@ -70,7 +84,7 @@ test.beforeEach(async ({ page }) => {
         }),
       );
     },
-    { today, payload: makePayload(today) },
+    { today, payload: makePayload(today), fixed: fixedTime },
   );
 });
 

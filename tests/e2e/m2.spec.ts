@@ -105,9 +105,10 @@ test("E-m2-002: slot tap at 14:00 opens sheet with Start=14:00", async ({
   await expect(dialog).toBeVisible();
   await expect(dialog).toHaveAttribute("aria-label", "Add Block");
 
-  // Start = 14:00 (captured from slot tap)
+  // Start = 14:00 (captured from slot tap). Masked TimeInput stores the
+  // four digits; the colon is rendered by the mask, not part of the value.
   await expect(page.getByRole("textbox", { name: /Start/i })).toHaveValue(
-    "14:00",
+    "1400",
   );
 
   // Type title and save

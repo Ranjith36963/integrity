@@ -103,7 +103,8 @@ test("E-m4d-003: tapping an empty hour slot opens chooser; Add Block pre-fills s
     // Extract the hour from the button label
     const label = await slot.getAttribute("aria-label");
     const hourMatch = label?.match(/(\d{2}):00/);
-    const expectedStart = hourMatch ? `${hourMatch[1]}:00` : null;
+    // Masked TimeInput stores the four digits; the colon is the mask's.
+    const expectedStart = hourMatch ? `${hourMatch[1]}00` : null;
 
     await slot.click();
 

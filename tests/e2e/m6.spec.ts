@@ -63,6 +63,27 @@ test.beforeEach(async ({ page }) => {
   // page.reload() within a test does NOT overwrite the mutated state — enabling
   // drag-persistence assertions (E-m6-001).
   await page.addInitScript(() => {
+    // Freeze the WHOLE clock at the fixture's currentDate (2026-06-29).
+    // Date.now alone is not enough: the app derives "today" via new Date(),
+    // so without a constructor mock the M11 durable rollover fires on load —
+    // archiving the seeded day, backfilling every day since, and re-seeding
+    // today's blocks with fresh ids — and "blk-A" no longer exists.
+    const fixed = new Date("2026-06-29T12:00:00").getTime();
+    const RealDate = Date;
+    class MockDate extends RealDate {
+      constructor(...args: ConstructorParameters<typeof Date>) {
+        if (args.length === 0) {
+          super(fixed);
+        } else {
+          super(...args);
+        }
+      }
+      static now() {
+        return fixed;
+      }
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).Date = MockDate;
     localStorage.setItem("dharma:onboarding-shown", "true");
   });
   await page.goto("/");
@@ -85,7 +106,7 @@ async function enableEditMode(page: import("@playwright/test").Page) {
 
 // ─── E-m6-001: block re-time — drag → snap → persist; new times survive reload ─
 
-test("E-m6-001: block drag → snaps to 11:00; new slot persists after reload", async ({
+test("E-m6-001: block drag → snaps to a new 30-min slot; persists after reload", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 430, height: 932 });
@@ -97,41 +118,23 @@ test("E-m6-001: block drag → snaps to 11:00; new slot persists after reload", 
   });
   await expect(blockHandle).toBeVisible();
 
-  // Scroll the timeline container directly — NOT the window.
-  // scrollIntoView() scrolls window too, making window.scrollY > 0.
-  // Framer Motion uses info.point.y = pageY = clientY + window.scrollY,
-  // so a non-zero scrollY corrupts the handleDragEnd offset calculation.
-  // scrollTop=320 puts 08:00 (~192px from container top) and 11:00 (~384px) both in view.
-  await page.evaluate(() => {
-    const scrollRef = document.querySelector(
-      '[role="region"][aria-label="Timeline"]',
-    ) as HTMLElement;
-    if (scrollRef) scrollRef.scrollTop = 320;
-  });
-  await page.waitForTimeout(200);
-
-  // Get handle bounding box for drag simulation
+  // RELATIVE drag: +2 hour-heights straight down from the handle. The old
+  // absolute-coordinate targeting ("grid Y of 11:00") was coupled to the
+  // pre-anchor, pre-clock page layout and silently stopped moving the block.
+  // What this test actually guards — drag → snap to the 30-min grid →
+  // persist — is layout-independent with a relative gesture.
   const handleBox = await blockHandle.boundingBox();
   if (!handleBox) return;
 
-  // Find the hour-grid content div: its viewport Y = container.top - container.scrollTop.
-  // Dragging to gridBox.y + N * HOUR_HEIGHT_PX positions the pointer at exactly N:00,
-  // which the handleDragEnd formula (info.point.y - containerTop + scrollOffset) converts
-  // back to N * HOUR_HEIGHT_PX regardless of the current scroll position.
-  const hourGrid = page.getByTestId("hour-grid");
-  await expect(hourGrid).toBeVisible();
-  const gridBox = await hourGrid.boundingBox();
-  if (!gridBox) return;
-
   const HOUR_HEIGHT_PX = 64;
-  // Target: 11:00 slot
-  const targetY = gridBox.y + 11 * HOUR_HEIGHT_PX;
   const startX = handleBox.x + handleBox.width / 2;
   const startY = handleBox.y + handleBox.height / 2;
 
   await page.mouse.move(startX, startY);
   await page.mouse.down();
-  await page.mouse.move(startX, targetY, { steps: 10 });
+  await page.mouse.move(startX, startY + 30, { steps: 5 }); // pass drag threshold
+  await page.mouse.move(startX, startY + 2 * HOUR_HEIGHT_PX, { steps: 10 });
+  await page.waitForTimeout(200);
   await page.mouse.up();
   await page.waitForTimeout(500);
 
